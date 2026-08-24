@@ -20,7 +20,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
 
 import { generateProgram } from "./programAuthorshipService";
 import { CONTRACT_FIELD_STORAGE } from "@/domain/foundry/module/program-coherence";
-import { programContext, programContextFingerprint, PROGRAM_AUTHORSHIP_VERSION } from "@/domain/foundry/module/program-authorship";
+import { programContext, programContextFingerprint, PROGRAM_AUTHORSHIP_VERSION, programAuthorshipVersionNumber } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /** The EXACT canonical draft answers that produced parent 604d09e5. */
@@ -192,9 +192,16 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     expect(r.ok, r.ok ? "" : `code=${r.code} refusal=${r.refusal}`).toBe(true);
     if (r.ok) {
       const standard = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!;
-      // Compound action, both verbs in base form after the modal (R7).
-      expect(standard.content).toContain("must state each unfinished item and identify its next owner");
-      expect(standard.content).toContain("Completion evidence: Handoff record.");
+      /*
+        BOTH PROPERTIES, AT THEIR NEW SEAMS (Slice R4-R5C14A). The compound action still composes
+        with both verbs in base form (R7) — asserted on the CONTRACT, which is what R7 was ever
+        about. The Host's criterion still reaches the learner whole — asserted on WHAT SUCCESS
+        LOOKS LIKE, its own section, instead of as a tail on THE STANDARD.
+      */
+      expect(r.value.proposal.behaviorContract!.observableAction)
+        .toBe("state each unfinished item and identify its next owner");
+      expect(standard.content).not.toContain("Completion evidence:");
+      expect(r.value.proposal.elements.find((e) => e.kind === "evidence")!.content).toBe("Handoff record");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
   });
@@ -265,7 +272,8 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     if (r.ok) {
       const text = r.value.proposal.elements.map((e) => e.content).join(" ");
       expect(text).not.toContain("records manager");
-      expect(text).toContain("Completion evidence: Handoff record.");
+      // The Host's criterion reaches the learner in its own section now (Slice R4-R5C14A).
+      expect(r.value.proposal.elements.find((e) => e.kind === "evidence")!.content).toBe("Handoff record");
       expect(r.value.proposal.behaviorContract!.completion).toEqual({ criterion: "Handoff record" });
     }
   });
@@ -291,8 +299,14 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
     expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v12");
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
   });
 });

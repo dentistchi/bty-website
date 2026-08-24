@@ -92,7 +92,8 @@ describe("[3.2L-R11.4B] generation-context purity", () => {
     // No authored change => identical context, identical required sections.
     expect(fp({ ...CANONICAL })).toBe(fp(CANONICAL));
     expect(requiredProgramKinds({ ...CANONICAL })).toEqual(requiredProgramKinds(CANONICAL));
-    expect(requiredProgramKinds(CANONICAL)).toHaveLength(7);
+    // 8 since Slice R4-R5C14A: WHAT SUCCESS LOOKS LIKE is its own required section.
+    expect(requiredProgramKinds(CANONICAL)).toHaveLength(8);
     expect(requiredProgramKinds(CANONICAL)).not.toContain("reflection");
   });
 
@@ -109,13 +110,13 @@ describe("[3.2L-R11.4B] generation-context purity", () => {
     */
     const btyPrefill = { ...CANONICAL, sharedQuestion: suggestSharedQuestion("en") };
     expect(fp(btyPrefill)).not.toBe(fp(CANONICAL));
-    expect(requiredProgramKinds(btyPrefill)).toHaveLength(7);
+    expect(requiredProgramKinds(btyPrefill)).toHaveLength(8);
     expect(requiredProgramKinds(btyPrefill)).not.toContain("reflection");
 
     // A question the HOST wrote is what asks for the section, and always did.
     const hostOwn = { ...CANONICAL, sharedQuestion: "What usually happens at the huddle when nobody is named?" };
     expect(fp(hostOwn)).not.toBe(fp(CANONICAL));
-    expect(requiredProgramKinds(hostOwn)).toHaveLength(8);
+    expect(requiredProgramKinds(hostOwn)).toHaveLength(9);
     expect(requiredProgramKinds(hostOwn)).toContain("reflection");
   });
 

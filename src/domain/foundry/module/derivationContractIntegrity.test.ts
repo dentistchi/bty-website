@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { decideAdoptionReceipt } from "./adoption-authority";
-import { PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME } from "./program-authorship";
+import { PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME } from "./program-authorship";
 
 /**
  * SLICE 3.2R-R2.3-R3 — a proposal may not be applied under rules it was not generated under.
@@ -55,9 +56,15 @@ const claim = (over: Record<string, unknown> = {}) => ({
 
 describe("an attempt generated under an older derivation contract cannot be applied", () => {
   it("the authority version moved, because three required sections render different bytes", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     // The WIRE shape did not move — that split is why the two names exist.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });

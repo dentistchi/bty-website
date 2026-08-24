@@ -9,6 +9,7 @@ import {
   contractsFromProposal,
   deriveInstructionalContent,
   derivesFrom,
+  isHostAuthoredKind,
   initialSectionDecisions,
   isPreservableHostSection,
   missingProgramKinds,
@@ -949,11 +950,19 @@ export function ProgramAuthorship({
                 <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
                   {/* A kept section is the Host's own earlier statement — neither BTY's draft
                       nor an adjustment made in this review (Slice R4-R2A-R1). */}
+                  {/*
+                      THE HOST'S OWN SENTENCE IS NOT BTY'S DRAFT (Slice R4-R5C14A). THE STANDARD
+                      and WHAT SUCCESS LOOKS LIKE are carried verbatim from their Builder
+                      answers, so the badge says where they came from rather than claiming BTY
+                      wrote them.
+                  */}
                   {isKeep
                     ? "Your wording"
                     : wasAdjusted || (!isDerived && decisions[e.kind] === "edit")
                       ? "Adjusted by you"
-                      : "Drafted by BTY"}
+                      : isHostAuthoredKind(e.kind)
+                        ? "From your setup"
+                        : "Drafted by BTY"}
                 </span>
               )}
             </div>

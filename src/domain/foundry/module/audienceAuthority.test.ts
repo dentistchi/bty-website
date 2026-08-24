@@ -57,6 +57,14 @@ const CORPUS = groundingCorpus(PILOT, VERIFIED);
 const AUTH = audienceAuthorityFor(PILOT);
 
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem that was raised stays exactly where it was.",
   observable_standard: "The huddle leader names one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
@@ -122,7 +130,13 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
       the one section that still names a subject, because IN CONTEXT and APPLY IT stopped
       restating THE STANDARD. The model's label is still forbidden in ALL of them.
     */
-    expect(out.observable_standard).toContain(`, ${CANONICAL_ACTOR} must `);
+    /*
+      THE SAME AUTHORITY, AT ITS NEW SEAM (Slice R4-R5C14A). "The model's actor label never
+      reaches a participant" is unchanged and is now stronger: THE STANDARD is the Host's own
+      sentence, so it carries NO synthetic subject at all — not the model's label and not the
+      server's pronoun. The forbidden-label checks stay exactly as they were.
+    */
+    expect(out.observable_standard).toBe(PILOT.observableBehavior);
     for (const kind of ["observable_standard", "scenario", "field_application"]) {
       expect(out[kind].toLowerCase(), kind).not.toContain("a team member must");
     }
@@ -134,7 +148,8 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
     const c = rendered({ ...GROUNDED, actor: "a team member" });
     expect(a.observable_standard).toBe(b.observable_standard);
     expect(a.observable_standard).toBe(c.observable_standard);
-    expect(a.observable_standard).toMatch(/^During morning huddles, you must /);
+    // Independent of the label because it is the Host's sentence, not a composition of theirs.
+    expect(a.observable_standard).toBe(PILOT.observableBehavior);
   });
 
   it("F — a non-learner mentioned in the problem cannot become the subject", () => {
@@ -152,7 +167,8 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
         expect(r.ok, `${audienceType} / ${actor}`).toBe(true);
         if (!r.ok) continue;
         const std = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!.content;
-        expect(std, `${audienceType} / ${actor}`).toContain(`, ${CANONICAL_ACTOR} must `);
+        // No audience and no model label can change it: it is the Host's own sentence.
+        expect(std, `${audienceType} / ${actor}`).toBe(PILOT.observableBehavior);
       }
     }
   });
@@ -191,7 +207,7 @@ describe("[R3.2-R1] J–P — everything else is unchanged", () => {
     expect(text).not.toContain("the team lead");
     // …and since R3.6-R1 a drifted MOMENT is inert for the same reason: the Host owns it.
     expect(text).not.toContain("quarterly review");
-    expect(rendered(DRIFTED).observable_standard.startsWith(`During morning huddles, ${CANONICAL_ACTOR} must`)).toBe(true);
+    expect(rendered(DRIFTED).observable_standard).toBe(PILOT.observableBehavior);
   });
 
   it("K — the fully grounded seven-kind proposal still PASSES", () => {
@@ -270,7 +286,12 @@ describe("[R3.2-R1] prompt / validator / renderer parity", () => {
   });
 
   it("the renderer and the validator agree on the subject", () => {
+    /*
+      The server still writes the subject onto the CONTRACT — that is where the agreement lives
+      now. The learner-facing standard has no subject of BTY's at all (Slice R4-R5C14A).
+    */
     expect(CANONICAL_ACTOR).toBe("you");
-    expect(rendered(GROUNDED).observable_standard).toContain("you must name one owner");
+    expect(rendered(GROUNDED).observable_standard).toBe(PILOT.observableBehavior);
+    expect(rendered(GROUNDED).observable_standard).not.toContain("you must");
   });
 });

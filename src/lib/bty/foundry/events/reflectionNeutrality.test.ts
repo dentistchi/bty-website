@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { systemPrompt } from "./programAuthorshipService";
 import {
-  PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, deriveMaterialAuthority,
+  PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME, deriveMaterialAuthority,
   evidenceClaimBrief, requiredProgramKinds,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
@@ -124,9 +125,15 @@ describe("[3.2P-A2-R2] what did NOT change", () => {
   });
 
   it("the wire shape and the repair identities are untouched", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 });

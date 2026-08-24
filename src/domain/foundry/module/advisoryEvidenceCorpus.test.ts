@@ -3,7 +3,8 @@ import {
   EVIDENCE_POLICY, EVIDENCE_SCOPE, assertsOverclaimByPolicy,
   evidencePolicyPromptLines, evidenceScopeLine, evidenceFamilyContrasts,
 } from "./evidence-policy";
-import { evidenceClaimBrief, semanticRepairInstruction, repairPatchContract, repairLicenseFor, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME } from "./program-authorship";
+import { evidenceClaimBrief, semanticRepairInstruction, repairPatchContract, repairLicenseFor, PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME } from "./program-authorship";
 import type { BuilderAnswers } from "./module-builder";
 
 /**
@@ -187,9 +188,15 @@ describe("[3.2P-A4-R2] one policy, three consumers — validator, brief, repair"
   });
 
   it("I — the semantic contract moved; the wire and repair shapes did not", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
     expect(repairPatchContract(repairLicenseFor("scenario_without_pressure", "scenario"))!.name)
       .toBe("bty_guided_program_repair_scenario_pressure_v1");

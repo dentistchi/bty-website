@@ -83,8 +83,9 @@ describe("[3.2L-R11.4G] the approval CTA says what it approves", () => {
     expect(text).toMatch(/from the sections you wrote/i);
     expect(text).toMatch(/was not added/i);
     // It names how many program sections are absent. With no journey at all, that is every
-    // kind this Host's intent requires: seven.
-    expect(text).toMatch(/7 remaining sections/);
+    // kind this Host's intent requires — eight since Slice R4-R5C14A gave their success
+    // evidence a section of its own.
+    expect(text).toMatch(/8 remaining sections/);
   });
 
   it("the CTA stays ENABLED — a host-authored-only training is legitimate, and the server allows it", async () => {

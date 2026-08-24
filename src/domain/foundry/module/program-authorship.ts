@@ -20,6 +20,7 @@
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
 import { audienceAuthorityFor } from "./audience-authority";
 import { isBtySuggestedSharedQuestion } from "./btyQuestionDefaults";
+import { isObservableStandardShape } from "./observableStandardShape";
 import type { JourneyLocale } from "./journeyLocaleCopy";
 import {
   JOURNEY_KIND_ORDER,
@@ -317,7 +318,19 @@ import {
  * here say different things, so the version moves. Historical attempts stay truthful at their
  * own version; nothing is backfilled and no published snapshot is rewritten.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v24";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v25";
+
+/**
+ * The version's ORDINAL, for tests that defend the split rather than the number.
+ *
+ * Fourteen files pinned `program_authorship_v24` as a literal, so every composition change edited
+ * fourteen assertions that were never about the number — they were about one property: the
+ * AUTHORITY version moves when acceptance moves, and the WIRE name does not. A floor plus a shape
+ * defends exactly that, and still fails on a malformed value or a silent downgrade.
+ */
+export function programAuthorshipVersionNumber(): number {
+  return Number(PROGRAM_AUTHORSHIP_VERSION.replace("program_authorship_v", ""));
+}
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -406,6 +419,20 @@ export function requiredProgramKinds(answers: BuilderAnswers | undefined): Journ
   */
   const sharedQuestion = (a.sharedQuestion ?? "").trim();
   if (sharedQuestion.length > 0 && !isBtySuggestedSharedQuestion(sharedQuestion)) required.add("reflection");
+  /*
+    THE HOST'S EVIDENCE GETS ITS OWN SECTION (Slice R4-R5C14A).
+
+    R4-R5C11 put the completion criterion in THE STANDARD on the premise that WHAT SUCCESS LOOKS
+    LIKE would also carry it, as the Host's own subject. Measured across nine live journeys the
+    premise held only sometimes: four standards carried the evidence, two of those had no
+    evidence section at all, and two published journeys stated the same sentence twice. The
+    Korean training that surfaced this had the evidence ONLY inside THE STANDARD, which is why
+    the standard read as evidence — there was nowhere else for it to be.
+
+    It is required, and it is satisfied deterministically from `successEvidence` below, so the
+    provider is never asked for one and generation cannot fail on it.
+  */
+  if (completionCriterionFrom(a).length > 0) required.add("evidence");
 
   // Canonical render order, never insertion order.
   return JOURNEY_KIND_ORDER.filter((k) => required.has(k));
@@ -563,6 +590,15 @@ export function completionCriterionFrom(answers: BuilderAnswers | undefined): st
 }
 
 /** The same accessor for the Host's moment (Slice 3.2P-R3.6-R1). One read, never re-derived. */
+/**
+ * THE HOST'S OWN BEHAVIOUR SENTENCE (Slice R4-R5C14A) — the authority THE STANDARD renders.
+ * Step 4 already refuses to advance past a sentence that is not behaviour-shaped, so this is an
+ * approved value by the time any generation is legal.
+ */
+export function observableBehaviorFrom(answers: BuilderAnswers | undefined): string {
+  return typeof answers?.observableBehavior === "string" ? answers.observableBehavior.trim() : "";
+}
+
 export function recurringMomentFrom(answers: BuilderAnswers | undefined): string {
   const v = answers?.recurringMoment;
   return typeof v === "string" ? v.trim() : "";
@@ -2183,7 +2219,20 @@ export function validateProgramProposal(
     if (kind === "why_it_matters" && ctx && ctx.problemStatement.trim().length > 0) {
       return renderRationaleSentence(ctx.problemStatement, contract, operationalConstruct, locale);
     }
-    if (kind === "observable_standard") return renderStandardSentence(contract, locale);
+    /*
+      THE HOST'S TWO SENTENCES (Slice R4-R5C14A). Carried verbatim, exactly as the other seven
+      kinds discard the model's prose — the difference is that these two are replaced by the
+      HOST'S words rather than by BTY's rendering. The model still returns something for them and
+      it is still safety-checked; it simply cannot become what anyone reads.
+    */
+    if (kind === "observable_standard") {
+      const hostBehavior = (ctx?.observableBehavior ?? observableBehaviorFrom(answers)).trim();
+      return hostBehavior.length > 0 ? hostBehavior : renderStandardSentence(contract, locale);
+    }
+    if (kind === "evidence") {
+      const hostEvidence = (ctx?.successEvidence ?? completionCriterionFrom(answers)).trim();
+      return hostEvidence.length > 0 ? hostEvidence : null;
+    }
     if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract, locale);
     if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract, locale);
     if (kind === "field_application" && applicationContract) return renderApplicationSentence(contract, applicationContract, operationalConstruct, locale);
@@ -2283,8 +2332,38 @@ export function validateProgramProposal(
     */
     const discarded = c === content.value ? null : content.value;
     const discardedUnsafe = discarded === null ? null : unsafe(discarded);
-    const contentUnsafe = unsafe(c) ?? (discardedUnsafe?.code === "evidence_overclaim" ? null : discardedUnsafe);
+    /*
+      THE HOST'S OWN SENTENCE IS NOT THE MODEL'S PROSE (Slice R4-R5C14A-R1).
+
+      THE STANDARD is `observableBehavior` and WHAT SUCCESS LOOKS LIKE is `successEvidence`,
+      both carried verbatim. `unsafe` exists to judge what a MODEL wrote — fabricated specifics,
+      person evaluation, jargon, an outcome claim the Host never established — and pointing it at
+      the Host's own approved answer turns an AI-proposal refusal into a back-door Host validator.
+      Measured consequence if left unscoped: `evidence_overclaim` fires on a perfectly ordinary
+      Korean success sentence and refuses a paid generation over words the Host chose.
+
+      This is the same scoping C11 and C12A already applied from the other direction, where
+      per-element gates were grading BTY's own renderer. The DISCARDED model prose is still
+      checked below — a model that fabricates here would likely fabricate elsewhere — and the
+      Host's field keeps every check it already had at the Builder boundary (shape, type, length,
+      required-ness). Nothing is rewritten and nothing is silently accepted; the gate simply stops
+      claiming authority over an author it was never written for.
+    */
+    const hostAuthority = isHostAuthoredKind(kind) && c !== content.value;
+    const contentUnsafe = hostAuthority
+      ? null
+      : unsafe(c) ?? (discardedUnsafe?.code === "evidence_overclaim" ? null : discardedUnsafe);
     if (contentUnsafe) return REJECT_UNSAFE(contentUnsafe, kind);
+    /*
+      A model that wrote something unsafe for a Host-authored kind is still refused — the string
+      is discarded, but the attempt tells us what the model tried. `evidence_overclaim` is
+      excluded for the same reason it is excluded above: an outcome claim in text nobody displays
+      cannot mislead anyone, and refusing a whole window over an invisible sentence is the wrong
+      trade (Slice 3.2L-R9).
+    */
+    if (hostAuthority && discardedUnsafe && discardedUnsafe.code !== "evidence_overclaim") {
+      return REJECT_UNSAFE(discardedUnsafe, kind);
+    }
     // Safety still applies to a rationale whenever one is PRESENT — advisory does not
     // mean unchecked; it only means absence is tolerated.
     if (rationale.value.length > 0) {
@@ -2329,13 +2408,49 @@ export function validateProgramProposal(
     elements.push({ kind, content: c, rationale: rationale.value });
   }
 
+  /*
+    THE EVIDENCE SECTION IS SATISFIED WITHOUT THE PROVIDER (Slice R4-R5C14A).
+
+    `evidence` is required whenever the Host wrote success evidence, and its content is theirs —
+    so a proposal that omits it is not incomplete, it is merely missing a section BTY can write
+    from an answer it already holds. Injecting here rather than refusing means no extra provider
+    call, no extra spend, and no AI quality variance in a sentence the Host supplied.
+
+    Ordered by `JOURNEY_KIND_ORDER` below, so injection cannot disturb the reading sequence.
+  */
+  if (required.includes("evidence") && !seen.has("evidence")) {
+    const hostEvidence = deriveContent("evidence");
+    if (hostEvidence !== null) {
+      seen.add("evidence");
+      derivedKinds.add("evidence");
+      elements.push({ kind: "evidence", content: hostEvidence, rationale: "" });
+    }
+  }
+  elements.sort((a, b) => JOURNEY_KIND_ORDER.indexOf(a.kind) - JOURNEY_KIND_ORDER.indexOf(b.kind));
+
   // --- completeness against the Host's own learning design ---------------
   for (const kind of required) if (!seen.has(kind)) return REJECT("missing_required_kind", kind);
 
   // --- cross-section coherence -------------------------------------------
+  /*
+    WHO COPIED WHOM (Slice R4-R5C14A-R1).
+
+    Two sections with the same sentence is a real defect, and the rule stays. What changes is that
+    two of the nine sections are now the HOST's own prose, carried verbatim — so a Host whose
+    behaviour sentence and success sentence happen to read alike would have had their paid
+    generation refused, with one of their own answers named as the fault.
+
+    HOST vs HOST is therefore not a proposal defect: BTY has nothing to fix and no standing to
+    call either sentence wrong. Every other pair still refuses, and the refusal names the
+    NON-Host section — the one that copied — because that is the one a repair could change.
+  */
   for (let i = 0; i < elements.length; i++) {
     for (let j = i + 1; j < elements.length; j++) {
-      if (norm(elements[i].content) === norm(elements[j].content)) return REJECT("duplicate_content", elements[j].kind);
+      if (norm(elements[i].content) !== norm(elements[j].content)) continue;
+      const iHost = isHostAuthoredKind(elements[i].kind);
+      const jHost = isHostAuthoredKind(elements[j].kind);
+      if (iHost && jHost) continue;
+      return REJECT("duplicate_content", jHost ? elements[i].kind : elements[j].kind);
     }
   }
   const standard = elements.find((e) => e.kind === "observable_standard");
@@ -2496,6 +2611,24 @@ export function initialSectionDecisions(
   return out;
 }
 
+/**
+ * WHICH SECTIONS CARRY THE HOST'S OWN SENTENCE (Slice R4-R5C14A).
+ *
+ * THE STANDARD is `observableBehavior` verbatim and WHAT SUCCESS LOOKS LIKE is `successEvidence`
+ * verbatim, so labelling either "Drafted by BTY" would be the exact dishonesty this file's
+ * provenance type exists to prevent — the same one `btyQuestionDefaults` closes from the other
+ * direction, where BTY's prefill was being attributed to the Host.
+ *
+ * A closed set rather than a content comparison: these two kinds are Host-authored by
+ * construction now, and a similarity test would go wrong the moment a Host wrote something that
+ * happened to look like BTY's wording.
+ */
+export const HOST_AUTHORED_KINDS: readonly JourneyElementKind[] = ["observable_standard", "evidence"];
+
+export function isHostAuthoredKind(kind: JourneyElementKind): boolean {
+  return HOST_AUTHORED_KINDS.includes(kind);
+}
+
 export type SectionChoice = {
   kind: JourneyElementKind;
   decision: SectionDecision;
@@ -2568,7 +2701,8 @@ export function applyProgramProposal(
       */
       const reviewed = (choice.editedContent ?? "").trim();
       content = reviewed.length > 0 ? reviewed : proposed.content;
-      provenance = "ai_proposed";
+      // The Host's own sentence is never attributed to BTY (Slice R4-R5C14A).
+      provenance = isHostAuthoredKind(kind) ? "host_statement" : "ai_proposed";
     } else if (existing && (existing.content ?? "").trim().length > 0) {
       content = existing.content.trim();
       provenance = readProvenance(existing) ?? "host_statement";
@@ -2860,6 +2994,21 @@ export type ProgramContracts = {
    * it — only BTY's own scaffolding.
    */
   locale: JourneyLocale;
+  /**
+   * THE STANDARD, AS THE HOST WROTE IT (Slice R4-R5C14A).
+   *
+   * Their Step 4 answer, verbatim. It already passes `isObservableStandardShape` before the
+   * Builder lets them past that step, so BTY has an approved behaviour sentence in hand and used
+   * to throw it away — rebuilding an equivalent from a server actor, the Host's moment, the
+   * model's paraphrase and the Host's success evidence. On a Korean training that produced
+   * `<moment>, you — 보여주다 <clause>. 완료 증거: <evidence>`: an English pronoun, a dictionary-form
+   * verb in English word order, and the evidence appended to a section that is not about
+   * evidence. None of those are translation bugs; they are the cost of reconstructing a sentence
+   * that already existed.
+   */
+  hostBehavior: string;
+  /** The Host's `successEvidence`, verbatim — WHAT SUCCESS LOOKS LIKE and nothing else. */
+  hostEvidence: string;
 };
 
 /** The contracts a proposal was generated with, as the starting point for review. */
@@ -2924,6 +3073,8 @@ export function contractsFromProposal(
     followUpDays,
     completionPrompt,
     locale,
+    hostBehavior: (constructSource?.observableBehavior ?? "").trim(),
+    hostEvidence: (constructSource?.successEvidence ?? "").trim(),
   };
 }
 
@@ -2966,7 +3117,14 @@ export function derivesFrom(kind: JourneyElementKind, c: ProgramContracts): bool
   switch (kind) {
     case "why_it_matters":
       return c.problemStatement.trim().length > 0;
+    /*
+      THE STANDARD AND SUCCESS ARE THE HOST'S (Slice R4-R5C14A). Both are their own approved
+      sentence, carried verbatim — so neither is BTY-owned, neither renders read-only behind an
+      "Edit details" panel, and the Host edits the sentence itself rather than a proxy field.
+    */
     case "observable_standard":
+    case "evidence":
+      return false;
     // YOUR DECISION and APPLY IT are always BTY's — their moment comes from the trigger.
     case "action_decision":
     case "field_application":
@@ -2990,7 +3148,19 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
       ? renderRationaleSentence(c.problemStatement, c.behavior, c.construct, c.locale)
       : null;
   }
-  if (kind === "observable_standard") return renderStandardSentence(c.behavior, c.locale);
+  /*
+    THE HOST'S TWO SENTENCES (Slice R4-R5C14A). Returned verbatim, the same way the other seven
+    kinds discard the model's prose — the difference is that these are replaced by the HOST'S
+    words rather than by BTY's rendering, so no actor, no moment, no criterion and no paraphrase
+    can reach them.
+  */
+  /*
+    NULL ON PURPOSE (Slice R4-R5C14A). THE STANDARD and WHAT SUCCESS LOOKS LIKE carry the Host's
+    own sentence, placed on the element by the server. Returning it HERE would make
+    `sectionText` — `derivedContent(kind) ?? edits[kind]` — prefer the contract value and
+    silently discard the Host's edit in review. `derivesFrom` says the same thing about
+    ownership; this says BTY renders nothing for them.
+  */
   if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario, c.locale);
   if (kind === "action_decision" || kind === "field_application") {
     const moment = applicationMomentFor(c);
@@ -3040,6 +3210,25 @@ export function validateEditedReview(
   verifiedArtifacts: readonly string[] = [],
 ): ReviewValidation {
   const corpus = groundingCorpus(answers, verifiedArtifacts);
+
+  /*
+    THE HOST'S EDITED STANDARD, CHECKED AT THE HOST BOUNDARY (Slice R4-R5C14A-R2).
+
+    THE STANDARD is the Host's own sentence now, edited directly rather than through a contract
+    control — so the shape check that used to reach it through `observableAction` no longer does.
+    This restores it with the gate the BUILDER already applies to the same field at Step 4
+    (`isObservableStandardShape`), which is Host-boundary validation, not an AI proposal refusal
+    borrowed for the purpose. A Host cannot type a question or a meta-sentence into their
+    standard here and get past Apply, exactly as they cannot at Step 4.
+  */
+  const editedStandard = (narrative.observable_standard ?? "").trim();
+  if (narrative.observable_standard !== undefined && editedStandard.length === 0) {
+    // Emptying it would drop the section from the adopted Journey rather than blank it.
+    return { ok: false, reason: "standard_incomplete", kind: "observable_standard" };
+  }
+  if (editedStandard.length > 0 && !isObservableStandardShape(editedStandard)) {
+    return { ok: false, reason: "standard_not_observable", kind: "observable_standard" };
+  }
 
   // Checked before the contract rules so the Host gets the specific guidance, not a
   // generic "not observable" for what is really an unrenderable phrase.

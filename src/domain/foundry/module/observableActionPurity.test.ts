@@ -96,7 +96,8 @@ describe("R3.7 §6 — expanded labelled corpus", () => {
   });
 });
 
-import { validateProgramProposal, requiredProgramKinds, programSourceBlocker, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, repairLicenseFor } from "./program-authorship";
+import { validateProgramProposal, requiredProgramKinds, programSourceBlocker, PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME, repairLicenseFor } from "./program-authorship";
 import { CANONICAL_ACTOR, composeObservableAction, actionVerbDefect, momentIsConfidentlyOneOff } from "./program-coherence";
 import { decideAdoptionReceipt } from "./adoption-authority";
 import type { BuilderAnswers } from "./module-builder";
@@ -128,6 +129,13 @@ const proposeFields = (fields: { action_verb: string; action_detail: string }, h
     field_application: "Name one owner and one deadline for every agreed action and write them in the huddle note.",
     completion_check: "What exactly will you say to name the owner and the deadline?",
     follow_up: "You will be asked what you actually said.",
+    /*
+      `evidence` is a required kind since Slice R4-R5C14A and this fixture derives its elements
+      from `requiredProgramKinds`, so it needs a sentence. BTY discards it and carries the Host's
+      own `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   };
   return validateProgramProposal({
     program: {
@@ -149,12 +157,24 @@ describe("[3.2P-R3.7] A/B/C — the floor, end to end", () => {
     const r = propose(CLEAN_ACTION, host("During morning huddles"));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    const s = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!.content;
-    expect(s).toBe(
-      "During morning huddles, you must state the owner, action, and deadline for each agreed item. " +
-        "Completion evidence: The huddle note records one owner and one deadline for every agreed action.",
-    );
-    expect(s.toLowerCase().split("during morning huddles").length - 1, "the moment appears once").toBe(1);
+    /*
+      TWO PROPERTIES, AT THEIR NEW SEAMS (Slice R4-R5C14A). The clean action still composes
+      whole — asserted on the CONTRACT, which is where the composition now lives and where the
+      floor this file defends actually applies. THE STANDARD is the Host's own sentence, so it
+      states no moment at all; "the moment appears exactly once" is asserted across the whole
+      program instead, which is the property that was ever worth having.
+    */
+    expect(r.value.proposal.behaviorContract!.observableAction).toBe(CLEAN_ACTION);
+    const all = Object.fromEntries(r.value.proposal.elements.map((e) => [e.kind, e.content])) as Record<string, string>;
+    expect(all.observable_standard).toBe("Confirm the owner, action, and deadline for every agreed item.");
+    /*
+      The moment is stated ONCE as an instruction, by the section that owns it — IN CONTEXT
+      (C11) — and never by THE STANDARD. It also appears inside the Host's own problem sentence,
+      which WHY THIS MATTERS quotes; that is the Host's prose, not a second statement of the
+      occasion, so it is deliberately not counted here.
+    */
+    expect(all.scenario.toLowerCase().split("during morning huddles").length - 1).toBe(1);
+    expect(all.observable_standard.toLowerCase()).not.toContain("during morning huddles");
   });
 
   it("B/C — an action that repeats or relocates the moment is refused, with its own reason", () => {
@@ -233,9 +253,14 @@ describe("[3.2P-R3.7] A/B/C — the floor, end to end", () => {
       const r = propose(whole, host("During morning huddles"));
       expect(r.ok, whole).toBe(true);
       if (r.ok) {
+        /*
+          The phrasal verb survives composition INTACT — which is this file's property, and it is
+          asserted on the contract that holds the composition. THE STANDARD no longer renders it
+          (Slice R4-R5C14A): it is the Host's own sentence.
+        */
         expect(r.value.proposal.behaviorContract!.observableAction).toBe(whole);
         expect(r.value.proposal.elements.find((e) => e.kind === "observable_standard")!.content)
-          .toContain(`you must ${whole}`);
+          .toBe("Confirm the owner, action, and deadline for every agreed item.");
       }
     }
   });
@@ -280,12 +305,23 @@ describe("[3.2P-R3.7] J–N — every real moment shape renders naturally", () =
       // I — the application sections point at the next occurrence without rewriting the phrase.
       expect(s.field_application).toContain("The next time this happens");
       expect(s.field_application).not.toContain("the next " + m.toLowerCase().replace(/^(during|at|whenever)\s+/i, ""));
-      // G/H — the moment is stated verbatim where it belongs, once.
-      expect(s.observable_standard.startsWith(m)).toBe(true);
+      /*
+        G/H — the moment is stated verbatim where it belongs, ONCE (Slice R4-R5C14A). That section
+        is IN CONTEXT; THE STANDARD is the Host's own behaviour sentence and states no occasion.
+        The Korean case is the reason this matters: prefixing a Host moment to a Host sentence was
+        producing "At the 아침 허들 때마다"-shaped output, and now nothing prefixes anything.
+      */
       expect(s.scenario.startsWith(m)).toBe(true);
-      // O/P — actor and criterion stay server-owned.
-      expect(s.observable_standard).toContain(`, ${CANONICAL_ACTOR} must `);
-      expect(s.observable_standard).toContain("Completion evidence: The huddle note records");
+      expect(s.observable_standard).toBe(h.observableBehavior);
+      expect(s.observable_standard.startsWith(m)).toBe(false);
+      /*
+        O/P — the actor and the criterion are still SERVER-owned, asserted where the server writes
+        them: the actor on the contract, the criterion in the Host's own evidence section. Neither
+        is appended to THE STANDARD any more.
+      */
+      expect(r.value.proposal.behaviorContract!.actor).toBe(CANONICAL_ACTOR);
+      expect(s.observable_standard).not.toContain(`, ${CANONICAL_ACTOR} must `);
+      expect(s.evidence).toBe(h.successEvidence);
     }
   });
 
@@ -332,9 +368,15 @@ describe("[3.2P-R3.7] R/V/W — authority is unchanged where it should be", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
     for (const spent of ["v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17"].map((v) => `program_authorship_${v}`)) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });

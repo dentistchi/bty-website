@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   validateProgramProposal, requiredProgramKinds, programContext, completionCriterionFrom,
-  PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
+  PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
 import { CANONICAL_ACTOR, CONTRACT_DEFECT_REASONS, CONFIRMERS } from "./program-coherence";
 import { stepBlocker, type BuilderAnswers } from "./module-builder";
@@ -38,6 +39,14 @@ const PILOT = {
 
 const KINDS = requiredProgramKinds(PILOT);
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem that was raised stays exactly where it was.",
   observable_standard: "The huddle leader names one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
@@ -133,15 +142,16 @@ describe("[3.2P-R3.4-R1] D–H — every real evidence shape works without extra
       // Carried whole: no person, role, artifact or system is extracted from it.
       expect(contract.completion.criterion).toBe(evidence);
       /*
-        A — "reaches the participant intact" is unchanged; "in three sections" is not
-        (Slice R4-R5C11). The property under test is that a real Host evidence answer is CARRIED
-        WHOLE rather than decomposed into a person, an artifact or a system — and that is what is
-        asserted, on the section that renders the behaviour contract the criterion is a field of.
-        The other two carried copies, not authority.
+        A — "reaches the participant intact" is unchanged; WHICH SECTION carries it is
+        (Slice R4-R5C14A). The property under test is that a real Host evidence answer is CARRIED
+        WHOLE rather than decomposed into a person, an artifact or a system. It now reaches the
+        learner in WHAT SUCCESS LOOKS LIKE — its own section, the Host's own sentence — instead of
+        being appended to THE STANDARD, which is what made a Korean standard read as evidence.
+        The assertion is moved, not dropped, and the standard is now asserted NOT to carry it.
       */
       const core = evidence.replace(/\.$/, "");
-      expect(sections.observable_standard, `${label} / observable_standard`).toContain(core);
-      for (const kind of ["field_application", "why_it_matters"] as const) {
+      expect(sections.evidence, `${label} / evidence`).toContain(core);
+      for (const kind of ["observable_standard", "field_application", "why_it_matters"] as const) {
         expect(sections[kind], `${label} / ${kind}`).not.toContain(core);
       }
     });
@@ -161,7 +171,13 @@ describe("[3.2P-R3.4-R1] D–H — every real evidence shape works without extra
       belongs to the section that renders the contract.
     */
     const { sections } = forEvidence(PILOT.successEvidence!);
-    expect(sections.observable_standard).toContain("Completion evidence:");
+    /*
+      ONE SURFACE, and since R4-R5C14A it is the Host's own evidence section rather than a
+      labelled tail on THE STANDARD. The lead-in is gone with the tail: the Host's sentence needs
+      no "Completion evidence:" in front of it when it is the whole section.
+    */
+    expect(sections.evidence).toContain(PILOT.successEvidence!.replace(/\.$/, ""));
+    expect(sections.observable_standard).not.toContain("Completion evidence:");
     expect(sections.field_application).not.toContain("You will know it happened by this:");
     expect(sections.why_it_matters).not.toContain("What shows it happened:");
   });
@@ -181,8 +197,16 @@ describe("[3.2P-R3.4-R1] I/J — the source gate and the participant subject are
 
   it("J — the participant subject is still server-written", () => {
     const { contract, sections } = forEvidence(PILOT.successEvidence!);
+    /*
+      THE PROPERTY MOVED SEAMS (Slice R4-R5C14A). "The model cannot redefine who the training is
+      for" is still true and still enforced — on the CONTRACT, which is where the server writes
+      the actor. It is no longer a property of the learner-facing STANDARD, because that section
+      is the Host's own sentence and carries no synthetic subject at all: not the model's label,
+      and not the server's pronoun either.
+    */
     expect(contract.actor).toBe(CANONICAL_ACTOR);
-    expect(sections.observable_standard).toContain(`${CANONICAL_ACTOR} must`);
+    expect(sections.observable_standard).toBe(PILOT.observableBehavior);
+    expect(sections.observable_standard).not.toContain(`${CANONICAL_ACTOR} must`);
     expect(sections.observable_standard).not.toContain("the huddle leader");
   });
 });
@@ -262,9 +286,15 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");

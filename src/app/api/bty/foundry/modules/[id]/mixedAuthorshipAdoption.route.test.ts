@@ -78,6 +78,14 @@ const TITLE = "Making Confirmation Calls";
 
 /** What BTY generated — all required kinds. */
 const PROPOSAL_CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "BTY: a booking without a confirmation call quietly becomes a no-show.",
   observable_standard: "BTY: the employee calls and works through the checklist.",
   scenario: "After each new patient booking, even when time is running short.",

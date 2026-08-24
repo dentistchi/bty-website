@@ -177,8 +177,9 @@ describe("the Action Decision can never silently become the Completion Question 
 describe("Part 6.6 — a non-Decision training is unaffected", () => {
   it("its required kinds and Review rows are byte-identical to before", () => {
     const noDecide = { ...DECIDE, learningNeeds: ["shared_standard"] } as BuilderAnswers;
+    // 8 since Slice R4-R5C14A: the Host's success evidence has its own section now.
     expect(requiredProgramKinds(noDecide)).toEqual([
-      "why_it_matters", "observable_standard", "scenario", "field_application", "completion_check", "follow_up",
+      "why_it_matters", "observable_standard", "scenario", "field_application", "evidence", "completion_check", "follow_up",
     ]);
     // No decision row, and no decision blocker, anywhere in its Review readiness.
     expect(reviewMissingSections(noDecide).map((m) => m.section)).not.toContain("title");

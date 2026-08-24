@@ -66,6 +66,14 @@ const ANSWERS = {
 
 const KINDS = requiredProgramKinds(ANSWERS);
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem that was raised stays exactly where it was.",
   observable_standard: "The huddle leader names one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",

@@ -264,7 +264,8 @@ describe("[3.2L-R11.4I] multiple different 7-section proposals validate", () => 
   ];
 
   it("all three validate, and they are materially different", () => {
-    expect(requiredProgramKinds(CANONICAL)).toHaveLength(7);
+    // 8 since Slice R4-R5C14A: the Host's success evidence has its own section now.
+    expect(requiredProgramKinds(CANONICAL)).toHaveLength(8);
     const titles = new Set(VARIANTS.map((v) => v.program.display_title));
     expect(titles.size).toBe(3);
     VARIANTS.forEach((p, i) => {

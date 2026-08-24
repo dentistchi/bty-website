@@ -108,24 +108,18 @@ const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
 };
 
 export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> = {
-  observable_standard: [
-    /**
-     * ONE CONTROL (Slice 3.2P-R3.6-R1).
-     *
-     * THE STANDARD had four: who, when, what they do, and what confirms it. Three of them are
-     * no longer this surface's to edit, and each left for the same reason — the Host already
-     * answered it somewhere with authority, and a second editor for one sentence means two
-     * answers that drift the moment either is touched:
-     *
-     *   who      → the audience, rendered as "you"          (removed at v11)
-     *   confirms → "How will you know it worked?"           (removed at v11)
-     *   when     → "When does this usually happen?"         (removed here)
-     *
-     * The Host has lost no edit. Each moved back to the question that owns it, and changing it
-     * there re-renders every sentence derived from it.
-     */
-    behaviourField("action", "What would you see or hear them do?", "observableAction"),
-  ],
+  /*
+    THE STANDARD HAS NO CONTROL HERE ANY MORE (Slice R4-R5C14A).
+
+    Its one remaining field edited `observableAction` — the model's paraphrase, which THE STANDARD
+    was composed from. THE STANDARD is now the Host's own `observableBehavior`, carried verbatim,
+    so that control would have edited a value nothing renders: an "Edit details" panel that
+    changes no sentence is the defect 3.2L-R10-A already records from the other direction.
+
+    The Host has lost no edit. They own the sentence directly in this review, and the question
+    that authored it — "After this training, what should they do differently?" — still owns it in
+    the Builder.
+  */
   /*
     NO SCENARIO CONTROLS ANY MORE (Slice 3.2P-A7-R2).
 

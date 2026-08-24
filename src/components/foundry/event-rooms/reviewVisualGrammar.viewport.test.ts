@@ -155,7 +155,12 @@ async function open() {
     assertion: the question "is BTY's sentence legible and not shaped like a field" is still
     exactly the right one, it is just one tap further in.
   */
-  await page.click('[data-testid="program-section-toggle-observable_standard"]');
+  /*
+    Opened on a section BTY still RENDERS (Slice R4-R5C14A). THE STANDARD is the Host's own
+    sentence now and shows an editable field, so it can no longer demonstrate the read-only
+    grammar this test measures.
+  */
+  await page.click('[data-testid="program-section-toggle-action_decision"]');
   await page.waitForTimeout(300);
 
   const measure = async (selector: string): Promise<Measured> => {
@@ -231,7 +236,9 @@ async function open() {
 
 const EDITABLE = '[data-testid="journey-edit-observable_standard"]';
 const PROVENANCE = '[data-testid="journey-grounded-observable_standard"]';
-const READONLY = '[data-testid="program-derived-observable_standard"]';
+// THE STANDARD is the Host's own editable sentence since Slice R4-R5C14A, so the read-only
+// grammar is measured on a section BTY still renders.
+const READONLY = '[data-testid="program-derived-action_decision"]';
 
 beforeAll(() => { if (chromium) { dir = join(ROOT, "src/components/foundry/event-rooms/.grammar-harness"); mkdirSync(dir, { recursive: true }); } }, 60_000);
 afterAll(() => { if (dir) rmSync(dir, { recursive: true, force: true }); }, 30_000);

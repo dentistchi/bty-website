@@ -173,7 +173,8 @@ describe("[3.2L-R11.4H] seven sections inside the ceiling (Part 6)", () => {
   });
 
   it("all seven kinds validate without exceeding the ceiling", () => {
-    expect(requiredProgramKinds(CANONICAL)).toHaveLength(7);
+    // 8 since Slice R4-R5C14A: the Host's success evidence has its own section now.
+    expect(requiredProgramKinds(CANONICAL)).toHaveLength(8);
     const r = validateProgramProposal(proposal, CANONICAL, []);
     if (!r.ok) throw new Error(`refused ${r.code}`);
     expect(r.ok).toBe(true);

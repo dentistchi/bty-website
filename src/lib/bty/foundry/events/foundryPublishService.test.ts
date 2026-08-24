@@ -258,6 +258,12 @@ function groundedJourney(over: Record<string, unknown> = {}) {
       el("observable_standard", "The charge nurse reads back the dosage before sign-off.", "observableBehavior"),
       el("scenario", "The unit is busy and two people are already waiting to ask you something.", "problem"),
       el("field_application", "At the next sign-off, read the dosage back before you sign.", "observableBehavior"),
+      /*
+        WHAT SUCCESS LOOKS LIKE is a required kind since Slice R4-R5C14A whenever the Host stated
+        success evidence, so an approvable Journey now carries it. Its content is the Host's own
+        `successEvidence`, grounded on that field.
+      */
+      el("evidence", "The signed record shows the dosage was read back.", "successEvidence"),
       el("completion_check", "What read-back will you commit to?", "completionPrompt"),
       el("follow_up", "In seven days you will be asked what you actually read back.", "successEvidence"),
     ],

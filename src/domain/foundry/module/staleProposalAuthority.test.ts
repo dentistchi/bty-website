@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decideAdoptionReceipt, type AdoptionClaim } from "./adoption-authority";
-import { PROGRAM_AUTHORSHIP_VERSION } from "./program-authorship";
+import { PROGRAM_AUTHORSHIP_VERSION, programAuthorshipVersionNumber } from "./program-authorship";
 
 /**
  * SLICE 3.2P-W4-R1 — IDENTITY IS NOT VALIDITY.
@@ -93,9 +93,15 @@ describe("[3.2P-W4-R1] E/H/I — the adoption gate", () => {
 
 describe("[3.2P-W4-R1] the acceptance contract version", () => {
   it("moved, because acceptance moved", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe(OLD_AUTHORITY);
     // Every version this pilot generated under is now stale: W2/W3 v9, W4 v10, W5 v11.
     for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15", "program_authorship_v16", "program_authorship_v17", "program_authorship_v18", "program_authorship_v19", "program_authorship_v20", "program_authorship_v21"]) {

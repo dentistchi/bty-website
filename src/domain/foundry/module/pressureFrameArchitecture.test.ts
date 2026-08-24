@@ -6,7 +6,8 @@ import {
 } from "./program-coherence";
 import {
   validateProgramProposal, requiredProgramKinds, isSemanticRepairableCode,
-  PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, PROGRAM_JSON_SCHEMA,
+  PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME, PROGRAM_JSON_SCHEMA,
 } from "./program-authorship";
 import { assertsOverclaimByPolicy } from "./evidence-policy";
 import type { BuilderAnswers } from "./module-builder";
@@ -39,6 +40,14 @@ const ANSWERS = {
 } as unknown as BuilderAnswers;
 
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a problem is raised and nobody is named, the next step quietly belongs to no one.",
   observable_standard: "Confirm the owner and the deadline for every agreed item.",
   scenario: "Two people are talking over each other and the item has no owner yet.",
@@ -233,9 +242,15 @@ describe("[3.2P-A7-R2] §11/§12 — what became historical", () => {
   });
 
   it("the wire moved with the contract", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 });

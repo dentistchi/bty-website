@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderPressureFrame } from "./program-coherence";
+import { renderFollowUpSentence, renderPressureFrame } from "./program-coherence";
 import {
   requiredProgramKinds,
   missingProgramKinds,
@@ -101,7 +101,12 @@ function goodProposal(over: Record<string, unknown> = {}) {
 describe("[3.2L] required elements follow the Host's learning design", () => {
   it("information alone requires no fabricated rehearsal", () => {
     const kinds = requiredProgramKinds({ ...CANONICAL, learningNeeds: ["know"], arenaRecommended: false, followUpDays: 0 });
-    expect(kinds).toEqual(["why_it_matters", "observable_standard", "completion_check"]);
+    /*
+      `evidence` joins the floor (Slice R4-R5C14A): this draft states success evidence, so WHAT
+      SUCCESS LOOKS LIKE exists and is the Host's own sentence. Before, their evidence had no
+      section of its own and was appended to THE STANDARD instead.
+    */
+    expect(kinds).toEqual(["why_it_matters", "observable_standard", "evidence", "completion_check"]);
     expect(kinds).not.toContain("scenario");
     expect(kinds).not.toContain("action_decision");
   });
@@ -131,7 +136,8 @@ describe("[3.2L] required elements follow the Host's learning design", () => {
 
   it("the canonical draft requires the COMPLETE practice journey", () => {
     expect(requiredProgramKinds(CANONICAL)).toEqual([
-      "why_it_matters", "observable_standard", "scenario", "action_decision", "field_application", "completion_check", "follow_up",
+      "why_it_matters", "observable_standard", "scenario", "action_decision", "field_application",
+      "evidence", "completion_check", "follow_up",
     ]);
   });
 
@@ -244,7 +250,15 @@ describe("[3.2L] the validator fails closed", () => {
       "This proves that you can hand over safely.",
       "Completing this shows behaviour changed permanently.",
     ]) {
-      reject((p) => { p.program.elements[5].content = over + " The record is the source."; }, "evidence_overclaim");
+      /*
+        ADDRESSED BY KIND, NOT BY INDEX (Slice R4-R5C14A-R1). This mutated `elements[5]`, which was
+        a narrative model-written section until `evidence` became a required kind and shifted the
+        list. Index 5 then landed on WHAT SUCCESS LOOKS LIKE — the Host's own sentence, which the
+        proposal gates deliberately no longer judge — so the rule stopped being exercised rather
+        than stopping being true. `reflection` is the narrative kind that is still model prose, and
+        naming it keeps this test independent of the required-kind list.
+      */
+      reject((p) => { p.program.elements.push(el("reflection", over + " The record is the source.")); }, "evidence_overclaim");
     }
   });
 
@@ -395,8 +409,25 @@ describe("[3.2L] the validator fails closed", () => {
   it("refuses two sections that say the same thing", () => {
     // Reachable through the NARRATIVE kinds, which remain model-written. WHY THIS MATTERS
     // is no longer one of them (Slice 3.2L-R9), so this uses the two that are.
+    /*
+      TWO NON-HOST SECTIONS (Slice R4-R5C14A-R1). `duplicate_content` no longer fires on a
+      HOST-vs-HOST pair — THE STANDARD and WHAT SUCCESS LOOKS LIKE are the Host's own two
+      sentences and BTY has no standing to call either the defect. Every other pair still
+      refuses, and the refusal names the section that copied.
+    */
     reject((p) => {
-      p.program.elements.push(el("reflection", p.program.elements[5].content as string));
+      /*
+        The comparison runs on the FINAL elements, where seven of nine are BTY's rendering — so
+        copying the model's own follow-up prose produces no duplicate at all. The reachable
+        AI-vs-BTY collision is a narrative section that repeats a DERIVED sentence, which is what
+        this builds.
+      */
+      const derivedFollowUp = renderFollowUpSentence(
+        { actor: "you", trigger: CONTRACT.trigger, observableAction: "x", completion: { criterion: CANONICAL.successEvidence as string } },
+        { reviewFocus: "what_you_said", confirmer: "self_report" },
+        7,
+      );
+      p.program.elements.push(el("reflection", derivedFollowUp));
     }, "duplicate_content");
   });
 
@@ -474,7 +505,8 @@ describe("[3.2L] the validator fails closed", () => {
   });
 
   it("refuses overclaim in a model-written section", () => {
-    reject((p) => { p.program.elements[5].content = "Completing this guarantees the behaviour is now permanent for everyone."; }, "evidence_overclaim");
+    // By kind, not by index — see the note above.
+    reject((p) => { p.program.elements.push(el("reflection", "Completing this guarantees the behaviour is now permanent for everyone.")); }, "evidence_overclaim");
   });
 
   it("refuses overclaim in a warning, where prose still reaches the Host", () => {
@@ -483,13 +515,16 @@ describe("[3.2L] the validator fails closed", () => {
 
   it("names the offending element so a refusal is diagnosable", () => {
     const p = goodProposal();
-    // A meaning rule over a NARRATIVE kind, which still reads model content.
-    p.program.elements[5].content = "Completing this guarantees the behaviour is now permanent for everyone.";
+    // A meaning rule over a NARRATIVE kind, which still reads model content — named, not indexed.
+    p.program.elements.push(el("reflection", "Completing this guarantees the behaviour is now permanent for everyone."));
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe("evidence_overclaim");
-      expect(r.kind).toBe("evidence");
+      // `reflection`, not `evidence`: WHAT SUCCESS LOOKS LIKE is the Host's own sentence now and
+      // the proposal gates no longer judge it, so the offender is the narrative kind that is
+      // still model prose (Slice R4-R5C14A-R1).
+      expect(r.kind).toBe("reflection");
     }
   });
 });
@@ -890,9 +925,17 @@ describe("[3.2L-R8] the evidence ceiling is BTY's, and outcomes are not promised
       claim cannot be displayed there at all. The gate still guards every surface where
       model prose survives — this is the v5 sentence in a model-written section.
     */
+    /*
+      By KIND, not by index (Slice R4-R5C14A-R1). `elements[5]` was a narrative section until
+      `evidence` became required and shifted the list onto the Host's own sentence, which these
+      gates deliberately no longer judge. `reflection` is the narrative kind still carrying model
+      prose, so the v5 claim is put there and the rule is exercised as written.
+    */
     const p = goodProposal();
-    p.program.elements[5].content =
-      "When a step is missed the next person starts blind, which ultimately affects project success and team collaboration.";
+    p.program.elements.push(el(
+      "reflection",
+      "When a step is missed the next person starts blind, which ultimately affects project success and team collaboration.",
+    ));
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe("evidence_overclaim");

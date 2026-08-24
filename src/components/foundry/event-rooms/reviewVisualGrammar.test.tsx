@@ -62,7 +62,13 @@ const PROPOSAL = {
   displayTitle: "Close the loop on one commitment",
   elements: [
     el("why_it_matters", "When an action leaves a huddle without an owner, the work stalls."),
-    el("observable_standard", "Before the huddle ends, the facilitator names one owner and one deadline."),
+    /*
+      THE SERVER PUTS THE HOST'S OWN SENTENCE HERE (Slice R4-R5C14A). This carried the model's
+      paraphrase, which the review surface used to discard in favour of the composed standard.
+      Neither happens now: the element IS the Host's `observableBehavior`, and the review shows
+      and adopts exactly that.
+    */
+    el("observable_standard", ANSWERS.observableBehavior as string),
     el("action_decision", "I will name one owner and one deadline before the huddle ends."),
     el("field_application", "At your next huddle, you name one owner and one deadline."),
     el("completion_check", "What two things should be clear before a huddle ends?"),
@@ -159,8 +165,13 @@ describe("[R4-R2E] A — the two grammars are not interchangeable", () => {
   it("the learner-facing field is a real form control; the program-review equivalent is not", async () => {
     await openReview();
 
-    // The program review's version of the standard: BTY's rendered sentence, to READ.
-    const readOnly = screen.getByTestId("program-derived-observable_standard");
+    /*
+      The program review's read-only grammar, on a section BTY actually renders. THE STANDARD is
+      the Host's own sentence since Slice R4-R5C14A, so it is an editable field on BOTH surfaces
+      now — the contrast this test is about lives between BTY's derived sentences and the Host's
+      fields, and YOUR DECISION is one of BTY's.
+    */
+    const readOnly = screen.getByTestId("program-derived-action_decision");
     expect(readOnly.tagName).toBe("P");
     expect(readOnly.getAttribute("data-surface")).toBe("readonly");
     // Not a disabled control dressed as prose — no form control anywhere inside it.
@@ -248,8 +259,10 @@ describe("[R4-R2E] B — adopting BTY's draft leads to where it can be edited", 
       without editing anything actually gets.
     */
     const field = (await screen.findByTestId("journey-edit-observable_standard")) as HTMLTextAreaElement;
-    expect(field.value).toContain("the facilitator must name one owner and one deadline");
-    expect(field.value).toContain("Completion evidence:");
+    // The Host's own behaviour sentence, carried verbatim (Slice R4-R5C14A) — no composed frame
+    // and no evidence tail, which is what made a Korean standard read as evidence.
+    expect(field.value).toBe(ANSWERS.observableBehavior);
+    expect(field.value).not.toContain("Completion evidence:");
   });
 
   it("a destination already in view is emphasised but NOT scrolled", async () => {

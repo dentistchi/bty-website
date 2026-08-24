@@ -207,7 +207,7 @@ describe("[3.2P-W1-R1] one uuid shape, shared by the route and the service", () 
   });
 
   it("required kinds for this pilot are unchanged by any of it", () => {
-    expect(requiredProgramKinds(ANSWERS)).toHaveLength(7);
+    expect(requiredProgramKinds(ANSWERS)).toHaveLength(8);
     expect(requiredProgramKinds(ANSWERS)).not.toContain("action_decision");
   });
 });

@@ -183,9 +183,10 @@ describe("[3.2L-R11.4G] a complete self-contained program validates (Part 6)", (
 
   it("all seven required kinds are producible with zero verified artifacts", () => {
     const required = requiredProgramKinds(SELF_CONTAINED);
+    // 8 since Slice R4-R5C14A: the Host's success evidence has its own section now.
     expect(required).toEqual([
       "why_it_matters", "observable_standard", "scenario",
-      "action_decision", "field_application", "completion_check", "follow_up",
+      "action_decision", "field_application", "evidence", "completion_check", "follow_up",
     ]);
     const r = validateProgramProposal(proposal, SELF_CONTAINED, []);
     if (!r.ok) throw new Error(`refused ${r.code}${r.kind ? ` (${r.kind})` : ""}`);

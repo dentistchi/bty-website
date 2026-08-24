@@ -602,7 +602,7 @@ export type ServerBehaviorAuthority = {
   actor: string;
   /** From the Host's `recurringMoment`, verbatim. The program's one occasion. */
   trigger: string;
-  /** From the Host's `successEvidence`, verbatim. */
+  /** From the Host's `successEvidence`, verbatim. Grounds WHAT SUCCESS LOOKS LIKE and nothing else. */
   criterion: string;
 };
 
@@ -882,6 +882,16 @@ export function momentCore(moment: string): string {
  * the four fields — was rejected. Any check strong enough to catch a faithful-looking
  * paraphrase is a semantic equivalence test, and a weak one (shared keywords) is exactly
  * the kind of proxy that let the live sentence through.
+ */
+/**
+ * NO LONGER A LEARNER-FACING PATH (Slice R4-R5C14A).
+ *
+ * THE STANDARD the learner reads is the Host's own `observableBehavior`, carried verbatim by
+ * `deriveInstructionalContent`. This composition survives as what it always also was — a
+ * derived-length backstop and a shape the contract tests assert over — and as the record of what
+ * the section used to say. Nothing displays it. It is deliberately NOT deleted and deliberately
+ * NOT localized: repairing the English actor and the English verb order inside a string no
+ * participant reads would be work spent on an obsolete rendering.
  */
 export function renderStandardSentence(c: BehaviorContract, locale?: JourneyLocale): string {
   const trigger = stripTrailingStop(c.trigger.trim());

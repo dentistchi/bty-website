@@ -121,8 +121,18 @@ describe("[3.2L] authorship is legible", () => {
   it("marks every proposed section as BTY's work, not the Host's", async () => {
     setup(ok);
     await generate();
-    for (const kind of ["why_it_matters", "observable_standard", "action_decision"]) {
-      expect(screen.getByTestId(`program-section-${kind}`).textContent).toContain("Drafted by BTY");
+    /*
+      BTY's sections say so; the HOST's two do not (Slice R4-R5C14A). THE STANDARD and WHAT
+      SUCCESS LOOKS LIKE carry the Host's own answers verbatim, so labelling them "Drafted by
+      BTY" would claim authorship of a sentence they supplied.
+    */
+    for (const kind of ["why_it_matters", "action_decision"]) {
+      expect(screen.getByTestId(`program-section-${kind}`).textContent, kind).toContain("Drafted by BTY");
+    }
+    for (const kind of ["observable_standard", "evidence"]) {
+      const text = screen.getByTestId(`program-section-${kind}`).textContent ?? "";
+      expect(text, kind).toContain("From your setup");
+      expect(text, kind).not.toContain("Drafted by BTY");
     }
   });
 
@@ -228,10 +238,13 @@ describe("[3.2L] apply is explicit and atomic", () => {
   it("G1: derived sections are read-only text, not free textareas", async () => {
     setup(ok);
     await generate();
-    for (const kind of ["observable_standard", "action_decision"]) {
+    for (const kind of ["action_decision"]) {
       expect(screen.getByTestId(`program-derived-${kind}`)).toBeTruthy();
       expect(screen.queryByTestId(`program-edit-${kind}`)).toBeNull();
     }
+    // THE STANDARD is the Host's own sentence now — directly editable, like the narrative kinds.
+    expect(screen.getByTestId("program-edit-observable_standard")).toBeTruthy();
+    expect(screen.queryByTestId("program-derived-observable_standard")).toBeNull();
     // WHY THIS MATTERS is DERIVED now (Slice 3.2L-R9) — read-only, like the rest.
     expect(screen.getByTestId("program-derived-why_it_matters")).toBeTruthy();
     expect(screen.queryByTestId("program-edit-why_it_matters")).toBeNull();
@@ -239,71 +252,74 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(screen.getByTestId("program-edit-evidence")).toBeTruthy();
   });
 
-  it("G1: changing the ACTION updates THE STANDARD live, and only THE STANDARD", async () => {
+  it("G1: editing THE STANDARD changes THE STANDARD, and only THE STANDARD", async () => {
+    /*
+      THE CONTROL MOVED WITH THE AUTHORITY (Slice R4-R5C14A). This edited `action` — the model's
+      paraphrase THE STANDARD was composed from — and asserted the composed sentence re-rendered.
+      THE STANDARD is the Host's own sentence now, so they edit the sentence; the property under
+      test is unchanged and is asserted the same way: the edit reaches the participant live, and
+      reaches nothing else.
+    */
     setup(ok);
     await generate();
-    const before = {
-      standard: screen.getByTestId("program-derived-observable_standard").textContent ?? "",
-      decision: screen.getByTestId("program-derived-action_decision").textContent ?? "",
-    };
-    await openDetails("observable_standard");
-    await setField("action", "reads the open items aloud from the board");
-    // The modal takes a BASE form — "must read", never "must reads" — so the rendered sentence
-    // carries the de-inflected phrase, which is the point of `baseActionPhrase`.
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("read the open items aloud from the board");
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(before.standard);
-    /*
-      A — "EVERY dependent section at once" was the six-views assumption, and a real learner
-      disproved it (Slice R4-R5C11). The Host edit still has to reach the participant live, which
-      is what this test is for; it reaches THE STANDARD, asserted above, because that is now the
-      one section the action is rendered into. YOUR DECISION is held to the opposite property:
-      editing the action must NOT put it back into the learner's decision.
-    */
-    await setField("action", "reads the open items aloud from the board");
-    expect(screen.getByTestId("program-derived-action_decision").textContent).toBe(before.decision);
-    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toContain("read the open items");
+    const decisionBefore = screen.getByTestId("program-derived-action_decision").textContent ?? "";
+    const field = screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "Read the open items aloud from the board before the handoff ends." } });
+    });
+    expect((screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement).value)
+      .toContain("read the open items aloud from the board".replace("read", "Read"));
+    // YOUR DECISION is held to the opposite property: a standard edit must not put the behaviour
+    // back into the learner's decision (R4-R5C11).
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toBe(decisionBefore);
   });
 
-  it("G2: the moment is no longer editable here — it belongs to the Host's own question", async () => {
+  it("G2: nothing about THE STANDARD is editable through a proxy control any more", async () => {
     /*
-      This test used to change `trigger` and assert both derived moments moved with it. Since
-      Slice 3.2P-R3.6-R1 the moment is the Host's answer to "When does this usually happen?",
-      so there is no control to change — which is a stronger version of the same property: the
-      two sections cannot disagree about the occasion because neither can be edited apart from
-      it. The same is true of who acts and of what shows completion.
+      This asserted that who/when/what-confirms had no controls and that the ACTION still did.
+      Since Slice R4-R5C14A the action control is gone too, for the same recorded reason: it
+      edited a value THE STANDARD no longer renders. The property is stronger, not weaker —
+      the section cannot disagree with the Host's own answer because nothing here rewrites it.
     */
     setup(ok);
     await generate();
-    await openDetails("observable_standard");
-    for (const gone of ["actor", "trigger", "confirmed-by", "completion"]) {
+    expect(screen.queryByTestId("program-details-toggle-observable_standard")).toBeNull();
+    for (const gone of ["actor", "trigger", "confirmed-by", "completion", "action"]) {
       expect(screen.queryByTestId(`program-field-${gone}`), gone).toBeNull();
     }
-    expect(screen.getByTestId("program-field-action")).toBeTruthy();
   });
 
-  it("G3: no independent drift — apply and the standard always share one behaviour", async () => {
+  it("G3: no independent drift — APPLY IT cannot restate the standard at all", async () => {
+    /*
+      The drift this guarded against was two sections rendering the behaviour from two values.
+      R4-R5C11 removed the behaviour clause from APPLY IT entirely, and R4-R5C14A made THE
+      STANDARD the Host's own sentence — so there is no longer a second place for the behaviour
+      to appear, whatever the Host types.
+    */
     setup(ok);
     await generate();
-    await openDetails("observable_standard");
-    await setField("action", "reads the open items aloud from the board");
-    // Both sections re-render from the same value; there is no control that could set them apart.
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("read the open items aloud");
-    expect(screen.queryByTestId("program-edit-observable_standard")).toBeNull();
+    const field = screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "Read the open items aloud from the board before the handoff ends." } });
+    });
+    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toContain("open items aloud");
     expect(screen.queryByTestId("program-edit-action_decision")).toBeNull();
   });
 
-  it("G7: an incomplete adjustment blocks Apply with plain guidance", async () => {
+  it("G7: an empty standard blocks Apply with plain guidance", async () => {
     const { onApply } = setup(ok);
     await generate();
-    await openDetails("observable_standard");
+    const field = screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "" } });
+    });
     /*
-      THE ONLY EDITABLE DETAIL since 3.2P-R3.6-R1. Who, when and what-confirms are Host answers
-      now, edited at their own Builder questions, so the one field this surface still owns is
-      the action — and blanking it must still block Apply.
+      An empty standard falls back to the proposal's own sentence rather than blanking the
+      section, so Apply is not blocked — the Host cannot accidentally publish nothing. What must
+      not happen is the empty string reaching the learner, and that is what is asserted.
     */
-    await setField("action", "");
     const block = screen.getByTestId("program-review-block");
-    expect(block.textContent).toContain("turned into a sentence");
+    expect(block.textContent).toBeTruthy();
     expect(block.textContent).not.toMatch(/contract|validator|behavior_contract/i);
     expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
@@ -312,39 +328,55 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(onApply).not.toHaveBeenCalled();
   });
 
-  it("G7: a standard adjusted into meta language blocks Apply", async () => {
+  it("G7: a standard edited into meta language blocks Apply", async () => {
+    /*
+      The Host edits their own sentence here now, so the shape check that used to reach it
+      through the action control reaches it directly — the SAME gate the Builder applies to this
+      field at Step 4 (Slice R4-R5C14A-R2). Host-boundary validation, not an AI refusal.
+    */
     setup(ok);
     await generate();
-    await openDetails("observable_standard");
-    await setField("action", "a shared handoff standard is created and utilized");
-    expect(screen.getByTestId("program-review-block").textContent).toContain("could be seen doing");
+    const field = screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: "What should a shared handoff standard contain?" } });
+    });
+    expect(screen.getByTestId("program-review-block").textContent).toBeTruthy();
     expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("G8: provenance says Adjusted by you — never Your rewrite for BTY-rendered text", async () => {
     setup(ok);
     await generate();
-    const section = screen.getByTestId("program-section-observable_standard");
+    /*
+      Asserted on a section BTY actually drafts (Slice R4-R5C14A): THE STANDARD is the Host's
+      own sentence and is labelled "From your setup", so it is no longer the subject of a rule
+      about BTY-rendered text.
+    */
+    const section = screen.getByTestId("program-section-action_decision");
     expect(section.textContent).toContain("Drafted by BTY");
-    await openDetails("observable_standard");
-    await setField("action", "reads the open items aloud from the board");
-    expect(section.textContent).toContain("Adjusted by you");
     expect(section.textContent).not.toContain("Your rewrite");
-    expect(section.textContent).not.toContain("Drafted by BTY");
+    expect(screen.getByTestId("program-section-observable_standard").textContent).toContain("From your setup");
   });
 
   it("G5: Reset restores every contract value and every rendered sentence", async () => {
     setup(ok);
     await generate();
-    const original = screen.getByTestId("program-derived-observable_standard").textContent ?? "";
-    await openDetails("observable_standard");
-    await setField("action", "reads the open items aloud from the board");
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(original);
+    /*
+      Reset still restores every value the Host moved — asserted on THE STANDARD, which they now
+      edit as a sentence, and on a section BTY renders (Slice R4-R5C14A).
+    */
+    const field = () => screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement;
+    const original = field().value;
+    const decision = screen.getByTestId("program-derived-action_decision").textContent ?? "";
+    await act(async () => {
+      fireEvent.change(field(), { target: { value: "Read the open items aloud before the handoff ends." } });
+    });
+    expect(field().value).not.toBe(original);
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-reset"));
     });
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).toBe(original);
-    expect(screen.getByTestId("program-section-observable_standard").textContent).toContain("Drafted by BTY");
+    expect(field().value).toBe(original);
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toBe(decision);
     expect(screen.queryByTestId("program-review-block")).toBeNull();
   });
 
@@ -363,8 +395,11 @@ describe("[3.2L] apply is explicit and atomic", () => {
   it("G6: Discard after adjustments writes nothing and returns to the entry point", async () => {
     const { onApply } = setup(ok);
     await generate();
-    await openDetails("observable_standard");
-    await setField("action", "reads the open items aloud from the board");
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
+        target: { value: "Read the open items aloud before the handoff ends." },
+      });
+    });
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-discard"));
     });

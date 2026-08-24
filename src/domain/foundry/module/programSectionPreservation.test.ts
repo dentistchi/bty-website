@@ -207,7 +207,14 @@ describe("the Host may still choose BTY's version", () => {
     const adopted = applyProgramProposal(HOST_JOURNEY, PROPOSAL, choicesFrom(decisions), { titleDecision: "use" });
     const standard = adopted.elements.find((e) => e.kind === "observable_standard")!;
     expect(standard.content).toBe(AI_STANDARD);
-    expect(readProvenance(standard)).toBe("ai_proposed");
+    /*
+      HOST AUTHORITY, NOT BTY'S (Slice R4-R5C14A). The Host's explicit USE still overrides the
+      KEEP default and adopts the proposal's version of this section — that is the property under
+      test and it is unchanged. What moved is the LABEL: THE STANDARD carries the Host's own
+      `observableBehavior` now, so calling it `ai_proposed` would tell the Host that BTY wrote a
+      sentence they supplied.
+    */
+    expect(readProvenance(standard)).toBe("host_statement");
   });
 
   it("MIXED keep/use is honoured per section, not all-or-nothing", () => {

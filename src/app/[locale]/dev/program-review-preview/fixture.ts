@@ -117,6 +117,12 @@ export const PREVIEW_CONTRACTS: ProgramContracts = {
   // Slice 3.2R-R2.3 — this fixture reproduces a v7 window whose Host authored no completion
   // question, so BEFORE YOU FINISH stays the governed derivation, exactly as it rendered live.
   locale: "en" as const,
+  /*
+    THE HOST'S TWO SENTENCES (Slice R4-R5C14A) — sourced from the same answers the rest of this
+    fixture reproduces, so the preview cannot show a standard the Host never wrote.
+  */
+  hostBehavior: PREVIEW_ANSWERS.observableBehavior as string,
+  hostEvidence: PREVIEW_ANSWERS.successEvidence as string,
   completionPrompt: null,
   behavior: {
     actor: V7_LIVE.behavior.actor,
@@ -163,8 +169,18 @@ export function previewProposal(): ProgramProposal {
     displayTitle: V7_LIVE.displayTitle,
     elements: ORDER.map((kind) => ({
       kind,
-      // EVERY section is derived now, WHY THIS MATTERS included.
-      content: deriveInstructionalContent(kind, PREVIEW_CONTRACTS) ?? "",
+      /*
+        Seven sections are DERIVED by BTY; two are CARRIED from the Host (Slice R4-R5C14A).
+        THE STANDARD is their `observableBehavior` and WHAT SUCCESS LOOKS LIKE is their
+        `successEvidence`, placed on the element by the server exactly as reproduced here — so
+        this fixture still cannot show a sentence the product would not produce.
+      */
+      content:
+        kind === "observable_standard"
+          ? PREVIEW_CONTRACTS.hostBehavior
+          : kind === "evidence"
+            ? PREVIEW_CONTRACTS.hostEvidence
+            : deriveInstructionalContent(kind, PREVIEW_CONTRACTS) ?? "",
       rationale: RATIONALE[kind] ?? "",
     })),
     // The recorded assumptions, put through the same filter the validator applies.

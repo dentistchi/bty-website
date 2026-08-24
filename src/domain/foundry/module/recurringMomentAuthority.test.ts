@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   validateProgramProposal, requiredProgramKinds, programContext, programContextFingerprint,
   programSourceBlocker, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber,
   PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
 import { CANONICAL_ACTOR, deriveFirstApplicationMoment , renderPressureFrame } from "./program-coherence";
@@ -50,6 +51,14 @@ const HOST: BuilderAnswers = {
 
 const KINDS = requiredProgramKinds(HOST);
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem that was raised stays where it was.",
   observable_standard: "Name one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
@@ -224,9 +233,18 @@ describe("[3.2P-R3.6-R1] L/N/O/P — the one occasion, and what may still move i
     if (!r.ok) return;
     const s = Object.fromEntries(r.value.proposal.elements.map((e) => [e.kind, e.content])) as Record<string, string>;
     for (const k of KINDS) console.log(`\n[${k}]\n${s[k]}`);
-    expect(s.observable_standard).toContain("During morning huddles");
-    expect(s.observable_standard).toContain(`, ${CANONICAL_ACTOR} must `);
-    expect(s.observable_standard).toContain("Completion evidence: The huddle note records");
+    /*
+      THREE PROPERTIES, THREE SEAMS (Slice R4-R5C14A). The Host's moment is stated by the section
+      that owns it (IN CONTEXT), the server still writes the actor onto the CONTRACT, and the
+      Host's criterion is its own section. THE STANDARD is the Host's behaviour sentence and
+      carries none of the three — which is what stopped a Korean standard reading as evidence.
+    */
+    expect(s.observable_standard).not.toContain("During morning huddles");
+    expect(s.observable_standard).not.toContain(`, ${CANONICAL_ACTOR} must `);
+    expect(s.observable_standard).not.toContain("Completion evidence:");
+    expect(s.scenario).toContain("During morning huddles");
+    expect(r.value.proposal.behaviorContract!.actor).toBe(CANONICAL_ACTOR);
+    expect(s.evidence).toContain("The huddle note records");
     // The scenario sits at the SAME occasion, with the SERVER'S pressure clause inside it
     // (v22 — the model chooses the frame, BTY writes the words).
     expect(s.scenario).toContain("morning huddles");
@@ -289,9 +307,15 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 

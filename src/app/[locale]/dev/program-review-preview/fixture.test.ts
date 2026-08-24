@@ -25,6 +25,7 @@ import {
   readProvenance,
   PROGRAM_REJECT_CODES,
   PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber,
   PROGRAM_SCHEMA_NAME,
   type ProgramContracts,
 } from "@/domain/foundry/module/program-authorship";
@@ -259,10 +260,14 @@ describe("[3.2L-R9] G11/G12 — assumptions the Host can act on, or none", () =>
 
 describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () => {
   it("renders exactly what the phone displayed", () => {
-    expect(derived("observable_standard")).toBe(
-      "At each handoff point, team members must state each unfinished item and identify its next owner. " +
-        "Completion evidence: Handoff record.",
-    );
+    /*
+      WHAT THE PHONE DISPLAYED, and what it displays now (Slice R4-R5C14A). This pinned the
+      composed standard — the Host's moment, the server pronoun, the model's paraphrase and their
+      success evidence appended. THE STANDARD is the Host's own sentence now and BTY renders
+      nothing for it, which is why `derived` returns null.
+    */
+    expect(derived("observable_standard")).toBeNull();
+    expect(PREVIEW_CONTRACTS.hostBehavior).toBe(PREVIEW_ANSWERS.observableBehavior);
     /*
       A — THE STANDARD above is byte-for-byte what the phone displayed and is untouched; the three
       sections below are not (Slice R4-R5C11). Each was a restatement of it — IN CONTEXT at 85% of
@@ -286,7 +291,9 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
       The learner who read the result reported being shown the answer and then asked to type it
       back, so the copies are gone rather than relabelled.
     */
-    expect(derived("observable_standard")).toContain(PREVIEW_ANSWERS.successEvidence!);
+    // The criterion reaches ONE surface, and since R4-R5C14A that surface is the Host's own
+    // evidence section rather than a tail on THE STANDARD.
+    expect(PREVIEW_CONTRACTS.hostEvidence).toBe(PREVIEW_ANSWERS.successEvidence);
     for (const kind of ["scenario", "field_application"] as const) {
       expect(derived(kind), kind).not.toContain(PREVIEW_ANSWERS.successEvidence!);
     }
@@ -348,7 +355,10 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
   it("every displayed section is derived from one object", () => {
     expect(PREVIEW_PROPOSAL.displayTitle).toBe(V7_LIVE.displayTitle);
     for (const kind of REQUIRED) {
-      expect(PREVIEW_PROPOSAL.elements.find((e) => e.kind === kind)?.content, kind).toBe(derived(kind));
+      // THE STANDARD is carried, not derived: its content is the Host's own sentence, placed on
+      // the element by the server, so `derived` returns null for it (Slice R4-R5C14A).
+      const expected = kind === "observable_standard" ? PREVIEW_CONTRACTS.hostBehavior : derived(kind);
+      expect(PREVIEW_PROPOSAL.elements.find((e) => e.kind === kind)?.content, kind).toBe(expected);
     }
   });
 
@@ -359,9 +369,15 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
@@ -384,70 +400,66 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
 // ---------------------------------------------------------------------------
 
 describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
-  const standard = DETAIL_FIELDS.observable_standard!;
-  const labels = standard.map((f) => f.label);
-
-  it("G1/G2: the one control names what it edits", () => {
-    expect(standard.find((f) => f.id === "action")!.label).toBe("What would you see or hear them do?");
-  });
-
-  it("[3.2P-R3.4-R1 / R3.6-R1] three controls are gone, not renamed", () => {
+  it("[R4-R5C14A] the LAST control went the same way as the other three", () => {
     /*
-      R9.2 gave these their own groups because they were contract roles the Host corrected on
-      the model's behalf. Each is now sourced from a Host question in the Builder, so editing it
+      R9.2 gave four contract roles their own groups because a Host corrected them on the model's
+      behalf. Three left because each was already sourced from a Host question, and editing it
       here would create a second authority for one sentence:
 
         who confirms → "How will you know it worked?"        (v11)
         who acts     → the audience, rendered as "you"       (v11)
         when         → "When does this usually happen?"      (v13)
 
-      The Host did not lose an edit; each moved back to where they wrote it.
+      The fourth — "What would you see or hear them do?" — edited `observableAction`, the model's
+      paraphrase that THE STANDARD was composed from. THE STANDARD is now the Host's own
+      `observableBehavior`, carried verbatim, so that control edited a value nothing renders. It
+      leaves for the same reason as the other three and by the same rule: the Host did not lose an
+      edit, it moved back to the question they wrote it in ("After this training, what should they
+      do differently?"), and they can edit the sentence itself in review.
     */
-    expect(standard.map((f) => f.id)).toEqual(["action"]);
-  });
-
-  it("no two controls open with the same three words any more", () => {
-    /*
-      THE MEASURED CONFUSION. The old set was "Who does this?" / "Who confirms it's done?"
-      and "What would someone see or hear them do?" / "What would you see them do?" — the
-      same interrogative twice, four lines apart, in one flat list of identical fields.
-    */
-    const heads = labels.map((l) => l.split(/\s+/).slice(0, 3).join(" ").toLowerCase());
-    expect(new Set(heads).size).toBe(heads.length);
-  });
-
-  it("G3: what remains is one named group", () => {
-    expect(standard.map((f) => f.group)).toEqual(["action"]);
-    expect(FIELD_GROUP_HEADING.action).toBe("The action");
+    expect(DETAIL_FIELDS.observable_standard).toBeUndefined();
   });
 
   it("no internal vocabulary reaches a label or a heading", () => {
-    const shown = [...labels, ...Object.values(FIELD_GROUP_HEADING)].join(" ").toLowerCase();
+    // Asserted over every control that REMAINS, now that THE STANDARD has none.
+    const shown = [
+      ...Object.values(DETAIL_FIELDS).flatMap((fs) => (fs ?? []).map((f) => f.label)),
+      ...Object.values(FIELD_GROUP_HEADING),
+    ].join(" ").toLowerCase();
     for (const internal of ["actor", "contract", "confirmer", "behavior", "behaviour", "field", "trigger", "schema"]) {
       expect(shown, internal).not.toContain(internal);
     }
   });
 
-  it("G4: B — the standard renders from the ACTION controls plus the Host's own evidence", () => {
-    const get = (id: string) => standard.find((f) => f.id === id)!;
-    expect(get("action").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.observableAction);
-    expect(derived("observable_standard")).toBe(
-      "At each handoff point, team members must state each unfinished item and identify its next owner. " +
-        "Completion evidence: Handoff record.",
-    );
-    // …and that criterion is the Host's step-4 answer, not anything the model returned.
+  it("G4: B — THE STANDARD is the Host's own sentence, and the criterion is their evidence", () => {
+    /*
+      G4 asserted the composed standard: moment + server actor + the model's action + the Host's
+      criterion. Since Slice R4-R5C14A the section is the Host's `observableBehavior`, carried
+      verbatim — no moment, no actor, no paraphrase, no criterion. The criterion property is not
+      dropped: it is still the Host's step-4 answer and it still reaches the learner, in WHAT
+      SUCCESS LOOKS LIKE.
+    */
+    expect(PREVIEW_CONTRACTS.hostBehavior).toBe(PREVIEW_ANSWERS.observableBehavior);
+    expect(PREVIEW_CONTRACTS.hostEvidence).toBe(PREVIEW_ANSWERS.successEvidence);
     expect(PREVIEW_CONTRACTS.behavior.completion.criterion).toBe(PREVIEW_ANSWERS.successEvidence);
+    // BTY renders neither: both are carried onto the element by the server.
+    expect(derived("observable_standard")).toBeNull();
   });
 
-  it("G6/G7: each control writes ONLY its own field", () => {
-    const get = (id: string) => standard.find((f) => f.id === id)!;
-    const moved = get("action").set(PREVIEW_CONTRACTS, "reads every open item aloud");
-    expect(moved.behavior.observableAction).toBe("reads every open item aloud");
-    // Nothing a Host types into the action control can reach the moment, the actor or the
-    // criterion — the three the product and the Host own.
-    expect(moved.behavior.trigger).toBe(PREVIEW_CONTRACTS.behavior.trigger);
-    expect(moved.behavior.actor).toBe(PREVIEW_CONTRACTS.behavior.actor);
-    expect(moved.behavior.completion.criterion).toBe(PREVIEW_CONTRACTS.behavior.completion.criterion);
+  it("G6/G7: no remaining control can reach the moment, the actor or the criterion", () => {
+    /*
+      The action control is gone with the composition it edited, so the guarantee it needed is
+      now structural: nothing in this panel writes `trigger`, `actor` or `completion` at all.
+    */
+    for (const fs of Object.values(DETAIL_FIELDS)) {
+      for (const f of fs ?? []) {
+        const moved = f.set(PREVIEW_CONTRACTS, "reads every open item aloud");
+        expect(moved.behavior.trigger, f.id).toBe(PREVIEW_CONTRACTS.behavior.trigger);
+        expect(moved.behavior.actor, f.id).toBe(PREVIEW_CONTRACTS.behavior.actor);
+        expect(moved.behavior.completion.criterion, f.id).toBe(PREVIEW_CONTRACTS.behavior.completion.criterion);
+        expect(moved.hostBehavior, f.id).toBe(PREVIEW_CONTRACTS.hostBehavior);
+      }
+    }
   });
 });
 
@@ -497,8 +509,8 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
       for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
         expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
       }
-      // THE STANDARD still states the host's own words, exactly once and unedited.
-      expect(derived("observable_standard", c)?.startsWith(trigger.charAt(0).toUpperCase() + trigger.slice(1)), trigger).toBe(true);
+      // The host's moment is stated once and unedited — by IN CONTEXT, which owns it (C11).
+      expect(derived("scenario", c)?.startsWith(trigger.charAt(0).toUpperCase() + trigger.slice(1)), trigger).toBe(true);
     }
   });
 
@@ -558,7 +570,6 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     const moved = withTrigger("at each morning huddle");
     // THE STANDARD and IN CONTEXT carry the host's moment; the two application sections point at
     // its next occurrence. Editing the trigger still moves all four, and nothing else can.
-    expect(derived("observable_standard", moved)).toContain("At each morning huddle");
     expect(derived("scenario", moved)).toContain("At each morning huddle");
     expect(derived("action_decision", moved)).toContain("The next time this happens");
     expect(derived("field_application", moved)).toContain("The next time this happens");
@@ -596,7 +607,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
 
   it("G1: the exact physical state cannot exist — two moments at once", () => {
     const broken = withTrigger("before leaving the floor");
-    expect(derived("observable_standard", broken)).toContain("Before leaving the floor");
+    expect(derived("scenario", broken)).toContain("Before leaving the floor");
     /*
       3.2P-R3.7: these went quiet rather than render a second moment. They no longer name a
       moment at all, so the property is stronger — there is only ever ONE occasion in the
@@ -622,7 +633,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
 
   it("G6: editing the trigger keeps both sections coherent", () => {
     const fixed = withTrigger("at each morning huddle");
-    expect(derived("observable_standard", fixed)).toContain("At each morning huddle");
+    expect(derived("scenario", fixed)).toContain("At each morning huddle");
     expect(derived("action_decision", fixed)).toContain("The next time this happens");
     expect(derived("field_application", fixed)).toContain("The next time this happens");
     expect(validateEditedReview(fixed, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
@@ -647,9 +658,11 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
   it("ownership is stable while availability changes", () => {
     for (const trigger of ["at each handoff point", "before leaving the floor", "whenever a deadline moves"]) {
       const c = withTrigger(trigger);
-      for (const kind of ["observable_standard", "action_decision", "field_application", "scenario", "completion_check", "follow_up", "why_it_matters"] as const) {
+      // `observable_standard` is the HOST's now, so BTY no longer owns it (Slice R4-R5C14A).
+      for (const kind of ["action_decision", "field_application", "scenario", "completion_check", "follow_up", "why_it_matters"] as const) {
         expect(derivesFrom(kind, c), `${trigger}/${kind}`).toBe(true);
       }
+      expect(derivesFrom("observable_standard", c), `${trigger}/observable_standard`).toBe(false);
       // A narrative kind is never BTY's.
       expect(derivesFrom("evidence", c)).toBe(false);
       expect(derivesFrom("reflection", c)).toBe(false);
@@ -709,9 +722,9 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
     );
     // The host's moment appears where it is STATED — the standard and the scenario. The three
     // derived sections point at its next occurrence without naming it (3.2P-R3.7).
-    for (const kind of ["observable_standard", "scenario"] as const) {
-      expect(derived(kind, c), kind).toContain("morning huddle");
-    }
+    // The moment is stated by the section that owns it; THE STANDARD states none.
+    expect(derived("scenario", c)).toContain("morning huddle");
+    expect(derived("observable_standard", c)).toBeNull();
     for (const kind of ["action_decision", "field_application", "completion_check"] as const) {
       expect(derived(kind, c), kind).toMatch(/next time this happens/i);
     }
@@ -800,7 +813,9 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
 
   it("G9/G11: adoption is not authorship", () => {
     const out = applied();
-    for (const kind of ["why_it_matters", "observable_standard", "scenario", "field_application"] as const) {
+    // THE STANDARD is the Host's own sentence, so it is not attributed to BTY (R4-R5C14A).
+    expect(readProvenance(out.elements.find((e) => e.kind === "observable_standard"))).toBe("host_statement");
+    for (const kind of ["why_it_matters", "scenario", "field_application"] as const) {
       expect(readProvenance(out.elements.find((e) => e.kind === kind)), kind).toBe("ai_proposed");
       expect(attributionKind(out.elements.find((e) => e.kind === kind)), kind).toBe("bty_authored");
     }
@@ -838,13 +853,15 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
   it("G16/G17/G18/G19: the applied journey keeps the V9 authorities", () => {
     const out = applied();
     const text = (k: string) => out.elements.find((e) => e.kind === k)!.content;
-    expect(text("observable_standard")).toContain("At each handoff point");
+    expect(text("observable_standard")).toBe(PREVIEW_ANSWERS.observableBehavior);
+    expect(text("scenario").toLowerCase()).toContain("at each handoff point");
     expect(text("action_decision")).toContain("The next time this happens");
     expect(text("field_application")).toContain("The next time this happens");
     expect(text("completion_check")).toContain("The next time this happens");
-    // A — one criterion, one section (Slice R4-R5C11); see the R3.4-R1 note above.
-    expect(text("observable_standard")).toContain(PREVIEW_ANSWERS.successEvidence!);
-    for (const k of ["scenario", "field_application"]) {
+    // A — one criterion, one section; since Slice R4-R5C14A that section is WHAT SUCCESS LOOKS
+    // LIKE, the Host's own evidence sentence, rather than a tail on THE STANDARD.
+    expect(text("evidence")).toContain(PREVIEW_ANSWERS.successEvidence!);
+    for (const k of ["observable_standard", "scenario", "field_application"]) {
       expect(text(k), k).not.toContain(PREVIEW_ANSWERS.successEvidence!);
     }
     expect(text("follow_up")).toContain("That is your own account of it, not an observation.");

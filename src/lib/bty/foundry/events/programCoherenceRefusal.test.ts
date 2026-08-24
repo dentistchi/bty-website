@@ -29,6 +29,7 @@ import {
   PROGRAM_JSON_SCHEMA,
   PROGRAM_SCHEMA_NAME,
   PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber,
   programContextFingerprint,
 } from "@/domain/foundry/module/program-authorship";
 
@@ -237,8 +238,12 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     if (r.ok) {
       // THE STANDARD is the rendered contract, not the model's sentence.
       const standard = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!;
-      // v11: the completion is the HOST's evidence, stated as its own sentence (R3.4-R1).
-      expect(standard.content).toContain("Completion evidence: Handoff record.");
+      /*
+        The completion is still the HOST's evidence, stated as its own sentence — and since
+        R4-R5C14A that sentence IS its own section rather than a tail on THE STANDARD.
+      */
+      expect(standard.content).not.toContain("Completion evidence:");
+      expect(r.value.proposal.elements.find((e) => e.kind === "evidence")!.content).toBe("Handoff record");
       expect(r.value.proposal.behaviorContract.actor).toBe("you");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
@@ -315,9 +320,15 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 

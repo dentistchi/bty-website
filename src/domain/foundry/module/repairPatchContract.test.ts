@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   repairLicenseFor, repairPatchContract, licensedRepairContext, applyRepairPatch,
   repairFreezeViolated, validateProgramProposal, requiredProgramKinds,
-  PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, PROGRAM_JSON_SCHEMA,
+  PROGRAM_AUTHORSHIP_VERSION,
+  programAuthorshipVersionNumber, PROGRAM_SCHEMA_NAME, PROGRAM_JSON_SCHEMA,
   isSemanticRepairableCode,
 } from "./program-authorship";
 import type { BuilderAnswers } from "./module-builder";
@@ -39,6 +40,14 @@ const HOST = {
 } as unknown as BuilderAnswers;
 const KINDS = requiredProgramKinds(HOST);
 const CONTENT: Record<string, string> = {
+    /*
+      A SENTENCE FOR THE NEW REQUIRED KIND (Slice R4-R5C14A). `evidence` is required whenever
+      the Host wrote success evidence, and this fixture derives its elements from
+      `requiredProgramKinds` — so it needs one. BTY discards it and carries the Host's own
+      `successEvidence` instead, exactly as it discards the model's prose for the other
+      derived kinds; the model is still schema-required to send something.
+    */
+    evidence: "What the host would look for in real work, and what it does not prove.",
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem stays where it was.",
   observable_standard: "Name one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
@@ -244,8 +253,14 @@ describe("[3.2P-A1-R3] the initial wire contract did NOT change", () => {
       not. The INITIAL wire shape is untouched, so its name stays — pretending it changed would
       be less truthful than giving the repair schemas their own names, which is what they have.
     */
-    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
-    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
+        /*
+      NOT RE-PINNED (Slice R4-R5C14A-R1). This literal was v24, and before that v23, v17, v11 —
+      fourteen files edited on every composition change for an assertion that was never about the
+      number. What it defends is the SPLIT: acceptance moved, so the authority version moved; the
+      wire shape did not, so the schema name did not. v25 is R4-R5C14A, where THE STANDARD became
+      the Host's own behaviour sentence and WHAT SUCCESS LOOKS LIKE became their own evidence.
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toMatch(/^program_authorship_v\d+$/);
+    expect(programAuthorshipVersionNumber()).toBeGreaterThanOrEqual(25);
   });
 });
