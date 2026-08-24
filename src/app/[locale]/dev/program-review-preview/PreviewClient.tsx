@@ -69,6 +69,7 @@ export function PreviewClient({ buildSha }: { buildSha: string }) {
         </div>
 
         <ProgramAuthorship
+          locale="en"
           draftId="preview-fixture"
           answers={PREVIEW_ANSWERS}
           journey={undefined}

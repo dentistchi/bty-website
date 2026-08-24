@@ -84,6 +84,7 @@ function mount(onApply: (j: unknown, a: string | null) => Promise<unknown>) {
   return render(
     <ProgramAuthorship
       draftId={DRAFT}
+      locale="en"
       answers={ANSWERS}
       journey={undefined}
       ready

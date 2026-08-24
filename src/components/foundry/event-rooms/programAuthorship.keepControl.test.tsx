@@ -83,6 +83,7 @@ function renderReview(journey: RealityGroundedJourneyV1 | undefined, onApply = v
   });
   render(
     <ProgramAuthorship
+      locale="en"
       draftId="draft-1"
       answers={ANSWERS}
       journey={journey}

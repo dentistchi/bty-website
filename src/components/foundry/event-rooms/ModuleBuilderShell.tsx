@@ -924,6 +924,7 @@ export function ModuleBuilderShell({
           <ProgramAuthorship
             sectionRef={programAuthoringRef}
             draftId={draftId}
+            locale={locale}
             answers={answers}
             journey={answers.realityGroundedJourneyV1}
             /*

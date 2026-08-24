@@ -36,6 +36,7 @@
  */
 
 import { JOURNEY_KIND_ORDER, type JourneyElementKind } from "./journey";
+import { journeyCopy, type JourneyLocale } from "./journeyLocaleCopy";
 import { isInterrogativeAction } from "./observableStandardShape";
 
 // ---------------------------------------------------------------------------
@@ -820,10 +821,16 @@ export function contextClause(context: string): string {
  * A labelled sentence survives all of them, and preserves the Host's wording exactly — which
  * is the point: this is their sentence, not a paraphrase of it.
  */
-export function renderCompletionEvidence(c: CompletionAuthority, lead = "Completion evidence"): string {
+export function renderCompletionEvidence(c: CompletionAuthority, locale?: JourneyLocale): string {
   const criterion = stripTrailingStop(c.criterion.trim());
   if (criterion.length === 0) return "";
-  return `${lead}: ${upperFirst(criterion)}.`;
+  /*
+    THE LABEL IS BTY'S, THE SENTENCE IS THE HOST'S (Slice R4-R5C13). Only the lead-in and the
+    casing move with locale; `criterion` is interpolated exactly as written, in whatever
+    language the Host wrote it. `lead` is gone as a parameter — R4-R5C11 left exactly one
+    caller and one label, and a locale table is the wrong place to accept an arbitrary one.
+  */
+  return journeyCopy(locale).completionEvidence(criterion);
 }
 
 /**
@@ -841,7 +848,7 @@ export function renderCompletionEvidence(c: CompletionAuthority, lead = "Complet
  * whose behaviour contract it is a field of, and it is the Host's own subject in WHAT SUCCESS
  * LOOKS LIKE. No other section states it. The criterion itself is still never touched.
  */
-const COMPLETION_LEAD = { standard: "Completion evidence" } as const;
+/* The lead-in moved to `journeyLocaleCopy` in R4-R5C13 — one label, now in two languages. */
 
 /** A moment that already begins with its own time preposition needs nothing added. */
 const LEADING_DETERMINER = /^(?:the|a|an|my|your|our|their|his|her|its|each|every|this|that)\b/i;
@@ -876,11 +883,12 @@ export function momentCore(moment: string): string {
  * paraphrase is a semantic equivalence test, and a weak one (shared keywords) is exactly
  * the kind of proxy that let the live sentence through.
  */
-export function renderStandardSentence(c: BehaviorContract): string {
+export function renderStandardSentence(c: BehaviorContract, locale?: JourneyLocale): string {
   const trigger = stripTrailingStop(c.trigger.trim());
   const actor = stripTrailingStop(c.actor.trim());
   const action = baseActionPhrase(c.observableAction);
-  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. ${renderCompletionEvidence(c.completion, COMPLETION_LEAD.standard)}`.trimEnd();
+  const copy = journeyCopy(locale);
+  return `${copy.standard(trigger, actor, action)} ${renderCompletionEvidence(c.completion, locale)}`.trimEnd();
 }
 
 /**
@@ -1000,8 +1008,16 @@ export function pressureFrameIds(): PressureFrame[] {
  * THE ONE PLACE PRESSURE BECOMES WORDS. The model never sends this string and cannot influence
  * it; a frame the server does not know renders nothing rather than guessing.
  */
-export function renderPressureFrame(frame: PressureFrame): string {
-  return PRESSURE_FRAMES.find((f) => f.id === frame)?.clause ?? "";
+export function renderPressureFrame(frame: PressureFrame, locale?: JourneyLocale): string {
+  /*
+    ONE FRAME LIST, TWO LANGUAGES (Slice R4-R5C13). `PRESSURE_FRAMES` stays the single source of
+    frame IDENTITY — the ids, the meanings the model chooses from, the validator's enum — and the
+    participant-facing CLAUSE now comes from the locale table. The English clauses in the list
+    below are unchanged and are still what `en` renders; a frame the table does not know renders
+    nothing rather than guessing, exactly as before.
+  */
+  if (PRESSURE_FRAMES.every((f) => f.id !== frame)) return "";
+  return journeyCopy(locale).pressure[frame] ?? "";
 }
 
 /** What the model is told it may choose from — derived from the frames, never a second list. */
@@ -1340,14 +1356,14 @@ export function validateScenarioContract(
  * than the one the program defined. Same actor, same trigger, same required action, same
  * completion signal; the model contributes only the difficulty and the setting.
  */
-export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
+export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract, locale?: JourneyLocale): string {
   /*
     SERVER-WRITTEN PRESSURE (Slice 3.2P-A7-R2). The clause comes from `PRESSURE_FRAMES`, not
     from the response, so the sentence between the Host's moment and the Host's action is now
     entirely BTY's. There is no second circumstance to append: one scenario needs one
     difficulty, and a catalogue of them is not a harder situation, only a longer one.
   */
-  const condition = renderPressureFrame(s.frame);
+  const condition = renderPressureFrame(s.frame, locale);
   /**
    * ONE MOMENT, SUBORDINATE PRESSURE. The sentence OPENS on the canonical trigger and the
    * pressure arrives inside it as a concessive clause. There is no leading context moment
@@ -1370,7 +1386,7 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
     the behaviour is easy to lose there. It points at the standard with "this" rather than
     repeating it, and it no longer restates the Host's criterion.
   */
-  return `${upperFirst(stripTrailingStop(b.trigger.trim()))}, when ${condition}, this is easiest to skip.`;
+  return journeyCopy(locale).scenario(stripTrailingStop(b.trigger.trim()), condition);
 }
 
 // ---------------------------------------------------------------------------
@@ -2062,7 +2078,7 @@ function reduceInflection(lower: string): string {
   return lower;
 }
 
-export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
+export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract, locale?: JourneyLocale): string {
   /*
     THE LEARNER MAKES THE DECISION (Slice R4-R5C11).
 
@@ -2078,7 +2094,7 @@ export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContra
     The learner's own `decision_response_text` remains the decision authority; this section now
     asks for it instead of supplying it.
   */
-  return `${NEXT_OCCURRENCE}, what will you do differently?`;
+  return journeyCopy(locale).decision;
 }
 
 /**
@@ -2100,8 +2116,10 @@ export function renderApplicationSentence(
   b: BehaviorContract,
   a: ApplicationContract,
   construct: OperationalConstruct | null,
+  locale?: JourneyLocale,
 ): string {
-  const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
+  const copy = journeyCopy(locale);
+  const named = construct ? copy.constructClause(constructPhrase(construct)) : "";
   /*
     THE OCCASION, NOT THE INSTRUCTION (Slice R4-R5C11).
 
@@ -2115,7 +2133,7 @@ export function renderApplicationSentence(
     the behaviour nor the evidence. The construct clause stays: it names what the program is
     about without restating what to do.
   */
-  return `${NEXT_OCCURRENCE} is the first real chance to try it for yourself.${named}`;
+  return copy.application(named);
 }
 
 /**
@@ -2132,32 +2150,25 @@ export function renderApplicationSentence(
  * exist, so the section goes quiet rather than asking about a "next time" BTY has already
  * decided it cannot name.
  */
-export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string | null {
-  const target: Record<VerificationTarget, string> = {
-    /*
-      NO ANSWER LEAKAGE (Slice R4-R5C11). This was `you ${action}` — so the closing question
-      quoted THE STANDARD back at a learner who had just read it, and the honest answer was to
-      copy the sentence above. It names the SITUATION instead; the behaviour is established two
-      sections up and needs no repeating to be pointed at.
-    */
-    the_behaviour: `you are in that situation`,
-    /*
-      "put this into practice" reads as an idiom and parses as a definite construct
-      reference — "practice" is one of the nouns the dependency graph gates, so the phrase
-      quietly claimed a construct the program had not defined (Slice 3.2O-R1). Found by
-      auditing the whole target × mode matrix rather than only the pair that failed live.
-    */
-    the_application_plan: `you apply this`,
-    /*
-      THE CONFIRMATION STEP, WITHOUT A CONFIRMER (Slice 3.2P-R3.4-R1). This slot sits inside
-      "What exactly will you say when …?", so it needs a CLAUSE, and the criterion is a
-      sentence in an unknown shape — dropping it in raw produces "when The huddle note records
-      …". What the participant is being asked about is the step that PRODUCES the evidence, so
-      the clause names that step and the evidence itself is carried by the sections that can
-      hold a sentence. No person is introduced to do it.
-    */
-    the_confirmation_step: `you make sure this is completed`,
-  };
+export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract, locale?: JourneyLocale): string | null {
+  const copy = journeyCopy(locale);
+  const target: Record<VerificationTarget, string> = copy.completionTarget;
+  /*
+    WHAT THOSE THREE TARGET CLAUSES SAY, and why — the wording now lives in `journeyLocaleCopy`.
+
+    `the_behaviour` was `you ${action}` until R4-R5C11, so the closing question quoted THE
+    STANDARD back at a learner who had just read it and the honest answer was to copy the
+    sentence above. It names the SITUATION instead.
+
+    `the_application_plan` avoids "put this into practice": that reads as an idiom and parses as
+    a definite construct reference — "practice" is one of the nouns the dependency graph gates,
+    so the phrase quietly claimed a construct the program had not defined (Slice 3.2O-R1).
+
+    `the_confirmation_step` sits inside "What exactly will you say when …?", so it needs a
+    CLAUSE, and the criterion is a sentence in an unknown shape — dropping it in raw produced
+    "when The huddle note records …". It names the step that PRODUCES the evidence, and
+    introduces no person to do it (Slice 3.2P-R3.4-R1).
+  */
   if (c.responseMode === "name_the_moment") {
     /*
       Deliberately NOT a verbatim repeat of the standard — the participant has just read it
@@ -2175,18 +2186,9 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
       is the same one the graph enforces on the model: do not refer definitely to a construct
       no section has defined.
     */
-    const ask: Record<VerificationTarget, string> = {
-      the_behaviour: "what exactly will you do",
-      the_application_plan: "how will you fit this into what you are already doing",
-      the_confirmation_step: "how will you make sure it gets confirmed",
-    };
-    return `${NEXT_OCCURRENCE}, ${ask[c.verificationTarget]}?`;
+    return copy.completionNameTheMoment(copy.completionAsk[c.verificationTarget]);
   }
-  const mode: Record<Exclude<ResponseMode, "name_the_moment">, (t: string) => string> = {
-    state_what_you_will_say: (t) => `What exactly will you say when ${t}?`,
-    name_what_could_stop_you: (t) => `What could stop you when ${t}?`,
-  };
-  return mode[c.responseMode](target[c.verificationTarget]);
+  return copy.completionMode[c.responseMode](target[c.verificationTarget]);
 }
 
 /**
@@ -2211,7 +2213,9 @@ export function renderRationaleSentence(
   problemStatement: string,
   b: BehaviorContract,
   construct: OperationalConstruct | null,
+  locale?: JourneyLocale,
 ): string {
+  const copy = journeyCopy(locale);
   const problem = stripTrailingStop(problemStatement.trim());
   /*
     CONSEQUENCE ONLY (Slice R4-R5C11). This closed on `${actor} ${action}` and then on the
@@ -2228,8 +2232,8 @@ export function renderRationaleSentence(
     the only claim these inputs support. `b` stays in the signature: the family shares it, and
     the ban on USING it here is asserted by the composition guard, not by the type.
   */
-  const introduces = construct ? `one shared ${construct.noun}` : "one visible way of working";
-  return `${upperFirst(problem)}. This program introduces ${introduces} for exactly that.`;
+  const introduces = construct ? copy.introducesConstruct(construct.noun) : copy.introducesDefault;
+  return copy.rationale(problem, introduces);
 }
 
 /**
@@ -2247,7 +2251,7 @@ export function renderRationaleSentence(
  * supervisor is what COMPLETION looks like in this workplace; it is not this program
  * observing anything, and nothing here says it is.
  */
-export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
+export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number, locale?: JourneyLocale): string {
   /**
    * TENSE-SAFE, AND NO LONGER A SEVENTH COPY (Slice R4-R5C11).
    *
@@ -2260,14 +2264,9 @@ export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract,
    * behaviour contract it is a field of, and to WHAT SUCCESS LOOKS LIKE, which is the Host's
    * own evidence section. A follow-up question is neither.
    */
-  const focus: Record<ReviewFocus, string> = {
-    what_you_said: `what you actually said at that moment`,
-    what_happened_next: `what happened when you tried it`,
-    the_confirmation: `whether it was completed`,
-  };
-  const by: Record<Confirmer, string> = {
-    self_report: "That is your own account of it, not an observation.",
-    the_host: "Your host will read it with you.",
-  };
-  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`.replace(/\s+/g, " ").trim();
+  const copy = journeyCopy(locale);
+  return copy
+    .followUp(followUpDays, copy.followUpFocus[f.reviewFocus], copy.followUpBy[f.confirmer])
+    .replace(/\s+/g, " ")
+    .trim();
 }

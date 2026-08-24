@@ -82,7 +82,8 @@ function mount(onApply = vi.fn(async () => ({ status: "adopted" }))) {
   } as never);
   render(
     <ProgramAuthorship
-      draftId={DRAFT} answers={ANSWERS} journey={JOURNEY} ready
+      draftId={DRAFT}
+      locale="en" answers={ANSWERS} journey={JOURNEY} ready
       onGenerate={vi.fn()} onCheckResume={vi.fn(async () => true)}
       currentContextFingerprint={FINGERPRINT}
       adoptionRefusal={null}

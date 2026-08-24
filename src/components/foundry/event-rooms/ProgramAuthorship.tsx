@@ -86,6 +86,7 @@ export type ProgramGenerateOutcome =
 export function ProgramAuthorship({
   sectionRef,
   draftId,
+  locale,
   answers,
   journey,
   ready,
@@ -106,6 +107,13 @@ export function ProgramAuthorship({
   sectionRef?: React.Ref<HTMLElement>;
   /** The exact loaded draft this surface is bound to. */
   draftId: string;
+  /**
+   * The Builder's own locale (Slice R4-R5C13). BTY renders seven of the nine sections itself,
+   * and before this the review surface derived them with no locale at all — so a Korean Host
+   * read four fully English sections and adopting would have frozen them into the learner's
+   * training. Host and model text is untouched by it.
+   */
+  locale: "en" | "ko";
   answers: BuilderAnswers;
   journey: RealityGroundedJourneyV1 | undefined;
   ready: boolean;
@@ -270,7 +278,7 @@ export function ProgramAuthorship({
       */
       setDecisions(initialSectionDecisions(journey, entry.proposal));
       setEdits(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, e.content])));
-      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null, answers);
+      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null, answers, [], locale);
       setContracts(c);
       setBaseContracts(c);
       setOpenDetails(null);
@@ -280,7 +288,7 @@ export function ProgramAuthorship({
     },
     // `journey` decides which sections open on `keep`, so the review must be built from the
     // journey as it stands when the proposal is shown (Slice R4-R2A-R1).
-    [answers.followUpDays, answers.problem, journey],
+    [answers.followUpDays, answers.problem, journey, locale],
   );
 
   /**

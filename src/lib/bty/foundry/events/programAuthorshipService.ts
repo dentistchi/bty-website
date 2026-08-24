@@ -743,7 +743,12 @@ export async function generateProgram(
         mergeRefused = true;
       }
     }
-    let validated = validateProgramProposal(candidate, args.answers, args.verifiedArtifacts ?? []);
+    /*
+      THE LOCALE THE GENERATION RAN IN (Slice R4-R5C13). The same value that chose the system
+      prompt's language now chooses the language of BTY's own rendered sentences, so a Korean
+      program cannot come back with four English sections composed after the model replied.
+    */
+    let validated = validateProgramProposal(candidate, args.answers, args.verifiedArtifacts ?? [], args.locale);
     /*
       EVERY BOUNDED REPAIR IS FROZEN (Slice 3.2P-R0). A repair licensed to fix one surface may
       not return a second draft. Checked whatever the repair produced — a repair that turns an

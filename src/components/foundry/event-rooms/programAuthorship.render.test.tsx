@@ -75,6 +75,7 @@ function setup(outcome: ProgramGenerateOutcome, onApply = vi.fn(), currentFinger
   const onGenerate = vi.fn(async () => outcome);
   render(
     <ProgramAuthorship
+      locale="en"
       draftId="d-1"
       answers={ANSWERS}
       journey={undefined}
@@ -111,7 +112,7 @@ describe("[3.2L] the authorship entry point", () => {
 
   it("is disabled until the Host has described enough to author from", () => {
     const onGenerate = vi.fn(async () => ok);
-    render(<ProgramAuthorship draftId="d-1" answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} currentContextFingerprint={FP} />);
+    render(<ProgramAuthorship draftId="d-1" locale="en" answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} currentContextFingerprint={FP} />);
     expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -460,6 +461,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
     const onGenerate = vi.fn(async () => ok);
     render(
       <ProgramAuthorship
+        locale="en"
         draftId="d-1"
         answers={ANSWERS}
         journey={undefined}
@@ -486,6 +488,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
       const pending: boolean[] = [];
       render(
         <ProgramAuthorship
+          locale="en"
           draftId="d-1"
           answers={ANSWERS}
           journey={undefined}
@@ -656,6 +659,7 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
     const applied = vi.fn(async () => ({ status: "adopted" as const }));
     const { rerender } = render(
       <ProgramAuthorship
+        locale="en"
         draftId="d-1"
         answers={ANSWERS}
         journey={undefined}
@@ -683,6 +687,7 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
     // …until the save comes back carrying the server's refusal.
     rerender(
       <ProgramAuthorship
+        locale="en"
         draftId="d-1"
         answers={ANSWERS}
         journey={undefined}
@@ -706,6 +711,7 @@ describe("[3.2L-R11.3B] the surface waits for the server before saying added", (
   const setupApply = (onApply: ReturnType<typeof vi.fn>) => {
     render(
       <ProgramAuthorship
+        locale="en"
         draftId="d-1"
         answers={ANSWERS}
         journey={undefined}

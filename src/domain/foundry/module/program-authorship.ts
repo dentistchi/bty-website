@@ -20,6 +20,7 @@
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
 import { audienceAuthorityFor } from "./audience-authority";
 import { isBtySuggestedSharedQuestion } from "./btyQuestionDefaults";
+import type { JourneyLocale } from "./journeyLocaleCopy";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -1870,6 +1871,12 @@ export function validateProgramProposal(
   answers: BuilderAnswers | undefined,
   /** Identities of materials the application has VERIFIED (e.g. uploaded file titles). */
   verifiedArtifacts: readonly string[] = [],
+  /**
+   * The locale the generation ran in (Slice R4-R5C13). BTY's own sentence frames are written in
+   * it; every Host and model string is interpolated verbatim, whatever language it is in.
+   * Defaults to English so no existing caller changes behaviour by omission.
+   */
+  locale: JourneyLocale = "en",
 ): ProgramValidation {
   if (!isPlainObject(raw)) return REJECT_AT("not_object", "$", "object", jsonTypeOf(raw));
   const p = raw.program;
@@ -2161,8 +2168,8 @@ export function validateProgramProposal(
    * would silently drop the completion signal off the end.
    */
   for (const [path, text] of [
-    ["program.behavior_contract", renderStandardSentence(contract)],
-    ...(scenarioContract ? [["program.scenario_contract", renderScenarioSentence(contract, scenarioContract)] as const] : []),
+    ["program.behavior_contract", renderStandardSentence(contract, locale)],
+    ...(scenarioContract ? [["program.scenario_contract", renderScenarioSentence(contract, scenarioContract, locale)] as const] : []),
   ] as const) {
     if (text.length > LIMITS.content) {
       return REJECT_AT("too_long", path, `fields short enough to render within ${LIMITS.content} characters`, "string");
@@ -2174,20 +2181,20 @@ export function validateProgramProposal(
     // WHY THIS MATTERS is rendered from the Host's own problem and the behaviour contract
     // (Slice 3.2L-R9), so the model's prose for it is discarded like the instructional ones.
     if (kind === "why_it_matters" && ctx && ctx.problemStatement.trim().length > 0) {
-      return renderRationaleSentence(ctx.problemStatement, contract, operationalConstruct);
+      return renderRationaleSentence(ctx.problemStatement, contract, operationalConstruct, locale);
     }
-    if (kind === "observable_standard") return renderStandardSentence(contract);
-    if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract);
-    if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract);
-    if (kind === "field_application" && applicationContract) return renderApplicationSentence(contract, applicationContract, operationalConstruct);
+    if (kind === "observable_standard") return renderStandardSentence(contract, locale);
+    if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract, locale);
+    if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract, locale);
+    if (kind === "field_application" && applicationContract) return renderApplicationSentence(contract, applicationContract, operationalConstruct, locale);
     // The Host's own question outranks the derivation (Slice 3.2R-R2.3).
     if (kind === "completion_check") {
       return resolveCompletionCheck(
         ctx?.completionPrompt,
-        completionContract ? renderCompletionQuestion(contract, completionContract) : null,
+        completionContract ? renderCompletionQuestion(contract, completionContract, locale) : null,
       );
     }
-    if (kind === "follow_up" && followUpContract) return renderFollowUpSentence(contract, followUpContract, ctx?.followUpDays ?? 0);
+    if (kind === "follow_up" && followUpContract) return renderFollowUpSentence(contract, followUpContract, ctx?.followUpDays ?? 0, locale);
     return null;
   };
 
@@ -2372,7 +2379,7 @@ export function validateProgramProposal(
     the Host wrote none, is checked exactly as before.
   */
   const hostAuthoredCheck = (ctx?.completionPrompt ?? "").trim().length > 0;
-  const derivedCheck = completionContract ? renderCompletionQuestion(contract, completionContract) : null;
+  const derivedCheck = completionContract ? renderCompletionQuestion(contract, completionContract, locale) : null;
   const dependency = validateProgramDependencies(
     elements.map((e): ProgramSection => ({
       kind: e.kind,
@@ -2808,6 +2815,16 @@ export type ProgramContracts = {
    * that will actually be published.
    */
   completionPrompt: string | null;
+  /**
+   * WHICH LANGUAGE BTY WRITES ITS OWN SENTENCES IN (Slice R4-R5C13).
+   *
+   * It travels with the contracts rather than as a separate argument for the same reason the
+   * completion prompt does: the review surface and the validator must resolve every section
+   * identically, and a locale passed to one path and forgotten on the other is exactly how a
+   * Korean Host came to see four English sections. Host and model strings are never touched by
+   * it — only BTY's own scaffolding.
+   */
+  locale: JourneyLocale;
 };
 
 /** The contracts a proposal was generated with, as the starting point for review. */
@@ -2822,6 +2839,7 @@ export function contractsFromProposal(
    */
   constructSource?: Pick<BuilderAnswers, "observableBehavior" | "capabilityCandidate" | "successEvidence" | "problem">,
   verifiedArtifacts: readonly string[] = [],
+  locale: JourneyLocale = "en",
 ): ProgramContracts | null {
   // A proposal without a behaviour contract cannot derive anything. Only reachable from a
   // pre-v4 shape; returning null keeps the review surface honest rather than crashing.
@@ -2870,6 +2888,7 @@ export function contractsFromProposal(
     construct,
     followUpDays,
     completionPrompt,
+    locale,
   };
 }
 
@@ -2933,23 +2952,23 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
   // there is nothing to ground it in and the model's prose stays (Slice 3.2L-R9).
   if (kind === "why_it_matters") {
     return c.problemStatement.trim().length > 0
-      ? renderRationaleSentence(c.problemStatement, c.behavior, c.construct)
+      ? renderRationaleSentence(c.problemStatement, c.behavior, c.construct, c.locale)
       : null;
   }
-  if (kind === "observable_standard") return renderStandardSentence(c.behavior);
-  if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario);
+  if (kind === "observable_standard") return renderStandardSentence(c.behavior, c.locale);
+  if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario, c.locale);
   if (kind === "action_decision" || kind === "field_application") {
     const moment = applicationMomentFor(c);
     if (moment === null) return null;
     const a = { applicationMoment: moment };
     return kind === "action_decision"
-      ? renderDecisionSentence(c.behavior, a)
-      : renderApplicationSentence(c.behavior, a, c.construct);
+      ? renderDecisionSentence(c.behavior, a, c.locale)
+      : renderApplicationSentence(c.behavior, a, c.construct, c.locale);
   }
   if (kind === "completion_check") {
-    return resolveCompletionCheck(c.completionPrompt, c.completion ? renderCompletionQuestion(c.behavior, c.completion) : null);
+    return resolveCompletionCheck(c.completionPrompt, c.completion ? renderCompletionQuestion(c.behavior, c.completion, c.locale) : null);
   }
-  if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays);
+  if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays, c.locale);
   return null;
 }
 
