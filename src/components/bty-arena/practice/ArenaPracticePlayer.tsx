@@ -31,6 +31,7 @@ const COPY = {
     begin: "Begin",
     continue: "Continue",
     decide: "Decide",
+    whatHappened: "What happened",
     itGetsHarder: "It gets harder",
     yourChoice: "Your choice",
     completeTitle: "Practice complete",
@@ -44,6 +45,7 @@ const COPY = {
     begin: "시작",
     continue: "계속",
     decide: "결정",
+    whatHappened: "그 결과",
     itGetsHarder: "상황이 더 어려워집니다",
     yourChoice: "당신의 선택",
     completeTitle: "연습 완료",
@@ -166,9 +168,25 @@ export function ArenaPracticePlayer({
   const active = (() => {
     if (isBranchAware(scenario) && selectedPrimaryId && scenario.branches[selectedPrimaryId]) {
       const b = scenario.branches[selectedPrimaryId];
-      return { escalationText: b.escalationText, tradeoffChoices: b.tradeoffChoices, actionDecision: b.actionDecision };
+      /*
+        THE FOURTH FIELD (Arena Consequence Loop V1). `ScenarioBranch` has always carried the
+        world the learner's choice produced, and this projection destructured three of its four
+        properties — so the consequence was generated, stored, reviewed by the Host, and never
+        shown to the person who caused it. A learner chose "delay the calls" and read "the client
+        becomes increasingly frustrated" with nothing on screen joining the two.
+
+        A legacy flat scenario has no branch and therefore no consequence; it keeps `undefined`
+        and the surface below simply does not render.
+      */
+      return {
+        resultingWorldState: b.resultingWorldState,
+        escalationText: b.escalationText,
+        tradeoffChoices: b.tradeoffChoices,
+        actionDecision: b.actionDecision,
+      };
     }
     return {
+      resultingWorldState: undefined as string | undefined,
       escalationText: scenario.tradeoff.escalationText,
       tradeoffChoices: scenario.tradeoff.choices,
       actionDecision: scenario.actionDecision,
@@ -256,6 +274,25 @@ export function ArenaPracticePlayer({
 
       {phase === "tradeoff" ? (
         <div className="flex flex-col gap-3">
+          {/*
+            WHAT CHANGED, THEN WHAT HAPPENS NEXT. Two existing SectionHeadings and two paragraphs —
+            no new visual grammar, no card, no modal, and no sentence explaining the connection.
+            The consequence is written in the second person and past tense, so "Because you chose
+            X…" would only narrate what the reader just did. Nothing here ranks the choice: Arena
+            has no correct answer, and Slice 2.4A.4 removed the one marker that leaked a preferred
+            option.
+          */}
+          {(active.resultingWorldState ?? "").trim() ? (
+            <>
+              <SectionHeading>{t.whatHappened}</SectionHeading>
+              <p
+                data-testid="practice-consequence"
+                className="whitespace-pre-wrap text-[0.98rem] leading-7 text-[#0B1F3A]/90"
+              >
+                {active.resultingWorldState}
+              </p>
+            </>
+          ) : null}
           <SectionHeading>{t.itGetsHarder}</SectionHeading>
           <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-[#0B1F3A]/90">
             {active.escalationText}

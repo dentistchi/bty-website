@@ -33,12 +33,17 @@
  *   primary / branch tradeoff / branch action   rendered AND selectable  → learner decisions
  *   branch escalation                           rendered, not selectable → context, carried on each
  *                                               surface rather than judged as its own
- *   branch resultingWorldState                  NOT rendered by the learner player (Host preview
- *                                               only — `ArenaScenarioPreview.tsx:74`), never
- *                                               selectable; but it is the generator's own assertion
- *                                               of the world the branch is in, and the branch's later
- *                                               choices are authored against it. Reviewed as a STATE
- *                                               surface, never as a decision.
+ *   branch resultingWorldState                  rendered, not selectable — the world the learner's
+ *                                               primary choice produced, shown above that branch's
+ *                                               escalation (Arena Consequence Loop V1). It had been
+ *                                               `userReachable: true` here while the learner player
+ *                                               destructured only three of the branch's four fields,
+ *                                               so this map was right and the player was not; the
+ *                                               player now matches it and NO coordinate, reachability
+ *                                               or version changes. It remains the generator's own
+ *                                               assertion of the branch's world, with the branch's
+ *                                               later choices authored against it, and is reviewed as
+ *                                               a STATE surface, never as a decision.
  *   flat tradeoff / flat action                 unreachable for a branch-aware draft → compatibility
  *
  * Pure domain: no I/O, no provider, no DB, no clock.
