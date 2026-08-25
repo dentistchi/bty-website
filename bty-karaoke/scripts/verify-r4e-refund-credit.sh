@@ -38,10 +38,15 @@ refunded(){ # refunded <txn> <suffix> <denied> -> purchase id
     (account_id,purchase_owner_ref,environment,apple_transaction_id,apple_original_transaction_id,
      storekit_product_id,product_code,purchase_date,quantity,signed_transaction_payload,
      signed_transaction_sha256,verification_status,verified_at,grant_status,source,
-     revoked_at,refunded_at,revocation_reason,refund_denied_seconds)
+     revoked_at,refunded_at,revocation_reason,refund_denied_seconds,
+     refund_notification_uuid,refund_kind)
     values ('$ACC','ffffffff-0000-4000-8000-0000000000$S','Sandbox','$T','$T',
      'com.btydaily.norebang.pass.1hour','PASS_1H',now(),1,'jws',repeat('0',64),
-     'REVOKED',now(),'NOT_GRANTED','STOREKIT_CLIENT',now(),now(),'apple_refund',$D) returning id;")
+     'REVOKED',now(),'NOT_GRANTED','STOREKIT_CLIENT',now(),now(),'apple_refund',$D,
+     -- BUILD 26U-R4G-R2-R1 — a refunded row must now be able to say where the refund came from
+     -- (karaoke_apple_purchases_refund_provenance_chk). This fixture stands in for a notification-
+     -- sourced refund, so it names one rather than leaving the origin blank.
+     'fixture-nuid-$S','FULL') returning id;")
   echo "$PID"
 }
 rev(){ $C -c "select apply_apple_refund_reversal('Sandbox','$1','$2');"; }
