@@ -259,6 +259,65 @@ ok "audit remains immutable"              "$(docker exec -i bty-r4e psql -U post
 ok "existing R4B/R4C/R4D functions untouched" "$($C -c "select count(*) from pg_proc where proname in ('select_timed_access_pass','switch_timed_access_pass','fulfil_apple_purchase','karaoke_start_premium_room_session','karaoke_premium_room_entitlement_at');")" "5"
 
 echo
+echo "=== §J RECOVERY WRITE PATH — API_RECOVERY reaches the SAME canonical RPC ==="
+# Delivery ORDER is simulated, never Apple's signature: the signed-payload path is covered by the
+# verifier fixtures and by the LIVE Apple recovery run. What is proven here is that an event first
+# seen by recovery applies exactly once, and that a later live delivery of the same UUID is inert.
+G_REC=$(mkpaid txn-recover 9)
+$C -c "select select_timed_access_pass('$ACC','$G_REC',null);" >/dev/null
+$C -c "delete from karaoke_events;" >/dev/null
+$C -c "select karaoke_start_premium_room_session('$ROOM','evRec','pubRec','gRec','t','premium');" >/dev/null
+need "recovery subject is ACTIVE" "$(st $G_REC)" "ACTIVE"
+ok "…and entitled before the refund"   "$(ent)" "true"
+
+# 1. recovery discovers it FIRST
+$C -c "select karaoke_record_apple_notification('11111111-1111-4111-8111-111111111111','REFUND',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rec','API_RECOVERY');" >/dev/null
+ok "inbox row recorded as API_RECOVERY" "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='11111111-1111-4111-8111-111111111111';")" "API_RECOVERY"
+refund txn-recover "now()" 11111111-1111-4111-8111-111111111111 >/dev/null
+ok "grant ACTIVE -> REVOKED via recovery" "$(st $G_REC)" "REVOKED"
+ok "reason is apple_refund"              "$($C -c "select revoke_reason from timed_access_pass_grants where id='$G_REC';")" "apple_refund"
+ok "entitlement false immediately"       "$(ent)" "false"
+ok "exactly one REVOKED audit"           "$($C -c "select count(*) from timed_access_pass_audit where pass_grant_id='$G_REC' and action='REVOKED';")" "1"
+ok "zero carryover account-wide"         "$($C -c "select coalesce(sum(carryover_seconds),0) from timed_access_pass_grants where account_id='$ACC';")" "0"
+
+# 2. the SAME uuid later arrives live — must be inert in both the inbox and the lifecycle
+AUD=$($C -c "select count(*) from timed_access_pass_audit;")
+ok "live delivery of same uuid is a duplicate" "$($C -c "select (karaoke_record_apple_notification('11111111-1111-4111-8111-111111111111','REFUND',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rec','SERVER_NOTIFICATION')->>'duplicate');")" "true"
+ok "…discovery_source NOT overwritten"         "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='11111111-1111-4111-8111-111111111111';")" "API_RECOVERY"
+ok "…still exactly one inbox row"              "$($C -c "select count(*) from karaoke_apple_server_notifications where notification_uuid='11111111-1111-4111-8111-111111111111';")" "1"
+ok "…refund replay writes nothing"             "$($C -c "select (apply_apple_purchase_refund('Sandbox','txn-recover',now(),'apple_refund','11111111-1111-4111-8111-111111111111')->>'replayed');")" "true"
+ok "…no extra audit row"                       "$($C -c "select count(*) from timed_access_pass_audit;")" "$AUD"
+
+echo
+echo "=== §K RECOVERED REFUND_REVERSED — and a MEASURED SCHEMA BLOCKER ==="
+# MEASURED DEFECT, recorded rather than papered over.
+#
+# `timed_pass_duration_matches_type` pins duration_seconds to pass_type: a ONE_HOUR grant is
+# EXACTLY 3600 seconds. R4E-R1's reversal issues a compensation grant for `refund_denied_seconds`,
+# which for an ACTIVE refund is the REMAINING window -- 3599 here -- so the insert is refused.
+#
+# The earlier R4E reversal gate passed only because it refunded an AVAILABLE grant, where the
+# denied value happens to be a whole product duration. Compensation therefore works for a
+# full-value refund and is IMPOSSIBLE for a partial one, which is the common case.
+#
+# There is no correct fix to pick unilaterally: rounding up to 3600 would restore MORE time than
+# was removed, which §N forbids outright. Representing a partial credit needs a product decision.
+# This gate pins the behaviour as it actually is, so the limitation cannot be forgotten.
+$C -c "select karaoke_record_apple_notification('22222222-2222-4222-8222-222222222222','REFUND_REVERSED',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rev','API_RECOVERY');" >/dev/null
+DENIED=$($C -c "select refund_denied_seconds from karaoke_apple_purchases where apple_transaction_id='txn-recover';")
+echo "   refund_denied_seconds for the ACTIVE refund: $DENIED"
+ok "denied value is PARTIAL (not a whole product)" "$([ "$DENIED" -ne 3600 ] && echo partial || echo whole)" "partial"
+REVOUT=$(docker exec -i bty-r4e psql -U postgres -Atq -c "select apply_apple_refund_reversal('Sandbox','txn-recover','22222222-2222-4222-8222-222222222222');" 2>&1)
+ok "partial compensation is REFUSED by the schema" "$(echo "$REVOUT" | grep -qi 'timed_pass_duration_matches_type' && echo refused || echo allowed)" "refused"
+ok "original grant remains terminal REVOKED"       "$(st $G_REC)" "REVOKED"
+ok "no compensation grant was created"             "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='22222222-2222-4222-8222-222222222222';")" "0"
+ok "no partial-duration grant leaked in"           "$($C -c "select count(*) from timed_access_pass_grants where duration_seconds not in (3600,14400,86400);")" "0"
+
+echo
+echo "=== §K reversal of a FULL-VALUE refund still works (the covered case) ==="
+ok "full-value reversal issued a compensation grant" "$($C -c "select count(*) from timed_access_pass_grants where source_type='REFUND_REVERSAL' and duration_seconds=3600;")" "1"
+
+echo
 if [ "$FAIL" -eq 0 ]; then echo "ALL R4E GATES PASS (0 failures)"; else echo "FAILURES: $FAIL"; fi
 docker rm -f bty-r4e >/dev/null 2>&1
 exit $FAIL

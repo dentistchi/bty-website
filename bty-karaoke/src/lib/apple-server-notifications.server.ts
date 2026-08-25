@@ -27,6 +27,18 @@ import { karaokeDb } from './supabase.server';
 /** The V2 notification types this build acts on. Anything else is recorded and ignored. */
 export type HandledNotification = 'REFUND' | 'REFUND_REVERSED';
 
+/**
+ * How this event reached us. BUILD 26U-R4E-R3-R1.
+ *
+ * `SERVER_NOTIFICATION` — Apple pushed it to our endpoint.
+ * `API_RECOVERY`        — we later fetched the SAME signed event from Get Notification History.
+ *
+ * The two are the same authoritative event and take the same path through this handler; only the
+ * operational provenance differs, and it is recorded in its own column rather than smuggled into
+ * the notificationUUID.
+ */
+export type DiscoverySource = 'SERVER_NOTIFICATION' | 'API_RECOVERY';
+
 export type NotificationOutcome =
   | { ok: true; handled: boolean; duplicate: boolean; detail: string }
   | { ok: false; code: 'unverifiable' | 'malformed' | 'not_found' | 'internal'; detail?: string };
@@ -42,7 +54,10 @@ const str = (v: unknown): string | null =>
  * retries: acknowledging a failure to stop the retries would turn a transient outage into a
  * permanently missed refund, which is the one outcome this whole path exists to prevent.
  */
-export async function handleAppleServerNotification(signedPayload: string): Promise<NotificationOutcome> {
+export async function handleAppleServerNotification(
+  signedPayload: string,
+  discoverySource: DiscoverySource = 'SERVER_NOTIFICATION',
+): Promise<NotificationOutcome> {
   // 1. The OUTER envelope must verify against Apple's real chain before anything is read.
   //
   //    `verifyAppleSignedPayload`, NOT `verifyAppleSignedTransaction`. A notification envelope is
@@ -105,6 +120,7 @@ export async function handleAppleServerNotification(signedPayload: string): Prom
     p_original_transaction_id: originalTransactionId,
     p_signed_date: typeof body.signedDate === 'number' ? new Date(body.signedDate).toISOString() : null,
     p_payload_sha256: digest,
+    p_discovery_source: discoverySource,
   });
   if (recordError) return { ok: false, code: 'internal', detail: 'inbox' };
   const rec = (recorded ?? {}) as Record<string, unknown>;
