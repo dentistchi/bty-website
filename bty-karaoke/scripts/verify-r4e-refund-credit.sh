@@ -147,13 +147,16 @@ echo "=== §X RECOVERY / LIVE ORDERING — one credit either way ==="
 # recovery first, then a live delivery of the same UUID
 $C -c "select karaoke_record_apple_notification('uuid-c2','REFUND_REVERSED',null,'Sandbox','txn-c2','txn-c2',now(),'d1','API_RECOVERY');" >/dev/null
 ok "recovery recorded first"            "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='uuid-c2';")" "API_RECOVERY"
-ok "live delivery is a duplicate"       "$($C -c "select (karaoke_record_apple_notification('uuid-c2','REFUND_REVERSED',null,'Sandbox','txn-c2','txn-c2',now(),'d1','SERVER_NOTIFICATION')->>'duplicate');")" "true"
+# BUILD 26U-R4G-R1 — `duplicate` is gone; what this gate protects is that the second arrival adds
+# no second evidence row and rewrites no provenance. Whether it is REPROCESSED is now the
+# processing status's business, not the row's existence.
+ok "live delivery inserts no second row" "$($C -c "select (karaoke_record_apple_notification('uuid-c2','REFUND_REVERSED',null,'Sandbox','txn-c2','txn-c2',now(),'d1','SERVER_NOTIFICATION')->>'inserted');")" "false"
 ok "…provenance not overwritten"        "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='uuid-c2';")" "API_RECOVERY"
 ok "…still exactly ONE credit"          "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='uuid-c2';")" "1"
 # live first, then recovery
 $C -c "select karaoke_record_apple_notification('uuid-c3','REFUND_REVERSED',null,'Sandbox','txn-c3','txn-c3',now(),'d2','SERVER_NOTIFICATION');" >/dev/null
 ok "live recorded first"                "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='uuid-c3';")" "SERVER_NOTIFICATION"
-ok "recovery is a duplicate"            "$($C -c "select (karaoke_record_apple_notification('uuid-c3','REFUND_REVERSED',null,'Sandbox','txn-c3','txn-c3',now(),'d2','API_RECOVERY')->>'duplicate');")" "true"
+ok "recovery inserts no second row"     "$($C -c "select (karaoke_record_apple_notification('uuid-c3','REFUND_REVERSED',null,'Sandbox','txn-c3','txn-c3',now(),'d2','API_RECOVERY')->>'inserted');")" "false"
 ok "…still exactly ONE credit"          "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='uuid-c3';")" "1"
 
 echo

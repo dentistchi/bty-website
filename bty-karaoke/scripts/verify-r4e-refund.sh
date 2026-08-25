@@ -156,8 +156,13 @@ OUT=$(refund txn-avail "now()" nuid-avail-dup)
 ok "duplicate refund reports replayed"  "$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin)['replayed'])")" "True"
 ok "no extra audit row"                 "$($C -c "select count(*) from timed_access_pass_audit;")" "$AUD_BEFORE"
 ok "still exactly one REVOKED audit"    "$($C -c "select count(*) from timed_access_pass_audit where pass_grant_id='$G_AVAIL' and action='REVOKED';")" "1"
-ok "inbox dedupes notificationUUID"     "$($C -c "select (karaoke_record_apple_notification('nuid-x','REFUND',null,'Sandbox','txn-avail','txn-avail',now(),'abc')->>'duplicate');")" "false"
-ok "…and the SAME uuid is a duplicate"  "$($C -c "select (karaoke_record_apple_notification('nuid-x','REFUND',null,'Sandbox','txn-avail','txn-avail',now(),'abc')->>'duplicate');")" "true"
+# BUILD 26U-R4G-R1 — THESE TWO GATES USED TO READ `duplicate`, AND THAT FIELD IS GONE.
+# They were pinning the mechanism R4G-R0 measured as a Production blocker: the recorder answering
+# "already handled" from a row's mere EXISTENCE, which let a verified refund whose apply had
+# failed be acknowledged 200 on the very next retry. What they were really protecting is that a
+# second delivery creates no second evidence row, and that is what they assert now.
+ok "first delivery inserts the evidence row" "$($C -c "select (karaoke_record_apple_notification('nuid-x','REFUND',null,'Sandbox','txn-avail','txn-avail',now(),'abc')->>'inserted');")" "true"
+ok "…and the SAME uuid inserts no second row" "$($C -c "select (karaoke_record_apple_notification('nuid-x','REFUND',null,'Sandbox','txn-avail','txn-avail',now(),'abc')->>'inserted');")" "false"
 ok "only ONE inbox row for that uuid"   "$($C -c "select count(*) from karaoke_apple_server_notifications where notification_uuid='nuid-x';")" "1"
 
 echo
@@ -282,7 +287,7 @@ ok "zero carryover account-wide"         "$($C -c "select coalesce(sum(carryover
 
 # 2. the SAME uuid later arrives live — must be inert in both the inbox and the lifecycle
 AUD=$($C -c "select count(*) from timed_access_pass_audit;")
-ok "live delivery of same uuid is a duplicate" "$($C -c "select (karaoke_record_apple_notification('11111111-1111-4111-8111-111111111111','REFUND',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rec','SERVER_NOTIFICATION')->>'duplicate');")" "true"
+ok "live delivery of same uuid inserts nothing" "$($C -c "select (karaoke_record_apple_notification('11111111-1111-4111-8111-111111111111','REFUND',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rec','SERVER_NOTIFICATION')->>'inserted');")" "false"
 ok "…discovery_source NOT overwritten"         "$($C -c "select discovery_source from karaoke_apple_server_notifications where notification_uuid='11111111-1111-4111-8111-111111111111';")" "API_RECOVERY"
 ok "…still exactly one inbox row"              "$($C -c "select count(*) from karaoke_apple_server_notifications where notification_uuid='11111111-1111-4111-8111-111111111111';")" "1"
 ok "…refund replay writes nothing"             "$($C -c "select (apply_apple_purchase_refund('Sandbox','txn-recover',now(),'apple_refund','11111111-1111-4111-8111-111111111111')->>'replayed');")" "true"

@@ -70,6 +70,17 @@ export interface RecoveryRequest {
   maxPages?: number;
 }
 
+/**
+ * BUILD 26U-R4G-R1 — the counts an operator can actually act on.
+ *
+ * The previous shape had one `duplicates` bucket, and it concealed the thing recovery exists to
+ * find: a FAILED row replayed as "duplicate (already recorded)", so a run that had repaired
+ * nothing printed the same clean summary as a run with nothing to repair.
+ *
+ * `unfinished` is the number that matters. It is the count of VERIFIED FINANCIAL events in the
+ * scanned window that did not reach a handled state, and it is what makes the command exit
+ * non-zero — because an all-green summary must actually mean no money event is left hanging.
+ */
 export interface RecoveryReport {
   ok: boolean;
   environment: AppleApiEnvironment;
@@ -77,10 +88,18 @@ export interface RecoveryReport {
   fetched: number;
   verified: number;
   unverifiable: number;
-  applied: number;
-  duplicates: number;
+  /** First application of an event we had never recorded. */
+  newlyApplied: number;
+  /** An UNFINISHED row (RECEIVED or FAILED) picked back up and completed. This is a repair. */
+  reprocessed: number;
+  /** A prior row was already APPLIED or IGNORED. Nothing was re-run. */
+  alreadyHandled: number;
+  /** Verified, recorded, deliberately not acted on. */
   ignored: number;
+  /** Processing failed on this run. */
   failed: number;
+  /** Verified FINANCIAL events still not handled after this run. Drives the exit status. */
+  unfinished: number;
   details: string[];
   error?: string;
 }
@@ -92,7 +111,8 @@ export interface RecoveryReport {
 export async function recoverAppleNotifications(req: RecoveryRequest): Promise<RecoveryReport> {
   const report: RecoveryReport = {
     ok: false, environment: req.environment, pages: 0, fetched: 0, verified: 0,
-    unverifiable: 0, applied: 0, duplicates: 0, ignored: 0, failed: 0, details: [],
+    unverifiable: 0, newlyApplied: 0, reprocessed: 0, alreadyHandled: 0, ignored: 0,
+    failed: 0, unfinished: 0, details: [],
   };
   const host = APPLE_API_HOSTS[req.environment];
   if (!host) { report.error = 'unknown_environment'; return report; }
@@ -139,19 +159,38 @@ export async function recoverAppleNotifications(req: RecoveryRequest): Promise<R
       // argument: how the event was discovered.
       const outcome = await handleAppleServerNotification(signedPayload, 'API_RECOVERY');
       if (!outcome.ok) {
+        // A financial event that did not finish is counted as UNFINISHED whichever way it failed,
+        // so a refusal can never be filed under "nothing to see" while its row sits at FAILED.
+        if (outcome.unfinishedFinancial) report.unfinished += 1;
         if (outcome.code === 'unverifiable' || outcome.code === 'malformed') {
           report.unverifiable += 1;
-          report.details.push(`refused: ${outcome.code} ${outcome.detail ?? ''}`.trim());
+          report.details.push(`REFUSED: ${outcome.code} ${outcome.detail ?? ''}`.trim());
         } else {
           report.failed += 1;
-          report.details.push(`failed: ${outcome.code}`);
+          report.details.push(`FAILED: ${outcome.code} ${outcome.detail ?? ''}`.trim());
         }
         continue;
       }
       report.verified += 1;
-      if (outcome.duplicate) { report.duplicates += 1; report.details.push('duplicate (already recorded)'); }
-      else if (outcome.handled) { report.applied += 1; report.details.push(`applied: ${outcome.detail}`); }
-      else { report.ignored += 1; report.details.push(`ignored: ${outcome.detail}`); }
+      switch (outcome.disposition) {
+        case 'NEWLY_APPLIED':
+          report.newlyApplied += 1;
+          report.details.push(`NEWLY_APPLIED: ${outcome.detail}`);
+          break;
+        case 'REPROCESSED':
+          // The whole point of the run. Named so it cannot read as routine duplicate traffic.
+          report.reprocessed += 1;
+          report.details.push(`REPROCESSED: ${outcome.detail}`);
+          break;
+        case 'ALREADY_HANDLED':
+          report.alreadyHandled += 1;
+          report.details.push(`ALREADY_HANDLED: ${outcome.detail}`);
+          break;
+        case 'IGNORED':
+          report.ignored += 1;
+          report.details.push(`IGNORED: ${outcome.detail}`);
+          break;
+      }
     }
 
     paginationToken = page.hasMore ? (page.paginationToken ?? null) : null;

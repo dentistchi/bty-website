@@ -39,9 +39,46 @@ export type HandledNotification = 'REFUND' | 'REFUND_REVERSED';
  */
 export type DiscoverySource = 'SERVER_NOTIFICATION' | 'API_RECOVERY';
 
+/**
+ * What actually happened to this delivery. BUILD 26U-R4G-R1.
+ *
+ * `duplicate` alone could not carry this, because it was answering the wrong question: it meant
+ * "a row with this uuid exists", and a row exists the moment we write it — long before anything
+ * has been applied. These four words say what was DONE.
+ */
+export type NotificationDisposition =
+  /** First delivery, and the lifecycle applied. */
+  | 'NEWLY_APPLIED'
+  /** An UNFINISHED row (RECEIVED or FAILED) was picked back up and applied. */
+  | 'REPROCESSED'
+  /** A prior row is already APPLIED or IGNORED. Nothing was re-run. */
+  | 'ALREADY_HANDLED'
+  /** Verified, durably recorded, and deliberately not acted on (an unhandled type, or not ours). */
+  | 'IGNORED';
+
 export type NotificationOutcome =
-  | { ok: true; handled: boolean; duplicate: boolean; detail: string }
-  | { ok: false; code: 'unverifiable' | 'malformed' | 'not_found' | 'internal'; detail?: string };
+  | {
+      ok: true;
+      handled: boolean;
+      /**
+       * REDEFINED by R4G-R1: "already successfully handled", NOT "same uuid seen before".
+       * It is true only for `ALREADY_HANDLED`.
+       */
+      duplicate: boolean;
+      disposition: NotificationDisposition;
+      detail: string;
+    }
+  | {
+      ok: false;
+      code: 'unverifiable' | 'malformed' | 'not_found' | 'internal';
+      detail?: string;
+      /**
+       * True when a REFUND / REFUND_REVERSED was durably recorded but did NOT reach a handled
+       * state. The operator tooling counts these: a recovery run that looks clean must actually
+       * mean no financial event in the scanned set is still unfinished.
+       */
+      unfinishedFinancial?: boolean;
+    };
 
 const str = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() !== '' ? v : null;
@@ -49,10 +86,16 @@ const str = (v: unknown): string | null =>
 /**
  * Verify and apply one App Store Server Notification.
  *
- * RETRY SEMANTICS (§Q). `ok: true` is returned only when the notification was applied or was
- * recognised as an already-applied duplicate. A processing failure returns `ok: false` so Apple
- * retries: acknowledging a failure to stop the retries would turn a transient outage into a
- * permanently missed refund, which is the one outcome this whole path exists to prevent.
+ * RETRY SEMANTICS (§Q). `ok: true` is returned only when the notification was applied, or when a
+ * prior row is already in a successfully terminal state. A processing failure returns `ok: false`
+ * so Apple retries: acknowledging a failure to stop the retries would turn a transient outage into
+ * a permanently missed refund, which is the one outcome this whole path exists to prevent.
+ *
+ * BUILD 26U-R4G-R1 — AND THAT IS EXACTLY WHAT USED TO HAPPEN ON THE SECOND DELIVERY. The recorder
+ * reported "duplicate" from the row's mere existence, so the retry that the 503 had correctly
+ * asked for was answered 200 and the lifecycle never re-ran. Only APPLIED and IGNORED now mean
+ * there is nothing left to do; RECEIVED and FAILED are unfinished and are always picked back up,
+ * by a live Apple retry and by operator recovery alike, through this same one path.
  */
 export async function handleAppleServerNotification(
   signedPayload: string,
@@ -122,21 +165,44 @@ export async function handleAppleServerNotification(
     p_payload_sha256: digest,
     p_discovery_source: discoverySource,
   });
+  // No lifecycle call without durable evidence. A recorder failure is ours to fix, so it is a
+  // retryable failure rather than a silent proceed.
   if (recordError) return { ok: false, code: 'internal', detail: 'inbox' };
   const rec = (recorded ?? {}) as Record<string, unknown>;
-  if (rec.duplicate === true) {
-    return { ok: true, handled: false, duplicate: true, detail: 'already_recorded' };
+  if (rec.ok !== true) return { ok: false, code: 'internal', detail: String(rec.error ?? 'inbox') };
+
+  const priorStatus = String(rec.processingStatus ?? '');
+  // ONLY a successfully terminal prior state may short-circuit. The database decides this — the
+  // caller never re-derives it from a status string it was handed.
+  if (rec.shouldProcess !== true) {
+    return {
+      ok: true,
+      handled: false,
+      duplicate: true,
+      disposition: 'ALREADY_HANDLED',
+      detail: `already_handled:${priorStatus}`,
+    };
   }
+  // An existing row we are picking back up: the first attempt died somewhere between recording the
+  // event and finishing it. Reported distinctly so a recovery run cannot describe repair as
+  // routine no-op traffic.
+  const reprocessing = rec.inserted !== true;
 
   // 5. Act, but only on the types this build handles. Everything else is durably recorded and
   //    acknowledged — an unhandled type is not an error, and retrying it forever helps nobody.
   if (notificationType !== 'REFUND' && notificationType !== 'REFUND_REVERSED') {
-    await markProcessed(notificationUUID, 'IGNORED', `unhandled:${notificationType}`);
-    return { ok: true, handled: false, duplicate: false, detail: 'ignored' };
+    if (!(await markProcessed(notificationUUID, 'IGNORED', `unhandled:${notificationType}`))) {
+      // The decision is right but it is not durable yet, and a row left at RECEIVED would be
+      // re-examined forever. Ask for the retry that writes it down.
+      return { ok: false, code: 'internal', detail: 'mark_ignored' };
+    }
+    return { ok: true, handled: false, duplicate: false, disposition: 'IGNORED', detail: 'ignored' };
   }
   if (!transactionId) {
+    // Verified, financial, and unusable. Recorded as FAILED so an operator can see it; refused
+    // 400 because replaying the identical bytes cannot supply a transaction id they never had.
     await markProcessed(notificationUUID, 'FAILED', 'no_transaction_id');
-    return { ok: false, code: 'malformed', detail: 'transaction_id' };
+    return { ok: false, code: 'malformed', detail: 'transaction_id', unfinishedFinancial: true };
   }
 
   if (notificationType === 'REFUND') {
@@ -147,16 +213,36 @@ export async function handleAppleServerNotification(
       p_revocation_reason: revocationReason ?? 'apple_refund',
       p_notification_uuid: notificationUUID,
     });
-    if (error) { await markProcessed(notificationUUID, 'FAILED', 'rpc'); return { ok: false, code: 'internal' }; }
+    if (error) {
+      await markProcessed(notificationUUID, 'FAILED', 'rpc');
+      return { ok: false, code: 'internal', detail: 'refund_rpc', unfinishedFinancial: true };
+    }
     const res = (applied ?? {}) as Record<string, unknown>;
     if (res.ok !== true) {
-      // A refund for a transaction we never recorded is not our purchase to revoke. Recorded and
-      // acknowledged: retrying cannot make a row appear.
-      await markProcessed(notificationUUID, 'IGNORED', String(res.error ?? 'not_applicable'));
-      return { ok: true, handled: false, duplicate: false, detail: String(res.error ?? 'not_applicable') };
+      // BUILD 26U-R4G-R1 — a refund for a transaction we cannot resolve is now FAILED, not
+      // IGNORED, and that is a deliberate reversal of the previous reading. Fulfilment and
+      // Apple's notification are two independent arrivals with no guaranteed order, so "we have
+      // no such purchase" can simply mean "not yet". Marking it IGNORED made that ordering race
+      // permanent: the row became terminal and no retry or recovery would ever look at it again.
+      // FAILED keeps it recoverable, and the 503 asks Apple to come back.
+      await markProcessed(notificationUUID, 'FAILED', String(res.error ?? 'not_applicable'));
+      return {
+        ok: false, code: 'not_found',
+        detail: String(res.error ?? 'not_applicable'), unfinishedFinancial: true,
+      };
     }
-    await markProcessed(notificationUUID, 'APPLIED', `denied=${String(res.deniedSeconds ?? 0)}`);
-    return { ok: true, handled: true, duplicate: res.replayed === true, detail: 'refund_applied' };
+    // THE LIFECYCLE HAS COMMITTED. If the bookkeeping write fails now, the 503 is still correct
+    // and the retry is still safe: the RPC is idempotent, so the next attempt replays it as a
+    // no-op and writes the status. What must never happen is undoing a committed financial
+    // mutation because a status column could not be updated afterwards.
+    if (!(await markProcessed(notificationUUID, 'APPLIED', `denied=${String(res.deniedSeconds ?? 0)}`))) {
+      return { ok: false, code: 'internal', detail: 'mark_applied', unfinishedFinancial: true };
+    }
+    return {
+      ok: true, handled: true, duplicate: false,
+      disposition: reprocessing ? 'REPROCESSED' : 'NEWLY_APPLIED',
+      detail: res.replayed === true ? 'refund_replayed' : 'refund_applied',
+    };
   }
 
   const { data: reversed, error: revError } = await db.rpc('apply_apple_refund_reversal', {
@@ -164,19 +250,41 @@ export async function handleAppleServerNotification(
     p_transaction_id: transactionId,
     p_notification_uuid: notificationUUID,
   });
-  if (revError) { await markProcessed(notificationUUID, 'FAILED', 'rpc'); return { ok: false, code: 'internal' }; }
+  if (revError) {
+    await markProcessed(notificationUUID, 'FAILED', 'rpc');
+    return { ok: false, code: 'internal', detail: 'reversal_rpc', unfinishedFinancial: true };
+  }
   const rev = (reversed ?? {}) as Record<string, unknown>;
   if (rev.ok !== true) {
-    await markProcessed(notificationUUID, 'IGNORED', String(rev.error ?? 'not_applicable'));
-    return { ok: true, handled: false, duplicate: false, detail: String(rev.error ?? 'not_applicable') };
+    // Same reasoning as the refund branch: an unresolvable reversal stays recoverable.
+    await markProcessed(notificationUUID, 'FAILED', String(rev.error ?? 'not_applicable'));
+    return {
+      ok: false, code: 'not_found',
+      detail: String(rev.error ?? 'not_applicable'), unfinishedFinancial: true,
+    };
   }
-  await markProcessed(notificationUUID, 'APPLIED', `restored=${String(rev.restoredSeconds ?? 0)}`);
-  return { ok: true, handled: true, duplicate: rev.replayed === true, detail: 'reversal_applied' };
+  if (!(await markProcessed(notificationUUID, 'APPLIED', `restored=${String(rev.restoredSeconds ?? 0)}`))) {
+    return { ok: false, code: 'internal', detail: 'mark_applied', unfinishedFinancial: true };
+  }
+  return {
+    ok: true, handled: true, duplicate: false,
+    disposition: reprocessing ? 'REPROCESSED' : 'NEWLY_APPLIED',
+    detail: rev.replayed === true ? 'reversal_replayed' : 'reversal_applied',
+  };
 }
 
-async function markProcessed(uuid: string, status: string, detail: string): Promise<void> {
-  await karaokeDb()
+/**
+ * Write the terminal state. Returns whether it actually landed.
+ *
+ * It used to swallow its own error, which is how a row could stay RECEIVED after a successful
+ * apply — an outcome R4G-R0 measured and R4G-R1 has to be able to recover from. The caller now
+ * decides what a failure means, and in the applied case it means 503: come back, and we will
+ * replay the idempotent RPC and finish writing this down.
+ */
+async function markProcessed(uuid: string, status: string, detail: string): Promise<boolean> {
+  const { error } = await karaokeDb()
     .from('karaoke_apple_server_notifications')
     .update({ processing_status: status, processing_detail: detail, processed_at: new Date().toISOString() })
     .eq('notification_uuid', uuid);
+  return !error;
 }

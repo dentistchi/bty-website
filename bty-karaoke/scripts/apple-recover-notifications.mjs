@@ -71,8 +71,23 @@ const report = await recoverAppleNotifications({ environment, startDate, endDate
 if (!report.ok) { console.error(`  FAILED — ${report.error}`); process.exit(3); }
 
 console.log(`  pages ${report.pages}  fetched ${report.fetched}  verified ${report.verified}`);
-console.log(`  applied ${report.applied}  duplicates ${report.duplicates}  ignored ${report.ignored}`);
-console.log(`  unverifiable ${report.unverifiable}  failed ${report.failed}`);
+console.log(`  newly applied ${report.newlyApplied}  REPROCESSED ${report.reprocessed}  already handled ${report.alreadyHandled}`);
+console.log(`  ignored ${report.ignored}  unverifiable ${report.unverifiable}  failed ${report.failed}`);
 for (const d of report.details) console.log(`    - ${d}`);
 console.log();
-process.exit(report.failed > 0 ? 4 : 0);
+
+// BUILD 26U-R4G-R1 — THE EXIT STATUS IS THE POINT.
+//
+// A run that prints counts and exits 0 is read as "nothing is wrong". That must therefore be
+// true: if any VERIFIED FINANCIAL event in the scanned window is still unfinished, this exits
+// non-zero and says which, rather than letting a clean-looking summary hide a refund that has
+// not been applied to anyone's account.
+if (report.unfinished > 0) {
+  console.error(`  UNFINISHED — ${report.unfinished} verified financial event(s) did NOT reach a handled state.`);
+  console.error(`  Re-run after the cause is cleared; the inbox rows remain recoverable.\n`);
+  process.exit(4);
+}
+if (report.reprocessed > 0) {
+  console.log(`  REPAIRED — ${report.reprocessed} previously unfinished event(s) completed on this run.\n`);
+}
+process.exit(0);
