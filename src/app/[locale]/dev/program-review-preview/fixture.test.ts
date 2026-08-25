@@ -278,7 +278,9 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
     expect(derived("scenario")).toBe(
       "At each handoff point, when time is running short, this is easiest to skip.",
     );
-    expect(derived("action_decision")).toBe("The next time this happens, what will you do differently?");
+    // R4-R5C17A — YOUR DECISION now asks WHICH next occasion, because the old question was
+    // fully answerable by copying THE STANDARD. Every sibling below is unchanged.
+    expect(derived("action_decision")).toBe("When is the next time this will come up for you, and what will you do then?");
     expect(derived("field_application")).toBe(
       "The next time this happens is the first real chance to try it for yourself.",
     );
@@ -504,7 +506,9 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
       const c = withTrigger(trigger);
       // A — the POINTER is what this test is about and it is unchanged; the answer that used to
       // follow it is gone (Slice R4-R5C11).
-      expect(derived("action_decision", c)?.startsWith("The next time this happens, "), trigger).toBe(true);
+      // The pointer, not its wording (R4-R5C17A): it points at the next occurrence and the
+      // trigger below proves it interpolates none of the host's phrase.
+      expect(derived("action_decision", c), trigger).toMatch(/^[A-Z][^?]*\bnext time\b/i);
       expect(derived("field_application", c)?.startsWith("The next time this happens"), trigger).toBe(true);
       for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
         expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
@@ -571,7 +575,7 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     // THE STANDARD and IN CONTEXT carry the host's moment; the two application sections point at
     // its next occurrence. Editing the trigger still moves all four, and nothing else can.
     expect(derived("scenario", moved)).toContain("At each morning huddle");
-    expect(derived("action_decision", moved)).toContain("The next time this happens");
+    expect(derived("action_decision", moved)).toMatch(/\bnext time\b/i);
     expect(derived("field_application", moved)).toContain("The next time this happens");
     // No control anywhere still edits a first moment.
     const ids = Object.values(DETAIL_FIELDS).flat().map((f) => f?.id);
@@ -613,7 +617,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
       moment at all, so the property is stronger — there is only ever ONE occasion in the
       program, and it is the host's, stated where it renders correctly.
     */
-    expect(derived("action_decision", broken)).toContain("The next time this happens");
+    expect(derived("action_decision", broken)).toMatch(/\bnext time\b/i);
     expect(derived("field_application", broken)).toContain("The next time this happens");
     expect(derived("action_decision", broken)).not.toContain("leaving the floor");
     // …and they are still BTY's sections, so the surface knows to go quiet rather than
@@ -634,7 +638,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
   it("G6: editing the trigger keeps both sections coherent", () => {
     const fixed = withTrigger("at each morning huddle");
     expect(derived("scenario", fixed)).toContain("At each morning huddle");
-    expect(derived("action_decision", fixed)).toContain("The next time this happens");
+    expect(derived("action_decision", fixed)).toMatch(/\bnext time\b/i);
     expect(derived("field_application", fixed)).toContain("The next time this happens");
     expect(validateEditedReview(fixed, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
   });
@@ -700,7 +704,9 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
       */
     for (const kind of ["action_decision", "field_application"] as const) {
       const q = derived(kind, broken)!;
-      expect(q, kind).toMatch(/next time this happens/i);
+      // APPLY IT keeps the shipped pointer verbatim; YOUR DECISION carries it as a question
+      // since R4-R5C17A. Neither may name the host's moment — that is the property here.
+      expect(q, kind).toMatch(kind === "field_application" ? /next time this happens/i : /\bnext time\b/i);
       expect(q, kind).not.toContain("leaving the floor");
     }
     {
@@ -740,7 +746,7 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
     expect(derived("scenario", c)).toContain("morning huddle");
     expect(derived("observable_standard", c)).toBeNull();
     for (const kind of ["action_decision", "field_application"] as const) {
-      expect(derived(kind, c), kind).toMatch(/next time this happens/i);
+      expect(derived(kind, c), kind).toMatch(kind === "field_application" ? /next time this happens/i : /\bnext time\b/i);
     }
     // BEFORE YOU FINISH names no occasion at all now (R4-R5C16B) — the strongest form of this rule.
     expect(derived("completion_check", c)).toBe("What might make this difficult to do in real work?");
@@ -872,7 +878,7 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     const text = (k: string) => out.elements.find((e) => e.kind === k)!.content;
     expect(text("observable_standard")).toBe(PREVIEW_ANSWERS.observableBehavior);
     expect(text("scenario").toLowerCase()).toContain("at each handoff point");
-    expect(text("action_decision")).toContain("The next time this happens");
+    expect(text("action_decision")).toMatch(/\bnext time\b/i);
     expect(text("field_application")).toContain("The next time this happens");
     expect(text("completion_check")).toBe("What might make this difficult to do in real work?");
     // A — one criterion, one section; since Slice R4-R5C14A that section is WHAT SUCCESS LOOKS

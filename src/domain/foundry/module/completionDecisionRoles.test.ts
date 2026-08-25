@@ -78,8 +78,15 @@ describe("[R4-R5C16B · T1-T4] BEFORE YOU FINISH asks what is hard, not what you
   });
 
   it("T2 YOUR DECISION still asks for the learner's own commitment", () => {
-    expect(renderDecisionSentence(CONTRACT, APP, "ko")).toBe("다음에 이런 상황이 생기면 무엇을 다르게 해보겠습니까?");
-    expect(renderDecisionSentence(CONTRACT, APP, "en")).toBe("The next time this happens, what will you do differently?");
+    /*
+      RETARGETED BY R4-R5C17A, not weakened. The property this test owns — YOUR DECISION asks the
+      learner for a commitment rather than supplying one — is unchanged and still asserted exactly.
+      The sentence moved because a real learner proved the old one was answerable by copying THE
+      STANDARD; it now asks for their own next opportunity as well. See
+      `decisionOpportunityAnchor.test.ts` for the copy-resistance property itself.
+    */
+    expect(renderDecisionSentence(CONTRACT, APP, "ko")).toBe("이것을 가장 먼저 해볼 상황은 언제인가요? 그때 무엇을 하겠어요?");
+    expect(renderDecisionSentence(CONTRACT, APP, "en")).toBe("When is the next time this will come up for you, and what will you do then?");
   });
 
   it("T3 the two are not the same mental operation", () => {
@@ -88,7 +95,7 @@ describe("[R4-R5C16B · T1-T4] BEFORE YOU FINISH asks what is hard, not what you
       const decision = renderDecisionSentence(CONTRACT, APP, loc);
       expect(before).not.toBe(decision);
       // One asks what will happen to you; the other asks what you will do.
-      expect(decision, loc).toMatch(loc === "ko" ? /무엇을 다르게 해보겠습니까/ : /what will you do differently/);
+      expect(decision, loc).toMatch(loc === "ko" ? /무엇을\s*하겠/ : /what will you do/i);
       expect(before, loc).toMatch(loc === "ko" ? /어렵게 만드는 것/ : /make this difficult/);
       expect(before, loc).not.toMatch(loc === "ko" ? /하시겠습니까|해보겠습니까/ : /what will you do/i);
     }

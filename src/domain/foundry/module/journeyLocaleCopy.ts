@@ -45,7 +45,13 @@ export type JourneyCopy = {
   /** IN CONTEXT — the moment and the pressure, pointing at the standard rather than repeating it. */
   scenario: (trigger: string, pressureClause: string) => string;
   pressure: Record<PressureFrame, string>;
-  /** YOUR DECISION — asks; never pre-writes a commitment (C11). */
+  /**
+   * YOUR DECISION — asks; never pre-writes a commitment (C11).
+   *
+   * TWO HALVES SINCE R4-R5C17A: the learner's own next opportunity, and what they will do at it.
+   * The first half is the one the training cannot print, which is what makes the section
+   * answerable only by the learner.
+   */
   decision: string;
   /** APPLY IT — the next real occasion, plus an optional construct clause. */
   application: (constructClause: string) => string;
@@ -93,7 +99,7 @@ const EN: JourneyCopy = {
     being_watched: "other people are watching",
     nobody_steps_up: "nobody offers to take it",
   },
-  decision: "The next time this happens, what will you do differently?",
+  decision: "When is the next time this will come up for you, and what will you do then?",
   application: (constructClause) => `The next time this happens is the first real chance to try it for yourself.${constructClause}`,
   constructClause: (label) => ` This is ${label} in practice.`,
   rationale: (problem, introduces) => `${upperFirst(problem)}. This program introduces ${introduces} for exactly that.`,
@@ -152,7 +158,7 @@ const KO: JourneyCopy = {
     being_watched: "다른 사람들이 지켜보고 있을 때",
     nobody_steps_up: "아무도 나서지 않을 때",
   },
-  decision: "다음에 이런 상황이 생기면 무엇을 다르게 해보겠습니까?",
+  decision: "이것을 가장 먼저 해볼 상황은 언제인가요? 그때 무엇을 하겠어요?",
   application: (constructClause) => `다음에 이런 상황이 생기는 것이 실제로 해볼 첫 기회입니다.${constructClause}`,
   // `입니다` attaches to any noun without agreement, so the Host's construct label is safe here.
   constructClause: (label) => ` 이것이 실제 업무에서의 ${label}입니다.`,

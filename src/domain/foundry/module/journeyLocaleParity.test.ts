@@ -61,7 +61,7 @@ const ENGLISH_FRAME =
 describe("[R4-R5C13 · T1-T6] a Korean program renders Korean sentences", () => {
   it("T1 YOUR DECISION", () => {
     const ko = renderDecisionSentence(KO_BEHAVIOR, APP, "ko");
-    expect(ko).toBe("다음에 이런 상황이 생기면 무엇을 다르게 해보겠습니까?");
+    expect(ko).toBe("이것을 가장 먼저 해볼 상황은 언제인가요? 그때 무엇을 하겠어요?");
     expect(ko).not.toMatch(ENGLISH_FRAME);
   });
 
@@ -140,7 +140,9 @@ describe("[R4-R5C13 · T7] English output is byte-identical to what R4-R5C11 shi
     expect(renderScenarioSentence(EN_BEHAVIOR, { frame: "time_is_short" } as never)).toBe(
       "At the morning huddle, when time is running short, this is easiest to skip.",
     );
-    expect(renderDecisionSentence(EN_BEHAVIOR, APP)).toBe("The next time this happens, what will you do differently?");
+    // MOVED BY R4-R5C17A, deliberately: this is the one C11 sentence a real learner proved was
+    // answerable by copying THE STANDARD. Every other renderer below is still byte-identical.
+    expect(renderDecisionSentence(EN_BEHAVIOR, APP)).toBe("When is the next time this will come up for you, and what will you do then?");
     expect(renderApplicationSentence(EN_BEHAVIOR, APP, null)).toBe(
       "The next time this happens is the first real chance to try it for yourself.",
     );
@@ -243,7 +245,7 @@ describe("[R4-R5C13 · T10] Host and model text is interpolated verbatim", () =>
       expect(deriveInstructionalContent(kind, ko), kind).not.toMatch(ENGLISH_FRAME);
     }
     const en = contractsFromProposal(proposal, 7, "리더가 신뢰를 잃고 있다", null, undefined, [], "en")!;
-    expect(deriveInstructionalContent("action_decision", en)).toBe("The next time this happens, what will you do differently?");
+    expect(deriveInstructionalContent("action_decision", en)).toBe("When is the next time this will come up for you, and what will you do then?");
   });
 
   it("the generation path composes in the locale it ran in", () => {

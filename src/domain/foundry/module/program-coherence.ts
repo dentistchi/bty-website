@@ -2103,6 +2103,28 @@ export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContra
 
     The learner's own `decision_response_text` remains the decision authority; this section now
     asks for it instead of supplying it.
+
+    ASKING IS NOT ENOUGH — THE ANSWER WAS STILL ON THE SCREEN (Slice R4-R5C17A).
+
+    A real learner completed the Korean integrity training and answered V11 — "could you have
+    answered by copying what was already shown?" — YES. C11 removed the ANSWER from this section
+    and left its AVAILABILITY: THE STANDARD is printed one section up, it prescribes exactly what
+    to do differently, and learner-side validation is a non-empty check. "다음에 이런 상황이
+    생기면 무엇을 다르게 해보겠습니까?" was completely and truthfully answered by pasting the
+    Host's sentence.
+
+    So the question now asks for the one thing the training cannot print: WHICH real occasion,
+    and when. THE STANDARD may still shape the action — that is the program doing its job — but
+    it can no longer be the whole answer.
+
+    THE TENSION THIS ACCEPTS, named rather than glossed. Slice 3.2L-R10-A.2 removed "When is the
+    next time you …?" from the COMPLETION mode, because asking the participant to invent an
+    occasion opened a side door to a second OPERATIONAL MOMENT competing with the derived one.
+    That rule is not weakened here, because the authority is different: the program's operational
+    moment is still derived and still stated in THE STANDARD and APPLY IT, and nothing the
+    learner writes here becomes one. What they name is their own first attempt — the same thing
+    `decision_response_text` has always been, and the same thing the Apply window is already
+    scheduled against.
   */
   return journeyCopy(locale).decision;
 }

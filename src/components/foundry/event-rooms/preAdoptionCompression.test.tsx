@@ -134,7 +134,7 @@ describe("[R4-R2E-R4] Review opens as a summary, not a document", () => {
       learner's commitment, so what is applied — and previewed — is the question that asks for it.
     */
     expect(screen.getByTestId("program-section-preview-action_decision").textContent)
-      .toContain("The next time this happens, what will you do differently?");
+      .toContain("When is the next time this will come up for you, and what will you do then?");
   });
 
   it("nothing was removed — the full comparison is one tap away", async () => {
@@ -202,7 +202,7 @@ describe("[R4-R2E-R4] Review opens as a summary, not a document", () => {
       this fixture's payload prose. Adoption used to persist the payload anyway, which is the
       defect a Korean Host found: Korean on screen, English in the adopted training.
     */
-    expect(by.get("action_decision")!.content).toBe("The next time this happens, what will you do differently?");
+    expect(by.get("action_decision")!.content).toBe("When is the next time this will come up for you, and what will you do then?");
     // The declarations sent alongside match, so R2's authority sees the same decisions.
     const decisions = (onApply.mock.calls[0] as unknown[])[3] as Record<string, string>;
     expect(decisions.why_it_matters).toBe("keep");

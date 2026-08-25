@@ -714,7 +714,16 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     */
     // Slice 3.2R-R2.3 — capitalized, like every sibling renderer. G7 below already expected the
     // capitalized form for APPLY IT; YOUR DECISION was the lone outlier.
-    expect(d.startsWith("The next time this happens, ")).toBe(true);
+    /*
+      THE POINTER SURVIVED R4-R5C17A; ITS WORDING DID NOT. This asserted the literal opener "The
+      next time this happens, ". YOUR DECISION now asks the learner WHICH next occasion it will be
+      — a real learner proved the old question was fully answerable by copying THE STANDARD — so
+      the pointer is still the subject of the sentence and no longer its first four words. What
+      this line exists to protect is that the section points at the next occurrence and names no
+      moment of its own, which is what is asserted now.
+    */
+    expect(d).toMatch(/^[A-Z]/);
+    expect(d).toMatch(/\bnext time\b/i);
     expect(d).not.toContain("your");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
@@ -886,7 +895,8 @@ describe("[3.2L-R6.2] perspective never collides", () => {
     */
     for (const moment of ["during the Monday huddle", "before closing the case", "next shift change", "아침 허들 때마다"]) {
       const d = renderDecisionSentence(GOOD, { ...APP2, applicationMoment: moment });
-      expect(d.startsWith("The next time this happens, "), `${moment} → ${d}`).toBe(true);
+      // R4-R5C17A moved the wording; the pointer and the capital are still asserted here.
+      expect(d, `${moment} → ${d}`).toMatch(/^[A-Z][^?]*\bnext time\b/i);
       expect(d, "the host's phrase is not echoed, edited or re-cased here").not.toContain(moment);
     }
   });
