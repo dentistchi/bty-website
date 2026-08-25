@@ -289,33 +289,29 @@ ok "…refund replay writes nothing"             "$($C -c "select (apply_apple_p
 ok "…no extra audit row"                       "$($C -c "select count(*) from timed_access_pass_audit;")" "$AUD"
 
 echo
-echo "=== §K RECOVERED REFUND_REVERSED — and a MEASURED SCHEMA BLOCKER ==="
-# MEASURED DEFECT, recorded rather than papered over.
-#
-# `timed_pass_duration_matches_type` pins duration_seconds to pass_type: a ONE_HOUR grant is
-# EXACTLY 3600 seconds. R4E-R1's reversal issues a compensation grant for `refund_denied_seconds`,
-# which for an ACTIVE refund is the REMAINING window -- 3599 here -- so the insert is refused.
-#
-# The earlier R4E reversal gate passed only because it refunded an AVAILABLE grant, where the
-# denied value happens to be a whole product duration. Compensation therefore works for a
-# full-value refund and is IMPOSSIBLE for a partial one, which is the common case.
-#
-# There is no correct fix to pick unilaterally: rounding up to 3600 would restore MORE time than
-# was removed, which §N forbids outright. Representing a partial credit needs a product decision.
-# This gate pins the behaviour as it actually is, so the limitation cannot be forgotten.
+echo "=== §K RECOVERED REFUND_REVERSED — partial compensation, now REPRESENTABLE ==="
+# These three gates used to pin a BLOCKER: `timed_pass_duration_matches_type` made a partial
+# compensation impossible, so the reversal was refused and no grant could exist. BUILD
+# 26U-R4E-R4-R1 closed that with the REFUND_CREDIT grant type, and the gates now assert the
+# behaviour that replaced it. The harness failing when the world changed is the harness working.
 $C -c "select karaoke_record_apple_notification('22222222-2222-4222-8222-222222222222','REFUND_REVERSED',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rev','API_RECOVERY');" >/dev/null
 DENIED=$($C -c "select refund_denied_seconds from karaoke_apple_purchases where apple_transaction_id='txn-recover';")
 echo "   refund_denied_seconds for the ACTIVE refund: $DENIED"
 ok "denied value is PARTIAL (not a whole product)" "$([ "$DENIED" -ne 3600 ] && echo partial || echo whole)" "partial"
-REVOUT=$(docker exec -i bty-r4e psql -U postgres -Atq -c "select apply_apple_refund_reversal('Sandbox','txn-recover','22222222-2222-4222-8222-222222222222');" 2>&1)
-ok "partial compensation is REFUSED by the schema" "$(echo "$REVOUT" | grep -qi 'timed_pass_duration_matches_type' && echo refused || echo allowed)" "refused"
-ok "original grant remains terminal REVOKED"       "$(st $G_REC)" "REVOKED"
-ok "no compensation grant was created"             "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='22222222-2222-4222-8222-222222222222';")" "0"
-ok "no partial-duration grant leaked in"           "$($C -c "select count(*) from timed_access_pass_grants where duration_seconds not in (3600,14400,86400);")" "0"
+OUT=$($C -c "select apply_apple_refund_reversal('Sandbox','txn-recover','22222222-2222-4222-8222-222222222222');")
+COMP=$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('compensationGrantId') or '')")
+ok "partial compensation now SUCCEEDS"            "$([ -n "$COMP" ] && echo yes || echo no)" "yes"
+ok "…restoring the EXACT denied seconds"          "$($C -c "select duration_seconds from timed_access_pass_grants where id='$COMP';")" "$DENIED"
+ok "…as REFUND_CREDIT, not a product type"        "$($C -c "select pass_type from timed_access_pass_grants where id='$COMP';")" "REFUND_CREDIT"
+ok "…AVAILABLE, unpaid, no purchase link"         "$($C -c "select status||'/'||is_paid||'/'||coalesce(apple_purchase_id::text,'null') from timed_access_pass_grants where id='$COMP';")" "AVAILABLE/false/null"
+ok "original grant remains terminal REVOKED"      "$(st $G_REC)" "REVOKED"
+ok "no PRODUCT-typed grant has a partial duration" "$($C -c "select count(*) from timed_access_pass_grants where pass_type<>'REFUND_CREDIT' and duration_seconds not in (3600,14400,86400);")" "0"
+ok "duplicate recovered reversal is inert"        "$($C -c "select (apply_apple_refund_reversal('Sandbox','txn-recover','22222222-2222-4222-8222-222222222222')->>'replayed');")" "true"
+ok "…exactly one compensation grant"              "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='22222222-2222-4222-8222-222222222222';")" "1"
 
 echo
-echo "=== §K reversal of a FULL-VALUE refund still works (the covered case) ==="
-ok "full-value reversal issued a compensation grant" "$($C -c "select count(*) from timed_access_pass_grants where source_type='REFUND_REVERSAL' and duration_seconds=3600;")" "1"
+echo "=== §K reversal of a FULL-VALUE refund is ALSO a credit now ==="
+ok "full-value reversal issued a credit"          "$($C -c "select count(*) from timed_access_pass_grants where source_type='REFUND_REVERSAL' and pass_type='REFUND_CREDIT' and duration_seconds=3600;")" "1"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "ALL R4E GATES PASS (0 failures)"; else echo "FAILURES: $FAIL"; fi
