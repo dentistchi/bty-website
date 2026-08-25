@@ -691,10 +691,22 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
     */
     const broken = withTrigger("before leaving the floor");
     expect(derivesFrom("completion_check", broken)).toBe(true);
-    for (const kind of ["completion_check", "action_decision", "field_application"] as const) {
+      /*
+        NO OCCASION AT ALL (Slice R4-R5C16B). This fixture's program HAS a decision section, so
+        BEFORE YOU FINISH no longer asks for a second commitment — it asks what makes the first
+        one hard. The property this test defends, that the completion question cannot invent a
+        second operational moment, holds more strongly than before: it now names no moment
+        whatever. The two sections that DO point at the next occurrence are asserted as before.
+      */
+    for (const kind of ["action_decision", "field_application"] as const) {
       const q = derived(kind, broken)!;
       expect(q, kind).toMatch(/next time this happens/i);
       expect(q, kind).not.toContain("leaving the floor");
+    }
+    {
+      const q = derived("completion_check", broken)!;
+      expect(q).toBe("What might make this difficult to do in real work?");
+      expect(q).not.toContain("leaving the floor");
     }
   });
 
@@ -705,8 +717,9 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
       own dependency graph then refused. The property G2 exists to protect — the question is
       anchored to the DERIVED first instance — is unchanged and still asserted.
     */
+    // Anchored to no occasion at all since R4-R5C16B — see the note in G1.
     expect(derived("completion_check")).toBe(
-      "The next time this happens, what exactly will you do?",
+      "What might make this difficult to do in real work?",
     );
     // It never asks WHEN, and it does not repeat the standard verbatim.
     expect(derived("completion_check")).not.toMatch(/when is the next time/i);
@@ -717,17 +730,20 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
 
   it("G3: it moves with the trigger, from the same authority", () => {
     const c = withTrigger("at each morning huddle");
+    // It cannot move with the trigger because it no longer names one (R4-R5C16B).
     expect(derived("completion_check", c)).toBe(
-      "The next time this happens, what exactly will you do?",
+      "What might make this difficult to do in real work?",
     );
     // The host's moment appears where it is STATED — the standard and the scenario. The three
     // derived sections point at its next occurrence without naming it (3.2P-R3.7).
     // The moment is stated by the section that owns it; THE STANDARD states none.
     expect(derived("scenario", c)).toContain("morning huddle");
     expect(derived("observable_standard", c)).toBeNull();
-    for (const kind of ["action_decision", "field_application", "completion_check"] as const) {
+    for (const kind of ["action_decision", "field_application"] as const) {
       expect(derived(kind, c), kind).toMatch(/next time this happens/i);
     }
+    // BEFORE YOU FINISH names no occasion at all now (R4-R5C16B) — the strongest form of this rule.
+    expect(derived("completion_check", c)).toBe("What might make this difficult to do in real work?");
   });
 
   it("every enum pair is moment-free or moment-derived, never moment-inventing", () => {
@@ -742,7 +758,8 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
         // 3.2P-R3.7: no pair reads the host's moment any more, so none of them can go quiet
         // for its phrasing — and none can invent an occasion either.
         expect(derived("completion_check", bad), `${verificationTarget}`).not.toBeNull();
-        if (responseMode === "name_the_moment") expect(q).toContain("The next time this happens,");
+        // With a decision section present, no enum pair names an occasion at all (R4-R5C16B).
+        expect(q).toBe("What might make this difficult to do in real work?");
       }
     }
   });
@@ -857,7 +874,7 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     expect(text("scenario").toLowerCase()).toContain("at each handoff point");
     expect(text("action_decision")).toContain("The next time this happens");
     expect(text("field_application")).toContain("The next time this happens");
-    expect(text("completion_check")).toContain("The next time this happens");
+    expect(text("completion_check")).toBe("What might make this difficult to do in real work?");
     // A — one criterion, one section; since Slice R4-R5C14A that section is WHAT SUCCESS LOOKS
     // LIKE, the Host's own evidence sentence, rather than a tail on THE STANDARD.
     expect(text("evidence")).toContain(PREVIEW_ANSWERS.successEvidence!);

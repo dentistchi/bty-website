@@ -57,6 +57,11 @@ export type JourneyCopy = {
   /** BEFORE YOU FINISH — used only when the Host wrote no question of their own. */
   /** The whole "name the moment" question — the join differs, so it is not composed by the caller. */
   completionNameTheMoment: (ask: string) => string;
+  /**
+   * BEFORE YOU FINISH when the program ALREADY asks for a commitment (Slice R4-R5C16B).
+   * Not a second decision — what makes the decision hard to keep.
+   */
+  completionBarrier: string;
   completionAsk: Record<VerificationTarget, string>;
   completionTarget: Record<VerificationTarget, string>;
   completionMode: Record<Exclude<ResponseMode, "name_the_moment">, (target: string) => string>;
@@ -94,6 +99,7 @@ const EN: JourneyCopy = {
   rationale: (problem, introduces) => `${upperFirst(problem)}. This program introduces ${introduces} for exactly that.`,
   introducesConstruct: (noun) => `one shared ${noun}`,
   introducesDefault: "one visible way of working",
+  completionBarrier: "What might make this difficult to do in real work?",
   completionNameTheMoment: (ask) => `The next time this happens, ${ask}?`,
   completionAsk: {
     the_behaviour: "what exactly will you do",
@@ -154,6 +160,7 @@ const KO: JourneyCopy = {
   rationale: (problem, introduces) => `${problem}. 이 프로그램이 그 문제에 대해 내놓는 것은 ${introduces}입니다.`,
   introducesConstruct: (noun) => `하나의 공통된 ${noun}`,
   introducesDefault: "눈에 보이는 하나의 일하는 방식",
+  completionBarrier: "실제 업무에서 이것을 행동으로 옮기기 어렵게 만드는 것은 무엇일까요?",
   // Korean takes no comma after the conditional "…면", so the join lives with the language.
   completionNameTheMoment: (ask) => `다음에 이런 상황이 생기면 ${ask}?`,
   completionAsk: {

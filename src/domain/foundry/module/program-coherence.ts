@@ -2160,8 +2160,32 @@ export function renderApplicationSentence(
  * exist, so the section goes quiet rather than asking about a "next time" BTY has already
  * decided it cannot name.
  */
-export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract, locale?: JourneyLocale): string | null {
+export function renderCompletionQuestion(
+  b: BehaviorContract,
+  c: CompletionContract,
+  locale?: JourneyLocale,
+  hasActionDecision = false,
+): string | null {
   const copy = journeyCopy(locale);
+  /*
+    TWO BOXES, TWO JOBS (Slice R4-R5C16B).
+
+    FOUNDER-OBSERVED on a real learner mid-training. YOUR DECISION asked "다음에 이런 상황이
+    생기면 무엇을 다르게 해보겠습니까?" and BEFORE YOU FINISH, four lines later, asked for the
+    same commitment again — two free-text boxes, and the same sentence would have answered both
+    truthfully. That is the defect R4-R5C12A closed from the other side: not copying the answer
+    off the screen this time, but writing the same answer twice.
+
+    So where the program ALREADY has a decision section, this one stops asking for a decision. It
+    asks what makes the decision hard to keep — answerable only from the learner's own work, not
+    from THE STANDARD, and not the same mental operation as choosing what to do.
+
+    WHERE THERE IS NO DECISION SECTION nothing changes: this stays the program's one place to ask
+    for a concrete commitment, exactly as before. And a Host who wrote their own completion
+    question still outranks all of it — `resolveCompletionCheck` decides that before this renders
+    (Slice 3.2R-R2.3), so their words are never replaced by BTY's.
+  */
+  if (hasActionDecision) return copy.completionBarrier;
   const target: Record<VerificationTarget, string> = copy.completionTarget;
   /*
     WHAT THOSE THREE TARGET CLAUSES SAY, and why — the wording now lives in `journeyLocaleCopy`.

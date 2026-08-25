@@ -2240,7 +2240,7 @@ export function validateProgramProposal(
     if (kind === "completion_check") {
       return resolveCompletionCheck(
         ctx?.completionPrompt,
-        completionContract ? renderCompletionQuestion(contract, completionContract, locale) : null,
+        completionContract ? renderCompletionQuestion(contract, completionContract, locale, required.includes("action_decision")) : null,
       );
     }
     if (kind === "follow_up" && followUpContract) return renderFollowUpSentence(contract, followUpContract, ctx?.followUpDays ?? 0, locale);
@@ -2494,7 +2494,9 @@ export function validateProgramProposal(
     the Host wrote none, is checked exactly as before.
   */
   const hostAuthoredCheck = (ctx?.completionPrompt ?? "").trim().length > 0;
-  const derivedCheck = completionContract ? renderCompletionQuestion(contract, completionContract, locale) : null;
+  const derivedCheck = completionContract
+    ? renderCompletionQuestion(contract, completionContract, locale, required.includes("action_decision"))
+    : null;
   const dependency = validateProgramDependencies(
     elements.map((e): ProgramSection => ({
       kind: e.kind,
@@ -3009,6 +3011,14 @@ export type ProgramContracts = {
   hostBehavior: string;
   /** The Host's `successEvidence`, verbatim — WHAT SUCCESS LOOKS LIKE and nothing else. */
   hostEvidence: string;
+  /**
+   * Does this program already ask the learner to decide something? (Slice R4-R5C16B)
+   *
+   * When it does, BEFORE YOU FINISH stops asking for a second commitment and asks what makes the
+   * first one hard instead. Carried on the contracts for the same reason the locale is: the
+   * validator and the review surface must resolve the section identically.
+   */
+  hasActionDecision: boolean;
 };
 
 /** The contracts a proposal was generated with, as the starting point for review. */
@@ -3075,6 +3085,7 @@ export function contractsFromProposal(
     locale,
     hostBehavior: (constructSource?.observableBehavior ?? "").trim(),
     hostEvidence: (constructSource?.successEvidence ?? "").trim(),
+    hasActionDecision: proposal.elements.some((e) => e.kind === "action_decision"),
   };
 }
 
@@ -3171,7 +3182,10 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
       : renderApplicationSentence(c.behavior, a, c.construct, c.locale);
   }
   if (kind === "completion_check") {
-    return resolveCompletionCheck(c.completionPrompt, c.completion ? renderCompletionQuestion(c.behavior, c.completion, c.locale) : null);
+    return resolveCompletionCheck(
+      c.completionPrompt,
+      c.completion ? renderCompletionQuestion(c.behavior, c.completion, c.locale, c.hasActionDecision) : null,
+    );
   }
   if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays, c.locale);
   return null;

@@ -123,6 +123,8 @@ export const PREVIEW_CONTRACTS: ProgramContracts = {
   */
   hostBehavior: PREVIEW_ANSWERS.observableBehavior as string,
   hostEvidence: PREVIEW_ANSWERS.successEvidence as string,
+  // The v7 window this fixture reproduces asked the learner to decide (Slice R4-R5C16B).
+  hasActionDecision: true,
   completionPrompt: null,
   behavior: {
     actor: V7_LIVE.behavior.actor,
