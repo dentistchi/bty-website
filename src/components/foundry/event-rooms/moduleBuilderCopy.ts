@@ -389,6 +389,9 @@ export type ModuleBuilderCopy = {
   /** R4-R5C12A — Review advisory when a learner question can be answered by repeating the material. */
   questionCopyLike: string;
   questionCopyLikeCta: string;
+  /** R4-R5C14A-R3 — the way out of a refused adoption. */
+  programRefusedRecovery: string;
+  programRefusedRecoveryCta: string;
   // step 8 review — completion-question row + publish action
   reviewCompletion: string;
   publishCta: string;
@@ -645,6 +648,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     questionCopyLike:
       "This question can be answered by repeating the training above. Ask for the learner\u2019s own experience or next decision instead.",
     questionCopyLikeCta: "Edit question",
+    programRefusedRecovery:
+      "This training changed after BTY drafted it. Create a new draft using your latest changes.",
+    programRefusedRecoveryCta: "Draft again",
     reviewCompletion: "COMPLETION QUESTION",
     publishCta: "Approve & create session",
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
@@ -974,6 +980,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     questionCopyLike:
       "이 질문은 위 내용을 그대로 반복해서 답할 수 있습니다. 학습자의 실제 경험이나 다음 결정을 묻는 질문이 더 좋습니다.",
     questionCopyLikeCta: "질문 수정",
+    programRefusedRecovery:
+      "BTY가 초안을 만든 뒤 교육 내용이 변경되었습니다. 최신 내용으로 다시 초안을 만드세요.",
+    programRefusedRecoveryCta: "다시 초안 만들기",
     reviewCompletion: "완료 질문",
     publishCta: "승인하고 세션 만들기",
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",

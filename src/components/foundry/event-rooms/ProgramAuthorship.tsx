@@ -26,6 +26,7 @@ import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, resolveAdoptionRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
+import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
 import { EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
 
 /**
@@ -97,6 +98,7 @@ export function ProgramAuthorship({
   onApply,
   currentContextFingerprint,
   adoptionRefusal,
+  onDismissRefusal,
   onPendingChange,
   onAdopted,
 }: {
@@ -164,6 +166,12 @@ export function ProgramAuthorship({
    * and this surface must not say otherwise (Slice 3.2L-R11.3A).
    */
   adoptionRefusal?: string | null;
+  /**
+   * Clear the parent's refusal so the entry surface can be reached again (Slice R4-R5C14A-R3).
+   * The refusal itself is the parent's state and is only reset when an adoption is ATTEMPTED —
+   * which the Host cannot do, because the screen that adopts is the one the refusal replaced.
+   */
+  onDismissRefusal?: () => void;
   /**
    * Raised while a program draft is in flight. The Builder uses it to disable
    * publication — a generation and a publication must never overlap on one draft.
@@ -253,6 +261,33 @@ export function ProgramAuthorship({
     setFailureCode("");
     setPhase("confirm");
   }, [draftId, answers]);
+
+  /**
+   * BACK TO THE ENTRY SURFACE AFTER A REFUSED ADOPTION (Slice R4-R5C14A-R3).
+   *
+   * Everything the refused review held is dropped, including the continuity cache: that proposal
+   * was written from inputs the draft no longer has, and keeping it would let a later mount offer
+   * it again. `phase` returns to `idle`, which is the ONLY state that renders the generation
+   * entry — the same one a Host reaches before their first draft, with the same confirmation
+   * ahead of it. No provider call happens here.
+   */
+  const recoverFromRefusal = useCallback(() => {
+    onDismissRefusal?.();
+    clearCachedProposal(draftId);
+    setApplyOutcome(null);
+    setProposal(null);
+    setAttemptId(null);
+    setProposalFingerprint("");
+    setContracts(null);
+    setBaseContracts(null);
+    setDecisions({});
+    setEdits({});
+    setAdoptedDraftOpen(false);
+    setFailure(null);
+    setFailureCode("");
+    setPhase("idle");
+    requestAnimationFrame(() => generateButtonRef.current?.focus());
+  }, [draftId, onDismissRefusal]);
 
   const cancelConfirmation = useCallback(() => {
     setTarget(null);
@@ -419,6 +454,8 @@ export function ProgramAuthorship({
    * cannot disagree with itself, because there is only ever one behavioural authority to
    * disagree with. Narrative sections stay direct free-text edits: they instruct nobody.
    */
+  const t = MODULE_BUILDER_COPY[locale];
+
   const derivedContent = useCallback(
     (kind: JourneyElementKind): string | null => (contracts ? deriveInstructionalContent(kind, contracts) : null),
     [contracts],
@@ -737,6 +774,35 @@ export function ProgramAuthorship({
           <p className="mt-0.5 text-sm leading-5 text-amber-100/75" data-testid="program-refused-explanation">
             {copy.explanation}
           </p>
+          {/*
+            THE WAY OUT (Slice R4-R5C14A-R3).
+
+            FOUNDER-OBSERVED on a real Korean training. The refusal was CORRECT — the draft had
+            moved since the proposal was written, and the attempt behind it was already spent —
+            and the Host's edits were safely saved. But `apply()` sets `phase` to "applied"
+            whatever the outcome, and "Draft my training program" lives only in `idle`/`failed`,
+            so a correct refusal replaced the only screen that could recover from it. Zero
+            actions, measured. The Host was told what went wrong and given nothing to do about
+            it until they closed and reopened the app.
+
+            One action, and it starts nothing on its own: it returns to the entry surface, where
+            drafting again still goes through the Training Program Target confirmation exactly as
+            a first draft does. Nothing about the refusal itself is relaxed — the stale proposal
+            is discarded here rather than reused, so it cannot be adopted by another route.
+          */}
+          <p className="mt-2 text-sm leading-5 text-amber-100/85" data-testid="program-refused-recovery">
+            {t.programRefusedRecovery}
+          </p>
+          <button
+            type="button"
+            onClick={recoverFromRefusal}
+            data-testid="program-refused-retry"
+            /* 44px, because this is the control the Host is stuck without and it is tapped with
+               a thumb — the same target size the rest of this Builder uses. */
+            className="mt-1.5 self-start rounded-lg px-3 py-2.5 text-sm font-semibold text-amber-100 underline underline-offset-4 transition-colors hover:text-amber-50"
+          >
+            {t.programRefusedRecoveryCta} →
+          </button>
         </section>
       );
     }

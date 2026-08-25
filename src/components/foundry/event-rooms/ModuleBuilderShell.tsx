@@ -940,6 +940,7 @@ export function ModuleBuilderShell({
             onCheckResume={checkProgramResume}
             currentContextFingerprint={programFingerprint}
             adoptionRefusal={adoptionRefusal}
+            onDismissRefusal={() => setAdoptionRefusal(null)}
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
             onAdopted={() => setAdoptionHandoff((n) => n + 1)}
