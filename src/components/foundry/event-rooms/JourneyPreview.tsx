@@ -9,7 +9,7 @@ import {
   type RealityGroundedJourneyV1,
   type JourneyElementKind,
 } from "@/domain/foundry/module/journey";
-import { attributionKind } from "@/domain/foundry/module/program-authorship";
+import { attributionKind, groundingAfterPreviewEdit } from "@/domain/foundry/module/program-authorship";
 import { EDITABLE_FIELD } from "./reviewSurfaceStyles";
 import { MODULE_BUILDER_COPY, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 
@@ -233,17 +233,32 @@ export function JourneyPreview({
     (id: string, content: string) => {
       persist({
         ...journey,
-        elements: journey.elements.map((e) =>
-          e.id === id
-            ? {
-                ...e,
-                content,
-                // A Host edit is the Host's own statement → grounded once non-empty.
-                confirmationStatus: content.trim().length > 0 ? "grounded" : "needs_confirmation",
-                grounding: content.trim().length > 0 ? [{ sourceType: "host_statement", field: e.grounding[0]?.field ?? "problem" }] : [],
-              }
-            : e,
-        ),
+        elements: journey.elements.map((e) => {
+          if (e.id !== id) return e;
+          const filled = content.trim().length > 0;
+          return {
+            ...e,
+            content,
+            confirmationStatus: filled ? "grounded" : "needs_confirmation",
+            /*
+              WHOSE SENTENCE IS THIS NOW — ASKED, NOT DECIDED HERE (Slice R4-R5C18A).
+
+              This used to stamp `host_statement` on every edit and reach for the `problem` field
+              whenever the prior grounding was missing. Both were wrong, and the second only
+              surfaced through the first: `onChange` fires per keystroke, so clearing the box
+              persisted `grounding: []`, and the next character read `undefined?.field ?? "problem"`.
+              A completed training carries the result — BTY's completion question, published as the
+              Host's problem statement, and treated as the Host's own by the KEEP/USE default the
+              next adoption opens on.
+
+              `groundingAfterPreviewEdit` is the domain's answer, the same one adoption's edit
+              branch uses. And CLEARING NO LONGER ERASES: an empty box is unsettled, not
+              unattributed, so the identity the next keystroke needs is still there. The label stays
+              hidden while `needs_confirmation`, so nothing claims authorship of an empty section.
+            */
+            grounding: filled ? groundingAfterPreviewEdit(e, e.kind) : e.grounding,
+          };
+        }),
       });
     },
     [journey, persist],

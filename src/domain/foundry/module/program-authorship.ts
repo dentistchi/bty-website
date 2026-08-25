@@ -25,7 +25,9 @@ import type { JourneyLocale } from "./journeyLocaleCopy";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
+  type GroundingSourceType,
   type JourneyElementKind,
+  type JourneyGrounding,
   type RealityGroundedJourneyV1,
 } from "./journey";
 import {
@@ -2737,7 +2739,14 @@ export function applyProgramProposal(
 }
 
 /** The Builder field each kind traces to, for the provenance record. */
-function groundingFieldFor(kind: JourneyElementKind): keyof BuilderAnswers {
+/**
+ * WHICH BUILDER FIELD GROUNDS THIS KIND — the single answer, now shared (Slice R4-R5C18A).
+ *
+ * Exported because the Journey preview needs it. It used to carry `?? "problem"` of its own, and
+ * a Host who cleared a textarea and typed again shipped a completion question grounded to the
+ * problem statement. A second opinion about grounding is how that happened, so there is one.
+ */
+export function groundingFieldFor(kind: JourneyElementKind): keyof BuilderAnswers {
   switch (kind) {
     case "why_it_matters":
       return "problem";
@@ -2754,6 +2763,49 @@ function groundingFieldFor(kind: JourneyElementKind): keyof BuilderAnswers {
     default:
       return "problem";
   }
+}
+
+/**
+ * WHAT A PREVIEW EDIT DOES TO AUTHORSHIP (Slice R4-R5C18A).
+ *
+ * The Journey preview is the third surface that can write an element's provenance, after the
+ * deterministic mapper and program adoption — and the only one that used to decide for itself.
+ * It issued `host_statement` for every edit and fell back to the `problem` field whenever the
+ * prior grounding was missing, which it is for exactly one keystroke after a Host clears the box.
+ * A real training published a BTY-composed completion question labelled as the Host's problem
+ * statement because of it.
+ *
+ * FOUR CASES, AND THE ONLY NEW JUDGEMENT IS THE FOURTH:
+ *
+ *   recorded provenance    → `provenanceAfterHostEdit` decides, exactly as adoption's edit branch
+ *                            does. The Host's own sentence stays theirs; BTY's becomes `host_edited`.
+ *   field already recorded → kept. A Host edit never re-grounds a section.
+ *   no provenance, EMPTY   → the Host is originating this sentence, so it is theirs, on the field
+ *                            the kind is grounded by. This is what a required element looks like
+ *                            before anyone has written it.
+ *   no provenance, FILLED  → someone wrote it and no path recorded who. Legacy. Returns nothing
+ *                            rather than claiming the Host wrote a Builder field they never filled
+ *                            — `attributionKind` then shows no label at all, which is the truth.
+ *
+ * PURE, and it never reads the NEW text: whether a Host typed one character or a paragraph does
+ * not change whose sentence it now is. The caller decides when to call it — this decides what.
+ */
+export function groundingAfterPreviewEdit(
+  el: { content?: string; grounding?: { sourceType?: unknown; field?: unknown }[] } | undefined,
+  kind: JourneyElementKind,
+): JourneyGrounding[] {
+  const prior = readProvenance(el);
+  const priorField = el?.grounding?.[0]?.field;
+  if (prior === null) {
+    if ((el?.content ?? "").trim().length > 0) return [];
+    return [{ sourceType: "host_statement", field: groundingFieldFor(kind) }];
+  }
+  return [
+    {
+      sourceType: provenanceAfterHostEdit(prior) as GroundingSourceType,
+      field: (typeof priorField === "string" ? priorField : groundingFieldFor(kind)) as keyof BuilderAnswers,
+    },
+  ];
 }
 
 /** Read an element's recorded provenance, tolerating the legacy `host_statement` shape. */
