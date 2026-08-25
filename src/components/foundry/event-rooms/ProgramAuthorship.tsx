@@ -40,6 +40,11 @@ import { EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSur
  * program behind.
  */
 
+/**
+ * KEPT AS AN EXPORT, NO LONGER THE DISPLAY SOURCE (Slice R4-R5C15). Every Host surface reads
+ * `t.journeyKind` so a Korean Manager sees Korean section names; this English map stays for the
+ * callers that still import it and for the tests that assert the English wording.
+ */
 export const KIND_LABEL: Record<JourneyElementKind, string> = {
   why_it_matters: "Why this matters",
   observable_standard: "The standard",
@@ -591,16 +596,14 @@ export function ProgramAuthorship({
   const entrySurface = (
       <section ref={sectionRef} className="flex flex-col gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-4" data-testid="program-authorship-entry">
         <div className="flex flex-col gap-1">
-          <h3 className="text-base font-semibold text-[#C9A66B]">Let BTY draft this training for you</h3>
+          <h3 className="text-base font-semibold text-[#C9A66B]">{t.paEntryTitle}</h3>
           <p className="text-sm leading-6 text-white/60">
-            From what you’ve described, BTY will write the whole program your team will experience — why it matters,
-            the standard, a situation to practise, the decision, and what happens afterwards. You review every
-            section before anything is applied.
+            {t.paEntryBody}
           </p>
         </div>
         {missing.length > 0 ? (
           <p className="text-xs leading-5 text-white/45" data-testid="program-missing-hint">
-            Still needed for a complete program: {missing.map((k) => KIND_LABEL[k]).join(", ")}
+            {t.paStillNeeded(missing.map((k) => t.journeyKind[k]).join(", "))}
           </p>
         ) : null}
         {failure ? (
@@ -632,7 +635,7 @@ export function ProgramAuthorship({
             data-testid="program-generate"
             className="self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
           >
-            Draft my training program
+            {t.paGenerateCta}
           </button>
         )}
         {/*
@@ -642,7 +645,7 @@ export function ProgramAuthorship({
         */}
         {!ready ? (
           <p className="text-xs text-white/40" data-testid="program-not-ready-reason">
-            {notReadyReason ?? "Add the problem, who it’s for, the behaviour and the evidence first."}
+            {notReadyReason ?? t.paNotReadyHint}
           </p>
         ) : null}
       </section>
@@ -658,7 +661,7 @@ export function ProgramAuthorship({
         <Modal
           open
           onClose={cancelConfirmation}
-          ariaLabel="Training program target"
+          ariaLabel={t.paTargetAriaLabel}
           panelDataTestId="program-target-confirm"
           /* The shared Modal panel is `bg-foundry-white` (#FFFFFF). The Builder is a dark
              surface, so this content is written in white — which rendered WHITE ON WHITE on
@@ -682,7 +685,7 @@ export function ProgramAuthorship({
                 data-target-draft-id={target.draftId}
                 className={`break-words text-lg font-semibold leading-7 ${target.focus ? "text-white" : "text-white/50"}`}
               >
-                {target.focus ?? "Untitled training draft"}
+                {target.focus ?? t.paUntitledDraft}
               </p>
             </div>
 
@@ -721,8 +724,8 @@ export function ProgramAuthorship({
   if (phase === "working") {
     return (
       <section className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-5" data-testid="program-working">
-        <p className="text-sm text-white/60">Writing your training program…</p>
-        <p className="mt-1 text-xs text-white/40">Nothing in your draft changes until you apply it.</p>
+        <p className="text-sm text-white/60">{t.paWorking}</p>
+        <p className="mt-1 text-xs text-white/40">{t.paWorkingNote}</p>
       </section>
     );
   }
@@ -730,7 +733,7 @@ export function ProgramAuthorship({
   if (phase === "applying") {
     return (
       <section className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-5" data-testid="program-applying">
-        <p className="text-sm text-white/60">Adding this program to your training…</p>
+        <p className="text-sm text-white/60">{t.paApplying}</p>
       </section>
     );
   }
@@ -739,9 +742,9 @@ export function ProgramAuthorship({
     if (applyOutcome?.status === "save_failed") {
       return (
         <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3.5 py-2.5" data-testid="program-apply-save-failed">
-          <p className="text-sm font-medium text-amber-100/90">This program wasn’t added.</p>
+          <p className="text-sm font-medium text-amber-100/90">{t.paApplyFailedTitle}</p>
           <p className="mt-0.5 text-sm leading-5 text-amber-100/75">
-            Nothing was saved, and your draft is unchanged. Your review is still here — try adding it again.
+            {t.paApplyFailedBody}
           </p>
         </section>
       );
@@ -749,7 +752,7 @@ export function ProgramAuthorship({
     if (applyOutcome?.status === "adopted_receipt_pending") {
       return (
         <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied-pending">
-          <p className="text-sm font-medium text-emerald-200/90">Added to your training. Finishing the record…</p>
+          <p className="text-sm font-medium text-emerald-200/90">{t.paAppliedPending}</p>
         </section>
       );
     }
@@ -829,7 +832,7 @@ export function ProgramAuthorship({
       */
       <section className="flex flex-col rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-emerald-200/90">✓ Added to your training.</p>
+          <p className="text-sm font-medium text-emerald-200/90">{t.paAppliedTitle}</p>
           {proposal ? (
             <button
               type="button"
@@ -843,7 +846,7 @@ export function ProgramAuthorship({
                  full size — the tappable box grows, the visual row does not. */
               className="-my-2 flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-xs font-medium text-emerald-100/80 hover:bg-emerald-400/10"
             >
-              {adoptedDraftOpen ? "Hide BTY draft ▴" : "Review BTY draft ▾"}
+              {adoptedDraftOpen ? t.paAppliedHide : t.paAppliedShow}
             </button>
           ) : null}
         </div>
@@ -860,7 +863,7 @@ export function ProgramAuthorship({
             {proposal.elements.map((e) => (
               <div key={e.kind} className="flex flex-col gap-1" data-testid={`program-adopted-section-${e.kind}`}>
                 <span className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/75">
-                  {KIND_LABEL[e.kind]}
+                  {t.journeyKind[e.kind]}
                 </span>
                 <p className={READONLY_TEXT} data-surface="readonly">{e.content}</p>
               </div>
@@ -876,16 +879,16 @@ export function ProgramAuthorship({
   return (
     <section className="flex flex-col gap-4" data-testid="program-review">
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">BTY drafted this for you</span>
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.paReviewEyebrow}</span>
         <p className="text-sm leading-6 text-white/55">
-          Nothing is approved or published yet. Keep, use or rewrite each section — you decide what your team sees.
+          {t.paReviewBody}
         </p>
         {/*
           The grammar, named once in words (Slice R4-R2E). The shapes below carry it on their own;
           this is for the Host who has not yet learned to read them.
         */}
         <p className="text-xs leading-5 text-white/40" data-testid="program-review-grammar">
-          A gold box is yours to type in. Plain text with a line beside it is BTY’s wording, shown here to read.
+          {t.paReviewGrammar}
         </p>
       </div>
 
@@ -896,7 +899,7 @@ export function ProgramAuthorship({
           says "you can type here" on its own; the chip only repeated it.
         */}
         <label htmlFor="program-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
-          Program title
+          {t.paProgramTitleLabel}
         </label>
         <input
           id="program-title-input"
@@ -939,12 +942,12 @@ export function ProgramAuthorship({
           the summary and the detail can never disagree.
         */
         const stateLabel = unavailable
-          ? "Needs a repeating moment"
+          ? t.paStateUnavailable
           : isKeep
-            ? "Keep yours"
+            ? t.paStateKeep
             : wasAdjusted || (!isDerived && decisions[e.kind] === "edit")
-              ? "Edited"
-              : "Use BTY";
+              ? t.paStateEdited
+              : t.paStateUseBty;
         /*
           One line of what the section will ACTUALLY say — which is not the same question as
           "what does this section render". A KEEP applies the Host's existing sentence and never
@@ -968,7 +971,7 @@ export function ProgramAuthorship({
               className="-mx-1 flex min-h-[44px] w-full items-center gap-3 rounded-lg px-1 text-left hover:bg-white/[0.03]"
             >
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[e.kind]}</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{t.journeyKind[e.kind]}</span>
                 {preview ? (
                   <span className="truncate text-xs leading-5 text-white/55" data-testid={`program-section-preview-${e.kind}`}>
                     {preview}
@@ -1001,7 +1004,7 @@ export function ProgramAuthorship({
               className={sectionOpen ? "mt-3 flex flex-col gap-2" : "hidden"}
             >
             <div className="flex items-center justify-between gap-3">
-              <span className="sr-only">{KIND_LABEL[e.kind]}</span>
+              <span className="sr-only">{t.journeyKind[e.kind]}</span>
               {/*
                 "Adjusted by you", not "Your rewrite": for a derived section the sentence is
                 still deterministically rendered by BTY — from values the Host changed. Calling
@@ -1023,12 +1026,12 @@ export function ProgramAuthorship({
                       wrote them.
                   */}
                   {isKeep
-                    ? "Your wording"
+                    ? t.paBadgeYourWording
                     : wasAdjusted || (!isDerived && decisions[e.kind] === "edit")
-                      ? "Adjusted by you"
+                      ? t.paBadgeAdjusted
                       : isHostAuthoredKind(e.kind)
-                        ? "From your setup"
-                        : "Drafted by BTY"}
+                        ? t.paBadgeFromYourSetup
+                        : t.paBadgeDraftedByBty}
                 </span>
               )}
             </div>
@@ -1071,7 +1074,7 @@ export function ProgramAuthorship({
                     data-testid={`program-use-${e.kind}`}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${!isKeep ? "bg-[#C9A66B] text-[#0B1F3A]" : "border border-white/15 text-white/65 hover:bg-white/[0.06]"}`}
                   >
-                    Use BTY draft
+                    {t.paUseBtyDraft}
                   </button>
                 </div>
                 <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/35">
@@ -1094,7 +1097,7 @@ export function ProgramAuthorship({
                     it in every affected section would read as the program itself.
                   */
                   <p className="border-l-2 border-dashed border-white/15 pl-3 text-sm leading-6 text-white/45" data-surface="readonly" data-testid={`program-unavailable-${e.kind}`}>
-                    Waiting on a moment that comes round again, in “When should they do it?” above.
+                    {t.paUnavailableNote}
                   </p>
                 ) : (
                   /*
@@ -1113,7 +1116,7 @@ export function ProgramAuthorship({
                 */}
                 {(DETAIL_FIELDS[e.kind]?.length ?? 0) === 0 ? (
                   <p className="text-xs leading-5 text-white/40" data-testid={`program-derived-note-${e.kind}`}>
-                    This comes from the problem you described in your training setup, and isn’t rewritten here.
+                    {t.paDerivedNote}
                   </p>
                 ) : (
                 <button
@@ -1123,7 +1126,7 @@ export function ProgramAuthorship({
                   data-testid={`program-details-toggle-${e.kind}`}
                   className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/60 hover:bg-white/[0.06]"
                 >
-                  {detailsOpen ? "Done" : "Edit details"}
+                  {detailsOpen ? t.paEditDetailsDone : t.paEditDetails}
                 </button>
                 )}
                 {detailsOpen ? (
@@ -1192,7 +1195,7 @@ export function ProgramAuthorship({
                     setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
                   }}
                   rows={3}
-                  aria-label={KIND_LABEL[e.kind]}
+                  aria-label={t.journeyKind[e.kind]}
                   data-testid={`program-edit-${e.kind}`}
                   data-surface="editable"
                   className={`${EDITABLE_FIELD} text-sm leading-6`}
@@ -1216,7 +1219,7 @@ export function ProgramAuthorship({
       */}
       {p.evidenceLanguage || ceiling ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="program-evidence-ceiling">
-          <span className="text-xs uppercase tracking-[0.12em] text-white/40">What this can and cannot show</span>
+          <span className="text-xs uppercase tracking-[0.12em] text-white/40">{t.paCeilingHeading}</span>
           <p className="mt-1 text-sm leading-6 text-white/70" data-testid="program-evidence-text">
             {p.evidenceLanguage || ceiling}
           </p>
@@ -1224,10 +1227,10 @@ export function ProgramAuthorship({
       ) : null}
 
       {p.assumptions.length > 0 ? (
-        <ListBlock title="This assumes" items={p.assumptions} testid="program-assumptions" />
+        <ListBlock title={t.paAssumptionsHeading} items={p.assumptions} testid="program-assumptions" />
       ) : null}
       {p.warnings.length > 0 ? (
-        <ListBlock title="Worth noting" items={p.warnings} testid="program-warnings" tone="amber" />
+        <ListBlock title={t.paWarningsHeading} items={p.warnings} testid="program-warnings" tone="amber" />
       ) : null}
 
       {reviewBlock ? (
@@ -1250,7 +1253,7 @@ export function ProgramAuthorship({
           data-testid="program-apply"
           className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-40"
         >
-          Add this program to my training
+          {t.paApplyCta}
         </button>
         <button
           type="button"
@@ -1270,7 +1273,7 @@ export function ProgramAuthorship({
           data-testid="program-reset"
           className="text-sm text-white/55"
         >
-          Reset to BTY’s draft
+          {t.paResetCta}
         </button>
         <button
           type="button"
@@ -1283,10 +1286,10 @@ export function ProgramAuthorship({
           data-testid="program-discard"
           className="text-sm text-white/55"
         >
-          Discard
+          {t.paDiscardCta}
         </button>
       </div>
-      <p className="text-xs text-white/40">Applying adds it to your draft. It still isn’t approved, published, or visible to anyone.</p>
+      <p className="text-xs text-white/40">{t.paApplyFootnote}</p>
     </section>
   );
 }

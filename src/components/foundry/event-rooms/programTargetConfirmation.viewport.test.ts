@@ -53,7 +53,7 @@ function build(focus: string): void {
      createRoot(document.getElementById("root")).render(
        React.createElement("div", { style: { minHeight: "100dvh", background: "#0B1F3A", padding: 16 } },
          React.createElement(ProgramAuthorship, {
-           draftId: "093b0361-7cc8-4688-9f93-396d60582501", answers: ANSWERS, journey: undefined, ready: true,
+           draftId: "093b0361-7cc8-4688-9f93-396d60582501", locale: "en", answers: ANSWERS, journey: undefined, ready: true,
            onGenerate: async () => ({ ok: false, code: "provider_unavailable" }), onApply: () => {},
          })));`,
   );

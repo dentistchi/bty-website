@@ -11,6 +11,7 @@ import {
 } from "@/domain/foundry/module/journey";
 import { attributionKind } from "@/domain/foundry/module/program-authorship";
 import { EDITABLE_FIELD } from "./reviewSurfaceStyles";
+import { MODULE_BUILDER_COPY, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 
 /**
  * Host Learner Preview + Approval gate (Slice 3.2C-B3A).
@@ -24,26 +25,12 @@ import { EDITABLE_FIELD } from "./reviewSurfaceStyles";
  * here for UX and re-enforced server-side at publish). Deterministic — no LLM.
  */
 
-const KIND_LABEL: Record<JourneyElementKind, string> = {
-  why_it_matters: "Why this matters",
-  observable_standard: "The standard",
-  scenario: "In context",
-  reflection: "Reflect",
-  action_decision: "Your decision",
-  field_application: "Apply it",
-  evidence: "What success looks like",
-  completion_check: "Before you finish",
-  follow_up: "What happens next",
-};
-
-const FIELD_LABEL: Record<string, string> = {
-  problem: "What keeps going wrong",
-  recurringMoment: "at each handoff point",
-  observableBehavior: "Expected behavior",
-  successEvidence: "Success evidence",
-  sharedQuestion: "Shared question",
-  completionPrompt: "Completion question",
-};
+/*
+  THE SECTION NAMES ARE THE HOST'S LANGUAGE NOW (Slice R4-R5C15). Both maps lived here in English
+  and rendered untranslated inside a Korean Builder, so a Korean Manager read Korean sentences
+  under English headings — which is also how two adjacent sections came to look like one block.
+  They moved to the Builder's own copy contract, where every other Host string already lives.
+*/
 
 /**
  * Honest authorship attribution. Saying "From your: …" over a sentence BTY authored is
@@ -54,19 +41,21 @@ function ProvenanceLabel({
   kind,
   attribution,
   field,
+  t,
 }: {
   kind: JourneyElementKind;
   attribution: ReturnType<typeof attributionKind>;
   field: string | undefined;
+  t: ModuleBuilderCopy;
 }) {
   const text =
     attribution === "bty_authored"
-      ? "Drafted by BTY"
+      ? t.jpDraftedByBty
       : attribution === "host_edited"
-        ? "Your edit"
+        ? t.jpYourEdit
         : attribution === "derived"
-          ? "From your setup"
-          : `From your: ${field ? (FIELD_LABEL[field] ?? field) : "input"}`;
+          ? t.jpFromSetup
+          : t.jpFromYour(field ? (t.journeyField[field] ?? field) : "입력");
   return (
     /*
       QUIETER BY POSITION, NOT BY FADING (Slice R4-R2E-R3). Measured in real pixels before this
@@ -86,12 +75,15 @@ export function JourneyPreview({
   answers,
   onPatch,
   onApprovableChange,
+  locale,
   handoffSignal = 0,
 }: {
   answers: BuilderAnswers;
   /** Persist a partial answers update (merged + saved) — same seam the Builder uses. */
   onPatch: (partial: BuilderAnswers, immediate: boolean) => void;
   onApprovableChange: (approvable: boolean) => void;
+  /** The Builder's locale — the Host reads these labels, so they are written in it (R4-R5C15). */
+  locale: "en" | "ko";
   /**
    * ADOPTION LANDS HERE (Slice R4-R2E). A counter the parent increments when a BTY program
    * actually became part of the draft. Each increment brings this section into view, gives it a
@@ -227,6 +219,8 @@ export function JourneyPreview({
     return () => clearTimeout(timer);
   }, [handoffSignal]);
 
+  const t = MODULE_BUILDER_COPY[locale];
+
   const persist = useCallback(
     (next: RealityGroundedJourneyV1) => {
       setJourney(next);
@@ -281,11 +275,11 @@ export function JourneyPreview({
           `aria-hidden`, so nothing left the accessible tree — the names come from `htmlFor` and
           `aria-label`, which are untouched.
         */}
-        <span id="journey-preview-heading" className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">Learner preview</span>
-        <p className="text-sm leading-6 text-white/55">This is exactly what your team will experience. Every gold box below is text you can rewrite.</p>
+        <span id="journey-preview-heading" className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.jpEyebrow}</span>
+        <p className="text-sm leading-6 text-white/55">{t.jpBody}</p>
         {handoffLit ? (
           <p className="text-sm leading-6 text-[#C9A66B]" data-testid="journey-handoff-note" role="status">
-            BTY’s draft is now here. Change any line below to make it yours.
+            {t.jpHandoffNote}
           </p>
         ) : null}
       </div>
@@ -294,7 +288,7 @@ export function JourneyPreview({
       <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="journey-title">
         {/* Chip beside the label, never inside it — see the same note in ProgramAuthorship. */}
         <label htmlFor="journey-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
-          Learner title
+          {t.jpTitleLabel}
         </label>
         <input
           id="journey-title-input"
@@ -312,10 +306,10 @@ export function JourneyPreview({
             data-testid="journey-title-confirm"
             className="self-start rounded-lg bg-[#C9A66B] px-4 py-1.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
           >
-            Confirm title
+            {t.jpTitleConfirm}
           </button>
         ) : (
-          <span className="text-xs text-emerald-300/80" data-testid="journey-title-ok">Approved</span>
+          <span className="text-xs text-emerald-300/80" data-testid="journey-title-ok">{t.jpTitleOk}</span>
         )}
       </div>
 
@@ -325,11 +319,11 @@ export function JourneyPreview({
         return (
           <div key={el.id} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`journey-preview-el-${el.kind}`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[el.kind]}</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{t.journeyKind[el.kind]}</span>
               {/* "Needs confirmation" STAYS in the header: it is a thing to do, not metadata. */}
               {needs ? (
                 <span className="rounded-md bg-amber-400/15 px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-amber-200/90" data-testid={`journey-needs-${el.kind}`}>
-                  Needs confirmation
+                  {t.jpNeedsConfirmation}
                 </span>
               ) : null}
             </div>
@@ -337,14 +331,14 @@ export function JourneyPreview({
               value={el.content}
               onChange={(e) => editElement(el.id, e.target.value)}
               rows={2}
-              placeholder={needs ? "Add this in your own words — BTY will not invent it." : ""}
-              aria-label={`${KIND_LABEL[el.kind]} — the learner reads this`}
+              placeholder={needs ? t.jpPlaceholder : ""}
+              aria-label={`${t.journeyKind[el.kind]} — the learner reads this`}
               data-testid={`journey-edit-${el.kind}`}
               data-surface="editable"
               className={`resize-none ${EDITABLE_FIELD} text-[0.95rem] leading-6`}
             />
             {/* The footnote position: present, readable, and no longer competing with the name. */}
-            {needs ? null : <ProvenanceLabel kind={el.kind} attribution={attributionKind(el)} field={field} />}
+            {needs ? null : <ProvenanceLabel kind={el.kind} attribution={attributionKind(el)} field={field} t={t} />}
           </div>
         );
       })}

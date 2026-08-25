@@ -389,6 +389,67 @@ export type ModuleBuilderCopy = {
   /** R4-R5C12A — Review advisory when a learner question can be answered by repeating the material. */
   questionCopyLike: string;
   questionCopyLikeCta: string;
+  /** R4-R5C15 — Host-facing program authorship + learner-preview labels, in the Host's language. */
+  paEntryTitle: string;
+  paEntryBody: string;
+  paGenerateCta: string;
+  paNotReadyHint: string;
+  paWorking: string;
+  paWorkingNote: string;
+  paApplying: string;
+  paReviewEyebrow: string;
+  paReviewBody: string;
+  paReviewGrammar: string;
+  paProgramTitleLabel: string;
+  paStateKeep: string;
+  paStateEdited: string;
+  paStateUseBty: string;
+  paStateUnavailable: string;
+  paBadgeYourWording: string;
+  paBadgeAdjusted: string;
+  paBadgeDraftedByBty: string;
+  paBadgeFromYourSetup: string;
+  paKeepYours: string;
+  paUseBtyDraft: string;
+  paEditDetails: string;
+  paEditDetailsDone: string;
+  paUnavailableNote: string;
+  paDerivedNote: string;
+  paApplyCta: string;
+  paResetCta: string;
+  paDiscardCta: string;
+  paAppliedTitle: string;
+  paAppliedPending: string;
+  paAppliedShow: string;
+  paAppliedHide: string;
+  paApplyFailedTitle: string;
+  paApplyFailedBody: string;
+  paStillNeeded: (kinds: string) => string;
+  jbNeedsConfirmation: (label: string) => string;
+  jbMissingFromProgram: (label: string) => string;
+  paTargetAriaLabel: string;
+  paUntitledDraft: string;
+  paApplyFootnote: string;
+  paCeilingHeading: string;
+  paAssumptionsHeading: string;
+  paWarningsHeading: string;
+  /** Learner-preview surface (the Host reads what the learner will get). */
+  jpEyebrow: string;
+  jpBody: string;
+  jpHandoffNote: string;
+  jpTitleLabel: string;
+  jpTitleConfirm: string;
+  jpTitleOk: string;
+  jpNeedsConfirmation: string;
+  jpPlaceholder: string;
+  jpFromSetup: string;
+  jpYourEdit: string;
+  jpDraftedByBty: string;
+  jpFromYour: (field: string) => string;
+  /** One label per Journey section, shared by every Host surface that names them. */
+  journeyKind: Record<"why_it_matters" | "observable_standard" | "scenario" | "reflection" | "action_decision" | "field_application" | "evidence" | "completion_check" | "follow_up", string>;
+  /** Which Builder answer a preview section came from. */
+  journeyField: Record<string, string>;
   /** R4-R5C14A-R3 — the way out of a refused adoption. */
   programRefusedRecovery: string;
   programRefusedRecoveryCta: string;
@@ -648,6 +709,81 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     questionCopyLike:
       "This question can be answered by repeating the training above. Ask for the learner\u2019s own experience or next decision instead.",
     questionCopyLikeCta: "Edit question",
+    paEntryTitle: "Let BTY draft this training for you",
+    paEntryBody:
+      "From what you’ve described, BTY will write the whole program your team will experience — why it matters, the standard, a situation to practise, the decision, and what happens afterwards. You review every section before anything is applied.",
+    paGenerateCta: "Draft my training program",
+    paNotReadyHint: "Add the problem, who it’s for, the behaviour and the evidence first.",
+    paWorking: "Writing your training program…",
+    paWorkingNote: "Nothing in your draft changes until you apply it.",
+    paApplying: "Adding this program to your training…",
+    paReviewEyebrow: "BTY drafted this for you",
+    paReviewBody: "Nothing is approved or published yet. Keep, use or rewrite each section — you decide what your team sees.",
+    paReviewGrammar: "A gold box is yours to type in. Plain text with a line beside it is BTY’s wording, shown here to read.",
+    paProgramTitleLabel: "Program title",
+    paStateKeep: "Keep yours",
+    paStateEdited: "Edited",
+    paStateUseBty: "Use BTY",
+    paStateUnavailable: "Needs a repeating moment",
+    paBadgeYourWording: "Your wording",
+    paBadgeAdjusted: "Adjusted by you",
+    paBadgeDraftedByBty: "Drafted by BTY",
+    paBadgeFromYourSetup: "From your setup",
+    paKeepYours: "Keep yours",
+    paUseBtyDraft: "Use BTY draft",
+    paEditDetails: "Edit details",
+    paEditDetailsDone: "Done",
+    paUnavailableNote: "Waiting on a moment that comes round again, in “When should they do it?” above.",
+    paDerivedNote: "This comes from the problem you described in your training setup, and isn’t rewritten here.",
+    paApplyCta: "Add this program to my training",
+    paResetCta: "Reset to BTY’s draft",
+    paDiscardCta: "Discard",
+    paAppliedTitle: "✓ Added to your training.",
+    paAppliedPending: "Added to your training. Finishing the record…",
+    paAppliedShow: "Review BTY draft ▾",
+    paAppliedHide: "Hide BTY draft ▴",
+    paApplyFailedTitle: "This program wasn’t added.",
+    paApplyFailedBody: "Nothing was saved, and your draft is unchanged. Your review is still here — try adding it again.",
+    paStillNeeded: (kinds) => `Still needed for a complete program: ${kinds}`,
+    jbNeedsConfirmation: (label) => `${label} still needs your confirmation`,
+    jbMissingFromProgram: (label) => `${label} is missing from the program`,
+    paTargetAriaLabel: "Training program target",
+    paUntitledDraft: "Untitled training draft",
+    paApplyFootnote: "Applying adds it to your draft. It still isn’t approved, published, or visible to anyone.",
+    paCeilingHeading: "What this can and cannot show",
+    paAssumptionsHeading: "This assumes",
+    paWarningsHeading: "Worth noting",
+    jpEyebrow: "Learner preview",
+    jpBody: "This is exactly what your team will experience. Every gold box below is text you can rewrite.",
+    jpHandoffNote: "BTY’s draft is now here. Change any line below to make it yours.",
+    jpTitleLabel: "Learner title",
+    jpTitleConfirm: "Confirm title",
+    jpTitleOk: "Approved",
+    jpNeedsConfirmation: "Needs confirmation",
+    jpPlaceholder: "Add this in your own words — BTY will not invent it.",
+    jpFromSetup: "From your setup",
+    jpYourEdit: "Your edit",
+    jpDraftedByBty: "Drafted by BTY",
+    jpFromYour: (field) => `From your: ${field}`,
+    journeyKind: {
+      why_it_matters: "Why this matters",
+      observable_standard: "The standard",
+      scenario: "In context",
+      reflection: "Reflect",
+      action_decision: "Your decision",
+      field_application: "Apply it",
+      evidence: "What success looks like",
+      completion_check: "Before you finish",
+      follow_up: "What happens next",
+    },
+    journeyField: {
+      problem: "What keeps going wrong",
+      recurringMoment: "at each handoff point",
+      observableBehavior: "Expected behavior",
+      successEvidence: "Success evidence",
+      sharedQuestion: "Shared question",
+      completionPrompt: "Completion question",
+    },
     programRefusedRecovery:
       "This training changed after BTY drafted it. Create a new draft using your latest changes.",
     programRefusedRecoveryCta: "Draft again",
@@ -801,29 +937,29 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     audLeadersZero:
       "아직 조직에 지정된 리더십 책임이 없어 미리보기가 비어 있습니다. 관리자에게 회원 신원 페이지에서 리더십 책임을 지정해 달라고 요청하세요.",
     audLeadersPreviewNote:
-      "미리보기 전용입니다. 명시적으로 지정된 리더십 책임만을 기준으로 합니다. 리더를 선택하면 이 모듈의 대상을 설명할 뿐, 구성원을 배정하거나 초대하거나 입장을 제한하지 않습니다. Foundry 참여는 계속 익명 링크 기반입니다.",
+      "미리보기입니다. 조직에 지정된 리더십 책임만 셉니다. 리더를 고르면 이 훈련이 누구를 위한 것인지 정해질 뿐, 배정하거나 초대하거나 입장을 막지는 않습니다. 참여는 링크로 열려 있고 이름은 남지 않습니다.",
     audLeadersPreviewLoading: "대상을 확인하는 중…",
     audLeadersPreviewError: "지금은 리더 조건을 확인할 수 없습니다.",
     pmTitle: "참여 방식",
-    pmOpenLabel: "오픈 링크 세션",
+    pmOpenLabel: "링크로 참여",
     pmOpenDesc:
-      "링크를 가진 사람이 참여할 수 있습니다. 참여자가 나중에 자신의 기록을 연결하기 전까지는 익명으로 유지됩니다.",
-    pmAssignedLabel: "조직 구성원에게 배정",
+      "링크가 있는 사람은 누구나 들어올 수 있습니다. 나중에 본인이 기록을 연결하기 전까지는 누가 했는지 알 수 없습니다.",
+    pmAssignedLabel: "구성원에게 배정",
     pmAssignedDesc:
-      "아래 대상 구성원에게 필수 학습 배정을 생성합니다. Room 참여 자체는 계속 링크 기반이며 입장을 제한하지 않습니다.",
+      "아래 구성원에게 필수 학습으로 배정합니다. 참여 링크는 그대로 열려 있어, 배정받지 않은 사람도 링크로 들어올 수 있습니다.",
     pmAssignedNote:
-      "초대를 보내지 않으며 Room을 열 때 로그인이 필요하지 않습니다. 배정은 이 학습의 대상을 기록할 뿐, 입장을 제한하거나 행동을 검증하지 않습니다.",
+      "초대 메일은 가지 않고, 훈련을 열 때 로그인도 필요 없습니다. 배정은 누구를 위한 학습인지 기록할 뿐, 입장을 막거나 실제로 했는지 확인하지는 않습니다.",
     pmAudienceHint: "대상 단계에서 대상을 선택하면 배정될 구성원을 확인할 수 있습니다.",
     pmZeroRecipients:
-      "이 대상에 해당하는 구성원이 없어 배정을 생성할 수 없습니다. 대상을 변경하거나 오픈 링크 세션을 선택하세요.",
-    pmOpenNoAssign: "구성원 배정이 생성되지 않습니다. 링크를 가진 사람은 누구나 참여할 수 있습니다.",
-    pmRoomLinkBased: "Room은 계속 링크 기반입니다.",
-    pmWillCreate: (n: number) => `필수 학습 배정 ${n}건이 생성됩니다.`,
-    pmDoneAssignedTitle: "배정 세션이 생성되었습니다",
-    pmDoneAssignedCount: (n: number) => `배정 ${n}건이 생성되었습니다.`,
-    pmDoneOpenTitle: "오픈 링크 세션이 생성되었습니다",
-    pmDoneOpenNoAssign: "배정이 생성되지 않았습니다. 링크를 가진 사람은 누구나 참여할 수 있습니다.",
-    pmDoneContinue: "Room으로 이동",
+      "이 대상에 해당하는 구성원이 없어 배정할 수 없습니다. 대상을 바꾸거나 링크로 참여를 선택하세요.",
+    pmOpenNoAssign: "아무에게도 배정하지 않습니다. 링크가 있는 사람은 누구나 들어올 수 있습니다.",
+    pmRoomLinkBased: "참여 링크로도 들어올 수 있습니다.",
+    pmWillCreate: (n: number) => `구성원 ${n}명에게 필수 학습으로 배정합니다.`,
+    pmDoneAssignedTitle: "훈련을 만들었습니다",
+    pmDoneAssignedCount: (n: number) => `구성원 ${n}명에게 배정했습니다.`,
+    pmDoneOpenTitle: "훈련을 만들었습니다",
+    pmDoneOpenNoAssign: "아무에게도 배정하지 않았습니다. 링크가 있는 사람은 누구나 들어올 수 있습니다.",
+    pmDoneContinue: "훈련 열기",
     realityMissingFieldAction:
       "후속 확인이 예정되어 있지만, 학습자가 실제 업무에서 무엇을 해볼지는 아직 정해지지 않았습니다.",
     realityMissingDecision:
@@ -980,6 +1116,81 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     questionCopyLike:
       "이 질문은 위 내용을 그대로 반복해서 답할 수 있습니다. 학습자의 실제 경험이나 다음 결정을 묻는 질문이 더 좋습니다.",
     questionCopyLikeCta: "질문 수정",
+    paEntryTitle: "BTY가 이 훈련의 초안을 만들어 드릴까요?",
+    paEntryBody:
+      "지금까지 적어 주신 내용으로, 팀이 실제로 경험할 훈련을 처음부터 끝까지 씁니다 — 왜 중요한지, 어떤 행동 기준인지, 어떤 상황에서 어려운지, 무엇을 정할지, 그다음에 무엇이 일어나는지. 적용 전에 한 칸씩 직접 확인하실 수 있습니다.",
+    paGenerateCta: "BTY가 훈련 초안 만들기",
+    paNotReadyHint: "먼저 어떤 문제인지, 누구에게 필요한지, 무엇을 다르게 할지, 잘됐는지 어떻게 알지를 적어 주세요.",
+    paWorking: "훈련 초안을 쓰고 있습니다…",
+    paWorkingNote: "적용하기 전까지 초안은 그대로입니다.",
+    paApplying: "훈련에 적용하는 중…",
+    paReviewEyebrow: "BTY가 제안한 내용",
+    paReviewBody: "아직 아무것도 확정되거나 공개되지 않았습니다. 칸마다 그대로 둘지, BTY 제안을 쓸지, 직접 고칠지 정하세요.",
+    paReviewGrammar: "금색 칸은 직접 쓰는 곳입니다. 옆에 선이 있는 일반 글씨는 BTY가 쓴 문장이고, 읽어 보시라고 둔 것입니다.",
+    paProgramTitleLabel: "훈련 이름",
+    paStateKeep: "내 내용 유지",
+    paStateEdited: "직접 고침",
+    paStateUseBty: "BTY 제안 사용",
+    paStateUnavailable: "반복되는 시점이 필요합니다",
+    paBadgeYourWording: "내가 쓴 문장",
+    paBadgeAdjusted: "내가 고침",
+    paBadgeDraftedByBty: "BTY 제안",
+    paBadgeFromYourSetup: "내가 입력한 내용",
+    paKeepYours: "내 내용 유지",
+    paUseBtyDraft: "BTY 제안 사용",
+    paEditDetails: "세부 내용 고치기",
+    paEditDetailsDone: "완료",
+    paUnavailableNote: "위의 “언제 해야 하나요?”에 반복되는 시점을 적어 주시면 이 칸이 채워집니다.",
+    paDerivedNote: "훈련을 만들 때 적으신 문제에서 나온 문장이라, 여기서는 고치지 않습니다.",
+    paApplyCta: "이 내용을 훈련에 적용",
+    paResetCta: "BTY 제안으로 되돌리기",
+    paDiscardCta: "제안 버리기",
+    paAppliedTitle: "✓ 훈련에 적용했습니다.",
+    paAppliedPending: "훈련에 적용했습니다. 기록을 마무리하는 중…",
+    paAppliedShow: "BTY 제안 다시 보기 ▾",
+    paAppliedHide: "접기 ▴",
+    paApplyFailedTitle: "적용하지 못했습니다.",
+    paApplyFailedBody: "아무것도 저장되지 않았고 초안도 그대로입니다. 확인하던 내용은 그대로 있으니 다시 시도해 보세요.",
+    paStillNeeded: (kinds) => `아직 필요한 부분: ${kinds}`,
+    jbNeedsConfirmation: (label) => `${label} — 아직 확인이 필요합니다`,
+    jbMissingFromProgram: (label) => `${label} — 아직 없습니다`,
+    paTargetAriaLabel: "초안을 만들 훈련",
+    paUntitledDraft: "이름 없는 훈련",
+    paApplyFootnote: "적용하면 내 초안에 들어갑니다. 아직 확정되거나 공개되지 않고, 아무에게도 보이지 않습니다.",
+    paCeilingHeading: "이 훈련으로 알 수 있는 것과 알 수 없는 것",
+    paAssumptionsHeading: "이런 전제를 두고 있습니다",
+    paWarningsHeading: "함께 알아 두실 점",
+    jpEyebrow: "학습자 화면 미리보기",
+    jpBody: "팀이 실제로 보게 될 화면입니다. 아래 금색 칸은 모두 직접 고치실 수 있습니다.",
+    jpHandoffNote: "BTY 제안이 여기로 들어왔습니다. 아래에서 원하는 문장을 고치세요.",
+    jpTitleLabel: "학습자에게 보일 이름",
+    jpTitleConfirm: "이름 확정",
+    jpTitleOk: "확정됨",
+    jpNeedsConfirmation: "확인 필요",
+    jpPlaceholder: "직접 적어 주세요 — BTY가 임의로 채우지 않습니다.",
+    jpFromSetup: "내가 입력한 내용",
+    jpYourEdit: "내가 고침",
+    jpDraftedByBty: "BTY 제안",
+    jpFromYour: (field) => `내가 정한 ${field}`,
+    journeyKind: {
+      why_it_matters: "왜 중요한가",
+      observable_standard: "행동 기준",
+      scenario: "이런 상황에서",
+      reflection: "돌아보기",
+      action_decision: "내가 정할 것",
+      field_application: "실제로 해보기",
+      evidence: "잘된 모습",
+      completion_check: "마치기 전에",
+      follow_up: "다음에는",
+    },
+    journeyField: {
+      problem: "반복되는 문제",
+      recurringMoment: "반복되는 시점",
+      observableBehavior: "행동 기준",
+      successEvidence: "성공 기준",
+      sharedQuestion: "함께 나눌 질문",
+      completionPrompt: "마무리 질문",
+    },
     programRefusedRecovery:
       "BTY가 초안을 만든 뒤 교육 내용이 변경되었습니다. 최신 내용으로 다시 초안을 만드세요.",
     programRefusedRecoveryCta: "다시 초안 만들기",

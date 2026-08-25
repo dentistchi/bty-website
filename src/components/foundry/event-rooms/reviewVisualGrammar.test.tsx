@@ -342,6 +342,7 @@ describe("[R4-R2E] C — after adoption the Host can still change the words", ()
       controls.bump = () => setSignal((n) => n + 1);
       return (
         <JourneyPreview
+      locale="en"
           answers={answers}
           onPatch={(partial) => setAnswers((prev) => ({ ...prev, ...partial }))}
           onApprovableChange={() => {}}

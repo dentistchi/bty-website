@@ -96,6 +96,7 @@ function Host({
   controls.replace = (j) => setAnswers((prev) => ({ ...prev, realityGroundedJourneyV1: j }));
   return (
     <JourneyPreview
+      locale="en"
       answers={answers}
       onPatch={(partial) => {
         onPatchSpy(partial);
@@ -238,7 +239,7 @@ describe("[R4-R2D] the preview follows the journey the draft actually has", () =
     */
     const box = () => screen.getByTestId("journey-edit-why_it_matters") as HTMLTextAreaElement;
     render(
-      <JourneyPreview answers={{ ...FIXTURE, realityGroundedJourneyV1: JOURNEY_B }} onPatch={() => {}} onApprovableChange={() => {}} />,
+      <JourneyPreview locale="en" answers={{ ...FIXTURE, realityGroundedJourneyV1: JOURNEY_B }} onPatch={() => {}} onApprovableChange={() => {}} />,
     );
 
     fireEvent.change(box(), { target: { value: "typed once" } });

@@ -30,7 +30,7 @@ import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUp
 import { JourneyPreview } from "./JourneyPreview";
 import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
-import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
+import { ProgramAuthorship, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
 import { copyLikeLearnerQuestions, type LearnerQuestionField } from "@/domain/foundry/module/learnerQuestionRole";
 import { classifyRealityIntentReadiness, type RealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
@@ -765,8 +765,8 @@ export function ModuleBuilderShell({
         ...(journey.displayTitleStatus !== "grounded" ? ["Confirm the program title"] : []),
         ...journey.elements
           .filter((e) => e.confirmationStatus === "needs_confirmation")
-          .map((e) => `${KIND_LABEL[e.kind]} still needs your confirmation`),
-        ...missingProgramKinds(answers, journey).map((k) => `${KIND_LABEL[k]} is missing from the program`),
+          .map((e) => t.jbNeedsConfirmation(t.journeyKind[e.kind])),
+        ...missingProgramKinds(answers, journey).map((k) => t.jbMissingFromProgram(t.journeyKind[k])),
       ]
     : [];
   // Journey-enabled once the Host has opted into the learner preview (Slice 3.2C-B3A).
@@ -949,6 +949,7 @@ export function ModuleBuilderShell({
           <div className="lg:col-span-2">
           {journeyEnabled ? (
             <JourneyPreview
+              locale={locale}
               answers={answers}
               onPatch={patchAnswers}
               onApprovableChange={setJourneyApprovable}

@@ -23,7 +23,13 @@ const COPY: Record<Locale, { eyebrow: string; title: string; poweredBy: string; 
   },
   ko: {
     eyebrow: "배움",
-    title: "무엇을 더 잘하고 싶으신가요?",
+    /*
+      번역투를 걷어낸 문장 (Slice R4-R5C15). "무엇을 더 잘하고 싶으신가요?"는 영어 원문의 어순과
+      과잉 존대를 그대로 옮긴 것이었다. "우리 팀이 …" 로 바꾸자는 제안은 채택하지 않았다 — 이
+      헤더는 Learn 탭 전체에 렌더되고 그 탭은 Host와 학습자가 함께 쓰는 화면이라, 배정을 받은
+      학습자에게는 거짓이 된다. 어순과 존대만 한국어답게 고쳤다.
+    */
+    title: "어떤 걸 더 잘하고 싶으세요?",
     poweredBy: "BTY Foundry 제공",
     myLearning: "나의 학습",
   },

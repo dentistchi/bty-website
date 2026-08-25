@@ -107,13 +107,14 @@ function build(): void {
      createRoot(document.getElementById("root")).render(
        React.createElement("div", { style: { minHeight: "100dvh", background: "#0B1F3A", padding: 16 } },
          React.createElement(ProgramAuthorship, {
-           draftId: ${JSON.stringify(DRAFT)}, answers: ANSWERS, journey: undefined, ready: true,
+           draftId: ${JSON.stringify(DRAFT)}, locale: "en", answers: ANSWERS, journey: undefined, ready: true,
            currentContextFingerprint: FINGERPRINT,
            onGenerate: async () => ({ ok: false, code: "provider_unavailable" }),
            onCheckResume: async () => true,
            onApply: async () => ({ status: "adopted" }),
          }),
          React.createElement(JourneyPreview, {
+           locale: "en",
            answers: { ...ANSWERS, realityGroundedJourneyV1: JOURNEY },
            onPatch: () => {}, onApprovableChange: () => {},
          })));`,

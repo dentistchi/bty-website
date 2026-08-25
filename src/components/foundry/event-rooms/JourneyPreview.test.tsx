@@ -18,7 +18,7 @@ describe("JourneyPreview — Host control + approval gate (B3A)", () => {
   it("shows the learner preview grounded to Host fields; blocks approval until the title is confirmed", () => {
     const onPatch = vi.fn();
     const onApprovableChange = vi.fn();
-    render(<JourneyPreview answers={FIXTURE} onPatch={onPatch} onApprovableChange={onApprovableChange} />);
+    render(<JourneyPreview locale="en" answers={FIXTURE} onPatch={onPatch} onApprovableChange={onApprovableChange} />);
 
     // seeds the derived Journey so the draft becomes Journey-enabled
     expect(onPatch).toHaveBeenCalledWith(expect.objectContaining({ realityGroundedJourneyV1: expect.any(Object) }), true);
@@ -38,6 +38,7 @@ describe("JourneyPreview — Host control + approval gate (B3A)", () => {
     const onApprovableChange = vi.fn();
     render(
       <JourneyPreview
+      locale="en"
         answers={{ ...FIXTURE, completionPrompt: "" }}
         onPatch={vi.fn()}
         onApprovableChange={onApprovableChange}

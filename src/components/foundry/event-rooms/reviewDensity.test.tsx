@@ -49,6 +49,7 @@ function Host({ spy }: { spy?: (p: BuilderAnswers) => void }) {
   const [answers, setAnswers] = useState<BuilderAnswers>({ ...FIXTURE, realityGroundedJourneyV1: JOURNEY });
   return (
     <JourneyPreview
+      locale="en"
       answers={answers}
       onPatch={(partial) => { spy?.(partial); setAnswers((prev) => ({ ...prev, ...partial })); }}
       onApprovableChange={() => {}}
@@ -119,6 +120,7 @@ describe("[R4-R2E-R3] the tidying kept every meaning", () => {
     } as unknown as RealityGroundedJourneyV1;
     render(
       <JourneyPreview
+      locale="en"
         answers={{ ...FIXTURE, realityGroundedJourneyV1: needy }}
         onPatch={() => {}}
         onApprovableChange={() => {}}
