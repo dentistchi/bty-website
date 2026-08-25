@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
+import type { SavedLocale } from "@/lib/localePreference";
 import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { useSuggestedName } from "./useSuggestedName";
 import { YouTubePlayer } from "./YouTubePlayer";
@@ -339,11 +341,6 @@ const COPY: Record<Locale, Copy> = {
   },
 };
 
-function resolveLocale(): Locale {
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) return "ko";
-  return "en";
-}
-
 function Frame({ children }: { children: React.ReactNode }) {
   // Slice 3.1B-3E.1 (contract C): when the Room was opened from a Required assignment it
   // carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back to Learn"
@@ -406,8 +403,19 @@ function deviceTz(): string | null {
   }
 }
 
-export default function FoundryJoinClient({ token }: { token: string }) {
-  const [locale, setLocale] = useState<Locale>("en");
+export default function FoundryJoinClient({
+  token,
+  savedLocale = null,
+}: {
+  token: string;
+  /** The BTY language preference, resolved server-side from `NEXT_LOCALE` (Slice R4-R5C16A). */
+  savedLocale?: SavedLocale | null;
+}) {
+  /*
+    KNOWN BEFORE THE FIRST RENDER when a preference exists, so there is no English-then-Korean
+    flash on the entry screen. `navigator` is consulted only where no preference was ever made.
+  */
+  const [locale, setLocale] = useState<Locale>(() => resolveRoomLocale(savedLocale, null));
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   /*
@@ -500,7 +508,8 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   */
   const identity = terminalIdentityCopy(snapshot?.follow_up_days, locale);
 
-  useEffect(() => setLocale(resolveLocale()), []);
+  // Only reachable when no BTY preference exists; otherwise the initializer already decided.
+  useEffect(() => setLocale(resolveRoomLocaleOnClient(savedLocale)), [savedLocale]);
 
   /** Refresh and RETURN what the server said, so a caller can reconcile against it. */
   const load = useCallback(async (): Promise<Snapshot | null> => {

@@ -5,6 +5,8 @@ import FoundryUnsupportedRoom from "./FoundryUnsupportedRoom";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { resolveEventByToken } from "@/lib/bty/foundry/events/foundryEventService";
 import { readContentType, isGuidanceContentType } from "@/domain/foundry/events/content-type";
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE, isSavedLocale, type SavedLocale } from "@/lib/localePreference";
 
 export const dynamic = "force-dynamic";
 
@@ -36,17 +38,39 @@ export default async function FoundryJoinPage({
 }) {
   const { token } = await params;
 
+  /*
+    THE LANGUAGE IS DECIDED HERE, BEFORE THE FIRST PAINT (Slice R4-R5C16A).
+
+    This route is deliberately outside `/[locale]`, so it carries no locale in its path — and the
+    three clients each fell back to `navigator.language`, which is the DEVICE's language rather
+    than the one the person chose in BTY. `NEXT_LOCALE` travels with this request like any other
+    (`path: "/"`, not httpOnly), so the preference is readable right here and can be handed down
+    as a prop. That is what removes the English-then-Korean flash: the entry screen is already in
+    the right language on the first render.
+
+    A learner who has never opened the app has no preference, and `null` is passed so the client
+    can fall back to the device — which is the only signal that exists for them.
+  */
+  const savedLocale: SavedLocale | null = await (async () => {
+    try {
+      const raw = (await cookies()).get(LOCALE_COOKIE)?.value;
+      return isSavedLocale(raw) ? raw : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const admin = getSupabaseAdmin();
   if (admin) {
     const resolved = await resolveEventByToken(admin, token);
     if (resolved.ok) {
       const contentType = readContentType(resolved.event.content_type);
       if (contentType === null) return <FoundryUnsupportedRoom />;
-      if (contentType === "document") return <FoundryDocumentClient token={token} />;
+      if (contentType === "document") return <FoundryDocumentClient token={token} savedLocale={savedLocale} />;
       if (isGuidanceContentType(contentType)) {
-        return <FoundryGuidanceClient token={token} contentType={contentType} />;
+        return <FoundryGuidanceClient token={token} contentType={contentType} savedLocale={savedLocale} />;
       }
     }
   }
-  return <FoundryJoinClient token={token} />;
+  return <FoundryJoinClient token={token} savedLocale={savedLocale} />;
 }

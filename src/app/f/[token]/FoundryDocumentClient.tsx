@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
+import type { SavedLocale } from "@/lib/localePreference";
 import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { useSuggestedName } from "./useSuggestedName";
 import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
@@ -295,11 +297,6 @@ const COPY: Record<Locale, Copy> = {
   },
 };
 
-function resolveLocale(): Locale {
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) return "ko";
-  return "en";
-}
-
 function Frame({ children }: { children: React.ReactNode }) {
   // Slice 3.1B-3F.1 (parity with FoundryJoinClient): when the PDF Room was opened from a Required
   // assignment it carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back
@@ -394,8 +391,15 @@ function deviceTz(): string | null {
   }
 }
 
-export default function FoundryDocumentClient({ token }: { token: string }) {
-  const [locale, setLocale] = useState<Locale>("en");
+export default function FoundryDocumentClient({
+  token,
+  savedLocale = null,
+}: {
+  token: string;
+  /** The BTY language preference, resolved server-side from `NEXT_LOCALE` (Slice R4-R5C16A). */
+  savedLocale?: SavedLocale | null;
+}) {
+  const [locale, setLocale] = useState<Locale>(() => resolveRoomLocale(savedLocale, null));
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   /*
@@ -510,7 +514,8 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     reflectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  useEffect(() => setLocale(resolveLocale()), []);
+  // Only reachable when no BTY preference exists; otherwise the initializer already decided.
+  useEffect(() => setLocale(resolveRoomLocaleOnClient(savedLocale)), [savedLocale]);
 
   /**
    * Refresh from the server and RETURN what it said, so a caller can reconcile against it.

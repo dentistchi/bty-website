@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
+import type { SavedLocale } from "@/lib/localePreference";
 import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { useSuggestedName } from "./useSuggestedName";
 import { JourneyReading, type Journey } from "./JourneyReading";
@@ -283,11 +285,6 @@ const COPY: Record<Locale, Copy> = {
   },
 };
 
-function resolveLocale(): Locale {
-  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) return "ko";
-  return "en";
-}
-
 function Frame({ children }: { children: React.ReactNode }) {
   const [returnTarget] = useState<string | null>(() =>
     typeof window !== "undefined"
@@ -385,12 +382,15 @@ function deviceTz(): string | null {
 export default function FoundryGuidanceClient({
   token,
   contentType,
+  savedLocale = null,
 }: {
   token: string;
   /** Resolved SERVER-SIDE from the signed token before this client mounts. */
   contentType: GuidanceType;
+  /** The BTY language preference, resolved server-side from `NEXT_LOCALE` (Slice R4-R5C16A). */
+  savedLocale?: SavedLocale | null;
 }) {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>(() => resolveRoomLocale(savedLocale, null));
   /*
     THE CANONICAL RETURN, READ WHERE THE ENDING IS DECIDED (Slice R4-R5B2).
 
@@ -463,7 +463,8 @@ export default function FoundryGuidanceClient({
   /* R4-R3B1 — decided by the domain authority from the frozen snapshot, never by this component. */
   const identity = terminalIdentityCopy(snapshot?.follow_up_days, locale);
 
-  useEffect(() => setLocale(resolveLocale()), []);
+  // Only reachable when no BTY preference exists; otherwise the initializer already decided.
+  useEffect(() => setLocale(resolveRoomLocaleOnClient(savedLocale)), [savedLocale]);
 
   /** Refresh from the server and RETURN what it said, so a caller can reconcile against it. */
   const load = useCallback(async (): Promise<Snapshot | null> => {
