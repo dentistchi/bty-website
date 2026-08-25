@@ -1058,7 +1058,22 @@ export function ArenaPracticeFlow({
   // real learner surface. No run, no XP, no completion record. Returns to editor.
   if (testing && editable) {
     return (
-      <div className="btyFadeIn min-h-[60vh] rounded-2xl bg-bty-soft/40 p-2">
+      /*
+        THE SURFACE HAS TO EXIST TO BE READ ON (Host preview contrast repair).
+
+        This wrapper asked for `bg-bty-soft/40`, and `bty-soft` is a bare `var(...)` in
+        `tailwind.config.ts` with no `<alpha-value>` placeholder — so Tailwind v3 cannot compute
+        the alpha and DROPS THE CLASS. The shipped stylesheet carries `.bg-bty-soft` and nothing
+        for `/40`. This preview therefore painted no background at all and inherited the app
+        shell's `bg-[#0B1F3A]`, while `ArenaPracticePlayer` paints its prose navy for the cream
+        page it was written for. Navy on navy: the Founder saw a blank space above readable choice
+        cards, which keep their own `bg-white`.
+
+        `ArenaRoom.tsx` recorded this exact finding about THIS file at R4-R5A-R1 closure and
+        repaired only the learner play mount. Same token, no alpha, as that one — pinned to it by
+        test so the two surfaces cannot drift apart again.
+      */
+      <div className="btyFadeIn min-h-[60vh] rounded-2xl bg-bty-soft p-2">
         <ArenaPracticePlayer
           scenario={editable}
           locale={loc}
