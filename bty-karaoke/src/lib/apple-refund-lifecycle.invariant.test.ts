@@ -78,11 +78,19 @@ describe('REFUND-4 — the documented lock order, in both functions', () => {
 });
 
 describe('REFUND-5 — signature before belief', () => {
-  it('verifies the outer JWS before reading any claim', () => {
-    const verify = SERVICE.indexOf('verifyAppleSignedTransaction(signedPayload)');
+  it('verifies the outer ENVELOPE before reading any claim', () => {
+    // R4E-R2A: the envelope verifier, not the transaction one. A notification is signed the same
+    // way but carries different claims, and putting it through the transaction verifier made a
+    // real Apple TEST delivery fail on the final claim check.
+    const verify = SERVICE.indexOf('verifyAppleSignedPayload(signedPayload)');
     const read = SERVICE.indexOf('body.notificationType');
     expect(verify).toBeGreaterThan(-1);
     expect(verify).toBeLessThan(read);
+  });
+
+  it('acts on the VERIFIED payload, never a re-decode of the raw string', () => {
+    expect(SERVICE).toContain('const body = outer.payload;');
+    expect(SERVICE).not.toContain('decodeSegment');
   });
 
   it('verifies the inner signedTransactionInfo too', () => {

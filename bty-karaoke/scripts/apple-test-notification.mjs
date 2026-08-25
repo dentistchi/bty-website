@@ -26,20 +26,45 @@ import { createSign } from 'node:crypto';
 const SANDBOX = 'https://api.storekit-sandbox.itunes.apple.com';
 const BUNDLE_ID = 'com.bty.BTYNorebangAdmin';
 
+/**
+ * Read one variable from the environment or the gitignored .dev.vars.
+ *
+ * .dev.vars may hold a QUOTED MULTILINE value — a .p8 pasted verbatim, BEGIN/END lines and all —
+ * so a naive line-at-a-time parser truncates the key to its first line and the signature then
+ * fails as though the credential were wrong. Both shapes are supported: a quoted block that runs
+ * until its closing quote, and a single line whose \n sequences are real newlines.
+ */
 function env(name) {
   if (process.env[name]) return process.env[name];
+  let raw;
   try {
-    const raw = readFileSync(new URL('../.dev.vars', import.meta.url), 'utf8');
-    for (const line of raw.split('\n')) {
-      const t = line.trim();
-      if (!t || t.startsWith('#')) continue;
-      const i = t.indexOf('=');
-      if (t.slice(0, i).trim() === name) {
-        // A .p8 stored on one line keeps its newlines as the two-character sequence \n.
-        return t.slice(i + 1).trim().replace(/\\n/g, '\n');
+    raw = readFileSync(new URL('../.dev.vars', import.meta.url), 'utf8');
+  } catch {
+    return null;
+  }
+  const lines = raw.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq < 0) continue;
+    if (line.slice(0, eq).trim() !== name) continue;
+
+    const value = line.slice(eq + 1);
+    const quote = value.trim()[0];
+    if (quote === '"' || quote === "'") {
+      let acc = value.trim().slice(1);
+      if (acc.endsWith(quote)) return acc.slice(0, -1);
+      while (++i < lines.length) {
+        const next = lines[i].trimEnd();
+        if (next.endsWith(quote)) return `${acc}\n${next.slice(0, -1)}`;
+        acc += `\n${lines[i]}`;
       }
+      return acc;
     }
-  } catch { /* fall through to the explicit failure below */ }
+    return value.trim().replace(/\\n/g, '\n');
+  }
   return null;
 }
 

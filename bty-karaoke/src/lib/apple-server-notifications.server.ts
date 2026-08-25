@@ -17,7 +17,11 @@
 // evidence (environment + transactionId). No client-supplied account or grant identity is
 // accepted anywhere in this path.
 
-import { verifyAppleSignedTransaction, signedTransactionDigest } from './apple-iap.server';
+import {
+  verifyAppleSignedPayload,
+  verifyAppleSignedTransaction,
+  signedTransactionDigest,
+} from './apple-iap.server';
 import { karaokeDb } from './supabase.server';
 
 /** The V2 notification types this build acts on. Anything else is recorded and ignored. */
@@ -26,17 +30,6 @@ export type HandledNotification = 'REFUND' | 'REFUND_REVERSED';
 export type NotificationOutcome =
   | { ok: true; handled: boolean; duplicate: boolean; detail: string }
   | { ok: false; code: 'unverifiable' | 'malformed' | 'not_found' | 'internal'; detail?: string };
-
-/** Base64url → JSON, with no signature implication whatsoever. Used only on verified payloads. */
-function decodeSegment(segment: string): Record<string, unknown> | null {
-  try {
-    const json = Buffer.from(segment, 'base64url').toString('utf8');
-    const value = JSON.parse(json) as unknown;
-    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
 
 const str = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() !== '' ? v : null;
@@ -51,15 +44,18 @@ const str = (v: unknown): string | null =>
  */
 export async function handleAppleServerNotification(signedPayload: string): Promise<NotificationOutcome> {
   // 1. The OUTER envelope must verify against Apple's real chain before anything is read.
-  const outer = await verifyAppleSignedTransaction(signedPayload);
+  //
+  //    `verifyAppleSignedPayload`, NOT `verifyAppleSignedTransaction`. A notification envelope is
+  //    signed exactly like a transaction but carries different claims — no top-level
+  //    `environment` — and R4E-R1 put it through the transaction verifier, which rejected it on
+  //    that final claim check. A real Apple TEST delivery is what caught it: chain and signature
+  //    verified, then a 400, recorded by Apple as UNSUCCESSFUL_HTTP_RESPONSE_CODE.
+  const outer = await verifyAppleSignedPayload(signedPayload);
   if (!outer.ok) return { ok: false, code: 'unverifiable', detail: outer.code };
 
-  // 2. Only now may the body be read. `verifyAppleSignedTransaction` returns typed transaction
-  //    claims; a notification carries a different shape, so the verified payload is re-decoded
-  //    here rather than forced through a type it is not.
-  const parts = signedPayload.split('.');
-  const body = parts.length === 3 ? decodeSegment(parts[1]) : null;
-  if (!body) return { ok: false, code: 'malformed', detail: 'payload_body' };
+  // 2. The body is the VERIFIED payload — read from the verifier's own output rather than
+  //    re-decoded from the raw string, so what is acted on is exactly what was signed.
+  const body = outer.payload;
 
   const notificationType = str(body.notificationType);
   const subtype = str(body.subtype);

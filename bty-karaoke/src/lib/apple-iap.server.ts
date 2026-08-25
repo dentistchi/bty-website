@@ -251,10 +251,26 @@ export async function verifyAppleCertificateChain(
  * the signature chained to a trusted root. The caller compares it against the payload again in
  * the domain validator, so an unverified hint can never cause the check to be skipped.
  */
-export async function verifyAppleSignedTransaction(
+/**
+ * BUILD 26U-R4E-R2A — the SIGNATURE half, on its own.
+ *
+ * Everything Apple signs for StoreKit — a transaction AND a server notification envelope — is the
+ * same kind of object: an ES256 compact JWS whose header carries a three-certificate chain to an
+ * Apple root. What differs is only the CLAIMS inside.
+ *
+ * R4E-R1 reused `verifyAppleSignedTransaction` for notification envelopes, and a real Apple TEST
+ * delivery proved that wrong: the chain and signature verified, then the function rejected the
+ * payload on its last line because a notification has no top-level `environment` claim. Apple
+ * recorded UNSUCCESSFUL_HTTP_RESPONSE_CODE, which is exactly what the gate is for.
+ *
+ * So the crypto lives here once and both callers share it. This is not a parallel implementation:
+ * `verifyAppleSignedTransaction` below is now expressed in terms of this function and adds only
+ * its own claim check.
+ */
+export async function verifyAppleSignedPayload(
   signedTransaction: string,
   options: VerifyOptions = {},
-): Promise<AppleJwsResult> {
+): Promise<{ ok: true; payload: Record<string, unknown> } | { ok: false; code: AppleJwsRejection }> {
   const roots = options.trustedRootsPem ?? APPLE_TRUSTED_ROOTS;
 
   // ---- A. structure ------------------------------------------------------------------------
@@ -331,21 +347,38 @@ export async function verifyAppleSignedTransaction(
   const leaf = chain.leaf;
 
   // ---- K. the JWS signature itself, under the now-trusted leaf key ---------------------------
-  let claims: AppleTransactionClaims;
+  let payloadObject: Record<string, unknown>;
   try {
     const key = await importX509(leaf.toString('pem'), 'ES256');
     const { payload } = await compactVerify(signedTransaction, key, { algorithms: ['ES256'] });
-    claims = JSON.parse(new TextDecoder().decode(payload)) as AppleTransactionClaims;
+    payloadObject = JSON.parse(new TextDecoder().decode(payload)) as Record<string, unknown>;
   } catch {
     return { ok: false, code: 'invalid_apple_signature' };
   }
+  if (typeof payloadObject !== 'object' || payloadObject === null) {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+  return { ok: true, payload: payloadObject };
+}
 
+/**
+ * A signed TRANSACTION: the shared signature verification above, plus the one claim check that is
+ * specific to transactions. Behaviour is unchanged from BUILD 26P — the same steps in the same
+ * order, with the same rejection codes — and `apple-verifier-parity` / `apple-real-chain` pin that.
+ */
+export async function verifyAppleSignedTransaction(
+  signedTransaction: string,
+  options: VerifyOptions = {},
+): Promise<AppleJwsResult> {
+  const verified = await verifyAppleSignedPayload(signedTransaction, options);
+  if (!verified.ok) return verified;
+
+  const claims = verified.payload as unknown as AppleTransactionClaims;
   // The environment is read ONLY now, from a payload whose signature chained to a trusted root.
   const environment = claims.environment;
   if (environment !== 'Sandbox' && environment !== 'Production') {
     return { ok: false, code: 'malformed_signed_transaction' };
   }
-
   return { ok: true, claims, environment };
 }
 
