@@ -302,7 +302,16 @@ echo "=== §K RECOVERED REFUND_REVERSED — partial compensation, now REPRESENTA
 $C -c "select karaoke_record_apple_notification('22222222-2222-4222-8222-222222222222','REFUND_REVERSED',null,'Sandbox','txn-recover','txn-recover',now(),'digest-rev','API_RECOVERY');" >/dev/null
 DENIED=$($C -c "select refund_denied_seconds from karaoke_apple_purchases where apple_transaction_id='txn-recover';")
 echo "   refund_denied_seconds for the ACTIVE refund: $DENIED"
-ok "denied value is PARTIAL (not a whole product)" "$([ "$DENIED" -ne 3600 ] && echo partial || echo whole)" "partial"
+# BUILD 26U-R4G-R2A-R1 — THIS GATE'S EXPECTATION CHANGED, and the change is the point.
+# It used to require a non-product figure, because the ACTIVE denial was `expires_at - now` and a
+# grant activated a moment earlier therefore lost a second to clock shaving: 3599, not 3600. The
+# denial is now base-only and measured in WHOLE ELAPSED SECONDS, so a grant nobody has used yet
+# has its entire purchased hour still ahead and a FULL refund denies exactly 3600. That is the
+# honest number; the old one was a rounding artifact. Partial denial is still proven — by the
+# elapsed-time cases in scripts/verify-r4g-r2a.sh, where it is the subject rather than a
+# side-effect of when the clock happened to be read.
+ok "a full refund of an unused ACTIVE hour denies all of it" "$DENIED" "3600"
+ok "…and never more than the product itself"     "$([ "$DENIED" -le 3600 ] && echo bounded)" "bounded"
 OUT=$($C -c "select apply_apple_refund_reversal('Sandbox','txn-recover','22222222-2222-4222-8222-222222222222');")
 COMP=$(echo "$OUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('compensationGrantId') or '')")
 ok "partial compensation now SUCCEEDS"            "$([ -n "$COMP" ] && echo yes || echo no)" "yes"
@@ -316,7 +325,11 @@ ok "…exactly one compensation grant"              "$($C -c "select count(*) fr
 
 echo
 echo "=== §K reversal of a FULL-VALUE refund is ALSO a credit now ==="
-ok "full-value reversal issued a credit"          "$($C -c "select count(*) from timed_access_pass_grants where source_type='REFUND_REVERSAL' and pass_type='REFUND_CREDIT' and duration_seconds=3600;")" "1"
+# Counted by the REVERSAL that created it, not by its duration. Duration was never a key: once
+# the ACTIVE denial became a whole 3600, two unrelated credits shared that size and the count read
+# 2 for a gate that meant "this one exists".
+ok "full-value reversal issued exactly one credit" "$($C -c "select count(*) from timed_access_pass_grants where reversal_notification_uuid='rev-1';")" "1"
+ok "…of the exact denied value"                    "$($C -c "select duration_seconds from timed_access_pass_grants where reversal_notification_uuid='rev-1';")" "3600"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "ALL R4E GATES PASS (0 failures)"; else echo "FAILURES: $FAIL"; fi

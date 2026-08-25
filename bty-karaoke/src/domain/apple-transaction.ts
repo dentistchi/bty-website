@@ -27,6 +27,17 @@ export interface AppleTransactionClaims {
   appAccountToken?: unknown;
   revocationDate?: unknown;
   revocationReason?: unknown;
+  /**
+   * BUILD 26U-R4G-R2A-R1 — Apple's refund SHAPE, which this build had never read.
+   *
+   * `revocationType` is REFUND_FULL, REFUND_PRORATED or FAMILY_REVOKE, and a prorated refund
+   * carries `revocationPercentage` in milliunits (0..100000). Until now every REFUND was treated
+   * as 100%, so a prorated refund would have taken a customer's whole hour. Declared here as
+   * `unknown` like every other claim: these are attacker-controlled until the chain is verified,
+   * and they are classified by `@/domain/partial-refund`, never read raw.
+   */
+  revocationType?: unknown;
+  revocationPercentage?: unknown;
 }
 
 /** The Apple environments we accept. They are DISTINCT authorities and never normalised together. */

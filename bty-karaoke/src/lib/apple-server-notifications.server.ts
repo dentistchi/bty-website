@@ -23,6 +23,7 @@ import {
   signedTransactionDigest,
 } from './apple-iap.server';
 import { karaokeDb } from './supabase.server';
+import { classifyRefundEvidence } from '@/domain/partial-refund';
 
 /** The V2 notification types this build acts on. Anything else is recorded and ignored. */
 export type HandledNotification = 'REFUND' | 'REFUND_REVERSED';
@@ -131,6 +132,9 @@ export async function handleAppleServerNotification(
   let environment: 'Sandbox' | 'Production' | null = null;
   let revocationDate: string | null = null;
   let revocationReason: string | null = null;
+  // BUILD 26U-R4G-R2A-R1 — the refund's SHAPE, read only from the VERIFIED inner transaction.
+  let revocationType: string | null = null;
+  let revocationPercentage: number | null = null;
 
   if (signedTransactionInfo) {
     const inner = await verifyAppleSignedTransaction(signedTransactionInfo);
@@ -142,6 +146,9 @@ export async function handleAppleServerNotification(
     revocationDate =
       typeof raw.revocationDate === 'number' ? new Date(raw.revocationDate).toISOString() : null;
     revocationReason = raw.revocationReason != null ? String(raw.revocationReason) : null;
+    revocationType = typeof raw.revocationType === 'string' ? raw.revocationType : null;
+    revocationPercentage =
+      typeof raw.revocationPercentage === 'number' ? raw.revocationPercentage : null;
   }
 
   // The environment is the VERIFIER's reading, never the outer envelope's claim.
@@ -206,12 +213,34 @@ export async function handleAppleServerNotification(
   }
 
   if (notificationType === 'REFUND') {
+    // BUILD 26U-R4G-R2A-R1 — CLASSIFY BEFORE MUTATING.
+    //
+    // Evidence we cannot read is never widened into a full refund. Taking a customer's whole hour
+    // because a field was malformed is the exact outcome this slice exists to prevent, and it is
+    // strictly worse than briefly leaving too much entitlement in place — especially while the
+    // Production notification URL is still UNSET. The row stays FAILED and therefore recoverable
+    // under R4G-R1, so a corrected event, or a fixed reader, can still apply it.
+    const evidence = classifyRefundEvidence({
+      revocationType: revocationType ?? undefined,
+      revocationPercentage: revocationPercentage ?? undefined,
+    });
+    if (!evidence.ok) {
+      await markProcessed(notificationUUID, 'FAILED', `refund_evidence:${evidence.reason}`);
+      return {
+        ok: false, code: 'not_found',
+        detail: evidence.reason, unfinishedFinancial: true,
+      };
+    }
+
     const { data: applied, error } = await db.rpc('apply_apple_purchase_refund', {
       p_environment: env,
       p_transaction_id: transactionId,
       p_revocation_date: revocationDate,
       p_revocation_reason: revocationReason ?? 'apple_refund',
       p_notification_uuid: notificationUUID,
+      // The RPC re-validates these defensively. Two agreeing readers, not two opinions.
+      p_revocation_type: revocationType,
+      p_revocation_percentage: revocationPercentage,
     });
     if (error) {
       await markProcessed(notificationUUID, 'FAILED', 'rpc');
@@ -235,7 +264,11 @@ export async function handleAppleServerNotification(
     // and the retry is still safe: the RPC is idempotent, so the next attempt replays it as a
     // no-op and writes the status. What must never happen is undoing a committed financial
     // mutation because a status column could not be updated afterwards.
-    if (!(await markProcessed(notificationUUID, 'APPLIED', `denied=${String(res.deniedSeconds ?? 0)}`))) {
+    if (!(await markProcessed(
+      notificationUUID, 'APPLIED',
+      `kind=${String(res.refundKind ?? 'FULL')} denied=${String(res.deniedSeconds ?? 0)}` +
+        ` surviving=${String(res.survivingFutureSeconds ?? 0)}`,
+    ))) {
       return { ok: false, code: 'internal', detail: 'mark_applied', unfinishedFinancial: true };
     }
     return {
