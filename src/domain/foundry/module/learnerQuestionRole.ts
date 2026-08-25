@@ -24,6 +24,23 @@ const trimmed = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
  */
 export const QUESTION_OVERLAP_HIGH = 0.5;
 
+/**
+ * THE CEILING ABOVE THE SUPPRESSION (Slice R4-R5C19A).
+ *
+ * MEASURED ACROSS ALL 50 LIVE BUILDER QUESTIONS. The advisory flagged 28 and stayed silent on 8
+ * — and all 8 sit at overlap 1.00, the entire standard quoted inside the question, silenced by
+ * the application clause because the template that produced them ends "…what is one thing you
+ * will apply this week?". The distribution is 8 at 1.00, 12 in 0.50-0.99, 4 in 0.33-0.49, 26
+ * below; the false negatives were the whole top of it.
+ *
+ * 1.00 AND NOTHING LOWER. `overlapRatio` divides by the SMALLER token set, so this is not
+ * "similar" — it is one text carrying every significant word of the other, an integer quotient
+ * n/n that is exact in IEEE-754 rather than a value to approach. All 8 misses are at it, so no
+ * lower number is needed to reach them, and any lower number would start re-deciding the 12
+ * partial-overlap questions this slice measured nothing about.
+ */
+export const EXACT_COPY_OVERLAP = 1;
+
 /** Stems that ask the learner to give back what the training just told them. */
 const RECALL_STEM: readonly RegExp[] = [
   /\bwhat\s+(?:is|was|are|were)\s+the\s+(?:most\s+important\s+)?standard\b/i,
@@ -73,8 +90,14 @@ const APPLICATION_STEM: readonly RegExp[] = [
 
 const anyOf = (patterns: readonly RegExp[], s: string): boolean => patterns.some((re) => re.test(s));
 
-/** The four semantic facts about one learner question. Pure; no policy, no wording. */
+/** The semantic facts about one learner question. Pure; no policy, no wording. */
 export type LearnerQuestionShape = {
+  /**
+   * The question contains the standard's ENTIRE significant vocabulary — it prints the answer
+   * (Slice R4-R5C19A). Strictly stronger than `highOverlap`, and reported separately because the
+   * policy treats it differently: nothing suppresses it.
+   */
+  exactCopy: boolean;
   /** The question carries the standard's own vocabulary at or above the calibrated threshold. */
   highOverlap: boolean;
   /** The question asks for the training's content back. */
@@ -89,10 +112,14 @@ export function classifyLearnerQuestion(question: unknown, standard: unknown): L
   const q = trimmed(question);
   const std = trimmed(standard);
   if (q.length === 0) {
-    return { highOverlap: false, recallLike: false, currentPracticeLike: false, applicationLike: false };
+    return { exactCopy: false, highOverlap: false, recallLike: false, currentPracticeLike: false, applicationLike: false };
   }
+  // One measurement, two facts. `overlapRatio` already returns 0 when either side has no
+  // significant tokens, so an empty standard cannot reach either threshold.
+  const ratio = std.length > 0 ? overlapRatio(q, std) : 0;
   return {
-    highOverlap: std.length > 0 && overlapRatio(q, std) >= QUESTION_OVERLAP_HIGH,
+    exactCopy: ratio >= EXACT_COPY_OVERLAP,
+    highOverlap: ratio >= QUESTION_OVERLAP_HIGH,
     recallLike: anyOf(RECALL_STEM, q),
     currentPracticeLike: anyOf(CURRENT_PRACTICE_STEM, q),
     applicationLike: anyOf(APPLICATION_STEM, q),
@@ -109,6 +136,18 @@ export function classifyLearnerQuestion(question: unknown, standard: unknown): L
  * suggestions pass a check BTY wrote, which is the minimum honesty bar for shipping it.
  */
 export function isCopyLikeQuestion(shape: LearnerQuestionShape): boolean {
+  /*
+    AN EXACT COPY IS NOT REDEEMED BY ASKING FOR A DECISION (Slice R4-R5C19A).
+
+    The suppression below is right for every case it was written for: a question that asks what
+    the learner will do next has already given them something only they can supply. That holds
+    right up to the point where the question also PRINTS the answer — and 8 live questions do,
+    quoting the whole standard and then asking for "one thing you will apply this week". The
+    strongest possible copy signal was being overruled by the weakest inference about intent.
+
+    So the ceiling comes first and nothing beneath it moves.
+  */
+  if (shape.exactCopy) return true;
   if (shape.currentPracticeLike || shape.applicationLike) return false;
   return shape.highOverlap || shape.recallLike;
 }
