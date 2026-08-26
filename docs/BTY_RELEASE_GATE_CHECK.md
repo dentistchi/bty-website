@@ -1,3 +1,20 @@
+**ARENA CONSEQUENCE LOOP V1 + HOST TEST PREVIEW CONTRAST — FOUNDER VERIFIED PASS (2026-08-26)**
+
+- **Release identity:** live inner **`6ca5120da4606a08b09c5aa8144b744bf95f8a64`**, deployed through `scripts/deploy-bty-arena-staging-with-source.mjs`, source SHA = live version verified by the wrapper on both deploys (`7bed4216` consequence loop → `6ca5120d` contrast repair). **No migration. No schema change. No API route change. No RPC. No backfill.**
+- **A) Auth / cookies / session:** **UNTOUCHED.** Zero diff under `src/lib/auth`, `src/components/auth`, `src/middleware.ts`, participant session or room token.
+- **B) Weekly reset · C) Leaderboard / XP:** untouched. Practice awards no XP by design; no ledger, weekly, league or season path is involved.
+- **D) Data / migration:** **NO migration, NO schema change, NO DB write, NO backfill.** Production files: `ArenaPracticePlayer.tsx` (branch projection + one render block), `boundarySurfaces.ts` (comment only), `ArenaPracticeFlow.tsx` (one Tailwind class). `src/domain`/`src/lib` diff for the contrast repair is **0 lines**.
+- **E) Live corpus:** re-read after deploy and unchanged — scenario drafts 9, branch-aware 1 (`77251d99`, `status=draft`, `updated 2026-08-04T14:13:09`), **published branch-aware 0**, practice runs 17 with `selected_path` non-null **0**. No run mutation, no replay, no publish.
+- **F) Provider spend:** unchanged — no new call site, no prompt change, no generation run required for either repair.
+- **Client-artifact verification (the measured question):** `/api/version` proves the Worker's identity, not the device's JavaScript. Both were checked directly: the live Worker serves `_next/static/chunks/1790-…js` containing `practice-consequence` and `그 결과`, and the live stylesheet contains `.bg-bty-soft{` with **no** rule for `bg-bty-soft\/40`. The iOS app is a hosted-URL Capacitor webview on the same origin, so a cold restart is sufficient and no native rebuild applies.
+- **Founder device verification:** **PASS.** Practice → 연습 만들기 → "No confirmation calls made" → 학습자로 해보기 → 시작 → primary p2. Screen showed, in order: `그 결과` + the p2 consequence, `상황이 더 어려워집니다` + the p2 escalation, then the p2 tradeoff choices. Cream surface, readable prose, correct branch, **no score, no correct-answer reveal, no best-choice model**.
+- **Gates (at `6ca5120d`):** tsc 0 · full suite **11,885 passed / 17 failed**, the same 8-file pre-existing baseline, **0 new failures** · terminology **44**, identical to HEAD · cf:build 0, artifact re-checked · **ESLint BLOCKED / NOT EXECUTED** (`NOT SUPPORTED: option missingRefs` from ajv, reproduced at HEAD) — **not a PASS**. No baseline failure weakened or skipped.
+- **Pre-fix differentials, proven against unmodified code before each patch:** consequence loop **8 failed → 15 passed**; contrast repair **2 failed → 5 passed**.
+- **Architecture recorded:** Arena Practice is **judgment → consequence → judgment**, not question → correct answer → explanation. `ScenarioDraftChoice` has no `isCorrect`, no score and no rationale; Slice 2.4A.4 removed the only marker that leaked a preferred option. Adding a correct-answer system later requires a separate product decision.
+- **Still open / deliberately not started:** conflict-axis diversity (**NOT YET MEASURABLE** — 1 branch-aware scenario, 2 branches), template consequence rewrite, a separate learner consequence schema, and a repository-wide Tailwind alpha-utility inventory. **ENGINEERING HOLD until one branch-aware Practice is naturally published and used by a real learner.**
+
+---
+
 **R4-R5C17A / C18A / C19A — LEARNER-CONTENT QUALITY EXIT — DEPLOYED (2026-08-25)**
 
 - **Release identity:** live inner **`936f2cccc5091c744f0e225a8aaed4ac73e43ad1`**, deployed through `scripts/deploy-bty-arena-staging-with-source.mjs`, source SHA = live version verified by the wrapper's own identity check on each of the three deploys (`2d1a8c8c` C17A → `bdf4e271` C18A → `936f2ccc` C19A). **No migration. No schema change. No API route change. No RPC. No backfill.**
