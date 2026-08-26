@@ -47,31 +47,42 @@ const COPY = {
       server: "Something went wrong. Please try again.",
     } as Record<string, string>,
   },
+  /*
+    WRITTEN AS KOREAN, AND AGREEING WITH THE DOOR THAT OPENS IT.
+
+    The Learn landing closed on "이벤트 만들기 / 내가 만든 이벤트"; this screen still said
+    "열기" and carried the translated line the landing pass removed. The QR aria label named the
+    product internally — the one string a screen reader reads aloud.
+
+    QR IS THE WHOLE JOIN STORY, measured: the create API returns a signed scan URL and it is
+    rendered only as a QR, with no share-link control here or on the Host detail screen. So the
+    intro says how people get in, which the title cannot, and promises no link.
+  */
   ko: {
-    heading: "이벤트 열기",
-    intro: "팀이 참여할 실제 순간을 여세요.",
+    heading: "이벤트 만들기",
+    intro: "팀원이 QR을 찍어 참여합니다.",
     title: "이벤트 이름",
     titlePh: "아침 모임",
     type: "이벤트 종류",
     typePh: "모임",
     xp: "참여 XP (10–100)",
-    until: "마감 시각",
-    submit: "이벤트 열기",
-    working: "여는 중…",
-    createdHeading: "이벤트 준비됨",
-    qrAria: "리얼리티 이벤트 QR 코드",
-    scanInstruction: "참가자에게 보여주세요 — 스캔하면 참여가 기록됩니다.",
-    viewEvents: "내 이벤트 보기",
-    another: "다른 이벤트 열기",
-    backLearn: "학습으로 돌아가기",
+    until: "참여 마감 시각",
+    submit: "이벤트 만들기",
+    working: "만드는 중…",
+    createdHeading: "이벤트가 만들어졌습니다",
+    qrAria: "이벤트 참여 QR 코드",
+    scanInstruction: "팀원에게 이 QR을 보여주세요. 찍으면 참여가 기록됩니다.",
+    viewEvents: "내가 만든 이벤트 보기",
+    another: "이벤트 하나 더 만들기",
+    backLearn: "배우기로 돌아가기",
     errors: {
       title_required: "이벤트 이름을 입력하세요.",
       event_type_required: "이벤트 종류를 입력하세요.",
       xp_value_invalid: "참여 XP는 10에서 100 사이의 정수여야 합니다.",
-      valid_until_invalid: "이벤트 마감 시각을 선택하세요.",
-      valid_until_must_be_future: "마감 시각은 미래여야 합니다.",
-      LEADER_TRACK_REQUIRED: "이벤트를 열 권한이 없습니다.",
-      unauthorized: "이벤트를 열 권한이 없습니다.",
+      valid_until_invalid: "참여 마감 시각을 선택하세요.",
+      valid_until_must_be_future: "마감 시각은 지금보다 뒤여야 합니다.",
+      LEADER_TRACK_REQUIRED: "이벤트를 만들 권한이 없습니다.",
+      unauthorized: "이벤트를 만들 권한이 없습니다.",
       server: "문제가 발생했습니다. 다시 시도하세요.",
     } as Record<string, string>,
   },
