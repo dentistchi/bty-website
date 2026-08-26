@@ -28,6 +28,7 @@ import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow, applyNarration, type MaterializeApplyResult } from "./foundryApplyWindowService";
+import { issueCompletionClaim, invalidateDeferredClaim } from "./completionClaimService";
 import { publishedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { isFollowUpDays, type FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
@@ -617,6 +618,14 @@ export type ProgressResult =
        * server actually did. The terminal NARRATES; Today still owns the action.
        */
       applyWindow?: "created" | "exists";
+      /**
+       * THE CODE THE LEARNER KEEPS (Deferred Completion Claim V1). Present only when the
+       * completion belongs to nobody yet — a signed-in finisher already owns it and is shown
+       * nothing. Returned exactly once, in this response; only its SHA-256 is stored, so it can
+       * never be read back and must not be logged or serialised into an error.
+       */
+      claimCode?: string;
+      claimExpiresAt?: string;
     }
   | { ok: false; reason: string };
 
@@ -896,6 +905,18 @@ export async function completeTraining(
     there is genuinely nothing to narrate, and that is the honest default rather than an absent value.
   */
   let applyWindowResult: MaterializeApplyResult = "skipped";
+  /*
+    THE ONE THING AN ANONYMOUS FINISHER LEAVES WITH (Deferred Completion Claim V1).
+
+    The branch below is unchanged and stays the forward rule: no Apply window and no learner
+    follow-up until an account exists. What was missing is that the learner also left with no way
+    BACK — the participant session is HttpOnly, 30 days and one device, so a completion they
+    walked away from could never be attached again. They now get a code they can keep.
+
+    Fail-soft by construction: `issueCompletionClaim` returns null rather than throwing, because a
+    credential problem must never fail a training somebody has already finished.
+  */
+  const deferredClaim = linkableUserId ? null : await issueCompletionClaim(admin, progressId);
   if (linkableUserId) {
     await materializeFollowupObligation(admin, {
       eventId: r.event.id,
@@ -956,7 +977,7 @@ export async function completeTraining(
     await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, linkableUserId);
   }
 
-  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride), ...applyNarration(applyWindowResult) };
+  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride), ...applyNarration(applyWindowResult), ...(deferredClaim ? { claimCode: deferredClaim.code, claimExpiresAt: deferredClaim.expiresAt } : {}) };
 }
 
 /**
@@ -1027,6 +1048,15 @@ export async function claimXp(
   // The claim is where an anonymous completion becomes an owned one — so it is exactly where
   // identity belongs, whatever the XP outcome then is (Slice 3.2M-2R1).
   await linkLearnerIdentity(admin, prog.id, authUserId);
+  /*
+    A COMPLETION THAT NOW HAS AN OWNER MUST NOT STILL BE CLAIMABLE (Deferred Completion Claim V1).
+
+    The learner may have walked away with a written-down code and then come back through the room
+    instead. This route just gave the completion an account, so the code is retired here rather
+    than left to expire — a bearer credential pointing at something already owned is exactly what
+    single-use is for. Fail-soft: the linkage above is the part that matters.
+  */
+  await invalidateDeferredClaim(admin, prog.id);
 
   if (prog.xp_awarded_at) {
     return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim, ...applyNarration(applyWindowResult) };

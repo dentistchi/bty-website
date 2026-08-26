@@ -22,7 +22,14 @@ describe("T14 — no server draft was built", () => {
   it("no migration was added in this slice", () => {
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"));
     // 20260826 (C3A2 RPC) is the newest migration the repository should carry.
-    const newer = migs.filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826");
+    /*
+      RE-ANCHORED, NOT WEAKENED. This was written as "no migration newer than the day I shipped",
+      which is a claim about the FUTURE and trips on every later slice that legitimately adds SQL.
+      What it exists to catch is a migration smuggled in unnoticed — so later migrations are
+      listed by name. Adding one means adding it here, deliberately, which is the signal.
+    */
+    const KNOWN_LATER = ["20260827000000_foundry_deferred_completion_claim_v1.sql"];
+    const newer = migs.filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
     expect(newer, "R4-R5C4A must add no migration").toEqual([]);
   });
 

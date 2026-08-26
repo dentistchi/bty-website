@@ -75,3 +75,30 @@ export function terminalIdentityCopy(raw: unknown, locale: TerminalLocale): Term
     followUp: { meaning: t.meaning(raw), signInReason: t.signInReason, xpSecondary: t.xpSecondary },
   };
 }
+
+/**
+ * THE CODE AN ANONYMOUS FINISHER KEEPS (Deferred Completion Claim V1).
+ *
+ * ALWAYS VISIBLE, NEVER BEHIND A TAP. The measured failure is that learners leave without taking
+ * another action — 30 of 45 completions carry no account. Putting the code behind a disclosure
+ * would recreate exactly that, one step earlier. It is rendered as SECONDARY text under the
+ * completion, and it blocks nothing: the exit is still the primary control.
+ *
+ * WHAT IT HAS TO ANSWER, in four lines and no BTY vocabulary: I finished · I do not have to sign
+ * in now · I can connect this later · this is the one thing to keep.
+ */
+export type ClaimCodeCopy = { lead: string; validity: string; label: string };
+
+export function claimCodeCopy(locale: TerminalLocale): ClaimCodeCopy {
+  return locale === "ko"
+    ? {
+        lead: "나중에 내 계정에 연결하려면 이 코드를 저장해 두세요.",
+        validity: "90일 동안 한 번 사용할 수 있습니다.",
+        label: "완료 코드",
+      }
+    : {
+        lead: "Save this code to add this training to your account later.",
+        validity: "It works once, for 90 days.",
+        label: "Completion code",
+      };
+}

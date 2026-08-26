@@ -83,8 +83,15 @@ describe("T13 — the participant name stays a historical snapshot", () => {
   });
 
   it("no migration was added", () => {
+    /*
+      RE-ANCHORED, NOT WEAKENED. This was written as "no migration newer than the day I shipped",
+      which is a claim about the FUTURE and trips on every later slice that legitimately adds SQL.
+      What it exists to catch is a migration smuggled in unnoticed — so later migrations are
+      listed by name. Adding one means adding it here, deliberately, which is the signal.
+    */
+    const KNOWN_LATER = ["20260827000000_foundry_deferred_completion_claim_v1.sql"];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
-      .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826");
+      .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
     expect(migs).toEqual([]);
   });
 });

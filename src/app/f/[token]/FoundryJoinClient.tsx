@@ -55,7 +55,8 @@ type Stage =
 type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
 
 import { JourneyReading, type Journey } from "./JourneyReading";
-import { terminalIdentityCopy } from "./terminalIdentityCopy";
+import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
+import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
 
 type Snapshot = {
@@ -424,6 +425,9 @@ export default function FoundryJoinClient({
     a later action response that carries nothing must not silently retract a true statement.
   */
   const [applyWindow, setApplyWindow] = useState<"created" | "exists" | null>(null);
+  /* The claim code arrives once, in the completion response, and is never readable again — only
+     its hash is stored. Held for the terminal and nowhere else. */
+  const [claimCode, setClaimCode] = useState<string | null>(null);
   const [name, setName] = useState("");
   /*
     R4-R5C7A — when the account already carries a name, the field arrives filled in. The learner
@@ -569,7 +573,7 @@ export default function FoundryJoinClient({
 
   const applyResult = useCallback((data: unknown) => {
     const d = data as
-      | (Partial<Snapshot> & { ok?: boolean; stage?: Stage; assignmentClaim?: string; applyWindow?: string })
+      | (Partial<Snapshot> & { ok?: boolean; stage?: Stage; assignmentClaim?: string; applyWindow?: string; claimCode?: string })
       | null;
     if (d?.ok && d.stage) {
       /*
@@ -577,6 +581,7 @@ export default function FoundryJoinClient({
         later action response that carries no field cannot retract a true statement.
       */
       if (d.applyWindow === "created" || d.applyWindow === "exists") setApplyWindow(d.applyWindow);
+        if (typeof d.claimCode === "string" && d.claimCode) setClaimCode(d.claimCode);
       /*
         MERGE, NEVER REBUILD — and now structurally, not key by key (Slice R4-R3B1-R1).
 
@@ -1073,6 +1078,18 @@ export default function FoundryJoinClient({
               ) : (
                 <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
               )}
+              {claimCode ? (
+                <div
+                  className="mt-4 flex flex-col gap-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3"
+                  data-testid="terminal-claim-code"
+                >
+                  <p className="text-sm leading-6 text-white/75">{claimCodeCopy(locale).lead}</p>
+                  <p className="select-all font-mono text-lg tracking-[0.14em] text-white" data-testid="terminal-claim-code-value">
+                    {formatClaimCodeForDisplay(claimCode)}
+                  </p>
+                  <p className="text-xs leading-5 text-white/45">{claimCodeCopy(locale).validity}</p>
+                </div>
+              ) : null}
               {/* 3.1B-3D fix: account is OBSERVABLE + chosen before claiming. */}
               {account === "loading" ? (
                 <p className="text-sm text-white/45" data-testid="claim-account-loading">{t.accountLoading}</p>

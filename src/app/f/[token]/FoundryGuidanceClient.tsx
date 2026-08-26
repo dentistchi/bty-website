@@ -7,7 +7,8 @@ import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { useSuggestedName } from "./useSuggestedName";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
-import { terminalIdentityCopy } from "./terminalIdentityCopy";
+import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
+import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
 
 /**
@@ -412,6 +413,12 @@ export default function FoundryGuidanceClient({
     a later action response that carries nothing must not silently retract a true statement.
   */
   const [applyWindow, setApplyWindow] = useState<"created" | "exists" | null>(null);
+  /*
+    The claim code arrives once, in the completion response, and is never readable again — only its
+    hash is stored. Held in state for the terminal and nowhere else: not logged, not persisted, not
+    put in the URL.
+  */
+  const [claimCode, setClaimCode] = useState<string | null>(null);
   const [name, setName] = useState("");
   /*
     R4-R5C7A — when the account already carries a name, the field arrives filled in. The learner
@@ -552,13 +559,14 @@ export default function FoundryGuidanceClient({
    */
   const applyResult = useCallback(
     (data: unknown) => {
-      const d = data as (Partial<Snapshot> & { ok?: boolean; applyWindow?: string }) | null;
+      const d = data as (Partial<Snapshot> & { ok?: boolean; applyWindow?: string; claimCode?: string }) | null;
       if (d?.ok && d.stage) {
         /*
           R4-R5C9A — capture the server's Apply outcome. STICKY: only a positive outcome writes, so a
           later action response that carries no field cannot retract a true statement.
         */
         if (d.applyWindow === "created" || d.applyWindow === "exists") setApplyWindow(d.applyWindow);
+        if (typeof d.claimCode === "string" && d.claimCode) setClaimCode(d.claimCode);
         setSnapshot((prev) =>
           mergeSnapshot<Snapshot>(prev, d, EMPTY_SNAPSHOT, { content_type: contentType, stage: d.stage! }),
         );
@@ -897,6 +905,18 @@ export default function FoundryGuidanceClient({
                 ) : (
                   <p className="mt-2 text-sm text-white/80">{t.xpClaimable}</p>
                 )}
+                {claimCode ? (
+                  <div
+                    className="mt-4 flex flex-col gap-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3"
+                    data-testid="terminal-claim-code"
+                  >
+                    <p className="text-sm leading-6 text-white/75">{claimCodeCopy(locale).lead}</p>
+                    <p className="select-all font-mono text-lg tracking-[0.14em] text-white" data-testid="terminal-claim-code-value">
+                      {formatClaimCodeForDisplay(claimCode)}
+                    </p>
+                    <p className="text-xs leading-5 text-white/45">{claimCodeCopy(locale).validity}</p>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void onClaim()}
