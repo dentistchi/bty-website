@@ -46,5 +46,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const r = await completeTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
     // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
-return jsonNoStore({ ok: true, ...r.snapshot, applyWindow: r.applyWindow });
+/*
+    THE CODE HAS TO REACH THE PERSON WHO EARNED IT (Deferred Completion Claim V1-R2).
+
+    This spread the snapshot and then hand-picked ONE extra field. `claimCode` lives on the result,
+    not the snapshot, so it was minted, hashed, stored — and dropped here. Measured on the first
+    controlled completion: `claim_secret_hash` NON-NULL, terminal blank, raw code gone for good.
+    It is returned exactly once, to the learner who just completed anonymously, and to nobody else.
+  */
+  return jsonNoStore({
+    ok: true,
+    ...r.snapshot,
+    applyWindow: r.applyWindow,
+    claimCode: r.claimCode,
+    claimExpiresAt: r.claimExpiresAt,
+  });
 }
