@@ -64,7 +64,9 @@ describe("T2/T3 — the history door describes its own destination", () => {
     render(<LearnDoors locale="ko" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} />);
     const door = screen.getByTestId("door-my-learning");
     expect(door.textContent).toContain("학습 기록");
-    expect(door.textContent).toContain("완료한 학습과 배운 내용을 확인하세요.");
+    // Retargeted by the KO native-copy pass: the door still describes its own destination
+    // (finished learning), in Korean that was written rather than translated.
+    expect(door.textContent).toContain("지금까지 마친 학습을 다시 보세요.");
     expect(door.textContent).toContain("기록 보기");
   });
 

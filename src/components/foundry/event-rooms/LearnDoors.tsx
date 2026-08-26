@@ -56,17 +56,25 @@ const COPY: Record<
     myEventsTitle: "My events",
     myEventsBody: "See participation in the Reality Events you opened.",
   },
+  /*
+    WRITTEN AS KOREAN, NOT TRANSLATED INTO IT.
+
+    Each line names the job the door actually opens, measured rather than inferred from its
+    label: the create door POSTs a module draft and lands in the Builder; the next two open and
+    then review a REAL GATHERING where people scan a QR. "이벤트" was carrying both that
+    gathering and the quick training room three taps below, so it is gone from both.
+  */
   ko: {
     learnTitle: "학습 기록",
-    learnBody: "완료한 학습과 배운 내용을 확인하세요.",
+    learnBody: "지금까지 마친 학습을 다시 보세요.",
     learnCta: "기록 보기",
-    createTitle: "트레이닝 만들기",
-    createBody: "현장의 실제 문제를 팀을 위한 명확한 트레이닝으로 만드세요.",
-    createCta: "트레이닝 만들기",
-    eventTitle: "이벤트 열기",
-    eventBody: "팀이 참여할 실제 순간을 여세요.",
-    myEventsTitle: "내 이벤트",
-    myEventsBody: "내가 연 리얼리티 이벤트의 참여 현황을 확인하세요.",
+    createTitle: "훈련 만들기",
+    createBody: "팀에서 반복되는 문제를 하나 골라 훈련으로 만드세요.",
+    createCta: "훈련 만들기",
+    eventTitle: "팀 모으기",
+    eventBody: "팀이 직접 모이는 자리를 여세요.",
+    myEventsTitle: "내가 연 자리",
+    myEventsBody: "내가 열었던 자리에 누가 참여했는지 확인하세요.",
   },
 };
 
