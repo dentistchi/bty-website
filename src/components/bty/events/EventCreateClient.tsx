@@ -60,7 +60,7 @@ const COPY = {
   */
   ko: {
     heading: "이벤트 만들기",
-    intro: "팀원이 QR을 찍어 참여합니다.",
+    intro: "팀원은 QR 코드를 스캔해 참여합니다.",
     title: "이벤트 이름",
     titlePh: "아침 모임",
     type: "이벤트 종류",
@@ -71,7 +71,7 @@ const COPY = {
     working: "만드는 중…",
     createdHeading: "이벤트가 만들어졌습니다",
     qrAria: "이벤트 참여 QR 코드",
-    scanInstruction: "팀원에게 이 QR을 보여주세요. 찍으면 참여가 기록됩니다.",
+    scanInstruction: "팀원에게 이 QR 코드를 보여주세요. 스캔하면 참여가 기록됩니다.",
     viewEvents: "내가 만든 이벤트 보기",
     another: "이벤트 하나 더 만들기",
     backLearn: "배우기로 돌아가기",

@@ -76,7 +76,12 @@ describe("[KO event create T6-T9] success state, English, behaviour, length", ()
   it("T6 the success copy says what happened and what to do next", () => {
     const koBlock = SOURCE.slice(SOURCE.indexOf("  ko: {"), SOURCE.indexOf("type CreatedEvent"));
     expect(koBlock).toContain('createdHeading: "이벤트가 만들어졌습니다"');
-    expect(koBlock).toContain("이 QR을 보여주세요");
+    expect(koBlock).toContain("이 QR 코드를 보여주세요");
+    // Founder micro-repair: the device read "찍어/찍으면" as clipped; the KO surface says
+    // "QR 코드" and "스캔" throughout, so the two sentences match each other and the object.
+    expect(koBlock).toContain("스캔하면 참여가 기록됩니다");
+    expect(koBlock).not.toContain("찍으면");
+    expect(koBlock).not.toContain("찍어 참여");
     expect(koBlock).toContain("내가 만든 이벤트 보기");
     expect(koBlock).not.toContain("준비됨");
   });
