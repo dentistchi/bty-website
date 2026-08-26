@@ -56,7 +56,12 @@ const COPY = {
     qrInstruction: "팀원에게 이 QR 코드를 보여주세요. 스캔하면 참여가 기록됩니다.",
     qrUnavailable: "QR 코드는 참여 가능한 동안에만 보여줄 수 있습니다.",
     rosterHeading: "참여자",
-    count: (n: number) => (n === 0 ? "아직 참여한 사람이 없습니다" : `${n}명 참여`),
+    /*
+      The header COUNTS; the body below says what an empty roster means. Zero used to put the
+      same sentence in both, one line apart, so the count line just says zero like every other
+      count. The list keeps its sentence: it has no body underneath to carry it.
+    */
+    count: (n: number) => `${n}명 참여`,
     emptyRoster: "아직 참여한 사람이 없습니다.",
     fallbackName: "참여자",
     errorBody: "이벤트를 불러오지 못했습니다.",

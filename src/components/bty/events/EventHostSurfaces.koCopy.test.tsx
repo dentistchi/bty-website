@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import EventHostDetail from "./EventHostDetail";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -105,9 +106,17 @@ describe("[KO host events T6-T8] states, counts, and the way back", () => {
   it("T7 counts are counted the way Korean counts people", () => {
     for (const ko of [KO_LIST, KO_DETAIL]) {
       expect(ko).toContain("${n}명 참여");
-      expect(ko).toContain("아직 참여한 사람이 없습니다");
       expect(ko).not.toContain("참여 ${n}");
     }
+    /*
+      FOUNDER-OBSERVED: the detail's empty roster printed the same sentence twice, one line
+      apart — the header count and the body under it. The header COUNTS ("0명 참여") and the body
+      keeps the sentence, because the body is the only thing that explains an empty list. The
+      list has no such body, so its zero case still carries the sentence itself.
+    */
+    expect(KO_DETAIL).toContain("count: (n: number) => `${n}명 참여`");
+    expect(KO_DETAIL).toContain('emptyRoster: "아직 참여한 사람이 없습니다."');
+    expect(KO_LIST).toContain('n === 0 ? "아직 참여한 사람이 없습니다"');
     // The roster names the people it lists, and an unnamed row is still one of them.
     expect(KO_DETAIL).toContain('rosterHeading: "참여자"');
     expect(KO_DETAIL).toContain('fallbackName: "참여자"');
@@ -150,5 +159,57 @@ describe("[KO host events T9-T12] English, behaviour, aria, length", () => {
         expect(m[1].length, m[1]).toBeLessThanOrEqual(44);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The empty roster, as it actually renders
+// ---------------------------------------------------------------------------
+
+const detailResponse = (participationCount: number, participants: { displayName: string | null; participatedAt: string }[]) => ({
+  ok: true,
+  json: async () => ({
+    event: {
+      eventId: "e1",
+      title: "아침 모임",
+      state: "ACTIVE" as const,
+      createdAt: "2026-08-26T05:00:00.000Z",
+      closesAt: "2026-08-30T08:00:00.000Z",
+      participationCount,
+      qr: { available: true, payload: "btyev1.test" },
+    },
+    participants,
+  }),
+});
+
+describe("[KO host events] the empty roster says it once", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("an empty roster shows a zero COUNT in the header and the sentence only in the body", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => detailResponse(0, [])));
+    render(<EventHostDetail locale="ko" eventId="e1" onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("event-detail-count")).toBeTruthy());
+
+    // T1 — the header counts.
+    expect(screen.getByTestId("event-detail-count").textContent).toBe("0명 참여");
+    // T2 — the sentence appears exactly once on the whole screen.
+    const body = document.body.textContent ?? "";
+    expect(body.split("아직 참여한 사람이 없습니다").length - 1).toBe(1);
+    expect(screen.getByTestId("event-detail-roster-empty").textContent).toBe("아직 참여한 사람이 없습니다.");
+  });
+
+  it("T3 a non-empty roster counts the same way", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => detailResponse(2, [
+      { displayName: "홍길동", participatedAt: "2026-08-26T05:14:00.000Z" },
+      { displayName: null, participatedAt: "2026-08-26T05:20:00.000Z" },
+    ])));
+    render(<EventHostDetail locale="ko" eventId="e1" onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("event-detail-count")).toBeTruthy());
+    expect(screen.getByTestId("event-detail-count").textContent).toBe("2명 참여");
+    expect(screen.queryByTestId("event-detail-roster-empty")).toBeNull();
+    // The unnamed row still reads as one of the people counted.
+    expect(document.body.textContent).toContain("참여자");
   });
 });
