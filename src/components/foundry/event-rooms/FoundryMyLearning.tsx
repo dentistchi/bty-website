@@ -479,7 +479,18 @@ export default function FoundryMyLearning({
             autoCorrect="off"
             spellCheck={false}
             data-testid="my-learning-claim-input"
-            className="min-w-0 flex-1 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 font-mono text-sm tracking-[0.1em] text-white placeholder-white/25 outline-none"
+            /*
+              16px MINIMUM, BECAUSE iOS ZOOMS ANYTHING SMALLER. Founder device, Capacitor
+              WKWebView: tapping this field zoomed the whole app and it stayed zoomed after
+              submitting — force-quit was the only way back. `text-sm` resolves to .875rem = 14px,
+              which is under the threshold iOS applies to a focused form control.
+
+              The other way to stop it is `maximum-scale=1` / `user-scalable=no` on the viewport,
+              which fixes this screen by removing pinch-zoom from every screen. One input at 16px
+              costs nothing and leaves that alone. `min-w-0 flex-1` absorbs the wider text so the
+              row still shrinks instead of overflowing.
+            */
+            className="min-w-0 flex-1 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 font-mono text-base tracking-[0.1em] text-white placeholder-white/25 outline-none"
           />
           <button
             type="button"
