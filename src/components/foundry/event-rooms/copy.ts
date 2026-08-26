@@ -285,8 +285,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     nonHostSub: "초대 QR을 스캔하여 훈련 이벤트에 참여하세요.",
     emptyLead: "팀을 하나의 방으로 모으세요.",
     // The door BELOW the Builder door: one video or one document, no design step.
-    createCta: "설계 없이 바로 열기",
-    createQuickNote: "영상이나 자료 하나로 시작합니다.",
+    createCta: "자료로 바로 시작하기",
+    createQuickNote: "영상이나 자료 하나로 훈련을 바로 시작하세요.",
     pastViewAll: "지난 이벤트 모두 보기",
     pastShowLess: "간략히 보기",
     createEyebrow: "훈련 이벤트 만들기",

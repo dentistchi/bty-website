@@ -62,7 +62,9 @@ const COPY: Record<
     Each line names the job the door actually opens, measured rather than inferred from its
     label: the create door POSTs a module draft and lands in the Builder; the next two open and
     then review a REAL GATHERING where people scan a QR. "이벤트" was carrying both that
-    gathering and the quick training room three taps below, so it is gone from both.
+    gathering and the quick training room three taps below. The two Reality-Event doors keep the
+    ordinary word a Korean user already uses for them; the quick training door underneath now
+    names its material instead, so the same word no longer covers both.
   */
   ko: {
     learnTitle: "학습 기록",
@@ -71,10 +73,10 @@ const COPY: Record<
     createTitle: "훈련 만들기",
     createBody: "팀에서 반복되는 문제를 하나 골라 훈련으로 만드세요.",
     createCta: "훈련 만들기",
-    eventTitle: "팀 모으기",
-    eventBody: "팀이 직접 모이는 자리를 여세요.",
-    myEventsTitle: "내가 연 자리",
-    myEventsBody: "내가 열었던 자리에 누가 참여했는지 확인하세요.",
+    eventTitle: "이벤트 만들기",
+    eventBody: "팀이 참여할 이벤트를 만드세요.",
+    myEventsTitle: "내가 만든 이벤트",
+    myEventsBody: "내가 만든 이벤트에 누가 참여했는지 확인하세요.",
   },
 };
 

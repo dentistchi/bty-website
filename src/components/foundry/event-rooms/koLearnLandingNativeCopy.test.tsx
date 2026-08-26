@@ -72,13 +72,20 @@ describe("[KO Learn landing T4] each card is one obvious, distinct job", () => {
 
     expect(learn).toContain("마친 학습");
     expect(create).toContain("반복되는 문제");
-    expect(open).toContain("모이는");
+    expect(open).toContain("팀이 참여할");
     expect(mine).toContain("누가 참여했는지");
 
     expect(new Set([learn, create, open, mine]).size).toBe(4);
-    // The two gathering doors are distinguishable: one opens, one reviews.
-    expect(open).toContain("여세요");
+    /*
+      FOUNDER-CORRECTED. The first pass replaced "이벤트" everywhere, including on the two
+      surfaces that really are Reality Events, and the substitutes ("팀 모으기", "내가 연
+      자리") read as invented rather than ordinary. The overloading was the defect, not the
+      word: these two doors keep it, and the quick TRAINING door below no longer borrows it.
+      What still has to hold is that the two are not the same door - one makes, one checks.
+    */
+    expect(open).toContain("만드세요");
     expect(mine).toContain("확인하세요");
+    expect(open).not.toContain("확인");
   });
 
   it("uses no architecture vocabulary in Korean either", () => {
@@ -126,7 +133,11 @@ describe("[KO Learn landing T7-T8] length, and the quick door", () => {
 
   it("T8 the quick door is KEPT and says what it skips", () => {
     expect(MODULE_BUILDER_COPY.ko.quickLead).toBe("바로 시작해야 하나요?");
-    expect(EVENT_ROOMS_COPY.ko.createCta).toBe("설계 없이 바로 열기");
-    expect(EVENT_ROOMS_COPY.ko.createQuickNote).toBe("영상이나 자료 하나로 시작합니다.");
+    expect(EVENT_ROOMS_COPY.ko.createCta).toBe("자료로 바로 시작하기");
+    expect(EVENT_ROOMS_COPY.ko.createQuickNote).toBe("영상이나 자료 하나로 훈련을 바로 시작하세요.");
+    // The quick door is a TRAINING door: it must not borrow the Reality-Event word.
+    expect(EVENT_ROOMS_COPY.ko.createCta).not.toContain("이벤트");
+    expect(EVENT_ROOMS_COPY.ko.createQuickNote).not.toContain("이벤트");
+    expect(MODULE_BUILDER_COPY.ko.quickLead).not.toContain("이벤트");
   });
 });
