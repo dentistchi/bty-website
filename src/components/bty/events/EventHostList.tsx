@@ -38,21 +38,35 @@ const COPY = {
     closes: (s: string) => `Open until ${s}`,
     closed: (s: string) => `Ended ${s}`,
   },
+  /*
+    THE SAME KOREAN AS THE DOORS THAT LEAD HERE.
+
+    The Learn landing and the create screen closed on one vocabulary — 이벤트 만들기 / 내가 만든
+    이벤트 / QR 코드 / 스캔 / 배우기 — and this screen still said 내 이벤트, offered 이벤트 열기
+    when empty, and sent the Host back to 학습.
+
+    STATES SAY WHAT THE HOST WANTS TO KNOW. The API derives exactly three (cancelled → CANCELLED,
+    valid_until past → ENDED, else ACTIVE), so nothing is invented: what a Host is actually asking
+    of a row is whether people can still join it.
+
+    참여자, NOT 팀원, for anything counted: scanning needs a valid QR and an account but NOT org
+    membership, so the roster can hold people who are not on the Host's team.
+  */
   ko: {
-    heading: "내 이벤트",
-    intro: "내가 연 리얼리티 이벤트의 참여 현황입니다.",
+    heading: "내가 만든 이벤트",
+    intro: "이벤트를 눌러 QR 코드와 참여자를 볼 수 있습니다.",
     loading: "이벤트를 불러오는 중…",
     refreshing: "새로고침 중…",
     refresh: "새로고침",
     emptyTitle: "아직 이벤트가 없습니다.",
-    emptyCta: "이벤트 열기",
-    back: "‹ 학습",
+    emptyCta: "이벤트 만들기",
+    back: "‹ 배우기",
     errorBody: "이벤트를 불러오지 못했습니다.",
     retry: "다시 시도",
-    state: { ACTIVE: "진행 중", ENDED: "종료됨", CANCELLED: "취소됨" } as Record<string, string>,
-    count: (n: number) => (n === 0 ? "아직 참여 기록이 없습니다" : `참여 ${n}`),
+    state: { ACTIVE: "참여 가능", ENDED: "참여 마감", CANCELLED: "취소됨" } as Record<string, string>,
+    count: (n: number) => (n === 0 ? "아직 참여한 사람이 없습니다" : `${n}명 참여`),
     closes: (s: string) => `${s}까지`,
-    closed: (s: string) => `${s} 종료`,
+    closed: (s: string) => `${s}에 마감`,
   },
 };
 
