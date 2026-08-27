@@ -2,13 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import type { Locale } from "./copy";
-import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, suggestSharedQuestion, type ModuleBuilderCopy } from "./moduleBuilderCopy";
+import { MODULE_BUILDER_COPY, arenaFollowLabel, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import { createSerializedSaver, SAVE_REQUEST_TIMEOUT_MS, type SaveState } from "./moduleAutosave";
 import {
   observableBehaviorWarning,
-  recommendArenaForNeeds,
-  normalizeLearningNeeds,
-  shouldProposeSharedQuestion,
   stepBlocker,
   stepBlockers,
   persistableStep,
@@ -17,13 +14,17 @@ import {
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
   TITLE_MAX,
-  FOLLOW_UP_DAY_OPTIONS,
   type BuilderAnswers,
   type AudienceType,
   type EvidenceObservation,
   type LearningNeed,
   type FollowUpDays,
   type MaterialIntent,
+  resumeStep,
+  LEARNING_NEEDS,
+  effectiveArenaRecommended,
+  effectiveFollowUpDays,
+  effectiveLearningNeeds,
 } from "@/domain/foundry/module/module-builder";
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUpObligation";
@@ -162,8 +163,6 @@ export function ModuleBuilderShell({
   const stepRef = useRef<number>(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goneRef = useRef(false);
-  const seededPromptRef = useRef(false);
-  const seededSharedRef = useRef(false);
 
   /** Set when the server refused an adoption claim carried by a save (Slice 3.2L-R11.3A). */
   const [adoptionRefusal, setAdoptionRefusal] = useState<string | null>(null);
@@ -261,9 +260,15 @@ export function ModuleBuilderShell({
         if (!draft || draft.status !== "draft") return setRestore("gone");
         const a = draft.answers ?? {};
         answersRef.current = a;
-        stepRef.current = draft.current_step;
+        /*
+          A BOOKMARK AGAINST A GRAPH THAT CHANGED (Slice R4-R8B). `current_step` was written under
+          the nine-screen sequence; three of those screens no longer exist, so the stored number
+          is translated rather than trusted. `resumeStep` is the single rule and it never sends a
+          Host FURTHER than they had reached.
+        */
+        stepRef.current = resumeStep(draft.current_step);
         setAnswers(a);
-        setStep(draft.current_step);
+        setStep(resumeStep(draft.current_step));
         setAssets(draft.assets ?? []);
         setIsRevision((draft.module_version ?? 1) > 1 || draft.parent_module_id != null);
         setGenerationPending(data.program_generation_active === true);
@@ -409,32 +414,20 @@ export function ModuleBuilderShell({
    * moment the Host edits the field — which is the existing, ordinary authoring path. Doing
    * nothing authors nothing, so navigation can no longer change the generation context.
    */
-  const [proposedCompletionPrompt, setProposedCompletionPrompt] = useState<string | null>(null);
-  const [proposedSharedQuestion, setProposedSharedQuestion] = useState<string | null>(null);
-  useEffect(() => {
-    // The material step — 7 since Slice 3.2P-R3.6-R1 inserted the recurring-moment question.
-    if (step !== 7) return;
-    if (!seededPromptRef.current) {
-      seededPromptRef.current = true;
-      if (!(answersRef.current.completionPrompt ?? "").trim()) {
-        const suggestion = suggestCompletionPrompt(answersRef.current, locale);
-        if (suggestion) setProposedCompletionPrompt(suggestion);
-      }
-    }
-    // Shared Understanding default (Slice 3.1B-3G, Amendment F): proposed for
-    // decide/practice/shared_standard needs, ONCE, and ONLY while the field is untouched
-    // (undefined). Once the Host edits it — even to empty, an explicit remove — it is no
-    // longer undefined and nothing is ever re-proposed.
-    if (!seededSharedRef.current) {
-      seededSharedRef.current = true;
-      if (
-        answersRef.current.sharedQuestion === undefined &&
-        shouldProposeSharedQuestion(normalizeLearningNeeds(answersRef.current))
-      ) {
-        setProposedSharedQuestion(suggestSharedQuestion(locale));
-      }
-    }
-  }, [step, locale]);
+  /*
+    NO SUGGESTION IS DISPLAYED ANY MORE (Slice R4-R8B), because there is no field to display it
+    in on a fresh draft.
+
+    3.2L-R11.4B moved these two suggestions out of the draft and into display-only state, which
+    stopped navigation from silently authoring an eighth program section. That was the right fix
+    for the write; it could not fix the read. A box showing BTY's sentence still invites a Host to
+    adjust one word of it, and adjusting one word is what transfers ownership of the question.
+
+    Both questions are BTY's by default now, derived where they belong — `journeyCopy` for the
+    seeded completion check, the program's own contracts for the generated one. A legacy draft
+    that already holds the Host's own question renders it on the material step, unproposed and
+    unchanged.
+  */
 
   // Publish the draft into a live event (approve-on-publish) and hand off to the
   // control room. Flushes any pending autosave first so the server reads the
@@ -855,7 +848,7 @@ export function ModuleBuilderShell({
             <button
               type="button"
               data-testid="journey-start"
-              onClick={() => patchAnswers({ realityGroundedJourneyV1: mapAnswersToJourney(answers) }, true)}
+              onClick={() => patchAnswers({ realityGroundedJourneyV1: mapAnswersToJourney(answers, locale) }, true)}
               className="self-start rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-3 text-sm font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/[0.14]"
             >
               {t.journeyStart} →
@@ -881,7 +874,7 @@ export function ModuleBuilderShell({
             to choose, so nothing may render between it and the button.
           */}
           <div className="lg:col-span-2">
-            <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
+            <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} onPatch={patchAnswers} t={t} />
           </div>
           <div className="lg:col-span-2">
             <ParticipationModeChooser
@@ -922,7 +915,7 @@ export function ModuleBuilderShell({
           </div>
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
+        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode)}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -1153,11 +1146,6 @@ function renderStep(
   blocker: string | null,
   t: ModuleBuilderCopy,
   filesNode: React.ReactNode,
-  /**
-   * Proposed text the Host has not authored. Shown in the field so they can accept it by
-   * editing, and never written to the draft on its own (Slice 3.2L-R11.4B).
-   */
-  proposals: { completionPrompt: string | null; sharedQuestion: string | null },
 ) {
   switch (step) {
     case 1:
@@ -1321,31 +1309,15 @@ function renderStep(
         </StepFrame>
       );
     }
+    /*
+      THE LEARNING-NEED SCREEN IS GONE (Slice R4-R8B), and the material step took its number.
+
+      It asked the Host to choose, from four internal terms, which kinds of learning a training
+      contains — a BTY design decision expressed in BTY's vocabulary, put to someone who came to
+      fix a problem in their team. `effectiveLearningNeeds` derives it from the behaviour they
+      already described, and the answer stays overridable under the details disclosure on Review.
+    */
     case 6: {
-      const selected = normalizeLearningNeeds(a);
-      const toggle = (need: LearningNeed) => {
-        const next = selected.includes(need) ? selected.filter((n) => n !== need) : [...selected, need];
-        patch({ learningNeeds: next }, true);
-      };
-      const item = (need: LearningNeed, title: string, desc: string) => (
-        <DescOption active={selected.includes(need)} title={title} desc={desc} onClick={() => toggle(need)} />
-      );
-      return (
-        <StepFrame q={t.s5Q} help={t.s5Help}>
-          <div className="flex flex-col gap-2.5">
-            {item("know", t.needInfoTitle, t.needInfoDesc)}
-            {item("decide", t.needDecideTitle, t.needDecideDesc)}
-            {item("practice", t.needPracticeTitle, t.needPracticeDesc)}
-            {item("shared_standard", t.needSharedTitle, t.needSharedDesc)}
-          </div>
-          {recommendArenaForNeeds(selected) ? (
-            <p className="text-xs leading-5 text-[#C9A66B]/80">{t.s5ArenaHint}</p>
-          ) : null}
-          <BlockerLine show={blocker === "learning_need_required"} text={t.s5Blocker} />
-        </StepFrame>
-      );
-    }
-    case 7: {
       /*
         FOUR CHOICES SINCE R4-R2G, and the chooser is typed on the domain union rather than on a
         hand-written pair — so a fifth approved type cannot be added to `MaterialIntent` and
@@ -1419,49 +1391,55 @@ function renderStep(
             </div>
           ) : null}
           {a.materialIntent === "pdf" ? filesNode : null}
-          {a.materialIntent ? (
-            <div className="flex flex-col gap-2 border-t border-white/8 pt-4">
+          {/*
+            THE TWO LEARNER QUESTIONS ARE NOT AUTHORED HERE ANY MORE (Slice R4-R8B).
+
+            THE COMPLETION QUESTION WAS A PROVENANCE TRAP, and this is the defect that made the
+            whole slice necessary. `resolveCompletionCheck` gives a Host-typed sentence ABSOLUTE
+            precedence over BTY's, and this box arrived looking pre-filled with BTY's suggestion —
+            so a Host who tapped in and adjusted one word silently took ownership of the question,
+            `completion_check` became `host_statement`, and the barrier question BTY writes could
+            never render. The workaround was to tell the Founder "do not type in that field". An
+            instruction like that is not a mitigation, it is the bug stated out loud.
+
+            RENDERED ONLY FOR A DRAFT THAT ALREADY CARRIES ONE. `!== undefined`, not "non-empty":
+            a Host who deliberately CLEARED their question has made a decision, and the field must
+            not vanish underneath them mid-edit. A fresh draft has neither key, sees neither box,
+            and receives BTY's derived questions — which is the C16B/C17A contract.
+
+            Nothing is migrated and nothing is rewritten. Legacy Host questions keep their
+            authority on every surface that reads them, and stay editable here.
+          */}
+          {a.materialIntent && a.completionPrompt !== undefined ? (
+            <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-completion-question">
               <h3 className="text-sm font-medium text-white/70">{t.s6CompletionQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6CompletionHelp}</p>
-              {textArea(a.completionPrompt ?? proposals.completionPrompt ?? "", (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
+              {textArea(a.completionPrompt, (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
             </div>
           ) : null}
-          {a.materialIntent ? (
+          {a.materialIntent && a.sharedQuestion !== undefined ? (
             /* Shared Understanding question (Slice 3.1B-3G) — distinct from the private completion
-               question above; the learner is told this answer is shared with the Host. Optional
-               (clear to remove); default-proposed for judgment/practice/shared-standard needs. */
+               question above; the learner is told this answer is shared with the Host. Same
+               legacy-only rule: never proposed into a fresh draft, always kept for one that has it. */
             <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-shared-question">
               <h3 className="text-sm font-medium text-white/70">{t.s6SharedQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6SharedHelp}</p>
-              {textArea(a.sharedQuestion ?? proposals.sharedQuestion ?? "", (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
+              {textArea(a.sharedQuestion, (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
             </div>
           ) : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />
         </StepFrame>
       );
     }
-    case 8: {
-      const recommend = recommendArenaForNeeds(normalizeLearningNeeds(a));
-      const chosen = a.arenaRecommended ?? recommend;
-      const followOpt = (days: FollowUpDays, label: string) => (
-        <OptionButton active={(a.followUpDays ?? -1) === days} label={label} onClick={() => patch({ followUpDays: days }, true)} />
-      );
-      return (
-        <StepFrame q={t.s7ArenaQ} help={recommend ? t.s7ArenaRecommended : undefined}>
-          <div className="flex flex-col gap-2.5">
-            <OptionButton active={chosen === true} label={t.s7ArenaAccept} onClick={() => patch({ arenaRecommended: true }, true)} />
-            <OptionButton active={chosen === false} label={t.s7ArenaDecline} onClick={() => patch({ arenaRecommended: false }, true)} />
-          </div>
-          <h3 className="pt-2 text-sm font-medium text-white/70">{t.s7FollowQ}</h3>
-          <div className="flex flex-col gap-2.5">
-            {followOpt(0, t.followNone)}
-            {followOpt(7, t.follow7)}
-            {followOpt(30, t.follow30)}
-          </div>
-          <BlockerLine show={blocker === "follow_up_required"} text={t.s7Blocker} />
-        </StepFrame>
-      );
-    }
+    /*
+      THE ARENA + FOLLOW-UP SCREEN IS GONE (Slice R4-R8B).
+
+      It printed BTY's own recommendation as a hint and then required the Host to agree with it,
+      in a product concept ("Arena") they do not need to know exists in order to create a
+      training. The follow-up question beside it asked when to check back — derivable, and
+      defaulted to 7 days by `effectiveFollowUpDays`, which is the shortest real option and the
+      one the entire post-training loop is written around. Both remain overridable on Review.
+    */
     default:
       return <div />;
   }
@@ -1486,6 +1464,28 @@ type ReviewRow = {
    */
   meaning?: string;
   lines?: string[];
+  /**
+   * AN OVERRIDE, WHERE THERE IS NO STEP TO SEND ANYONE TO (Slice R4-R8B).
+   *
+   * Three of these rows describe a design BTY derived — learning needs, Arena, follow-up — and
+   * their Builder screens are gone. "Edit" cannot mean "go back to the screen that asked", so
+   * for those rows it means "change it here". Present ⇒ the row renders this instead of the
+   * jump button, and the row is not tappable-to-navigate at all.
+   *
+   * Deliberately confined to derived design values. A row backed by the Host's own words keeps
+   * its jump: correcting the behaviour sentence belongs on the screen that asked for it, with
+   * its guidance and its blocker beside it.
+   */
+  control?: React.ReactNode;
+  /**
+   * A STABLE HANDLE THAT OUTLIVES "CAN THIS BE MISSING?" (Slice R4-R8B).
+   *
+   * The row's test id used to be derived from `section`, which conflated two questions: what to
+   * call this row, and whether it can appear in the missing set. When follow-up became derived it
+   * stopped being able to be missing — correctly — and lost its name at the same moment, taking
+   * the R4-R2C suite with it. That suite is about what the row SAYS, which has not changed.
+   */
+  testId?: string;
 };
 
 /**
@@ -1575,7 +1575,7 @@ function sectionLabel(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
   }
 }
 
-function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuilderCopy): ReviewRow[] {
+function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuilderCopy, onPatch: Patch): ReviewRow[] {
   const audience = (() => {
     switch (a.audienceType) {
       case "everyone":
@@ -1591,7 +1591,9 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     }
   })();
 
-  const needs = normalizeLearningNeeds(a);
+  // Slice R4-R8B — the DESIGN's needs, so a fresh training shows what it actually is rather
+  // than an empty row for a question the Host was never asked.
+  const needs = effectiveLearningNeeds(a);
   const needLabel: Record<LearningNeed, string> = {
     know: t.needInfoTitle,
     decide: t.needDecideTitle,
@@ -1638,10 +1640,88 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     }
   }
 
-  const arenaChosen = a.arenaRecommended ?? recommendArenaForNeeds(needs);
-  // Follow-up only reads as answered when a valid option was actually chosen — never
-  // mask an unset value as "No follow-up" (that made a required-missing row look done).
-  const followChosen = (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1);
+  const arenaChosen = effectiveArenaRecommended(a);
+  const followDays = effectiveFollowUpDays(a);
+
+  /*
+    THE OVERRIDES (Slice R4-R8B). Each writes the SAME field its removed screen wrote, through
+    the same `patchAnswers` path, so an override is indistinguishable from a Host who had been
+    asked — which is exactly what makes the derivation safe to remove later or keep forever.
+    `true` on the patch: these are discrete choices, not typing, so they save immediately.
+  */
+  const pill = (active: boolean, label: string, onClick: () => void, testId: string) => (
+    <button
+      key={testId}
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      aria-pressed={active}
+      className={`min-h-[44px] rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+        active ? "bg-[#C9A66B] text-[#0B1F3A]" : "border border-white/15 text-white/65"
+      }`}
+    >
+      {label}
+    </button>
+  );
+  const learningControl = (
+    <div className="flex shrink-0 flex-wrap justify-end gap-1.5" data-testid="review-control-learning">
+      {(LEARNING_NEEDS as readonly LearningNeed[]).map((n) =>
+        pill(
+          needs.includes(n),
+          needLabel[n],
+          () => {
+            const next = needs.includes(n) ? needs.filter((x) => x !== n) : [...needs, n];
+            /*
+              NEVER BACK TO EMPTY. An empty array would fall through to the derivation and read as
+              "the Host chose nothing", which is not a state this control can express — the last
+              remaining need cannot be turned off, it can only be swapped.
+            */
+            if (next.length > 0) onPatch({ learningNeeds: next }, true);
+          },
+          `review-need-${n}`,
+        ),
+      )}
+    </div>
+  );
+  const arenaControl = (
+    <div className="flex shrink-0 gap-1.5" data-testid="review-control-arena">
+      {pill(arenaChosen, t.arenaYes, () => onPatch({ arenaRecommended: true }, true), "review-arena-yes")}
+      {pill(!arenaChosen, t.arenaNo, () => onPatch({ arenaRecommended: false }, true), "review-arena-no")}
+    </div>
+  );
+  /*
+    THE SHARED-UNDERSTANDING QUESTION KEEPS AN ENTRY POINT (Slice R4-R8B).
+
+    MEASURED WHILE BUILDING THIS: removing the Builder field alone would have taken the whole
+    Shared Understanding path (Slice 3.1B-3G) out of reach for every new training, silently.
+    Nothing derives it — `mapAnswersToJourney` omits REFLECT when the field is empty and
+    `requiredProgramKinds` only requires it once a Host has written one — so "BTY derives it
+    where needed" would have meant "it never happens again".
+
+    So it lives here instead: optional, empty by default, under the details disclosure. This is
+    NOT the completion-question trap in a new place. That trap was a box arriving pre-filled with
+    BTY's sentence, where adjusting one word silently transferred ownership of a question BTY was
+    supposed to own. This box starts EMPTY and BTY has no version of it to displace — anything in
+    it is the Host's, which is exactly what the provenance will say.
+  */
+  const sharedControl = (
+    <textarea
+      value={a.sharedQuestion ?? ""}
+      onChange={(e) => onPatch({ sharedQuestion: e.target.value }, false)}
+      placeholder={t.s6SharedPlaceholder}
+      aria-label={t.s6SharedQ}
+      rows={2}
+      data-testid="review-control-shared"
+      className="w-52 shrink-0 resize-none rounded-lg border border-[#C9A66B]/40 bg-white/[0.07] px-3 py-2 text-sm leading-6 text-white/90 placeholder:text-white/35 outline-none focus:border-[#C9A66B]"
+    />
+  );
+  const followControl = (
+    <div className="flex shrink-0 gap-1.5" data-testid="review-control-follow">
+      {pill(followDays === 0, t.followNone, () => onPatch({ followUpDays: 0 }, true), "review-follow-0")}
+      {pill(followDays === 7, t.follow7, () => onPatch({ followUpDays: 7 }, true), "review-follow-7")}
+      {pill(followDays === 30, t.follow30, () => onPatch({ followUpDays: 30 }, true), "review-follow-30")}
+    </div>
+  );
 
   /*
     ALLOW IT, BUT NEVER HIDE WHAT IT MEANS (Slice R4-R2C).
@@ -1662,7 +1742,9 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     VALUE, which is a different question and is unchanged.
   */
   const followMeaning =
-    classifyFollowUpEvidencePlan(a.followUpDays) === "NO_FOLLOW_UP" ? t.reviewFollowNoneMeaning : undefined;
+    // Slice R4-R8B — classified from the EFFECTIVE value, so the sentence describes the training
+    // that will exist rather than the absence of an answer the Host was never asked for.
+    classifyFollowUpEvidencePlan(followDays) === "NO_FOLLOW_UP" ? t.reviewFollowNoneMeaning : undefined;
 
   return [
     // Slice 3.2R-R2.1 — the NAME and the recurring condition, as two distinct Review rows. Showing
@@ -1674,11 +1756,42 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     { label: t.reviewCapability, value: a.capabilityCandidate?.trim() ? a.capabilityCandidate : null, step: 4 },
     { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 4, section: "behavior", note: behaviorNote },
     { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 5, section: "evidence" },
-    { label: t.reviewLearning, value: learning, step: 6, section: "learning" },
-    { label: t.reviewMaterials, value: material, step: 7, section: "material", lines: materialLines },
-    { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 7 },
-    { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 8 },
-    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 8, section: "followUp", meaning: followMeaning },
+    /*
+      THREE DERIVED ROWS, EACH CARRYING THE CONTROL THAT USED TO BE A SCREEN (Slice R4-R8B).
+
+      They still SHOW — a Host must always be able to see what their training is, including the
+      parts they were never asked about — and each is changeable in place. `section` is dropped
+      from the learning and follow-up rows because neither can be MISSING any more:
+      `effectiveLearningNeeds` and `effectiveFollowUpDays` always answer, so marking them
+      outstanding would describe a state that can no longer occur.
+    */
+    { label: t.reviewLearning, value: learning, step: 6, control: learningControl, testId: "review-row-learning" },
+    { label: t.reviewMaterials, value: material, step: 6, section: "material", lines: materialLines },
+    /*
+      LEGACY ONLY. A fresh training's completion question is BTY's, lives in the journey and is
+      edited in the learner preview; an empty "Completion question" row here would invite the Host
+      to author the exact thing this slice stopped asking of them. A draft that HAS one keeps its
+      row, and its jump lands on the material step, where the field still renders for it.
+    */
+    ...(a.completionPrompt !== undefined
+      ? [{ label: t.reviewCompletion, value: a.completionPrompt.trim() ? a.completionPrompt : null, step: BUILDER_QUESTION_STEP }]
+      : []),
+    { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 6, control: arenaControl, testId: "review-row-arena" },
+    {
+      label: t.s6SharedQ,
+      value: a.sharedQuestion?.trim() ? a.sharedQuestion : null,
+      step: 6,
+      control: sharedControl,
+      testId: "review-row-shared",
+    },
+    {
+      label: t.reviewFollow,
+      value: arenaFollowLabel(followDays, t.followNone, t.follow7, t.follow30),
+      step: 6,
+      control: followControl,
+      meaning: followMeaning,
+      testId: "review-row-followUp",
+    },
   ];
 }
 
@@ -2078,12 +2191,15 @@ function AllTrainingDetails({
   assets,
   missing,
   onEdit,
+  onPatch,
   t,
 }: {
   answers: BuilderAnswers;
   assets: ClientAsset[];
   missing: ReviewMissingSection[];
   onEdit: (step: number) => void;
+  /** Slice R4-R8B — the three derived design rows are changed here, not on a step. */
+  onPatch: Patch;
   t: ModuleBuilderCopy;
 }) {
   /*
@@ -2116,7 +2232,7 @@ function AllTrainingDetails({
         </span>
         <span aria-hidden className="text-sm text-[#C9A66B]">{open ? "▴" : "▾"}</span>
       </button>
-      {open ? <ReviewBody answers={answers} assets={assets} missing={missing} onEdit={onEdit} t={t} /> : null}
+      {open ? <ReviewBody answers={answers} assets={assets} missing={missing} onEdit={onEdit} onPatch={onPatch} t={t} /> : null}
     </section>
   );
 }
@@ -2126,15 +2242,17 @@ function ReviewBody({
   assets,
   missing,
   onEdit,
+  onPatch,
   t,
 }: {
   answers: BuilderAnswers;
   assets: ClientAsset[];
   missing: ReviewMissingSection[];
   onEdit: (step: number) => void;
+  onPatch: Patch;
   t: ModuleBuilderCopy;
 }) {
-  const rows = buildReviewRows(answers, assets, t);
+  const rows = buildReviewRows(answers, assets, t, onPatch);
   const missingSet = new Set(missing.map((m) => m.section));
   return (
     <div className="flex flex-col gap-4">
@@ -2158,7 +2276,7 @@ function ReviewBody({
           return (
             <div
               key={i}
-              data-testid={r.section ? `review-row-${r.section}` : undefined}
+              data-testid={r.testId ?? (r.section ? `review-row-${r.section}` : undefined)}
               data-missing={isMissing ? "true" : undefined}
               className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${
                 isMissing
@@ -2199,9 +2317,11 @@ function ReviewBody({
                   </span>
                 ) : null}
               </div>
-              <button type="button" onClick={() => onEdit(r.step)} className="shrink-0 text-xs text-[#C9A66B]">
-                {t.editSection}
-              </button>
+              {r.control ?? (
+                <button type="button" onClick={() => onEdit(r.step)} className="shrink-0 text-xs text-[#C9A66B]">
+                  {t.editSection}
+                </button>
+              )}
             </div>
           );
         })}

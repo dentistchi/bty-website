@@ -152,20 +152,29 @@ describe("[R4-R2C] the Review screen tells the truth about No follow-up", () => 
     expect(meaning).toContain("제3자 관찰");
   });
 
-  it("an UNANSWERED follow-up gets no meaning — and the existing missing behaviour is untouched", async () => {
+  it("an UNANSWERED follow-up is the DERIVED schedule, and still gets no 'no follow-up' meaning", async () => {
     /*
-      SLICE R4-R2C-R1, gates I and J. An ordinary draft that has not reached the question yet must
-      not be told what "No follow-up" means: nobody chose it. The row falls through to exactly the
-      behaviour it had before either slice — empty value, Required badge, named in the
-      needs-attention list — which is what makes this a fall-through and not a new state.
+      SLICE R4-R2C-R1, gates I and J, RETARGETED BY R4-R8B. The property those gates protect is
+      "nobody is told they chose something they did not choose", and it is intact. What changed is
+      what an unanswered value MEANS: there is no longer a question to leave unanswered, so the
+      training has BTY's default — seven days — rather than an outstanding blank.
+
+      The half that must not move: the sentence explaining what skipping follow-up costs is still
+      reserved for a Host who actually skipped it. Deriving a default must never put words in
+      their mouth in the other direction either.
     */
     const row = await renderReview(undefined as unknown as number);
     expect(within(row).queryByTestId("review-row-meaning")).toBeNull();
-
-    expect(row.getAttribute("data-missing")).toBe("true");
-    expect(within(row).getByTestId("required-badge")).toBeTruthy();
-    expect(screen.getAllByTestId("review-missing-item-followUp").length).toBeGreaterThan(0);
-    expect(row.textContent).toContain("Not added yet");
+    expect(row.getAttribute("data-missing")).toBeNull();
+    expect(within(row).queryByTestId("required-badge")).toBeNull();
+    expect(screen.queryAllByTestId("review-missing-item-followUp")).toHaveLength(0);
+    /*
+      Asserted on the CONTROL's selected state, not on the row's text: the override renders a
+      "No follow-up" button, so a naive text search would find that label and read it as the
+      value. What must be true is that seven days is the one selected.
+    */
+    expect(within(row).getByTestId("review-follow-7").getAttribute("aria-pressed")).toBe("true");
+    expect(within(row).getByTestId("review-follow-0").getAttribute("aria-pressed")).toBe("false");
   });
 
   it("a CORRUPT persisted value gets no meaning — an unreadable value is not a decision", async () => {
@@ -177,8 +186,14 @@ describe("[R4-R2C] the Review screen tells the truth about No follow-up", () => 
     */
     const row = await renderReview(5);
     expect(within(row).queryByTestId("review-row-meaning")).toBeNull();
-    expect(row.getAttribute("data-missing")).toBe("true");
-    expect(row.textContent).not.toContain("No follow-up");
+    /*
+      R4-R8B — the CLAIM is unchanged and is the whole point of the test: a 5 must never be
+      reported to the Host as their decision to skip follow-up. It is now treated as unset, which
+      means the derived seven days, and `effectiveFollowUpDays` refuses it for exactly the reason
+      this test was written.
+    */
+    expect(within(row).getByTestId("review-follow-7").getAttribute("aria-pressed")).toBe("true");
+    expect(within(row).getByTestId("review-follow-0").getAttribute("aria-pressed")).toBe("false");
   });
 
   it("says nothing about the OTHER rows — the disclosure is scoped to the follow-up choice", async () => {

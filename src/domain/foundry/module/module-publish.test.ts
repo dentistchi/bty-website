@@ -79,14 +79,24 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
       [{ recurringMoment: "  " }, "recurringMoment", 3],
       [{ observableBehavior: "  " }, "behavior", 4],
       [{ successEvidence: "\n\t" }, "evidence", 5],
-      [{ learningNeeds: [] }, "learning", 6],
-      [{ materialIntent: undefined, materialText: undefined }, "material", 7],
-      [{ materialText: "" }, "material", 7], // youtube intent but blank URL
-      [{ followUpDays: undefined }, "followUp", 8],
+      /*
+        Slice R4-R8B — material moved from 7 to 6, and the "learning" and "followUp" rows left
+        this list entirely. Neither can be MISSING any more: `effectiveLearningNeeds` and
+        `effectiveFollowUpDays` always answer, so a row for them would name a state that cannot
+        occur. Both are still SHOWN on Review, with the control that used to be their screen.
+      */
+      [{ materialIntent: undefined, materialText: undefined }, "material", 6],
+      [{ materialText: "" }, "material", 6], // youtube intent but blank URL
     ];
     for (const [override, section, step] of cases) {
       const m = reviewMissingSections({ ...completeYoutube(), ...override });
       expect(m).toContainEqual({ section, step });
+    }
+    // The two retired sections are unreachable from ANY answers, not merely absent from the list.
+    for (const override of [{ learningNeeds: [] }, { followUpDays: undefined }] as Partial<BuilderAnswers>[]) {
+      const m = reviewMissingSections({ ...completeYoutube(), ...override });
+      expect(m.map((x) => x.section)).not.toContain("learning");
+      expect(m.map((x) => x.section)).not.toContain("followUp");
     }
   });
 
@@ -100,7 +110,8 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
     expect(m.map((x) => x.step)).toEqual([...m.map((x) => x.step)].sort((a, b) => a - b));
     // Slice 3.2P-R3.6-R1 — "When it happens" sits between the audience and the behaviour.
     // Slice 3.2R-R2.1 — "title" leads, as its own Review row, ahead of the problem it is not.
-    expect(m.map((x) => x.section)).toEqual(["title", "problem", "audience", "recurringMoment", "behavior", "evidence", "learning", "followUp"]);
+    // Slice R4-R8B — "learning" and "followUp" are derived and can no longer be outstanding.
+    expect(m.map((x) => x.section)).toEqual(["title", "problem", "audience", "recurringMoment", "behavior", "evidence"]);
   });
 
   it("does NOT block on an empty (optional) capability candidate", () => {
@@ -183,9 +194,32 @@ describe("buildModuleSnapshot", () => {
     expect(snap.completionPrompt).toBe("What read-back will you commit to?");
   });
 
-  it("omits undefined keys (partial answers)", () => {
+  it("omits undefined keys (partial answers), except the derived design it resolves", () => {
+    /*
+      Slice R4-R8B — three keys are RESOLVED here rather than copied, because the snapshot is the
+      training's frozen truth and `readEventFollowUpDays` reads `followUpDays` straight out of it.
+      Leaving them undefined would have meant every training created after the Builder shrank
+      silently had no follow-up and no Apply window. Everything else still copies or is omitted.
+    */
     const snap = buildModuleSnapshot({ problem: "x" });
-    expect(Object.keys(snap)).toEqual(["problem"]);
+    expect(Object.keys(snap).sort()).toEqual(["arenaRecommended", "followUpDays", "learningNeeds", "problem"]);
+    // Nothing to design around yet ⇒ the neutral values, not an invented schedule.
+    expect(snap.learningNeeds).toEqual([]);
+    expect(snap.followUpDays).toBe(0);
+  });
+
+  it("R4-R8B — a designed draft freezes the derived follow-up the loop depends on", () => {
+    const snap = buildModuleSnapshot({ ...completeYoutube(), followUpDays: undefined, learningNeeds: undefined });
+    expect(snap.followUpDays, "a fresh training must schedule a follow-up").toBe(7);
+    expect(snap.learningNeeds).toContain("decide");
+    expect(snap.arenaRecommended).toBe(true);
+  });
+
+  it("R4-R8B — what the Host chose is frozen, never the derivation", () => {
+    const snap = buildModuleSnapshot({ ...completeYoutube(), followUpDays: 0, learningNeeds: ["know"], arenaRecommended: false });
+    expect(snap.followUpDays).toBe(0);
+    expect(snap.learningNeeds).toEqual(["know"]);
+    expect(snap.arenaRecommended).toBe(false);
   });
 
   it("whitelist excludes every non-design key", () => {

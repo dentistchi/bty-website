@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateDraftPatch } from "./module-builder";
 import { reviewMissingSections } from "./module-publish";
+import { BUILDER_QUESTION_STEP } from "./module-builder";
 
 /**
  * SLICE 3.2R-R3 — "A PDF EXISTS" WAS THE ENTIRE MATERIAL GATE.
@@ -66,7 +67,9 @@ describe("[3.2R-R3] the blocker is visible where the Host can clear it", () => {
     const rows = reviewMissingSections({} as never, ["material_review_required"]);
     expect(rows.map((r) => r.section)).toContain("material");
     const step = rows.find((r) => r.section === "material")?.step;
-    expect(step).toBe(7);
+    // Slice R4-R8B — the material question is step 6 since the learning-need screen above it
+    // was derived away. Asserted against the constant so the next graph change reads as one.
+    expect(step).toBe(BUILDER_QUESTION_STEP);
   });
 
   it("and it collapses with the other material blocker rather than double-listing", () => {

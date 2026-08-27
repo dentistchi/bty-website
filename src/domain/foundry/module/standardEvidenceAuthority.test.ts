@@ -246,6 +246,15 @@ describe("[R4-R5C14A-R1 · T19-T25] Host authority vs AI proposal refusal", () =
     observableBehavior: "Check that you are already doing what you are about to ask for.",
     successEvidence: "Check that you are already doing what you are about to ask for.",
     learningNeeds: ["shared_standard"],
+    /*
+      Slice R4-R8B — STATED, because it stopped being the default. `arenaRecommended` used to be
+      false whenever the Host left it unset; it is now derived from the needs, and
+      `shared_standard` recommends Arena, which makes `scenario` a required program section. This
+      suite is about the Host's STANDARD and EVIDENCE keeping their authority, and its fixture has
+      always described a training without a scenario — so it says so, rather than relying on an
+      absence that no longer means what it meant. Also proves the override reaches the generator.
+    */
+    arenaRecommended: false,
     followUpDays: 7,
     materialIntent: "written",
     materialText: "Read the one-page leadership standard.",

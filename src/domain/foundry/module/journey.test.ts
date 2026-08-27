@@ -62,11 +62,44 @@ describe("mapAnswersToJourney — deterministic, grounded, no fabrication", () =
   });
 
   it("marks a missing REQUIRED element needs_confirmation with empty content (no generic default)", () => {
-    const j = mapAnswersToJourney({ ...FIXTURE, completionPrompt: "" });
+    /*
+      RETARGETED TO A KIND THAT STILL HAS NO OTHER SOURCE (Slice R4-R8B). This used the completion
+      check, which BTY now writes itself when the Host never authored one — see the test below.
+      The rule under test is unchanged and still worth holding: a required element with nothing to
+      ground it is empty and unconfirmed, never a generic sentence dressed as the Host's.
+    */
+    const j = mapAnswersToJourney({ ...FIXTURE, problem: "" });
+    const el = j.elements.find((e) => e.kind === "why_it_matters")!;
+    expect(el.content).toBe("");
+    expect(el.confirmationStatus).toBe("needs_confirmation");
+    expect(el.grounding).toEqual([]);
+  });
+
+  it("R4-R8B — an unauthored completion check is BTY's barrier question, and says so", () => {
+    /*
+      THE C16B CONTRACT AT THE SEED. The Builder no longer asks the Host to write this, so an
+      empty field is the NORMAL state rather than an omission — and leaving it empty would seed a
+      publish blocker into every fresh draft for a question nobody was asked. It is BTY's
+      question, stamped with the provenance that says BTY derived it: not `host_statement`, which
+      would be the exact dishonesty this file's `reflection` case exists to prevent.
+    */
+    for (const [locale, expected] of [
+      ["en", "What might make this difficult to do in real work?"],
+      ["ko", "실제 업무에서 이것을 행동으로 옮기기 어렵게 만드는 것은 무엇일까요?"],
+    ] as const) {
+      const j = mapAnswersToJourney({ ...FIXTURE, completionPrompt: "" }, locale);
+      const cc = j.elements.find((e) => e.kind === "completion_check")!;
+      expect(cc.content, locale).toBe(expected);
+      expect(cc.confirmationStatus, locale).toBe("grounded");
+      expect(cc.grounding[0]?.sourceType, locale).toBe("deterministic_derived");
+    }
+  });
+
+  it("R4-R8B — a Host who wrote their own completion question keeps it, verbatim and theirs", () => {
+    const j = mapAnswersToJourney({ ...FIXTURE, completionPrompt: "What will you change tomorrow?" }, "ko");
     const cc = j.elements.find((e) => e.kind === "completion_check")!;
-    expect(cc.content).toBe("");
-    expect(cc.confirmationStatus).toBe("needs_confirmation");
-    expect(cc.grounding).toEqual([]);
+    expect(cc.content).toBe("What will you change tomorrow?");
+    expect(cc.grounding[0]?.sourceType).toBe("host_statement");
   });
 
   it("derives a provisional displayTitle from the problem's first line, marked needs_confirmation", () => {
@@ -100,7 +133,9 @@ describe("approval gate + completion + public projection", () => {
 
   it("is NOT approvable while the title or any element needs confirmation", () => {
     expect(isJourneyApprovable(mapAnswersToJourney(FIXTURE))).toBe(false); // title needs_confirmation
-    expect(unresolvedJourneyElements(mapAnswersToJourney({ ...FIXTURE, completionPrompt: "" }))).toContain("completion_check");
+    // Slice R4-R8B — the unresolved EXAMPLE moved to a kind that can still be unresolved. The
+    // completion check no longer can: BTY writes it when the Host did not.
+    expect(unresolvedJourneyElements(mapAnswersToJourney({ ...FIXTURE, problem: "" }))).toContain("why_it_matters");
   });
 
   it("is approvable once title is confirmed and all elements are grounded", () => {
@@ -120,9 +155,10 @@ describe("approval gate + completion + public projection", () => {
     for (const e of pub.elements) {
       expect(Object.keys(e).sort()).toEqual(["content", "id", "kind"]); // no grounding, no confirmationStatus
     }
-    // a needs_confirmation element is never projected
-    const withUnresolved = mapAnswersToJourney({ ...FIXTURE, completionPrompt: "" });
-    expect(toPublicJourney({ ...withUnresolved, displayTitleStatus: "grounded" })!.elements.map((e) => e.kind)).not.toContain("completion_check");
+    // a needs_confirmation element is never projected (Slice R4-R8B: shown on a kind that can
+    // still BE one — an unauthored completion check is now BTY's, grounded, and rightly projected)
+    const withUnresolved = mapAnswersToJourney({ ...FIXTURE, problem: "" });
+    expect(toPublicJourney({ ...withUnresolved, displayTitleStatus: "grounded" })!.elements.map((e) => e.kind)).not.toContain("why_it_matters");
   });
 
   it("required kinds are exactly the coherent-journey minimum", () => {

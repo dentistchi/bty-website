@@ -2,6 +2,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+// Slice R4-R8B — the material question is step 6 now; fixtures name the constant.
+import { BUILDER_QUESTION_STEP } from "@/domain/foundry/module/module-builder";
+import { journeyCopy } from "@/domain/foundry/module/journeyLocaleCopy";
 import { suggestCompletionPrompt } from "./moduleBuilderCopy";
 import { copyLikeLearnerQuestions } from "@/domain/foundry/module/learnerQuestionRole";
 
@@ -248,7 +251,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
   });
 
   it("choosing Files and documents reveals the attach affordances without uploading", async () => {
-    const srv = mockDraftServer({ current_step: 7, answers: {} });
+    const srv = mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("Files and documents"));
@@ -280,23 +283,30 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     expect(screen.queryByText(/receiving nurse/i)).toBeNull();
   });
 
-  it("Step 5 supports MULTIPLE learning-type selections and persists the array", async () => {
-    const srv = mockDraftServer({ current_step: 6, answers: {} });
+  it("learning types remain MULTI-SELECT and still persist the array (R4-R8B: on Review)", async () => {
+    /*
+      The screen that asked this is gone — BTY derives learning needs from the behaviour now — but
+      the Host can still change them, under the details disclosure on Review. What is held here is
+      unchanged: more than one may be chosen, and the choice reaches the draft as an array through
+      the same save path, so an override is indistinguishable from an answer.
+    */
+    const srv = mockDraftServer({ current_step: 9, answers: { learningNeeds: ["know"] } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What does this training need to include?");
-    fireEvent.click(screen.getByText("Information"));
-    fireEvent.click(screen.getByText("Practice"));
+    fireEvent.click(await screen.findByTestId("all-training-details-toggle"));
+    fireEvent.click(await screen.findByTestId("review-need-practice"));
     await waitFor(() => {
       const last = srv.patches[srv.patches.length - 1];
       expect(last?.answers?.learningNeeds).toEqual(["know", "practice"]);
     });
   });
 
-  it("Step 5 restores a legacy singular learning_type into the multi-select", async () => {
-    mockDraftServer({ current_step: 6, answers: { learningNeed: "decide" } });
+  it("a legacy singular learning_type is still restored, and still wins over the derivation", async () => {
+    mockDraftServer({ current_step: 9, answers: { learningNeed: "decide" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    const decision = (await screen.findByText("Decision")).closest("button") as HTMLButtonElement;
-    expect(decision.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(await screen.findByTestId("all-training-details-toggle"));
+    expect((await screen.findByTestId("review-need-decide")).getAttribute("aria-pressed")).toBe("true");
+    // The Host stored exactly one need; a derivation must not silently add its own.
+    expect(screen.getByTestId("review-need-know").getAttribute("aria-pressed")).toBe("false");
   });
 
   /*
@@ -313,7 +323,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     Step 6 offers) is still worth guarding, and the record of what changed stays readable.
   */
   it("Step 6 offers all FOUR approved material types", async () => {
-    mockDraftServer({ current_step: 7, answers: {} });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText("YouTube video")).toBeTruthy();
@@ -323,7 +333,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   });
 
   it("Step 6 YouTube without a URL shows the missing-link state", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "youtube" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText(/Link not added yet · Required before approval/i)).toBeTruthy();
@@ -353,7 +363,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
 
 describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   it("Files selection shows Attach files + Add photo or screenshot inputs", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     expect(await screen.findByText("Attach files")).toBeTruthy();
     expect(screen.getByText("Add photo or screenshot")).toBeTruthy();
@@ -365,7 +375,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   });
 
   it("uploads each selected file independently and shows them as attached", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Attach files");
     selectFiles([pdf("Alpha.pdf"), pdf("Beta.pdf")]);
@@ -376,7 +386,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("one invalid file does not discard the valid ones, and is retryable", async () => {
     // First selection fails (unsupported); the valid one still uploads on retry via a fresh server.
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } }, { assetReason: "unsupported_file_type" });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "pdf" } }, { assetReason: "unsupported_file_type" });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Attach files");
     selectFiles([new File(["x"], "malware.exe", { type: "" })]);
@@ -385,7 +395,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("cold-restores attached files after remount", async () => {
     mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Existing.docx" })],
     });
@@ -396,7 +406,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("removing one file preserves the others", async () => {
     mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Keep.docx" }), mkAsset({ id: "a2", filename: "Drop.png", file_kind: "image" })],
     });
@@ -437,7 +447,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   });
 
   it("YouTube regression: switching to YouTube still shows the missing-link state", async () => {
-    mockDraftServer({ current_step: 7, answers: {} });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("YouTube video"));
@@ -461,23 +471,28 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     completionPrompt: "What read-back will you commit to?",
   };
 
-  it("prefills an editable Completion question that does NOT quote the behaviour", async () => {
+  it("R4-R8B — there is no Completion question to prefill, and BTY's own question is not copyable", async () => {
     /*
-      IT USED TO QUOTE IT (Slice R4-R5C12A). The suggestion read
-      `Thinking about "<observableBehavior>", what is one thing you will apply this week?`, and
-      this test asserted the interpolation as the feature. Measured across 37 live completion
-      questions, 22 carried the standard's own vocabulary and 8 carried effectively all of it —
-      a learner met the answer and the question in the same breath. The prefill still exists and
-      is still editable; it now asks for something only the learner can supply.
+      REPLACES "prefills an editable Completion question…" (Slice R4-R8B).
+
+      R4-R5C12A repaired that prefill so it stopped quoting the behaviour back at the learner. The
+      prefill itself is what this slice removes: a box arriving with BTY's sentence in it is an
+      invitation to adjust one word, and adjusting one word gave the Host's version absolute
+      precedence — so the barrier question BTY writes could never render. There is nothing to
+      prefill because there is nothing to author.
+
+      The property R4-R5C12A was protecting is asserted directly on the question that now reaches
+      the learner: it cannot be answered by repeating the material.
     */
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    expect(await screen.findByText("Completion question")).toBeTruthy();
-    const ta = screen.getByLabelText("Completion question") as HTMLTextAreaElement;
-    await waitFor(() => expect(ta.value.length).toBeGreaterThan(0));
-    expect(ta.value).toBe(suggestCompletionPrompt(undefined, "en"));
-    expect(ta.value.toLowerCase()).not.toContain("reads back the dosage");
-    expect(copyLikeLearnerQuestions({ observableBehavior: "reads back the dosage", completionPrompt: ta.value })).toEqual([]);
+    await screen.findByText("What will people learn from?");
+    expect(screen.queryByText("Completion question")).toBeNull();
+    expect(screen.queryByTestId("builder-completion-question")).toBeNull();
+
+    const derived = journeyCopy("en").completionBarrier;
+    expect(derived.toLowerCase()).not.toContain("reads back the dosage");
+    expect(copyLikeLearnerQuestions({ observableBehavior: "reads back the dosage", completionPrompt: derived })).toEqual([]);
   });
 
   it("review → Create training publishes, confirms, then hands off the new event id", async () => {

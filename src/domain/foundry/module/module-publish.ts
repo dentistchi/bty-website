@@ -15,7 +15,13 @@
  * and publish consult.
  */
 
-import { stepBlockers, type BuilderAnswers } from "./module-builder";
+import {
+  effectiveArenaRecommended,
+  effectiveFollowUpDays,
+  effectiveLearningNeeds,
+  stepBlockers,
+  type BuilderAnswers,
+} from "./module-builder";
 import { MATERIAL_INTENT_CONTENT_TYPE, type GuidanceContentType } from "../events/content-type";
 
 // ---------------------------------------------------------------------------
@@ -23,7 +29,7 @@ import { MATERIAL_INTENT_CONTENT_TYPE, type GuidanceContentType } from "../event
 // ---------------------------------------------------------------------------
 
 /** The builder input steps whose completeness is required before approval. */
-const APPROVAL_STEPS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
+const APPROVAL_STEPS: readonly number[] = [1, 2, 3, 4, 5, 6];
 
 /**
  * Collect the blocking reasons that prevent approving/publishing this draft, using
@@ -116,24 +122,30 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
   recurring_moment_required: { section: "recurringMoment", step: 3 },
   behavior_required: { section: "behavior", step: 4 },
   evidence_required: { section: "evidence", step: 5 },
-  learning_need_required: { section: "learning", step: 6 },
-  material_intent_required: { section: "material", step: 7 },
-  material_youtube_url_required: { section: "material", step: 7 },
-  material_pdf_required: { section: "material", step: 7 },
+  /*
+    MATERIAL MOVED FROM 7 TO 6 (Slice R4-R8B), and the two codes that used to sit either side of
+    it — `learning_need_required` and `follow_up_required` — are gone from `ALL_BLOCKING_CODES`
+    with the screens that emitted them. Both are DERIVED now, so neither can be missing: a
+    training always has learning needs and always has a follow-up policy, chosen by the Host when
+    they said so and by `effectiveLearningNeeds` / `effectiveFollowUpDays` when they did not.
+    Removing them from both lists together is what keeps the totality test meaningful.
+  */
+  material_intent_required: { section: "material", step: 6 },
+  material_youtube_url_required: { section: "material", step: 6 },
+  material_pdf_required: { section: "material", step: 6 },
   /*
     R4-R2G — registered here in the SAME edit that made `builderApprovalErrors` emit them. The
     measurement that opened this slice found that an unmapped material code lets Review report a
     draft as ready while publish refuses it, and the totality test below is what proves it cannot
     happen again.
   */
-  material_written_guidance_required: { section: "material", step: 7 },
-  material_live_discussion_required: { section: "material", step: 7 },
+  material_written_guidance_required: { section: "material", step: 6 },
+  material_live_discussion_required: { section: "material", step: 6 },
   /*
     Slice 3.2R-R3 — a server-only code, like `material_pdf_required` beside it. It must map to
     a visible Review row, because a blocker the Host cannot see is a blocker they cannot clear.
   */
-  material_review_required: { section: "material", step: 7 },
-  follow_up_required: { section: "followUp", step: 8 },
+  material_review_required: { section: "material", step: 6 },
 };
 
 /** Every blocking code the readiness gates can emit — used to prove the map is total. */
@@ -145,13 +157,11 @@ export const ALL_BLOCKING_CODES: readonly string[] = [
   "recurring_moment_required",
   "behavior_required",
   "evidence_required",
-  "learning_need_required",
   "material_intent_required",
   "material_youtube_url_required",
   "material_pdf_required",
   "material_written_guidance_required",
   "material_live_discussion_required",
-  "follow_up_required",
 ];
 
 /**
@@ -376,6 +386,27 @@ export function buildModuleSnapshot(answers: BuilderAnswers | undefined): Module
     const v = a[key];
     if (v !== undefined) out[key] = v;
   }
+  /*
+    THE DERIVED DESIGN IS FROZEN, NOT LEFT TO BE RE-DERIVED (Slice R4-R8B).
+
+    THE FAILURE THIS PREVENTS, traced rather than imagined: `readEventFollowUpDays` reads
+    `module_snapshot.followUpDays` and returns null when the key is absent. The Builder stopped
+    asking for the value, so a fresh draft stores nothing, so the key would be missing from every
+    new snapshot — and a null follow-up means no Apply window and no follow-up obligation. Every
+    training created after this slice would have quietly lost the entire post-training loop, with
+    nothing failing anywhere: the derivation would have been correct and simply never consulted.
+
+    So the three derived fields are RESOLVED HERE, at the one boundary where a design becomes
+    immutable. The snapshot is the training's frozen truth; a truth that has to be recomputed
+    later by a reader that may not know how is not frozen.
+
+    Still pure and still byte-identical on re-publish: the accessors are deterministic functions
+    of the same answers. Still whitelist-shaped: no key appears that was not already permitted.
+    And still the Host's, wherever they chose — each accessor prefers what they stored.
+  */
+  out.learningNeeds = effectiveLearningNeeds(a);
+  out.arenaRecommended = effectiveArenaRecommended(a);
+  out.followUpDays = effectiveFollowUpDays(a);
   return out as ModuleSnapshot;
 }
 

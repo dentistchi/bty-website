@@ -20,6 +20,7 @@
 import type { BuilderAnswers } from "./module-builder";
 import { isObservableStandardShape } from "./observableStandardShape";
 import { isBtySuggestedSharedQuestion } from "./btyQuestionDefaults";
+import { journeyCopy, type JourneyLocale } from "./journeyLocaleCopy";
 
 export type JourneyElementKind =
   | "why_it_matters"
@@ -113,7 +114,15 @@ const KIND_SOURCE: Partial<Record<JourneyElementKind, keyof BuilderAnswers>> = {
  * - displayTitle is derived from the problem's first line but marked
  *   `needs_confirmation` — the Host must review/approve the learner title.
  */
-export function mapAnswersToJourney(answers: BuilderAnswers | undefined): RealityGroundedJourneyV1 {
+export function mapAnswersToJourney(
+  answers: BuilderAnswers | undefined,
+  /**
+   * The Builder's own locale (Slice R4-R8B). Needed because the seed can now carry a sentence
+   * BTY writes rather than one the Host typed, and BTY writes it in the Host's language.
+   * Optional so every existing caller keeps compiling and keeps its English default.
+   */
+  locale?: JourneyLocale,
+): RealityGroundedJourneyV1 {
   const a = answers ?? {};
   const elements: JourneyElement[] = [];
 
@@ -152,6 +161,36 @@ export function mapAnswersToJourney(answers: BuilderAnswers | undefined): Realit
       Host prose — see the limitation note in `btyQuestionDefaults.ts`.
     */
     if (kind === "reflection" && isBtySuggestedSharedQuestion(content)) continue;
+    /*
+      BTY OWNS THE COMPLETION QUESTION WHEN THE HOST NEVER WROTE ONE (Slice R4-R8B).
+
+      This kind is REQUIRED and its only source was `answers.completionPrompt`, so an empty field
+      produced an empty `needs_confirmation` element — which blocks publish. That was correct
+      while the Builder demanded the question: a training with nothing to ask at the end is not
+      finishable. It stops being correct the moment the Builder stops asking, because then EVERY
+      fresh draft seeds a blocker for a question the Host was never given the chance to answer,
+      and the only way out would be to hand the field back and with it the provenance trap.
+
+      So the seed falls through to BTY's own barrier question, stamped `deterministic_derived` —
+      the provenance that says exactly what happened. It is NOT `host_statement`: the Host did not
+      write it, and labelling it theirs is the dishonesty the `reflection` note above records.
+      It is not left empty either, because "BTY has not written this yet" is a state the program
+      generator resolves seconds later and a blocker cannot describe.
+
+      A Host who DID write one — every legacy draft that carries the field — keeps it verbatim,
+      grounded on their own field, exactly as before. `resolveCompletionCheck` applies the same
+      precedence on the program side, so the two paths cannot disagree about whose question it is.
+    */
+    if (kind === "completion_check" && !content) {
+      elements.push({
+        id: journeyElementId(kind),
+        kind,
+        content: journeyCopy(locale).completionBarrier,
+        grounding: [{ sourceType: "deterministic_derived", field }],
+        confirmationStatus: "grounded",
+      });
+      continue;
+    }
     elements.push({
       id: journeyElementId(kind),
       kind,

@@ -161,12 +161,19 @@ describe("[R4-R5C18A · T1-T7] the domain authorship contract", () => {
     const c = contractsFor(null);
     const derived = deriveInstructionalContent("completion_check", c);
     expect(derived).toBe(renderCompletionQuestion(CONTRACT, COMPLETION, "en", true));
-    // Nothing in the journey attributes it to the Host.
-    const j = mapAnswersToJourney({ ...FIXTURE, completionPrompt: undefined } as BuilderAnswers);
+    /*
+      NOTHING ATTRIBUTES IT TO THE HOST — the claim this test exists for, and it is stronger now.
+      Slice R4-R8B: the seed no longer leaves the element EMPTY (which blocked publish on every
+      fresh draft once the Builder stopped asking) but fills it with BTY's own barrier question,
+      stamped `deterministic_derived`. The forbidden state is the same one it always was —
+      `host_statement` / `from_host` on a sentence the Host never wrote.
+    */
+    const j = mapAnswersToJourney({ ...FIXTURE, completionPrompt: undefined } as BuilderAnswers, "en");
     const cc = j.elements.find((e) => e.kind === "completion_check")!;
-    expect(cc.content).toBe("");
-    expect(readProvenance(cc)).toBeNull();
-    expect(attributionKind(cc)).toBeNull();
+    expect(cc.content).toBe("What might make this difficult to do in real work?");
+    expect(readProvenance(cc)).toBe("deterministic_derived");
+    expect(readProvenance(cc)).not.toBe("host_statement");
+    expect(attributionKind(cc)).not.toBe("from_host");
   });
 
   it("T2 an explicit Host completionPrompt is host_statement on its own field", () => {

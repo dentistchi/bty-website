@@ -254,6 +254,15 @@ export type ModuleBuilderCopy = {
   s4Honesty: string;
   s4Blocker: string;
   // step 5 learning needs (multi-select)
+  /**
+   * RETIRED SCREENS, KEPT COPY (Slice R4-R8B).
+   *
+   * `s5*` was the learning-need screen and `s7Arena*` / `s7Follow*` the Arena + follow-up screen.
+   * Both are derived now and neither renders. The keys stay because the vocabulary they carry is
+   * still spoken elsewhere — `needInfoTitle`…`needSharedTitle`, `arenaYes/No` and `followNone/7/30`
+   * label the override controls on Review — and because deleting half a locale table is how the
+   * two halves drift apart. `s5Blocker` and `s7Blocker` name codes no step can emit any more.
+   */
   s5Q: string;
   s5Help: string;
   needInfoTitle: string;

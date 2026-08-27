@@ -98,7 +98,12 @@ export function JourneyPreview({
   // Derive once from the raw reality if no Host-owned Journey exists yet; otherwise
   // the persisted (possibly edited) Journey is authoritative.
   const initial = useMemo<RealityGroundedJourneyV1>(
-    () => answers.realityGroundedJourneyV1 ?? mapAnswersToJourney(answers),
+    /*
+      Slice R4-R8B — the seed now carries BTY's own completion question when the Host never
+      authored one, so it has to be seeded in the Host's language. Passing the locale is what
+      makes a Korean Builder seed a Korean sentence rather than an English one.
+    */
+    () => answers.realityGroundedJourneyV1 ?? mapAnswersToJourney(answers, locale),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );

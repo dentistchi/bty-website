@@ -31,11 +31,11 @@ import {
   type RealityGroundedJourneyV1,
 } from "./journey";
 import {
-  normalizeLearningNeeds,
-  recommendArenaForNeeds,
+  effectiveArenaRecommended,
+  effectiveFollowUpDays,
+  effectiveLearningNeeds,
   stepBlocker,
   AUDIENCE_TYPES_NEEDING_DETAIL,
-  FOLLOW_UP_DAY_OPTIONS,
   type AudienceType,
   type BuilderAnswers,
   type LearningNeed,
@@ -396,12 +396,21 @@ export function provenanceAfterHostEdit(prior: ProgramProvenance): ProgramProven
  */
 export function requiredProgramKinds(answers: BuilderAnswers | undefined): JourneyElementKind[] {
   const a = answers ?? {};
-  const needs = normalizeLearningNeeds(a);
+  /*
+    THE DESIGN, NOT THE STORED ANSWERS (Slice R4-R8B). These three lines used to read the raw
+    fields, which was correct while a screen demanded each of them. Now that they are derived
+    when the Host did not choose, reading raw would make a fresh training require neither an
+    action decision nor a follow-up — silently dropping YOUR DECISION and the whole post-training
+    loop from every training created after the Builder shrank. The effective readers keep the
+    Host's own choices winning wherever they made one.
+  */
+  const needs = effectiveLearningNeeds(a);
+  const followUpDays = effectiveFollowUpDays(a);
   const required = new Set<JourneyElementKind>(["why_it_matters", "observable_standard", "completion_check"]);
 
   if (needs.includes("decide")) required.add("action_decision");
-  if (needs.includes("practice") || a.arenaRecommended === true) required.add("scenario");
-  if (typeof a.followUpDays === "number" && a.followUpDays > 0) {
+  if (needs.includes("practice") || effectiveArenaRecommended(a)) required.add("scenario");
+  if (followUpDays > 0) {
     required.add("field_application");
     required.add("follow_up");
   }
@@ -512,7 +521,7 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
   if (programSourceMissing(a).length > 0) return null;
   const audienceType = a.audienceType as AudienceType;
   const needsDetail = (AUDIENCE_TYPES_NEEDING_DETAIL as readonly string[]).includes(audienceType);
-  const needs = normalizeLearningNeeds(a);
+  const needs = effectiveLearningNeeds(a);
   const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
   return {
     problemStatement: text(a.problem),
@@ -523,8 +532,10 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
     observableBehavior: text(a.observableBehavior),
     successEvidence: text(a.successEvidence),
     learningNeeds: needs,
-    arenaRecommended: a.arenaRecommended ?? recommendArenaForNeeds(needs),
-    followUpDays: (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1) ? (a.followUpDays as number) : 0,
+    // Slice R4-R8B — one reader each, shared with `requiredProgramKinds` and the publish
+    // snapshot, so the program is authored from the same design the training is published with.
+    arenaRecommended: effectiveArenaRecommended(a),
+    followUpDays: effectiveFollowUpDays(a),
     sharedQuestion: text(a.sharedQuestion) || null,
     completionPrompt: text(a.completionPrompt) || null,
     materialIntent: typeof a.materialIntent === "string" ? a.materialIntent : null,

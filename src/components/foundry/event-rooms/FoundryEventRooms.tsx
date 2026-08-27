@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
-import { BUILDER_STEP_MAX } from "@/domain/foundry/module/module-builder";
+import { BUILDER_STEP_MAX, resumeStep } from "@/domain/foundry/module/module-builder";
 import { MODULE_BUILDER_COPY, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import type { ManagerEventSummary, ManagerSnapshot } from "./types";
 import type { ClientDraftSummary } from "@/lib/bty/foundry/events/moduleClient";
@@ -570,8 +570,13 @@ function SwipeDraftRow({
   const [dragDx, setDragDx] = useState(0);
 
   const title = draft.title?.trim() ? draft.title : bt.untitled;
-  // Clamped to the INPUT steps — Review is not "a step of" anything. 8 since 3.2P-R3.6-R1.
-  const stepN = Math.min(Math.max(draft.current_step, 1), BUILDER_STEP_MAX - 1);
+  /*
+    Clamped to the INPUT steps — Review is not "a step of" anything. Slice R4-R8B: the stored
+    value is translated through `resumeStep` FIRST, so a card for a draft bookmarked at the old
+    step 8 reads "6 of 6" — where it will actually open — rather than a position off the end of
+    a six-question Builder.
+  */
+  const stepN = Math.min(Math.max(resumeStep(draft.current_step), 1), BUILDER_STEP_MAX - 1);
   const subtitle = `${bt.stepProgress(stepN)} · ${bt.editedRel(editedLabel(draft.updated_at, bt))}`;
 
   const onTouchStart = (e: React.TouchEvent) => {

@@ -1,4 +1,4 @@
-import { normalizeLearningNeeds, type BuilderAnswers } from "./module-builder";
+import { effectiveFollowUpDays, effectiveLearningNeeds, type BuilderAnswers } from "./module-builder";
 import type { RealityGroundedJourneyV1 } from "./journey";
 import { journeyActionDecision, journeyFieldApplication } from "./journey";
 
@@ -48,8 +48,13 @@ export type RealityIntentReadiness = {
 };
 
 function followUpRequestedFrom(answers: BuilderAnswers | undefined): boolean {
-  const d = answers?.followUpDays;
-  return typeof d === "number" && d > 0;
+  /*
+    THE DESIGN'S follow-up, not the stored field (Slice R4-R8B). This decides whether a real-work
+    action is REQUIRED and whether its absence is disclosed to the Host; reading the raw field
+    after the Builder stopped asking for it would have quietly turned every fresh training into a
+    "no follow-up" training and taken the field-action gap disclosure down with it.
+  */
+  return effectiveFollowUpDays(answers) > 0;
 }
 
 /**
@@ -61,7 +66,7 @@ export function classifyRealityIntentReadiness(
   journey: RealityGroundedJourneyV1 | undefined,
 ): RealityIntentReadiness {
   const followUpRequested = followUpRequestedFrom(answers);
-  const decisionRequested = normalizeLearningNeeds(answers).includes("decide");
+  const decisionRequested = effectiveLearningNeeds(answers).includes("decide");
 
   // Grounded-only, via the same readers the learner-facing projection and the apply-window
   // materializer already use. A `needs_confirmation` element is not a capability.

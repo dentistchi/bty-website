@@ -7,6 +7,7 @@ import {
   recommendArenaForNeed,
   recommendArenaForNeeds,
   normalizeLearningNeeds,
+  effectiveLearningNeeds,
   draftTitleFrom,
   PROBLEM_MAX,
   BUILDER_STEP_MAX,
@@ -184,15 +185,20 @@ describe("stepBlocker / canAdvanceStep — client Next-guard", () => {
     expect(stepBlocker(2, { audienceType: "everyone" })).toBeNull();
   });
 
-  it("blocks steps 3-8 on their own required field", () => {
+  it("blocks steps 3-6 on their own required field", () => {
     // Slice 3.2P-R3.6-R1 inserted "When does this usually happen?" at 3; everything after moved once.
+    // Slice R4-R8B removed the learning-need screen at 6 and the Arena/follow-up screen at 8 —
+    // both derived now — so material took 6 and Review is 7. Two blocking codes retired with them.
     expect(stepBlocker(3, {})).toBe("recurring_moment_required");
     expect(stepBlocker(4, {})).toBe("behavior_required");
     expect(stepBlocker(5, {})).toBe("evidence_required");
-    expect(stepBlocker(6, {})).toBe("learning_need_required");
-    expect(stepBlocker(7, {})).toBe("material_intent_required");
-    expect(stepBlocker(8, {})).toBe("follow_up_required");
-    expect(stepBlocker(8, { followUpDays: 0 })).toBeNull(); // "none" is a valid pick
+    expect(stepBlocker(6, {})).toBe("material_intent_required");
+    expect(stepBlocker(7, {})).toBeNull(); // Review never blocks
+    // The retired codes are unreachable: no step emits them, from any answers.
+    for (let step = 1; step <= BUILDER_STEP_MAX; step += 1) {
+      expect(stepBlocker(step, {})).not.toBe("learning_need_required");
+      expect(stepBlocker(step, {})).not.toBe("follow_up_required");
+    }
   });
 
   it("never blocks the review step", () => {
@@ -236,9 +242,19 @@ describe("multi-select learning needs (2.1)", () => {
     expect(normalizeLearningNeeds({})).toEqual([]);
   });
 
-  it("step 5 is satisfied by a non-empty learningNeeds array", () => {
-    expect(stepBlocker(6, { learningNeeds: ["know"] })).toBeNull();
-    expect(stepBlocker(6, { learningNeeds: [] })).toBe("learning_need_required");
+  it("R4-R8B — learning needs are derived, and the Host's own set still wins", () => {
+    /*
+      The screen that asked this is gone, so the question moved from "does the Builder block
+      without it" to "does the design have one anyway". Both halves matter: a derived default is
+      only safe if an explicit choice cannot be overwritten by it.
+    */
+    const source = { observableBehavior: "State each open item aloud before leaving." };
+    expect(effectiveLearningNeeds(source)).toContain("decide");
+    expect(effectiveLearningNeeds({ ...source, learningNeeds: ["know"] })).toEqual(["know"]);
+    // Nothing to design around yet ⇒ nothing derived, exactly as before.
+    expect(effectiveLearningNeeds({})).toEqual([]);
+    // And `normalizeLearningNeeds` still answers the OTHER question — what did the Host store.
+    expect(normalizeLearningNeeds(source)).toEqual([]);
   });
 
   it("Arena recommendation derives from the array (any qualifying need)", () => {

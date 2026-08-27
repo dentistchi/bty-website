@@ -39,20 +39,27 @@ describe("JourneyPreview — Host control + approval gate (B3A)", () => {
     render(
       <JourneyPreview
       locale="en"
-        answers={{ ...FIXTURE, completionPrompt: "" }}
+        /*
+          Slice R4-R8B — the UNRESOLVED example moved from the completion question to the problem.
+          BTY writes the completion check itself when the Host never authored one, so emptying
+          `completionPrompt` no longer produces an unconfirmed element; emptying `problem` does,
+          and the gate under test — an unresolved element blocks approval until the Host writes it
+          — is unchanged.
+        */
+        answers={{ ...FIXTURE, problem: "" }}
         onPatch={vi.fn()}
         onApprovableChange={onApprovableChange}
       />,
     );
-    expect(screen.getByTestId("journey-needs-completion_check")).toBeTruthy();
+    expect(screen.getByTestId("journey-needs-why_it_matters")).toBeTruthy();
     expect(onApprovableChange).toHaveBeenLastCalledWith(false);
 
-    // Host writes the completion question in their own words → grounded
-    fireEvent.change(screen.getByTestId("journey-edit-completion_check"), { target: { value: "What did you commit to?" } });
+    // Host writes the section in their own words → grounded
+    fireEvent.change(screen.getByTestId("journey-edit-why_it_matters"), { target: { value: "Actions leave the huddle unowned." } });
     // confirm the title too
     fireEvent.change(screen.getByTestId("journey-title-input"), { target: { value: "Owning the next step" } });
     fireEvent.click(screen.getByTestId("journey-title-confirm"));
     expect(onApprovableChange).toHaveBeenLastCalledWith(true);
-    expect(screen.queryByTestId("journey-needs-completion_check")).toBeNull();
+    expect(screen.queryByTestId("journey-needs-why_it_matters")).toBeNull();
   });
 });

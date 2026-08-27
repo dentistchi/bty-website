@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, act, cleanup, waitFor } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import { BUILDER_QUESTION_STEP } from "@/domain/foundry/module/module-builder";
 import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
 import { suggestSharedQuestion } from "./moduleBuilderCopy";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
@@ -32,7 +33,7 @@ const CANONICAL: BuilderAnswers = {
 };
 
 /** Records every answers payload the Builder tries to persist. */
-function mountAt(step: number) {
+function mountAt(step: number, extraAnswers: Partial<BuilderAnswers> = {}) {
   const saved: BuilderAnswers[] = [];
   global.fetch = vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
     const u = String(url);
@@ -43,7 +44,7 @@ function mountAt(step: number) {
     if (u.includes("/api/bty/foundry/modules/")) {
       return {
         ok: true, status: 200,
-        json: async () => ({ draft: { id: "d-1", status: "draft", current_step: step, answers: CANONICAL, module_version: 1 } }),
+        json: async () => ({ draft: { id: "d-1", status: "draft", current_step: step, answers: { ...CANONICAL, ...extraAnswers }, module_version: 1 } }),
       } as never;
     }
     return { ok: true, status: 200, json: async () => ({}) } as never;
@@ -54,7 +55,7 @@ function mountAt(step: number) {
 
 describe("[3.2L-R11.4B] traversing a step never authors content", () => {
   it("resuming ON the material step does not write sharedQuestion", async () => {
-    const saved = mountAt(7);
+    const saved = mountAt(BUILDER_QUESTION_STEP);
     await waitFor(() => expect(screen.queryByTestId("module-builder-step")).toBeTruthy(), { timeout: 2000 }).catch(() => undefined);
     await act(async () => { await new Promise((r) => setTimeout(r, 900)); });
     for (const a of saved) {
@@ -62,23 +63,38 @@ describe("[3.2L-R11.4B] traversing a step never authors content", () => {
     }
   });
 
-  it("the proposal is still SHOWN, so the Host can accept it by editing", async () => {
-    mountAt(7);
+  it("R4-R8B — nothing is SHOWN either, which is the stronger form of the same guarantee", async () => {
+    /*
+      R11.4B's finding was that traversing a step wrote BTY's suggestion into the draft, silently
+      turning a 7-section program into an 8-section one. Its fix moved the suggestion into
+      display-only state: shown, never stored until edited.
+
+      That fixed the WRITE and could not fix the READ. A box containing BTY's sentence still
+      invites a Host to adjust a word of it, and for the completion question adjusting a word
+      transferred ownership — after which BTY's barrier question could never render. So neither
+      question is offered on a fresh draft at all. Nothing shown, nothing written, nothing to
+      accidentally own: the property this describe block is named for, at full strength.
+    */
+    mountAt(BUILDER_QUESTION_STEP);
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     const shown = Array.from(document.querySelectorAll("textarea")).map((t) => (t as HTMLTextAreaElement).value);
-    // Asserted against the suggestion itself, not a phrase copied out of it (Slice R4-R5C12A):
-    // the wording changed and this test kept passing on a substring of the old sentence.
-    expect(shown.some((v) => v === suggestSharedQuestion("en")), shown.join(" | ")).toBe(true);
+    expect(shown.some((v) => v === suggestSharedQuestion("en")), shown.join(" | ")).toBe(false);
+    expect(screen.queryByTestId("builder-shared-question")).toBeNull();
+    /*
+      The completion box IS present here, and that is the other half of the rule rather than an
+      exception to it: `CANONICAL` carries a `completionPrompt` its Host wrote, which makes this
+      fixture a legacy draft. Its question is shown, editable and preserved. Only a draft that
+      never had one is never offered one.
+    */
+    expect(screen.getByTestId("builder-completion-question")).toBeTruthy();
   });
 
-  it("editing the field IS authoring, and persists", async () => {
-    const saved = mountAt(7);
-    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
-    const areas = Array.from(document.querySelectorAll("textarea")) as HTMLTextAreaElement[];
-    const target = areas.find((t) => t.value === suggestSharedQuestion("en"));
-    expect(target).toBeTruthy();
+  it("R4-R8B — a legacy draft that already holds its Host's question still shows and saves it", async () => {
+    const saved = mountAt(BUILDER_QUESTION_STEP, { sharedQuestion: "How do you close a huddle today?" });
+    const box = (await screen.findByTestId("builder-shared-question")).querySelector("textarea") as HTMLTextAreaElement;
+    expect(box.value).toBe("How do you close a huddle today?");
     await act(async () => {
-      fireEvent.change(target!, { target: { value: "What standard mattered most to you?" } });
+      fireEvent.change(box, { target: { value: "What standard mattered most to you?" } });
       await new Promise((r) => setTimeout(r, 900));
     });
     expect(saved.some((a) => a.sharedQuestion === "What standard mattered most to you?")).toBe(true);

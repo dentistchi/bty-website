@@ -9,7 +9,7 @@ import { CANONICAL_ACTOR, deriveFirstApplicationMoment , renderPressureFrame } f
 import { decideAdoptionReceipt } from "./adoption-authority";
 import {
   stepBlocker, validateDraftPatch, BUILDER_STEP_MAX, BUILDER_STEP_MIN, LEGACY_STEP_GRAPH_MAX,
-  RECURRING_MOMENT_MAX, LIVE_STEP_CEILING, persistableStep,
+  RECURRING_MOMENT_MAX, LIVE_STEP_CEILING, persistableStep, PRIOR_STEP_GRAPH_MAX, resumeStep,
   type BuilderAnswers,
 } from "./module-builder";
 import { reviewMissingSections, ALL_BLOCKING_CODES } from "./module-publish";
@@ -319,19 +319,46 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
-  it("Y — the step graph grew by exactly one, and the old one is still named", () => {
-    expect(BUILDER_STEP_MAX).toBe(9);
+  it("Y — the recurring moment still sits at 3, whatever the graph around it is", () => {
+    /*
+      Slice R4-R8B shrank the graph from nine to seven by deriving the learning-need and
+      Arena/follow-up screens away. What this test is FOR is unchanged: the moment question is
+      step 3, and every input step blocks on its own question — so the assertions are written
+      against the constants rather than against the number nine, which is what let this test
+      report a graph change as a failure rather than as the fact it is.
+    */
+    expect(BUILDER_STEP_MAX).toBe(7);
     expect(LEGACY_STEP_GRAPH_MAX).toBe(8);
-    // Every input step still blocks on its own question, in the new order.
+    expect(PRIOR_STEP_GRAPH_MAX).toBe(9);
     expect(stepBlocker(1, {})).toBe("problem_required");
     expect(stepBlocker(2, {})).toBe("audience_required");
     expect(stepBlocker(3, {})).toBe("recurring_moment_required");
     expect(stepBlocker(4, {})).toBe("behavior_required");
     expect(stepBlocker(5, {})).toBe("evidence_required");
-    expect(stepBlocker(6, {})).toBe("learning_need_required");
-    expect(stepBlocker(7, {})).toBe("material_intent_required");
-    expect(stepBlocker(8, {})).toBe("follow_up_required");
-    expect(stepBlocker(9, {})).toBeNull(); // Review never blocks
+    expect(stepBlocker(6, {})).toBe("material_intent_required");
+    expect(stepBlocker(BUILDER_STEP_MAX, {})).toBeNull(); // Review never blocks
+  });
+
+  it("R4-R8B — a bookmark written under the nine-screen graph opens somewhere real", () => {
+    // Never further forward than the Host had reached, and never off the end of the Builder.
+    expect(resumeStep(1)).toBe(1);
+    expect(resumeStep(5)).toBe(5);
+    expect(resumeStep(6)).toBe(6); // was "what should this include?" → material, still asked
+    expect(resumeStep(7)).toBe(7); // 7 is Review now, and every future value means that
+    expect(resumeStep(8)).toBe(7); // was Arena + follow-up, both derived → Review
+    expect(resumeStep(9)).toBe(7); // was Review → Review
+    // Nonsense clamps rather than throwing: an unexplainable bookmark is not a reason to refuse
+    // to open a draft.
+    expect(resumeStep(0)).toBe(1);
+    expect(resumeStep(-4)).toBe(1);
+    expect(resumeStep(99)).toBe(BUILDER_STEP_MAX);
+    expect(resumeStep(undefined)).toBe(1);
+    // Every legal stored value lands on a step that exists.
+    for (let s = 1; s <= PRIOR_STEP_GRAPH_MAX; s += 1) {
+      expect(resumeStep(s), `stored ${s}`).toBeLessThanOrEqual(BUILDER_STEP_MAX);
+      expect(resumeStep(s), `stored ${s}`).toBeGreaterThanOrEqual(1);
+      expect(resumeStep(s), `stored ${s}`).toBeLessThanOrEqual(s);
+    }
   });
 });
 
@@ -348,15 +375,21 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
  * screen of accuracy costs a click, a failed save costs the answer they just typed.
  */
 describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row accepts", () => {
-  it("never persists a step the live row would reject", () => {
-    expect(LIVE_STEP_CEILING).toBeLessThanOrEqual(BUILDER_STEP_MAX);
-    for (let s = BUILDER_STEP_MIN; s <= LIVE_STEP_CEILING; s += 1) {
+  it("never persists a step the live row would reject, nor one the Builder does not have", () => {
+    /*
+      Slice R4-R8B — the two ceilings came apart. The row still accepts 9; the Builder now ends
+      at 7, so the LOWER one governs what may be written. This used to assert they were ordered
+      one way; it now asserts what the ordering is FOR.
+    */
+    const ceiling = Math.min(BUILDER_STEP_MAX, LIVE_STEP_CEILING);
+    for (let s = BUILDER_STEP_MIN; s <= ceiling; s += 1) {
       expect(persistableStep(s), `step ${s}`).toBe(s);
     }
-    expect(persistableStep(BUILDER_STEP_MAX)).toBe(LIVE_STEP_CEILING);
+    expect(persistableStep(BUILDER_STEP_MAX)).toBe(BUILDER_STEP_MAX);
     // …and it is never out of range in either direction.
     expect(persistableStep(0)).toBe(BUILDER_STEP_MIN);
-    expect(persistableStep(99)).toBe(LIVE_STEP_CEILING);
+    expect(persistableStep(99)).toBe(ceiling);
+    expect(persistableStep(99)).toBeLessThanOrEqual(LIVE_STEP_CEILING);
   });
 
   it("Review persists as itself now that `20260819000000` is applied", () => {
@@ -365,14 +398,23 @@ describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row acce
       `foundry_module_drafts_current_step_check`. Until that ran, this returned 8 for Review and
       a host resumed one screen early rather than failing a save.
     */
-    expect(LIVE_STEP_CEILING).toBe(BUILDER_STEP_MAX);
+    // Slice R4-R8B — the row's ceiling is now ABOVE the Builder's, which is the safe direction:
+    // every step the Builder can reach is a step the row accepts.
+    expect(LIVE_STEP_CEILING).toBeGreaterThanOrEqual(BUILDER_STEP_MAX);
     expect(persistableStep(BUILDER_STEP_MAX)).toBe(BUILDER_STEP_MAX);
   });
 
-  it("the domain validator still accepts the whole new graph — only the WRITE is clamped", () => {
-    // The clamp is a deploy-order accommodation, not a narrower contract: once the migration
-    // runs, moving LIVE_STEP_CEILING to 9 is the only change needed.
+  it("the validator accepts anything the ROW accepts, and clamps the write to the Builder", () => {
+    /*
+      Slice R4-R8B — the accommodation now runs the other way. The row still accepts 1..9 and the
+      Builder ends at 7, so a browser tab still running the pre-deploy bundle can keep autosaving
+      an 8 without being told its work cannot be saved; the value STORED is one this Builder can
+      open. Anything the row itself would reject is still refused.
+    */
     expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX }).ok).toBe(true);
-    expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX + 1 }).ok).toBe(false);
+    expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING }).ok).toBe(true);
+    expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING }).value?.currentStep).toBe(BUILDER_STEP_MAX);
+    expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING + 1 }).ok).toBe(false);
+    expect(validateDraftPatch({ currentStep: 0 }).ok).toBe(false);
   });
 });

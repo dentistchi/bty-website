@@ -52,7 +52,26 @@ export const BUILDER_STEP_MIN = 1;
  * NINE STEPS SINCE 3.2P-R3.6-R1. "When does this usually happen?" was inserted at position 3,
  * so every later step moved once and Review became 9. See `LEGACY_STEP_GRAPH_MAX`.
  */
-export const BUILDER_STEP_MAX = 9;
+/**
+ * SEVEN SCREENS SINCE R4-R8B — SIX QUESTIONS AND A REVIEW.
+ *
+ * The Builder used to ask nine, and three of those asked the Host to make BTY's design decisions
+ * for it: which learning needs a training includes, whether people should practise in Arena, and
+ * when to follow up. None of those are things only the Host can know — every one of them is
+ * derivable from the problem, the audience, the moment, the behaviour and the evidence, which
+ * the Host has already given by step 5. See `effectiveLearningNeeds` and its two neighbours.
+ *
+ * The two learner-facing QUESTIONS that lived on the material step are gone from fresh creation
+ * for a stronger reason than length: authoring one gave the Host's sentence precedence over BTY's
+ * derived question, silently, so a Host who typed in the box could never receive the barrier
+ * question BTY writes. The instruction "do not type in that field" was the workaround, and an
+ * instruction like that is the defect.
+ *
+ * SHRINKING THIS NEEDS NO MIGRATION. The row's CHECK constraint accepts 1..9; a smaller maximum
+ * is a subset of what it already permits. `resumeStep` maps a bookmark written under the old
+ * graph onto this one.
+ */
+export const BUILDER_STEP_MAX = 7;
 /**
  * Where the two learner questions are authored — the material step (Slice R4-R5C12A).
  *
@@ -61,7 +80,7 @@ export const BUILDER_STEP_MAX = 9;
  * literal 7 that will disagree with itself the next time a step is inserted, which is exactly
  * what happened to the whole graph in 3.2P-R3.6-R1.
  */
-export const BUILDER_QUESTION_STEP = 7;
+export const BUILDER_QUESTION_STEP = 6;
 /**
  * The step count BEFORE the recurring-moment question existed. A `current_step` stored under
  * that graph is a bookmark against a different sequence: 8 meant Review, and now means the
@@ -69,6 +88,37 @@ export const BUILDER_QUESTION_STEP = 7;
  * both refer to it, and a bare `8` in either place would read as an arbitrary number.
  */
 export const LEGACY_STEP_GRAPH_MAX = 8;
+/**
+ * The step count under the graph R4-R8B replaced: nine, with learning needs at 6, material at 7,
+ * Arena + follow-up at 8 and Review at 9. Live rows carry bookmarks against it right now, so the
+ * number is named rather than written into `resumeStep` as a literal.
+ */
+export const PRIOR_STEP_GRAPH_MAX = 9;
+
+/**
+ * WHERE A STORED BOOKMARK OPENS, under the current graph (Slice R4-R8B).
+ *
+ * A `current_step` is a position in a sequence and the sequence lost two screens. Values that
+ * still exist pass through; values above the last screen land on Review, which is where a Host
+ * that far along was heading anyway. `persistableStep` now clamps writes to `BUILDER_STEP_MAX`,
+ * so out-of-range values can only ever be bookmarks written before this slice.
+ *
+ * THE ONE AMBIGUITY, STATED RATHER THAN HIDDEN. Seven meant "material" under the old graph and
+ * means "Review" under this one, and nothing on the row distinguishes them. It is read as
+ * REVIEW — the current meaning — because every value written from now on carries that meaning
+ * and the alternative would be permanently wrong for every future draft to spare a finite set of
+ * existing ones. The cost is bounded and visible: a draft bookmarked on the old material screen
+ * opens on Review instead, where the material row names itself as outstanding if it is, with a
+ * jump straight back to it. Nobody is stranded and nothing is lost.
+ *
+ * Out-of-range and unreadable values clamp instead of throwing: a bookmark the graph cannot
+ * explain is a reason to open the draft at the beginning, never a reason to refuse to open it.
+ */
+export function resumeStep(stored: number | null | undefined): number {
+  const n = typeof stored === "number" && Number.isFinite(stored) ? Math.floor(stored) : BUILDER_STEP_MIN;
+  if (n <= BUILDER_STEP_MIN) return BUILDER_STEP_MIN;
+  return Math.min(n, BUILDER_STEP_MAX);
+}
 /**
  * WHAT THE DATABASE ACCEPTS (Slice 3.2P-R3.6-R1, activated R3.6-R1A).
  *
@@ -94,7 +144,22 @@ export const LIVE_STEP_CEILING = 9;
  * never below the first — a bookmark that the row would reject is worse than a stale one.
  */
 export function persistableStep(step: number): number {
-  return Math.min(Math.max(step, BUILDER_STEP_MIN), LIVE_STEP_CEILING);
+  /*
+    TWO CEILINGS, AND THE LOWER ONE WINS (Slice R4-R8B).
+
+    `LIVE_STEP_CEILING` is a fact about the ROW — the CHECK constraint accepts 1..9 — and it
+    stays 9 because that is still true. `BUILDER_STEP_MAX` is a fact about the SCREENS, and it
+    is 7 now. Until this slice they were equal and the distinction did not matter; with the
+    Builder smaller than the row, persisting 9 would store a bookmark to a screen that does not
+    exist. The row would accept it and `resumeStep` would translate it, but writing a position
+    nothing can be at is not something to rely on a reader to clean up.
+
+    The comment on `LIVE_STEP_CEILING` said the next screen added here would need this interval
+    again. It turned out the next CHANGE removed screens instead, and the interval works in that
+    direction too — which is the argument for having kept it.
+  */
+  const ceiling = Math.min(BUILDER_STEP_MAX, LIVE_STEP_CEILING);
+  return Math.min(Math.max(step, BUILDER_STEP_MIN), ceiling);
 }
 
 // Field length bounds (generous — the builder is drafting, not publishing).
@@ -364,6 +429,101 @@ export function shouldProposeSharedQuestion(needs: readonly LearningNeed[] | und
   return recommendArenaForNeeds(needs);
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * DERIVED DESIGN DEFAULTS (Slice R4-R8B)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Three fields the Builder used to demand a screen each for. None of them is something only the
+ * Host can know: each follows from source they have already given, by rules this file ALREADY
+ * held and that BTY was already applying — the Host was being asked to confirm a computation.
+ *
+ * THE SHAPE OF EVERY ONE OF THESE IS THE SAME, deliberately: what the Host explicitly stored
+ * WINS, and the derivation fills the gap. That is what makes them safe for legacy drafts — a
+ * training designed under the old graph keeps every choice its Host made, including the ones
+ * they would not make today — and what makes the optional overrides real rather than decorative.
+ *
+ * `normalizeLearningNeeds` is deliberately NOT changed to derive. It answers "what did the Host
+ * store", which is what sanitisation and persistence must keep asking; `effectiveLearningNeeds`
+ * answers "what is this training's design", which is what product truth must ask. Collapsing the
+ * two would make a derived default indistinguishable from a stored one at the moment it is saved.
+ */
+
+/**
+ * Is there enough of the Host's own truth to derive a design from?
+ *
+ * The same behaviour sentence the program generator treats as the authoring floor. Before it
+ * exists there is nothing to design AROUND, and a derived default would be a guess dressed as a
+ * decision — so early in the Builder these return the empty/neutral answers they always did.
+ */
+function designSourceReady(answers: BuilderAnswers | undefined): boolean {
+  return meaningful((answers ?? {}).observableBehavior);
+}
+
+/**
+ * WHAT A BTY TRAINING IS FOR, stated as learning needs (Slice R4-R8B).
+ *
+ * `decide` is not a guess and not a preference — it is this product's own position, already
+ * written into two contracts that a training cannot honour without it. `action_decision` (YOUR
+ * DECISION, Slice R4-R5C17A) is required only when `decide` is present, and the completion
+ * BARRIER question (Slice R4-R5C16B) renders only when an action decision exists. A training
+ * whose needs omit `decide` therefore asks the learner nothing they must answer for themselves,
+ * which is the exact failure mode the C-series was opened to repair.
+ *
+ * `know` accompanies it because a training always carries material — `materialIntent` is
+ * required to approve — so a learner always has something to learn from.
+ *
+ * `practice` and `shared_standard` are NOT derived. Both are legitimate Host intentions and
+ * neither can be read off the source truth without inventing a heuristic; they remain available
+ * as an explicit override.
+ */
+export function derivedLearningNeeds(answers: BuilderAnswers | undefined): LearningNeed[] {
+  if (!designSourceReady(answers)) return [];
+  return ["know", "decide"];
+}
+
+/** The design's learning needs: the Host's own set when they chose one, else the derived set. */
+export function effectiveLearningNeeds(answers: BuilderAnswers | undefined): LearningNeed[] {
+  const stored = normalizeLearningNeeds(answers);
+  return stored.length > 0 ? stored : derivedLearningNeeds(answers);
+}
+
+/**
+ * Arena practice recommendation, from the SAME deterministic rule the Builder screen used to
+ * print above the question it then asked anyway: judgment, practice or a shared way of working
+ * gets a recommendation, pure information does not. BTY was already answering this out loud and
+ * then requiring the Host to agree with it.
+ *
+ * An explicit `false` is preserved — declining Arena is a decision, and `??` keeps it.
+ */
+export function effectiveArenaRecommended(answers: BuilderAnswers | undefined): boolean {
+  const a = answers ?? {};
+  return a.arenaRecommended ?? recommendArenaForNeeds(effectiveLearningNeeds(a));
+}
+
+/**
+ * DEFAULT FOLLOW-UP: 7 DAYS (Slice R4-R8B).
+ *
+ * Measured against what the value actually controls rather than chosen for tidiness.
+ * `followUpDays > 0` is what makes a real-work action and a follow-up REQUIRED sections of the
+ * program (`requiredProgramKinds`), what materialises the Apply window and the follow-up
+ * obligation, and what the whole post-training loop — R2, R3-R1, R3-R2 — exists to carry. Zero
+ * is not a neutral default: the Review screen states plainly that it creates no follow-up and
+ * requests no observation, which is a deliberate opt-out, not an absence of an opinion.
+ *
+ * Seven is the shortest non-zero option the Builder offers, and the one the product's own
+ * surfaces are written around. A Host who wants 30 or none still says so — under the details
+ * disclosure, not as a screen of their own.
+ *
+ * Only the OFFERED values are honoured from storage; anything else is treated as unset, exactly
+ * as `programContext` already did, so a corrupt value cannot silently become a schedule.
+ */
+export function effectiveFollowUpDays(answers: BuilderAnswers | undefined): FollowUpDays {
+  const stored = (answers ?? {}).followUpDays;
+  if ((FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(stored ?? -1)) return stored as FollowUpDays;
+  return designSourceReady(answers) ? 7 : 0;
+}
+
 /** Re-exported so the UI never re-implements the Slice-1 behavior heuristic. */
 export { observableBehaviorWarning };
 
@@ -413,10 +573,23 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
 
   if (input.currentStep !== undefined) {
     const n = input.currentStep;
-    if (typeof n !== "number" || !Number.isInteger(n) || n < BUILDER_STEP_MIN || n > BUILDER_STEP_MAX) {
+    /*
+      BOUNDED BY THE ROW, STORED BY THE BUILDER (Slice R4-R8B).
+
+      THE DEPLOY-WINDOW FAILURE THIS AVOIDS: the Builder shrank from nine screens to seven, so a
+      browser tab still running the pre-deploy bundle will happily autosave `current_step: 8`. If
+      the validator refused it, that Host's next save would fail with `current_step_invalid` and
+      they would be told their work could not be saved — over a number, while their answers were
+      perfectly fine.
+
+      So the ACCEPTANCE bound stays what the database accepts, and the STORED value is clamped to
+      what the Builder now has. An old tab keeps saving; the bookmark it leaves is one this
+      Builder can open. Values the row itself would reject are still refused, unchanged.
+    */
+    if (typeof n !== "number" || !Number.isInteger(n) || n < BUILDER_STEP_MIN || n > LIVE_STEP_CEILING) {
       errors.push("current_step_invalid");
     } else {
-      out.currentStep = n;
+      out.currentStep = persistableStep(n);
     }
   }
 
@@ -694,14 +867,17 @@ export function stepBlocker(step: number, answers: BuilderAnswers | undefined): 
       return meaningful(a.observableBehavior) ? null : "behavior_required";
     case 5:
       return meaningful(a.successEvidence) ? null : "evidence_required";
+    /*
+      MATERIAL IS STEP 6 NOW (Slice R4-R8B). The learning-need screen that used to sit here and
+      the Arena/follow-up screen that used to sit after it are both derived — see
+      `effectiveLearningNeeds`, `effectiveArenaRecommended`, `effectiveFollowUpDays` — so neither
+      can block, and neither has a blocking code any more. Nothing else about this step moved:
+      the same question, the same requirement, the same code.
+    */
     case 6:
-      return normalizeLearningNeeds(a).length > 0 ? null : "learning_need_required";
-    case 7:
       return a.materialIntent ? null : "material_intent_required";
-    case 8:
-      return (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1) ? null : "follow_up_required";
     default:
-      return null; // step 9 (review) and out-of-range never block.
+      return null; // step 7 (review) and out-of-range never block.
   }
 }
 

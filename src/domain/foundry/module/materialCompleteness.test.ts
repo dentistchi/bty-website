@@ -172,13 +172,13 @@ describe("R4-R2G · the Review gate can no longer say 'ready' while publish refu
   it("an empty written guidance blocks approval AND highlights the material section", () => {
     const a: BuilderAnswers = { ...COMPLETE, materialIntent: "written", materialText: "" };
     expect(builderApprovalErrors(a)).toContain("material_written_guidance_required");
-    expect(reviewMissingSections(a)).toContainEqual({ section: "material", step: 7 });
+    expect(reviewMissingSections(a)).toContainEqual({ section: "material", step: 6 });
   });
 
   it("an empty live discussion blocks approval AND highlights the material section", () => {
     const a: BuilderAnswers = { ...COMPLETE, materialIntent: "live_discussion" };
     expect(builderApprovalErrors(a)).toContain("material_live_discussion_required");
-    expect(reviewMissingSections(a)).toContainEqual({ section: "material", step: 7 });
+    expect(reviewMissingSections(a)).toContainEqual({ section: "material", step: 6 });
   });
 
   it("a filled guidance is approvable and nothing is missing", () => {

@@ -123,10 +123,10 @@ describe("Builder Step 1 — title and problem are visibly distinct", () => {
     expect((screen.getByTestId("builder-title-input") as HTMLInputElement).value).toBe("");
   });
 
-  it("J — the Builder is still 8 steps", async () => {
+  it("J — the Builder is six questions (R4-R8B), and step 1 is still one of them", async () => {
     stub();
     await open();
-    expect(document.body.textContent).toMatch(/Step 1 of 8/);
+    expect(document.body.textContent).toMatch(/Step 1 of 6/);
   });
 
   it("I — KO renders the Korean labels and helpers", async () => {

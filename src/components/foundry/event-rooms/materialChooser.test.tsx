@@ -2,6 +2,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import { BUILDER_QUESTION_STEP, BUILDER_STEP_MAX } from "@/domain/foundry/module/module-builder";
+/*
+  Slice R4-R8B — the material question moved from step 7 to step 6 when the learning-need screen
+  above it was derived away. Every fixture here names the CONSTANT rather than a number, so the
+  next graph change reads as a graph change instead of as this suite failing.
+*/
 
 /**
  * R4-R2G — the Builder half of learning-material completeness.
@@ -99,7 +105,7 @@ afterEach(() => {
 
 describe("R4-R2G · F1/F6 — the two new types can be selected", () => {
   it("choosing Written guidance marks it selected and opens its text field", async () => {
-    mockDraftServer({ current_step: 7, answers: {} });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
 
@@ -114,7 +120,7 @@ describe("R4-R2G · F1/F6 — the two new types can be selected", () => {
   });
 
   it("choosing Live discussion marks it selected and opens its own field", async () => {
-    mockDraftServer({ current_step: 7, answers: {} });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
 
@@ -127,7 +133,7 @@ describe("R4-R2G · F1/F6 — the two new types can be selected", () => {
   });
 
   it("only ONE material choice is active at a time", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube", materialText: "https://youtu.be/x" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "youtube", materialText: "https://youtu.be/x" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
 
@@ -140,7 +146,7 @@ describe("R4-R2G · F1/F6 — the two new types can be selected", () => {
   });
 
   it("a Host choosing Live discussion is told what BTY cannot see — before they build on it", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "live_discussion", materialText: "Where did we skip it?" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "live_discussion", materialText: "Where did we skip it?" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
 
@@ -150,7 +156,7 @@ describe("R4-R2G · F1/F6 — the two new types can be selected", () => {
   });
 
   it("no enum name reaches the Host on this screen", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "live_discussion", materialText: "topic" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "live_discussion", materialText: "topic" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     const body = document.body.textContent ?? "";
@@ -166,7 +172,7 @@ describe("R4-R2G · F2/F7 — the text persists", () => {
     ["Live discussion", "live_discussion"],
   ] as const) {
     it(`${label} text is saved to the draft`, async () => {
-      const srv = mockDraftServer({ current_step: 7, answers: { materialIntent: intent } });
+      const srv = mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: intent } });
       render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
       await screen.findByText("What will people learn from?");
 
@@ -180,7 +186,7 @@ describe("R4-R2G · F2/F7 — the text persists", () => {
   }
 
   it("an empty guidance says so, and says it is required before approval", async () => {
-    mockDraftServer({ current_step: 7, answers: { materialIntent: "written" } });
+    mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: "written" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText(/Guidance not written yet · Required before approval/i)).toBeTruthy();
@@ -193,7 +199,7 @@ describe("R4-R2G · F3/F8 — the text survives reload / re-entry", () => {
     ["Live discussion", "live_discussion", "Where did we act on half a handover?"],
   ] as const) {
     it(`${label} is restored from the server on a cold mount`, async () => {
-      mockDraftServer({ current_step: 7, answers: { materialIntent: intent, materialText: text } });
+      mockDraftServer({ current_step: BUILDER_QUESTION_STEP, answers: { materialIntent: intent, materialText: text } });
       render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
       await screen.findByText("What will people learn from?");
 
@@ -255,7 +261,7 @@ describe("R4-R2G · F4/F9 — Review distinguishes the four types at a glance", 
 describe("R4-R2G · F13 — switching type leaks no stale incompatible field", () => {
   it("a YouTube URL does not survive into the guidance a team will read", async () => {
     const srv = mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { materialIntent: "youtube", materialText: "https://youtu.be/dQw4w9WgXcQ" },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -273,7 +279,7 @@ describe("R4-R2G · F13 — switching type leaks no stale incompatible field", (
 
   it("guidance text does not survive into a YouTube link field", async () => {
     const srv = mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { materialIntent: "written", materialText: "Ask one question before you act." },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -289,7 +295,7 @@ describe("R4-R2G · F13 — switching type leaks no stale incompatible field", (
 
   it("re-tapping the ALREADY SELECTED type does not wipe the Host's work", async () => {
     const srv = mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { materialIntent: "written", materialText: "Ask one question before you act." },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -304,8 +310,10 @@ describe("R4-R2G · F13 — switching type leaks no stale incompatible field", (
 
 describe("R4-R2G · F14 — Save / Back / Next still behave", () => {
   it("Next advances from the material step and the guidance is already saved", async () => {
+    // Slice R4-R8B — material is step 6 and Review is 7; the Arena/follow-up screen that used
+    // to sit between them is derived. Next from material lands on Review, as it always did.
     const srv = mockDraftServer({
-      current_step: 7,
+      current_step: BUILDER_QUESTION_STEP,
       answers: { ...COMPLETE, materialIntent: "written", materialText: "Ask one question before you act." },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -314,17 +322,18 @@ describe("R4-R2G · F14 — Save / Back / Next still behave", () => {
     await act(async () => {
       fireEvent.click(screen.getByText("Next"));
     });
-    await waitFor(() => expect(srv.draft.current_step).toBe(8));
+    await waitFor(() => expect(srv.draft.current_step).toBe(BUILDER_STEP_MAX));
     expect(srv.draft.answers.materialText).toBe("Ask one question before you act.");
   });
 
   it("Back returns to the material step with the guidance intact", async () => {
+    // Opened on REVIEW (the screen after material now), then Back to the material step.
     const srv = mockDraftServer({
-      current_step: 8,
+      current_step: BUILDER_STEP_MAX,
       answers: { ...COMPLETE, materialIntent: "live_discussion", materialText: "Where did we act on half a handover?" },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("In 7 days");
+    await screen.findByTestId("publish-cta");
 
     await act(async () => {
       fireEvent.click(screen.getByText("Back"));
