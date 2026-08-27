@@ -234,7 +234,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
     arenaRecommended: true,
   };
 
-  it("review shows the summary + the Approve & create session action (Slice 2.3A)", async () => {
+  it("review shows the summary + the Create training action (Slice 2.3A; renamed R4-R8A)", async () => {
     mockDraftServer({ current_step: 9, answers: fullAnswers });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review header + a summary value
@@ -242,7 +242,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
     expect(await showAllDetails()).toBeTruthy();
     expect(screen.getByText("reads the dosage back at handoff")).toBeTruthy();
     // The canonical publish action is now offered on review (2.3A), alongside Edit + Save and leave.
-    expect(screen.getByText("Approve & create session")).toBeTruthy();
+    expect(screen.getByText("Create training")).toBeTruthy();
     expect(screen.getByText("Save and leave")).toBeTruthy();
     expect(screen.getAllByText("Edit").length).toBeGreaterThan(0);
   });
@@ -480,11 +480,11 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     expect(copyLikeLearnerQuestions({ observableBehavior: "reads back the dosage", completionPrompt: ta.value })).toEqual([]);
   });
 
-  it("review → Approve & create session publishes, confirms, then hands off the new event id", async () => {
+  it("review → Create training publishes, confirms, then hands off the new event id", async () => {
     const onExit = vi.fn();
     mockDraftServer({ current_step: 9, answers: completeYoutube });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
-    const btn = await screen.findByText("Approve & create session");
+    const btn = await screen.findByText("Create training");
     expect((btn as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(btn);
     // Slice 3.1B-3C: publish now shows a confirmation first (open_link here — no
@@ -498,7 +498,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   it("disables publish for an incomplete draft and names the missing sections", async () => {
     mockDraftServer({ current_step: 9, answers: { title: "Read Back Before Sign-Off", problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    const btn = await screen.findByText("Approve & create session");
+    const btn = await screen.findByText("Create training");
     expect((btn as HTMLButtonElement).disabled).toBe(true);
     // Explicit named summary instead of the old ambiguous "highlighted sections" copy.
     expect(screen.getAllByTestId("review-missing-summary").length).toBeGreaterThan(0);
@@ -509,262 +509,25 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     const onExit = vi.fn();
     mockDraftServer({ current_step: 9, answers: completeYoutube }, { publishError: true });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
-    fireEvent.click(await screen.findByText("Approve & create session"));
+    fireEvent.click(await screen.findByText("Create training"));
     expect(await screen.findByText(/Couldn’t create the session/)).toBeTruthy();
     expect(onExit).not.toHaveBeenCalled();
   });
 });
 
-describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", () => {
-  const SUGGESTIONS = [
-    { id: "direction_1", title: "Accurate handoff", capability_candidate: "Shift Handoff", rationale: "why", observable_behavior: "At handoff, the nurse names the owner and next check time.", success_evidence_hint: "The handoff record lists the owner and follow-up.", important_assumption: null },
-    { id: "direction_2", title: "Order read-back", capability_candidate: "Order Verification", rationale: "why", observable_behavior: "Before acting, the staff repeats the dose back.", success_evidence_hint: "The chart shows a confirmation entry.", important_assumption: null },
-    { id: "direction_3", title: "Escalate early", capability_candidate: "Escalation", rationale: "why", observable_behavior: "When unsure, the employee flags it and logs the time.", success_evidence_hint: "A supervisor confirms it was raised.", important_assumption: null },
-  ];
+/*
+  REMOVED WITH THE SURFACES THEY DESCRIBED (Slice R4-R8A).
 
-  it("applying a direction writes capability/behavior/evidence via the canonical PATCH, preserves the problem, and restores after reload", async () => {
-    const srv = mockDraftServer(
-      { current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } },
-      { directions: { suggestions: SUGGESTIONS } },
-    );
-    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What keeps going wrong?");
+  Two describe blocks lived here — "Direction Copilot integration (2.4A)" and "Module-draft
+  Copilot integration (2.4B)" — and both measured the SHELL WIRING of generators the canonical
+  creation flow no longer offers. They are not failing; their subject was removed by decision,
+  and a test kept alive against a screen no Host can reach proves only that the code still
+  compiles.
 
-    // Generate → results (no canonical mutation yet).
-    fireEvent.click(await screen.findByTestId("direction-copilot-trigger"));
-    await screen.findByTestId("direction-copilot-results");
-    expect(srv.patches.some((p) => p.answers?.capabilityCandidate)).toBe(false);
-
-    // Use + apply the first direction.
-    fireEvent.click(screen.getAllByTestId("direction-card-use")[0]);
-    fireEvent.click(await screen.findByTestId("direction-copilot-apply"));
-
-    await waitFor(() =>
-      expect(
-        srv.patches.some(
-          (p) =>
-            p.answers?.capabilityCandidate === "Shift Handoff" &&
-            typeof p.answers?.observableBehavior === "string" &&
-            typeof p.answers?.successEvidence === "string",
-        ),
-      ).toBe(true),
-    );
-    // The Host-authored problem is preserved on the server draft.
-    expect(srv.draft.answers.problem).toBe("Handoffs miss the double-check.");
-    expect(await screen.findByTestId("direction-copilot-applied")).toBeTruthy();
-
-    // Reload at the behavior step → the applied capability restores and is editable.
-    srv.draft.current_step = 4;
-    unmount();
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    const capInput = (await screen.findByLabelText("Capability (optional)")) as HTMLInputElement;
-    expect(capInput.value).toBe("Shift Handoff");
-  });
-
-  it("shows the discoverable assistive block on the first step, above the footer Next, and hides it for short input", async () => {
-    mockDraftServer({ current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } });
-    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What keeps going wrong?");
-
-    const block = await screen.findByTestId("direction-copilot");
-    expect(block.textContent).toContain("Not sure how to turn this into training?");
-    expect(block.textContent).toContain("Show me three possible directions");
-    // The block sits ABOVE the bottom navigation action in document order.
-    const nextBtn = screen.getByText("Next");
-    expect(block.compareDocumentPosition(nextBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    // A too-short problem exposes no active generation action.
-    unmount();
-    mockDraftServer({ current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "x" } });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What keeps going wrong?");
-    expect(screen.queryByTestId("direction-copilot")).toBeNull();
-    expect(screen.getByText("Next")).toBeTruthy(); // manual Next path remains
-  });
-
-  it("a generation failure keeps the problem and the manual path intact", async () => {
-    const srv = mockDraftServer(
-      { current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } },
-      { directions: { status: 502 } },
-    );
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What keeps going wrong?");
-    fireEvent.click(await screen.findByTestId("direction-copilot-trigger"));
-    await screen.findByTestId("direction-copilot-error");
-    // Manual Builder untouched: problem preserved, no canonical copilot write.
-    const ta = screen.getByLabelText("What keeps going wrong?") as HTMLTextAreaElement;
-    expect(ta.value).toBe("Handoffs miss the double-check.");
-    expect(srv.patches.some((p) => p.answers?.capabilityCandidate)).toBe(false);
-    // Continue without suggestions returns to the trigger.
-    fireEvent.click(screen.getByText("Continue without suggestions"));
-    expect(screen.getByTestId("direction-copilot-trigger")).toBeTruthy();
-  });
-});
-
-describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.4A.3)", () => {
-  // Every visible section populated EXCEPT follow-up (which previously masqueraded as
-  // "No follow-up" and blocked approval with nothing highlighted — the Commander bug).
-  const nearCompleteNoFollow = {
-    title: "Read Back Before Sign-Off",
-    problem: "Handoffs skip the double-check.",
-    audienceType: "everyone" as const,
-    recurringMoment: "at each handoff point",
-    observableBehavior: "The charge nurse reads back the dosage before sign-off.",
-    successEvidence: "Sign-offs include a witnessed read-back.",
-    evidenceType: "seen" as const,
-    learningNeeds: ["practice" as const],
-    materialIntent: "youtube" as const,
-    materialText: "https://youtu.be/dQw4w9WgXcQ",
-    completionPrompt: "What read-back will you commit to?",
-    arenaRecommended: true,
-  };
-
-  it("REPRODUCTION: a draft missing only follow-up disables Approve, names the exact section, and highlights ONLY that row", async () => {
-    mockDraftServer({ current_step: 9, answers: nearCompleteNoFollow });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await showAllDetails();
-
-    // Approve disabled.
-    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(true);
-    // Exact missing section named (count + name), not a generic "highlighted" line.
-    expect(screen.getAllByTestId("review-missing-summary")[0].textContent).toContain("1 section needs attention");
-    expect(screen.getAllByTestId("review-missing-item-followUp").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Complete the highlighted sections first.")).toBeNull();
-    // The follow-up row is the ONLY highlighted row, with a Required label.
-    const followRow = screen.getByTestId("review-row-followUp");
-    expect(followRow.getAttribute("data-missing")).toBe("true");
-    expect(followRow.textContent).toContain("Required");
-    expect(followRow.textContent).toContain("Not added yet"); // no more false "No follow-up"
-    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(1);
-  });
-
-  it("Edit from the missing summary navigates to the correct Builder step, and completing it enables Approve on return", async () => {
-    mockDraftServer({ current_step: 9, answers: nearCompleteNoFollow });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await showAllDetails();
-
-    // Tap the named missing item → jump to the follow-up step (7).
-    fireEvent.click(screen.getAllByTestId("review-missing-item-followUp")[0]);
-    await screen.findByText("When should you check what happened?");
-    fireEvent.click(screen.getByText("No follow-up"));
-
-    // Return to Review.
-    fireEvent.click(screen.getByText("Next"));
-    await showAllDetails();
-    // Highlight is gone and Approve is enabled immediately (no reload).
-    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
-    expect(screen.queryByTestId("review-missing-summary")).toBeNull();
-    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it("a fully complete draft shows no summary, no highlighted row, and an enabled Approve", async () => {
-    mockDraftServer({ current_step: 9, answers: { ...nearCompleteNoFollow, followUpDays: 7 } });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await showAllDetails();
-    expect(screen.queryByTestId("review-missing-summary")).toBeNull();
-    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
-    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it("Copilot-applied behavior + evidence are recognized by the readiness gate (no false missing)", async () => {
-    // Behavior/evidence carrying the exact Copilot-applied shape; only audience left blank.
-    const copilotApplied = {
-      ...nearCompleteNoFollow,
-      followUpDays: 0 as const,
-      audienceType: undefined,
-      capabilityCandidate: "Shift Handoff",
-      recurringMoment: "at each handoff point",
-      observableBehavior: "Before ending the handoff, the nurse records the owner and next check time.",
-      successEvidence: "The handoff record lists the owner and a follow-up time.",
-    };
-    mockDraftServer({ current_step: 9, answers: copilotApplied });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await showAllDetails();
-    // Behavior + evidence are NOT flagged (Copilot values count); only audience is.
-    expect(screen.getByTestId("review-row-behavior").getAttribute("data-missing")).toBeNull();
-    expect(screen.getByTestId("review-row-evidence").getAttribute("data-missing")).toBeNull();
-    expect(screen.getByTestId("review-row-audience").getAttribute("data-missing")).toBe("true");
-    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(1);
-  });
-});
-
-describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)", () => {
-  const CONTEXT = {
-    title: "Read Back Before Sign-Off",
-    problem: "Handoffs skip the double-check.",
-    audienceType: "everyone",
-    recurringMoment: "at each handoff point",
-    observableBehavior: "The charge nurse reads the dosage back before sign-off.",
-    successEvidence: "Sign-offs include a witnessed read-back.",
-  };
-  const DRAFT_BODY = {
-    module_draft: {
-      learning_approach: ["practice", "shared_standard"],
-      learning_approach_rationale: "A standard practiced under pressure.",
-      completion_question: "Before the next sign-off, what phrase will you use to confirm the read-back with the receiving nurse?",
-      arena_recommended: true,
-      arena_rationale: "Must hold when the unit is busy.",
-      follow_up_days: 7,
-      follow_up_guidance: "Ask what made the read-back difficult.",
-      material_guidance: { recommended_types: ["written"], suggestion: "A short checklist may help; the host supplies it." },
-    },
-    assumptions: [],
-    warnings: [],
-    generation_version: "module_draft_copilot_v1",
-  };
-
-  it("entry is absent on step 5 until the canonical minimum context is complete", async () => {
-    mockDraftServer({ current_step: 6, answers: { title: "Read Back Before Sign-Off", problem: "only this" } });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What does this training need to include?");
-    expect(screen.queryByTestId("module-draft-copilot")).toBeNull();
-  });
-
-  it("generates, applies only approved fields via the canonical PATCH, preserves context, and restores", async () => {
-    const srv = mockDraftServer({ current_step: 6, answers: CONTEXT }, { moduleDraft: { body: DRAFT_BODY } });
-    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What does this training need to include?");
-
-    // Entry present (context complete) — generate.
-    fireEvent.click(await screen.findByTestId("module-draft-trigger"));
-    await screen.findByTestId("module-draft-review");
-    expect(srv.patches.some((p) => p.answers?.completionPrompt)).toBe(false); // nothing yet
-
-    // Apply the reviewed draft (all fields default to Use on an empty draft).
-    fireEvent.click(screen.getByTestId("module-draft-apply"));
-    await waitFor(() =>
-      expect(
-        srv.patches.some(
-          (p) =>
-            Array.isArray(p.answers?.learningNeeds) &&
-            p.answers?.completionPrompt === DRAFT_BODY.module_draft.completion_question &&
-            p.answers?.arenaRecommended === true &&
-            p.answers?.followUpDays === 7,
-        ),
-      ).toBe(true),
-    );
-    // The approved direction context is preserved on the server draft.
-    expect(srv.draft.answers.problem).toBe(CONTEXT.problem);
-    expect(srv.draft.answers.observableBehavior).toBe(CONTEXT.observableBehavior);
-    expect(srv.draft.answers.successEvidence).toBe(CONTEXT.successEvidence);
-    expect(await screen.findByTestId("module-draft-applied")).toBeTruthy();
-
-    // Reload → applied learning approach restores as selected on step 5.
-    unmount();
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What does this training need to include?");
-    const practice = screen.getByText("Practice").closest("button") as HTMLButtonElement;
-    expect(practice.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("a generation failure keeps the manual Builder intact", async () => {
-    const srv = mockDraftServer({ current_step: 6, answers: CONTEXT }, { moduleDraft: { status: 502 } });
-    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("What does this training need to include?");
-    fireEvent.click(await screen.findByTestId("module-draft-trigger"));
-    await screen.findByTestId("module-draft-error");
-    expect(srv.patches.some((p) => p.answers?.completionPrompt)).toBe(false);
-    fireEvent.click(screen.getByText("Continue manually"));
-    expect(screen.getByTestId("module-draft-trigger")).toBeTruthy();
-  });
-});
+  Nothing about the components themselves is uncovered: `DirectionCopilot.test.tsx` and
+  `ModuleDraftCopilot.test.tsx` still hold their behaviour in full, and both files still exist,
+  as does each route and its own route test. What replaces the wiring assertions is their
+  opposite, in `hostAuthoringSimplificationA.test.tsx` T1/T2 — the Builder must not construct
+  either surface, asserted against the source as well as the screen, because a step the walk
+  never reaches renders nothing and would pass either way.
+*/

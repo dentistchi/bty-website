@@ -20,6 +20,13 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
  * button state and the explanation both read, so they cannot describe different requirements.
  * The sentences themselves are the Builder's OWN approved per-step lines, reused rather than
  * rewritten.
+ *
+ * RETARGETED (Slice R4-R8A). The canonical Review no longer offers a button to disable — BTY
+ * generates by itself once the prerequisites hold. The falsehood this suite exists to prevent is
+ * unchanged and, if anything, easier to commit now: the surface can sit there saying nothing
+ * useful while the real blocker is a field the Host has never been told about. So the assertions
+ * move from "the button is disabled and the reason names X" to "no generation is offered or
+ * started, and the sentence shown names X" — same predicate, same copy, same anti-drift sweep.
  */
 const jsonRes = (body: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
@@ -54,8 +61,16 @@ function server(answers: Record<string, unknown>) {
 async function openReview(answers: Record<string, unknown>) {
   vi.stubGlobal("fetch", server(answers));
   render(<ModuleBuilderShell draftId="d1" locale="en" initialView="review" onExit={() => {}} />);
-  return await screen.findByTestId("program-authorship-entry");
+  return await screen.findByTestId("program-auto-not-ready");
 }
+
+/** The sentence the Host is actually shown in place of a generation. */
+const reasonShown = () => screen.getByTestId("program-auto-not-ready").textContent ?? "";
+/** Nothing is offered and nothing is running: the two states a blocked draft may be in. */
+const nothingOffered = () => {
+  expect(screen.queryByTestId("program-generate")).toBeNull();
+  expect(screen.queryByTestId("program-auto-working")).toBeNull();
+};
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -65,10 +80,9 @@ describe("[R4-R2F] the reason matches the predicate that is actually blocking", 
     void recurringMoment;
     await openReview(withoutMoment);
 
-    const button = screen.getByTestId("program-generate") as HTMLButtonElement;
-    expect(button.disabled, "the button must actually be disabled").toBe(true);
+    nothingOffered();
 
-    const reason = screen.getByTestId("program-not-ready-reason").textContent ?? "";
+    const reason = reasonShown();
     // The Builder's own approved sentence for this requirement — not a re-write, not a list.
     expect(reason).toBe(COPY.en.sMomentBlocker);
     // The measured falsehood, pinned out: it must no longer recite four unrelated requirements.
@@ -76,9 +90,10 @@ describe("[R4-R2F] the reason matches the predicate that is actually blocking", 
   });
 
   it("2 — adding the moment removes that reason and re-enables the action", async () => {
-    await openReview(COMPLETE as unknown as Record<string, unknown>);
-    await waitFor(() => expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(false));
-    expect(screen.queryByTestId("program-not-ready-reason")).toBeNull();
+    vi.stubGlobal("fetch", server(COMPLETE as unknown as Record<string, unknown>));
+    render(<ModuleBuilderShell draftId="d1" locale="en" initialView="review" onExit={() => {}} />);
+    // Complete inputs: the explanation is gone because the work it was explaining is happening.
+    await waitFor(() => expect(screen.queryByTestId("program-auto-not-ready")).toBeNull());
   });
 
   it("4 — for EVERY single missing requirement, the reason is that requirement's own sentence", async () => {
@@ -103,8 +118,8 @@ describe("[R4-R2F] the reason matches the predicate that is actually blocking", 
       expect(programContext(answers as BuilderAnswers), `${field} should block generation`).toBeNull();
 
       await openReview(answers);
-      expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled, field).toBe(true);
-      expect(screen.getByTestId("program-not-ready-reason").textContent, field).toBe(sentence);
+      nothingOffered();
+      expect(reasonShown(), field).toBe(sentence);
       cleanup();
       vi.unstubAllGlobals();
     }
@@ -115,9 +130,9 @@ describe("[R4-R2F] the reason matches the predicate that is actually blocking", 
     // than one who chose nothing — and must not be told to choose again.
     const answers = { ...(COMPLETE as unknown as Record<string, unknown>), audienceType: "job_group" };
     await openReview(answers);
-    expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByTestId("program-not-ready-reason").textContent).toBe(COPY.en.s2DetailBlocker);
-    expect(screen.getByTestId("program-not-ready-reason").textContent).not.toBe(COPY.en.s2Blocker);
+    nothingOffered();
+    expect(reasonShown()).toBe(COPY.en.s2DetailBlocker);
+    expect(reasonShown()).not.toBe(COPY.en.s2Blocker);
   });
 
   it("7 — the underlying required-field rules did not move", () => {

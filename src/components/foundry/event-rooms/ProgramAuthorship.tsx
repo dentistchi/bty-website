@@ -97,6 +97,7 @@ export function ProgramAuthorship({
   answers,
   journey,
   ready,
+  auto = false,
   notReadyReason,
   onGenerate,
   onCheckResume,
@@ -125,6 +126,24 @@ export function ProgramAuthorship({
   answers: BuilderAnswers;
   journey: RealityGroundedJourneyV1 | undefined;
   ready: boolean;
+  /**
+   * THE CANONICAL FRESH FLOW (Slice R4-R8A — Host Authoring Simplification A).
+   *
+   * `false` is everything this component has always been: an entry card the Host presses, a
+   * target confirmation, a section-by-section review with keep/use per section, and an Apply.
+   * That path is untouched, because legacy drafts and every existing test still exercise it.
+   *
+   * `true` removes the four decisions rather than restyling them. Generation starts by itself
+   * once the prerequisites hold, `initialSectionDecisions` — already the authority on what to
+   * preserve — is applied without being rendered as controls, and the adoption happens on the
+   * same pass. What the Host sees is a progress line, then one sentence saying the draft
+   * exists. The editable surface is the learner preview below, which is now the only one.
+   *
+   * The provider-spend guards are NOT relaxed by any of this: the same attempt fingerprint,
+   * the same continuity cache, the same server-side unique attempt. Automatic means "without
+   * being asked", not "again".
+   */
+  auto?: boolean;
   /**
    * The NEXT thing the Host needs to provide, in the Builder's own words (Slice R4-R2F).
    *
@@ -249,6 +268,19 @@ export function ProgramAuthorship({
    */
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [titleEdit, setTitleEdit] = useState("");
+  /**
+   * Has the resume check finished? (Slice R4-R8A)
+   *
+   * Automatic generation may not start until the browser-held proposal question is settled,
+   * or a Host returning to Review would pay for a second program while the first one was
+   * still being validated. Every exit from the resume effect sets it, including the ones
+   * that clear the cache.
+   */
+  const [resumeSettled, setResumeSettled] = useState(false);
+  /** The Host chose to carry on without a program. Auto mode then renders nothing at all. */
+  const [autoDismissed, setAutoDismissed] = useState(false);
+  const autoStartedRef = useRef(false);
+  const autoAppliedRef = useRef(false);
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
 
@@ -291,6 +323,11 @@ export function ProgramAuthorship({
     setFailure(null);
     setFailureCode("");
     setPhase("idle");
+    // Slice R4-R8A — in `auto` mode the entry card this used to return to does not exist, so
+    // the refs that stop the effect re-spending are what has to be released instead. Still one
+    // generation per gesture: the Host pressed something to get here.
+    autoStartedRef.current = false;
+    autoAppliedRef.current = false;
     requestAnimationFrame(() => generateButtonRef.current?.focus());
   }, [draftId, onDismissRefusal]);
 
@@ -342,7 +379,12 @@ export function ProgramAuthorship({
     if (resumedRef.current || phase !== "idle" || !ready) return;
     if (!currentContextFingerprint) return;
     const cached = readCachedProposal(draftId, currentContextFingerprint);
-    if (!cached) return;
+    // SETTLED, NOT RESUMED (Slice R4-R8A). Nothing to resume is an ANSWER — the automatic
+    // path is waiting on this question, and leaving it unanswered would stall it forever.
+    if (!cached) {
+      setResumeSettled(true);
+      return;
+    }
     resumedRef.current = true;
 
     /*
@@ -354,6 +396,7 @@ export function ProgramAuthorship({
     */
     if (!cached.attemptId || !onCheckResume) {
       clearCachedProposal(draftId);
+      setResumeSettled(true);
       return;
     }
     let live = true;
@@ -361,8 +404,10 @@ export function ProgramAuthorship({
       if (!live) return;
       if (!eligible) {
         clearCachedProposal(draftId);
+        setResumeSettled(true);
         return;
       }
+      setResumeSettled(true);
       showProposal(cached);
     });
     return () => {
@@ -548,6 +593,10 @@ export function ProgramAuthorship({
       is provable, and until it answers the honest state is "adding", not "added".
     */
     setPhase("applying");
+    // Slice R4-R8A — the lease covers the ADOPTION too, not just the generation. Publishing
+    // during an apply was always wrong; in the automatic path it is also the signal the parent
+    // reads to know a program is still on its way, so it may not go quiet halfway through.
+    onPendingChange?.(true);
     /*
       NOTHING IS ASSUMED AND NOTHING IS THROWN AWAY UNLESS IT WORKED (Slice 3.2R-R2.4).
 
@@ -584,13 +633,120 @@ export function ProgramAuthorship({
     } catch {
       outcome = { status: "save_failed" };
     }
+    onPendingChange?.(false);
     setApplyOutcome(outcome);
     // Only a real adoption finishes the work. Anything else keeps it resumable.
     if (outcome.status === "adopted" || outcome.status === "adopted_receipt_pending") {
       clearCachedProposal(draftId);
     }
     setPhase("applied");
-  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId, onPendingChange]);
+
+  /**
+   * AUTOMATIC GENERATION (Slice R4-R8A).
+   *
+   * The Founder measured three separate "shall BTY make this for you?" gestures in one
+   * creation and could not tell which of them was necessary. None of them were: the
+   * prerequisites are the same Builder answers the button was disabled without, so a
+   * question whose answer is always yes was being asked three times.
+   *
+   * FIVE CONDITIONS, EVERY ONE OF THEM ABOUT NOT SPENDING TWICE:
+   *
+   *   `autoStartedRef`  — one generation per mount, whatever re-renders happen.
+   *   `phase === idle`  — never while one is working, under review, or already applied.
+   *   `ready`           — the same predicate that used to hold the button.
+   *   `resumeSettled`   — a browser-held proposal gets the chance to be reused first.
+   *   `fingerprint`     — the authority the attempt is keyed on; without it the server
+   *                       cannot dedupe, so we do not ask it to.
+   *
+   * A `failure` also holds it: a terminal refusal must not be retried by an effect, only by
+   * the Host. That is the R5 retry policy, unchanged — automatic START is the new thing here,
+   * automatic RETRY is not, and would be exactly the hidden repeat spend this must not cause.
+   */
+  useEffect(() => {
+    if (!auto || autoStartedRef.current || autoDismissed) return;
+    if (phase !== "idle" || !ready || !resumeSettled) return;
+    if (failure || !currentContextFingerprint) return;
+    /*
+      A TRAINING THAT ALREADY HAS ITS PROGRAM DOES NOT NEED ANOTHER ONE.
+
+      This one condition carries three cases that would otherwise each need their own rule:
+        · the Host reloads Review after the program was adopted — nothing is bought again;
+        · a v2 revision inherits its parent's complete journey — a published training's
+          wording is never silently replaced by a fresh generation nobody asked for;
+        · a draft that reached Review with a hand-built journey keeps it.
+      `missingProgramKinds` is the same predicate Publish already uses to say what a training
+      is short of, so this cannot drift away from what the Host is told.
+    */
+    if (missing.length === 0) return;
+    autoStartedRef.current = true;
+    void generate();
+  }, [auto, autoDismissed, phase, ready, resumeSettled, failure, currentContextFingerprint, missing.length, generate]);
+
+  /**
+   * AUTOMATIC ADOPTION (Slice R4-R8A).
+   *
+   * `initialSectionDecisions` was already the authority on every one of these choices — `keep`
+   * where the Host has a settled sentence of their own, `use` everywhere else — and on a fresh
+   * creation it is correct before the Host touches anything. Rendering it as twelve toggles did
+   * not make the outcome safer; it made the Host responsible for confirming a computation.
+   *
+   * So the decisions still happen, from the same function, on the same journey. They simply are
+   * not asked. `apply` reads them out of the state `showProposal` just set, so the automatic
+   * path and the manual one adopt through one code path and cannot diverge.
+   *
+   * A proposal that cannot pass its own review is a FAILED generation, not a silent adoption of
+   * something invalid — it takes the recovery surface, where the Host can retry or move on.
+   */
+  useEffect(() => {
+    if (!auto || autoAppliedRef.current || autoDismissed) return;
+    if (phase !== "review" || !proposal) return;
+    if (proposalIsStale) return;
+    autoAppliedRef.current = true;
+    if (reviewBlock) {
+      setFailure(resolveRefusalCopy("program_auto_review_blocked", null));
+      setFailureCode("program_auto_review_blocked");
+      setPhase("failed");
+      return;
+    }
+    void apply();
+  }, [auto, autoDismissed, phase, proposal, proposalIsStale, reviewBlock, apply]);
+
+  /**
+   * The Host asked for another draft after a failure. An explicit gesture, so it may spend —
+   * what it may not do is spend without one, which is why the effect above refuses to run
+   * while `failure` is set and why this is the only thing that clears it.
+   */
+  const retryAuto = useCallback(() => {
+    autoStartedRef.current = false;
+    autoAppliedRef.current = false;
+    submittingRef.current = false;
+    setFailure(null);
+    setFailureCode("");
+    setPhase("idle");
+  }, []);
+
+  /**
+   * RE-APPLY, WITHOUT RE-GENERATING (Slice R4-R8A).
+   *
+   * A save failure is not a generation failure. The proposal is still in memory and still in the
+   * continuity cache — `apply` deliberately keeps it for anything short of a real adoption — so
+   * the remedy is to write it again, and routing this through `retryAuto` would have bought a
+   * second program to fix a failed PATCH.
+   */
+  const retryApply = useCallback(() => {
+    autoAppliedRef.current = false;
+    setApplyOutcome(null);
+    setPhase("review");
+  }, []);
+
+  /** No program, no trap. The seeded journey below is still editable and still publishable. */
+  const continueManually = useCallback(() => {
+    setAutoDismissed(true);
+    setFailure(null);
+    setFailureCode("");
+    setPhase("idle");
+  }, []);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -650,6 +806,159 @@ export function ProgramAuthorship({
         ) : null}
       </section>
   );
+
+  // ---- the canonical automatic path (Slice R4-R8A) ------------------------
+  /*
+    ONE SURFACE PER STATE, AND NONE OF THEM ASK A QUESTION.
+
+    Working → one line. Done → one line. Failed → the refusal plus two ways out. Dismissed →
+    nothing, because the learner preview below is a complete editable training on its own.
+
+    What is deliberately absent: the entry card, the target confirmation, the section review,
+    the keep/use rows and Apply. Not hidden behind a flag on the same markup — not rendered.
+    A control the Host cannot see is still a control they can tab into.
+
+    The two adoption FAILURES fall through to the panels below, which already carry the
+    honest wording and the recovery the Founder needed on a real Korean training.
+  */
+  if (auto) {
+    if (autoDismissed) return null;
+
+    if (phase === "failed") {
+      /*
+        RETRY ONLY WHERE RETRYING IS THE REMEDY (Slice R4-R8A, honouring 3.2L-R5).
+
+        `start_a_new_draft` and `wait_and_try_later` describe faults that another attempt can
+        genuinely clear. `add_the_real_material` and `adjust_your_training_inputs` do not: the
+        inputs are unchanged, so a retry is a paid re-roll dressed as a fix, which is the exact
+        thing the R4 window did to the Founder. Those keep their note and the way out.
+      */
+      const retryable = failure?.recovery === "start_a_new_draft" || failure?.recovery === "wait_and_try_later";
+      return (
+        <section
+          ref={sectionRef}
+          className="flex flex-col gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3.5"
+          data-testid="program-auto-failed"
+        >
+          <p className="text-sm font-medium text-amber-100/90">{t.paAutoFailedTitle}</p>
+          {failure?.explanation ? (
+            <p className="text-sm leading-6 text-amber-100/75">{failure.explanation}</p>
+          ) : null}
+          {!retryable && failure ? (
+            <p className="text-xs leading-5 text-amber-100/60" data-testid="program-auto-no-retry">
+              {RECOVERY_NOTE[failure.recovery]}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            {retryable ? (
+              <button
+                type="button"
+                onClick={retryAuto}
+                data-testid="program-auto-retry"
+                className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+              >
+                {t.paAutoRetry}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={continueManually}
+              data-testid="program-auto-manual"
+              className="min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium text-amber-100/85 underline underline-offset-4"
+            >
+              {t.paAutoManual}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (phase !== "applied") {
+      // Nothing to do and nothing in flight: the learner preview below is the whole surface.
+      if (phase === "idle" && missing.length === 0) return null;
+      /*
+        NOT READY IS NOT WORKING. Nothing is in flight and nothing will be until the Builder
+        answers exist, so saying "drafting…" would be a lie the Host waits on. Publish is
+        already blocked by the same gap, named by `MissingSummary`.
+      */
+      if (!ready || !currentContextFingerprint) {
+        return (
+          <section
+            ref={sectionRef}
+            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5"
+            data-testid="program-auto-not-ready"
+          >
+            <p className="text-sm leading-6 text-white/55">{notReadyReason ?? t.paNotReadyHint}</p>
+          </section>
+        );
+      }
+      return (
+        <section
+          ref={sectionRef}
+          className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5"
+          data-testid="program-auto-working"
+        >
+          <p className="text-sm text-white/60">{t.paAutoWorking}</p>
+        </section>
+      );
+    }
+
+    if (applyOutcome?.status === "save_failed") {
+      /*
+        THE ONE STATE THAT COULD STRAND SOMEBODY. The manual panel below says — correctly — that
+        nothing was saved and the draft is unchanged, and then offers nothing, because the Host
+        could simply press Apply again on the review they were still looking at. In the automatic
+        path that review is not on screen, so the same panel would be a dead end.
+      */
+      return (
+        <section
+          ref={sectionRef}
+          className="flex flex-col gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3.5"
+          data-testid="program-auto-save-failed"
+        >
+          <p className="text-sm font-medium text-amber-100/90">{t.paApplyFailedTitle}</p>
+          <p className="text-sm leading-6 text-amber-100/75">{t.paApplyFailedBody}</p>
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={retryApply}
+              data-testid="program-auto-save-retry"
+              className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+            >
+              {t.paAutoRetry}
+            </button>
+            <button
+              type="button"
+              onClick={continueManually}
+              data-testid="program-auto-manual"
+              className="min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium text-amber-100/85 underline underline-offset-4"
+            >
+              {t.paAutoManual}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (applyOutcome?.status === "adopted" || applyOutcome?.status === "adopted_receipt_pending") {
+      /*
+        ONE SENTENCE, NO DISCLOSURE. The manual panel offers "show what BTY drafted" because
+        there the Host had approved a proposal and could lose sight of it. Here the drafted
+        words ARE the training, editable in the preview directly below — a second read-only
+        copy of the same seven sections is the duplicate review layer this slice removes.
+      */
+      return (
+        <section
+          ref={sectionRef}
+          className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5"
+          data-testid="program-auto-done"
+        >
+          <p className="text-sm font-medium text-emerald-200/90">{t.paAutoDone}</p>
+        </section>
+      );
+    }
+    // save_failed / refused → the existing panels, which already recover correctly.
+  }
 
   if (phase === "idle" || phase === "failed") return entrySurface;
 

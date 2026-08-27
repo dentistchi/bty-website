@@ -85,6 +85,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * Slice R4-R8A — Review starts a program generation by itself, and publication is leased out
+ * while one is in flight (`generationPending`). Clicking the CTA before that settles lands on a
+ * disabled button, so every publish here waits for the lease to be released first. That wait is
+ * the product behaviour, not a test workaround: a Host cannot create a session on top of a
+ * program that is still being written.
+ */
+async function publishNow() {
+  await waitFor(() => expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByTestId("publish-cta"));
+}
+
 describe("Participation-mode controls in the Builder review step", () => {
   it("(25) mounts the participation-mode chooser at review", async () => {
     mockServers();
@@ -119,8 +131,7 @@ describe("Participation-mode controls in the Builder review step", () => {
   it("an OPEN_LINK publish sends open_link and NO audience fields", async () => {
     const calls = mockServers({ audienceType: "leaders" });
     renderShell();
-    await waitFor(() => expect(screen.getByTestId("publish-cta")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     await waitFor(() => expect(calls.publish).toHaveLength(1));
     const body = calls.publish[0] as Record<string, unknown>;
     expect(body.participationMode).toBe("open_link");
@@ -132,7 +143,7 @@ describe("Participation-mode controls in the Builder review step", () => {
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     await waitFor(() => expect(calls.publish).toHaveLength(1));
     const body = calls.publish[0] as Record<string, unknown>;
     expect(body.participationMode).toBe("assigned_overlay");
@@ -148,7 +159,7 @@ describe("Participation-mode controls in the Builder review step", () => {
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     await waitFor(() => expect(screen.getByTestId("publish-zero-recipients")).toBeTruthy());
     expect(calls.publish).toHaveLength(1);
   });
@@ -181,8 +192,7 @@ describe("Post-publish confirmation uses the AUTHORITATIVE committed result", ()
   it("OPEN_LINK publish confirms zero assignments", async () => {
     mockServers({ audienceType: "leaders" });
     renderShell();
-    await waitFor(() => expect(screen.getByTestId("publish-cta")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const confirm = await screen.findByTestId("publish-confirmation");
     expect(confirm).toBeTruthy();
     expect(screen.getByTestId("publish-confirm-open").textContent).toMatch(/No assignments created/i);
@@ -195,7 +205,7 @@ describe("Post-publish confirmation uses the AUTHORITATIVE committed result", ()
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const count = await screen.findByTestId("publish-confirm-count");
     expect(count.textContent).toMatch(/1 assignment created/i);
     expect(screen.getByTestId("publish-confirm-room").textContent).toMatch(/room remains link-based/i);
@@ -210,7 +220,7 @@ describe("Post-publish confirmation uses the AUTHORITATIVE committed result", ()
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     await waitFor(() => expect(calls.publish).toHaveLength(1));
     // no confirmation panel, no count
     expect(screen.queryByTestId("publish-confirmation")).toBeNull();
@@ -226,7 +236,7 @@ describe("Post-publish confirmation uses the AUTHORITATIVE committed result", ()
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const confirm = await screen.findByTestId("publish-confirmation");
     expect(confirm).toBeTruthy();
     // shows the OPEN_LINK confirmation because the server committed open_link
@@ -247,7 +257,7 @@ describe("Publish errors are specific and actionable (3.1B-3C-fix2, real-app rep
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const err = await screen.findByTestId("publish-error");
     expect(err.textContent).toMatch(/valid YouTube URL/i);
     // no false success
@@ -263,7 +273,7 @@ describe("Publish errors are specific and actionable (3.1B-3C-fix2, real-app rep
     renderShell();
     await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
     fireEvent.click(screen.getByTestId("participation-mode-assigned"));
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const err = await screen.findByTestId("publish-error");
     expect(err.textContent).toMatch(/assignments couldn't be created/i);
     expect(screen.queryByTestId("publish-confirmation")).toBeNull();
@@ -275,8 +285,7 @@ describe("Publish errors are specific and actionable (3.1B-3C-fix2, real-app rep
       publish: () => ({ status: 409, body: { error: "publish_conflict" } }),
     });
     renderShell();
-    await waitFor(() => expect(screen.getByTestId("publish-cta")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("publish-cta"));
+    await publishNow();
     const err = await screen.findByTestId("publish-error");
     expect(err.textContent).toBeTruthy();
   });

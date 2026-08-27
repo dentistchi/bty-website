@@ -430,6 +430,22 @@ export type ModuleBuilderCopy = {
   paTargetAriaLabel: string;
   paUntitledDraft: string;
   paApplyFootnote: string;
+  /**
+   * SIMPLIFICATION A — the automatic single-generator path (Slice R4-R8A).
+   *
+   * The canonical fresh flow never asks whether BTY should draft the training, and never asks
+   * the Host to adopt what it drafted. These five lines are the whole visible surface of a
+   * generation that runs, applies itself and gets out of the way.
+   */
+  paAutoWorking: string;
+  paAutoDone: string;
+  paAutoFailedTitle: string;
+  paAutoRetry: string;
+  paAutoManual: string;
+  /** The collapsed Builder-source detail disclosure on the single working preview. */
+  reviewDetailsToggle: string;
+  reviewDetailsHint: string;
+  reviewDetailsAttention: (n: number) => string;
   paCeilingHeading: string;
   paAssumptionsHeading: string;
   paWarningsHeading: string;
@@ -750,6 +766,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "Training program target",
     paUntitledDraft: "Untitled training draft",
     paApplyFootnote: "Applying adds it to your draft. It still isn’t approved, published, or visible to anyone.",
+    paAutoWorking: "BTY is drafting your training…",
+    paAutoDone: "BTY drafted your training.",
+    paAutoFailedTitle: "BTY couldn’t draft your training.",
+    paAutoRetry: "Draft it again",
+    paAutoManual: "Continue on your own",
+    reviewDetailsToggle: "All training details",
+    reviewDetailsHint: "Everything you entered, and where to change it",
+    reviewDetailsAttention: (n) => `${n} still needs attention`,
     paCeilingHeading: "What this can and cannot show",
     paAssumptionsHeading: "This assumes",
     paWarningsHeading: "Worth noting",
@@ -788,7 +812,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       "This training changed after BTY drafted it. Create a new draft using your latest changes.",
     programRefusedRecoveryCta: "Draft again",
     reviewCompletion: "COMPLETION QUESTION",
-    publishCta: "Approve & create session",
+    publishCta: "Create training",
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
     publishing: "Creating session…",
     publishError: "Couldn’t create the session. Please try once more.",
@@ -1157,6 +1181,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "초안을 만들 훈련",
     paUntitledDraft: "이름 없는 훈련",
     paApplyFootnote: "적용하면 내 초안에 들어갑니다. 아직 확정되거나 공개되지 않고, 아무에게도 보이지 않습니다.",
+    paAutoWorking: "BTY가 초안을 만드는 중…",
+    paAutoDone: "BTY가 초안을 만들었습니다.",
+    paAutoFailedTitle: "BTY가 초안을 만들지 못했습니다.",
+    paAutoRetry: "다시 시도",
+    paAutoManual: "직접 계속하기",
+    reviewDetailsToggle: "세부 내용 보기",
+    reviewDetailsHint: "입력하신 내용과, 어디서 고칠 수 있는지",
+    reviewDetailsAttention: (n) => `${n}개는 아직 확인이 필요합니다`,
     paCeilingHeading: "이 훈련으로 알 수 있는 것과 알 수 없는 것",
     paAssumptionsHeading: "이런 전제를 두고 있습니다",
     paWarningsHeading: "함께 알아 두실 점",
@@ -1195,7 +1227,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       "BTY가 초안을 만든 뒤 교육 내용이 변경되었습니다. 최신 내용으로 다시 초안을 만드세요.",
     programRefusedRecoveryCta: "다시 초안 만들기",
     reviewCompletion: "완료 질문",
-    publishCta: "승인하고 세션 만들기",
+    publishCta: "훈련 만들기",
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
     publishing: "세션을 만드는 중…",
     publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",

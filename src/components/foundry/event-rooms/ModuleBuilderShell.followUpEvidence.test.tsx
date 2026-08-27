@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup, within } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, within, fireEvent } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 
 /**
@@ -89,6 +89,12 @@ function server(answers: Record<string, unknown>) {
 async function renderReview(followUpDays: number, locale: "en" | "ko" = "en") {
   vi.stubGlobal("fetch", server(ANSWERS(followUpDays)));
   render(<ModuleBuilderShell draftId="d1" locale={locale} initialView="review" onExit={() => {}} />);
+  /*
+    Slice R4-R8A — the Builder-source rows moved into an optional disclosure, so the review row
+    has to be OPENED before it can be read. What is being held here is unchanged: what the row
+    says once the Host looks at it. Where it lives is the other slice's subject.
+  */
+  fireEvent.click(await screen.findByTestId("all-training-details-toggle"));
   return await waitFor(() => screen.getByTestId("review-row-followUp"));
 }
 

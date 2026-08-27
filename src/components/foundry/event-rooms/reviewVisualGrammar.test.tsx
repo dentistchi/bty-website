@@ -146,13 +146,21 @@ async function openReview() {
   seedCache();
   vi.stubGlobal("fetch", server());
   render(<ModuleBuilderShell draftId={DRAFT} locale="en" initialView="review" onExit={() => {}} />);
-  return await screen.findByTestId("program-review");
+  /*
+    Slice R4-R8A — Review resumes the cached proposal and adopts it on the same pass, so the
+    section-by-section review this used to land on no longer renders here. The anchor is the one
+    line that says the program exists; everything these tests are about happens after it.
+  */
+  return await screen.findByTestId("program-auto-done");
 }
 
-/** Adopt the reviewed program and wait for the confirmation the server established. */
+/**
+ * Adoption is no longer a gesture (Slice R4-R8A) — it happens with the generation. Kept as a
+ * named step because every test below reads as "…after the program has been adopted", and the
+ * wait is still real: the confirmation is only rendered once the server has established it.
+ */
 async function adopt() {
-  fireEvent.click(await screen.findByTestId("program-apply"));
-  await screen.findByTestId("program-applied");
+  await screen.findByTestId("program-auto-done");
 }
 
 beforeEach(() => { localStorage.clear(); });
@@ -162,24 +170,25 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localS
  * TEST A — editable and read-only are different KINDS of thing
  * ------------------------------------------------------------------------ */
 describe("[R4-R2E] A — the two grammars are not interchangeable", () => {
-  it("the learner-facing field is a real form control; the program-review equivalent is not", async () => {
+  it("the learner-facing field is a real form control", async () => {
     await openReview();
-
     /*
-      The program review's read-only grammar, on a section BTY actually renders. THE STANDARD is
-      the Host's own sentence since Slice R4-R5C14A, so it is an editable field on BOTH surfaces
-      now — the contrast this test is about lives between BTY's derived sentences and the Host's
-      fields, and YOUR DECISION is one of BTY's.
-    */
-    const readOnly = screen.getByTestId("program-derived-action_decision");
-    expect(readOnly.tagName).toBe("P");
-    expect(readOnly.getAttribute("data-surface")).toBe("readonly");
-    // Not a disabled control dressed as prose — no form control anywhere inside it.
-    expect(readOnly.querySelector("textarea, input, select")).toBeNull();
+      THE READ-ONLY HALF MOVED WITH ITS SURFACE (Slice R4-R8A).
 
+      This used to compare the program review's `program-derived-action_decision` — a read-only
+      `<p>` — against the learner preview's textarea, because both were on Review and looked
+      identical. Review now carries ONE surface and every line on it is editable, so the decoy
+      the comparison guarded against cannot occur here at all.
+
+      The invariant itself is not dropped: the third test in this describe pins
+      `READONLY_TEXT !== EDITABLE_FIELD` against the shared constants, which is where the
+      guarantee actually lives, and `programAuthorship.render.test.tsx` still renders the manual
+      review where the read-only grammar is used. What is asserted HERE is the half that is
+      still on this screen — that the thing the Host taps is a genuine control.
+    */
     await adopt();
 
-    // The Learner Preview's version of the same standard: the Host's, to CHANGE.
+    // The Learner Preview's version of the standard: the Host's, to CHANGE.
     const editable = (await screen.findByTestId("journey-edit-observable_standard")) as HTMLTextAreaElement;
     expect(editable.tagName).toBe("TEXTAREA");
     expect(editable.getAttribute("data-surface")).toBe("editable");
@@ -187,20 +196,18 @@ describe("[R4-R2E] A — the two grammars are not interchangeable", () => {
     expect(editable.readOnly).toBe(false);
 
     /*
-      THE MEASURED DEFECT ITSELF. Pre-fix these two rendered with byte-identical class strings.
-      Compared as rendered, so the guarantee holds however either surface is later restyled.
+      THE MEASURED DEFECT ITSELF, from the side that survives on this screen: an editable field
+      must READ as editable — a field boundary and a focus response, not prose in a box.
     */
-    expect(editable.className).not.toBe(readOnly.className);
     expect(editable.className).toMatch(/focus:/);
-    expect(readOnly.className).not.toMatch(/focus:/);
+    expect(editable.className).not.toBe(READONLY_TEXT);
   });
 
   it("every editable control on Review carries an accessible name", async () => {
     await openReview();
-    // Program review — the title, and the contract fields behind "Edit details".
-    expect(screen.getByLabelText("Program title")).toBeTruthy();
-
     await adopt();
+    // Slice R4-R8A — "Program title" belonged to the review surface Review no longer carries;
+    // the learner title below is the one name the Host now sets, and it is checked here.
     // Learner preview — the title and each learner-facing line.
     expect(await screen.findByLabelText("Learner title")).toBeTruthy();
     expect(screen.getByLabelText(/The standard — the learner reads this/)).toBeTruthy();

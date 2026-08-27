@@ -1,7 +1,9 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import { useCallback, useState } from "react";
+import { ProgramAuthorship, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
+import type { RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
@@ -12,6 +14,18 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
  * keyed by draft id and re-lists from the server on tab re-entry, so an unmount is
  * guaranteed, not incidental — and mount it again. R11.4E-R1 is the standing lesson: a test
  * that never unmounts cannot see a defect whose whole nature is unmounting.
+ *
+ * RETARGETED, NOT WEAKENED (Slice R4-R8A). The canonical Review generates by itself and adopts
+ * on the same pass, so the shell can no longer be driven to the generated-but-unadopted state
+ * this suite is about — there is no entry button and no confirmation to press. The state itself
+ * still exists (it is the window between generation and adoption, and it is where a failed apply
+ * leaves the Host), so the suite mounts `ProgramAuthorship` through a wrapper that performs the
+ * SAME three requests the shell performs, over the SAME fetch stub. Every counter — provider
+ * calls, draft writes, resume checks — keeps counting the same things.
+ *
+ * The two claims that belong to the automatic path — a cached proposal is reused rather than
+ * regenerated, and an already-adopted training buys nothing on reload — are held in
+ * `hostAuthoringSimplificationA.test.tsx`.
  */
 const DRAFT = "093b0361-7cc8-4688-9f93-396d60582501";
 const OTHER = "35773b57-219b-43fb-829e-80f0656ccb66";
@@ -84,8 +98,72 @@ function stubFetch(answers: BuilderAnswers = ANSWERS, program: unknown = PROGRAM
   );
 }
 
-function mount(draftId = DRAFT) {
-  return render(<ModuleBuilderShell draftId={draftId} locale="en" initialView="review" onExit={() => {}} />);
+/**
+ * The Review host, reduced to exactly what this suite measures: the three requests the shell
+ * makes on behalf of `ProgramAuthorship`, written the way the shell writes them so the stub
+ * above answers them unchanged.
+ */
+function ReviewHost({ draftId, answers }: { draftId: string; answers: BuilderAnswers }) {
+  const [journey, setJourney] = useState<RealityGroundedJourneyV1 | undefined>(undefined);
+  const fingerprint = programContextFingerprint(programContext(answers)!);
+
+  const onGenerate = useCallback(async (): Promise<ProgramGenerateOutcome> => {
+    const res = await fetch(`/api/bty/foundry/modules/${draftId}/program-draft`, {
+      method: "POST",
+      body: JSON.stringify({ locale: "en", submission_intent_id: crypto.randomUUID(), context_fingerprint: fingerprint }),
+    });
+    const data = (await res.json()) as { program?: unknown; evidence_ceiling?: string; attempt_id?: string; context_fingerprint?: string };
+    if (!data.program) return { ok: false, code: "invalid_output" };
+    return {
+      ok: true,
+      proposal: data.program as never,
+      evidenceCeiling: data.evidence_ceiling ?? "",
+      attemptId: data.attempt_id ?? null,
+      contextFingerprint: data.context_fingerprint ?? "",
+    };
+  }, [draftId, fingerprint]);
+
+  const onCheckResume = useCallback(
+    async (attemptId: string): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/bty/foundry/modules/${draftId}/program-draft?attempt=${attemptId}`);
+        if (!res.ok) return false;
+        const data = (await res.json()) as { eligible?: unknown };
+        return data.eligible === true;
+      } catch {
+        // Fails CLOSED, exactly as the shell does — a network fault is not "still fine".
+        return false;
+      }
+    },
+    [draftId],
+  );
+
+  const onApply = useCallback(
+    async (next: RealityGroundedJourneyV1): Promise<ProgramApplyOutcome> => {
+      await fetch(`/api/bty/foundry/modules/${draftId}`, { method: "PATCH" });
+      setJourney(next);
+      return { status: "adopted" };
+    },
+    [draftId],
+  );
+
+  return (
+    <ProgramAuthorship
+      draftId={draftId}
+      locale="en"
+      answers={answers}
+      journey={journey}
+      ready
+      onGenerate={onGenerate}
+      onCheckResume={onCheckResume}
+      onApply={onApply}
+      currentContextFingerprint={fingerprint}
+    />
+  );
+}
+
+function mount(draftId = DRAFT, answers: BuilderAnswers = ANSWERS) {
+  return render(<ReviewHost draftId={draftId} answers={answers} />);
 }
 
 async function generateOnce() {
@@ -170,7 +248,7 @@ describe("[3.2L-R11.4K] continuity through the real Builder", () => {
     cleanup();
     const moved = { ...ANSWERS, problem: "Our handoffs are inconsistent, and shifts overlap." } as BuilderAnswers;
     stubFetch(moved);
-    mount();
+    mount(DRAFT, moved);
     await screen.findByTestId("program-generate", {}, { timeout: 8000 });
     expect(proposalOnScreen()).toBe(false);
   }, 30000);

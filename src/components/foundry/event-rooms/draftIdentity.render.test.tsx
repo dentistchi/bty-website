@@ -154,14 +154,13 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       }),
     );
     await open(CANONICAL_ID);
-    // Slice 3.2L-R1.3 put a target confirmation between the button and the provider.
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-generate"));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-target-confirm-action"));
-    });
-    expect(screen.getByTestId("program-working")).toBeTruthy();
+    /*
+      Slice R4-R8A — no button, no confirmation: arriving on Review IS the gesture now. What
+      this test holds is unchanged, and is the reason it is worth keeping through the change —
+      while a generation is in flight the Host must still be able to see WHICH training it is
+      for, and must not be able to publish underneath it.
+    */
+    await screen.findByTestId("program-auto-working");
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("publish-blocked-generation").textContent).toContain("BTY is writing your training program");
@@ -188,14 +187,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       }),
     );
     await open(CANONICAL_ID);
-    // Slice 3.2L-R1.3 put a target confirmation between the button and the provider.
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-generate"));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-target-confirm-action"));
-    });
-    expect(screen.getByTestId("program-failure")).toBeTruthy();
+    await screen.findByTestId("program-auto-failed");
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     // …and publication is not left wedged by the refusal.
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);

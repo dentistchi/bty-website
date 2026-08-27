@@ -36,25 +36,22 @@ import { copyLikeLearnerQuestions, type LearnerQuestionField } from "@/domain/fo
 import { classifyRealityIntentReadiness, type RealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
-import {
-  DirectionCopilot,
-  type DirectionGenerateOutcome,
-  type DirectionSuggestionView,
-  type AppliedDirection,
-} from "./DirectionCopilot";
-import {
-  ModuleDraftCopilot,
-  type ModuleDraftGenerateOutcome,
-  type ModuleDraftView,
-  type AppliedModuleDraft,
-} from "./ModuleDraftCopilot";
-import { moduleDraftContext, moduleDraftContextFingerprint } from "@/domain/foundry/module/module-draft-copilot";
-import {
-  assessClarification,
-  readClarificationState,
-  withClarificationAnswer,
-  type ClarificationAnswer,
-} from "@/domain/foundry/module/clarification";
+/*
+  THE TWO SUBORDINATE GENERATORS ARE GONE FROM THE CANONICAL FLOW (Slice R4-R8A).
+
+  `DirectionCopilot` (step 1) and `ModuleDraftCopilot` (step 6) each asked the Host to request a
+  generation, review it, and adopt it — nineteen decisions between them and the program author,
+  for three overlapping products. Measured on a real creation: the direction generator wrote
+  capability/behaviour/evidence, which steps 4 and 5 then ask for again, and the module-draft
+  generator's five keep/use/skip rows ARE steps 6, 7 and 8. The Founder could not tell which of
+  the three "shall BTY do this?" gestures mattered, because none of them did.
+
+  UNREACHABLE, NOT DELETED. The components, their domain modules, their services and their two
+  API routes all remain, with their tests, and a legacy draft carrying `clarification` state or
+  copilot-applied answers loads exactly as before — those values live in `answers` and are read
+  by the Builder fields themselves, not by the surfaces removed here. Deleting the files is a
+  separate decision that needs its own reference measurement.
+*/
 
 /**
  * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
@@ -123,6 +120,17 @@ export function ModuleBuilderShell({
   /** Read inside callbacks without re-creating them on every toggle. */
   const reviewOverrideRef = useRef(initialView === "review");
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  /**
+   * HAS THIS SESSION CHANGED THE DRAFT? (Slice R4-R8A)
+   *
+   * `saver.flush` is unconditional — it schedules the snapshot it is handed, whether or not it
+   * differs from what the server already holds. That was harmless while the only caller was a
+   * Host gesture. Automatic generation made it a defect: arriving on Review by deep link
+   * flushed a byte-identical snapshot, so simply LOOKING at a draft wrote to it, and R11.4E's
+   * guarantee that a link is a way of looking rather than a way of editing quietly stopped
+   * being true. Measured by the suite that exists for exactly that, which is why it is here.
+   */
+  const dirtyRef = useRef(false);
   const [blocker, setBlocker] = useState<string | null>(null);
   const [assets, setAssets] = useState<ClientAsset[]>([]);
   const [docBusy, setDocBusy] = useState(false);
@@ -283,6 +291,9 @@ export function ModuleBuilderShell({
   const patchAnswers = useCallback(
     (partial: BuilderAnswers, immediate: boolean) => {
       setBlocker(null);
+      // Slice R4-R8A — see `flushIfDirty`. Set here because this is the only place a Host
+      // change enters the draft; a screen that only READS must not be able to raise it.
+      dirtyRef.current = true;
       const merged = { ...answersRef.current, ...partial };
       answersRef.current = merged;
       setAnswers(merged);
@@ -477,100 +488,7 @@ export function ModuleBuilderShell({
     }
   }, [publishing, cancelDebounce, saver, draftId, locale, participationMode, onExit]);
 
-  // Direction Copilot (Slice 2.4A). Generation flushes autosave FIRST so the server's
-  // saved problem matches the request (its stale guard rejects a mismatch), then calls
-  // the Host-authenticated route. Generation never mutates the draft. Apply writes the
-  // Host-reviewed values through the canonical save path (patchAnswers merges only the
-  // intended fields into the live answers — it never ships an obsolete full snapshot).
-  const generateDirections = useCallback(async (): Promise<DirectionGenerateOutcome> => {
-    cancelDebounce();
-    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
-    try {
-      const res = await fetch(`/api/bty/foundry/modules/${draftId}/directions`, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem_statement: answersRef.current.problem ?? "", locale }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { suggestions?: unknown };
-        if (Array.isArray(data.suggestions)) {
-          return { ok: true, suggestions: data.suggestions as DirectionSuggestionView[] };
-        }
-        return { ok: false, code: "generic" };
-      }
-      if (res.status === 429) return { ok: false, code: "rate_limit" };
-      if (res.status === 409) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        return { ok: false, code: body.error === "problem_mismatch" ? "problem_mismatch" : "generic" };
-      }
-      return { ok: false, code: "generic" };
-    } catch {
-      return { ok: false, code: "generic" };
-    }
-  }, [saver, cancelDebounce, draftId, locale]);
 
-  const applyDirection = useCallback(
-    (values: AppliedDirection) => {
-      patchAnswers(
-        {
-          capabilityCandidate: values.capabilityCandidate,
-          observableBehavior: values.observableBehavior,
-          successEvidence: values.successEvidence,
-        },
-        true,
-      );
-    },
-    [patchAnswers],
-  );
-
-  // Module-draft Copilot (Slice 2.4B). Flushes autosave FIRST so the server's saved
-  // context matches the request fingerprint (its stale guard rejects a mismatch), then
-  // calls the Host-authenticated route. Generation never mutates the draft. Apply merges
-  // only the Host-approved fields through the canonical patchAnswers path.
-  const generateModuleDraft = useCallback(async (): Promise<ModuleDraftGenerateOutcome> => {
-    cancelDebounce();
-    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
-    const ctx = moduleDraftContext(answersRef.current);
-    if (!ctx) return { ok: false, code: "generic" };
-    try {
-      const res = await fetch(`/api/bty/foundry/modules/${draftId}/module-draft`, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, context_fingerprint: moduleDraftContextFingerprint(ctx) }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { module_draft?: unknown; assumptions?: unknown; warnings?: unknown };
-        if (data.module_draft) {
-          return {
-            ok: true,
-            draft: data.module_draft as ModuleDraftView,
-            assumptions: Array.isArray(data.assumptions) ? (data.assumptions as string[]) : [],
-            warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
-          };
-        }
-        return { ok: false, code: "generic" };
-      }
-      if (res.status === 429) return { ok: false, code: "rate_limit" };
-      if (res.status === 409) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        return { ok: false, code: body.error === "context_mismatch" ? "context_mismatch" : "generic" };
-      }
-      return { ok: false, code: "generic" };
-    } catch {
-      return { ok: false, code: "generic" };
-    }
-  }, [saver, cancelDebounce, draftId, locale]);
-
-  const applyModuleDraft = useCallback(
-    (patch: AppliedModuleDraft) => {
-      if (Object.keys(patch).length > 0) patchAnswers(patch, true);
-    },
-    [patchAnswers],
-  );
 
   // Guided Program Authorship (Slice 3.2L). ONE call authors the whole participant-facing
   // program. Generation flushes autosave first so the server authors from what the Host is
@@ -597,9 +515,23 @@ export function ModuleBuilderShell({
     [draftId],
   );
 
+  /**
+   * Flush ONLY if this session has something to flush.
+   *
+   * The reason the manual path flushed first is unchanged and still honoured: the server's
+   * stale-context guard refuses a generation whose saved answers differ from the ones the
+   * request was built from, so anything the Host typed has to land first. What is new is that
+   * an untouched draft has nothing to land, and writing anyway is a write nobody asked for.
+   */
+  const flushIfDirty = useCallback(async () => {
+    if (!dirtyRef.current) return;
+    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    dirtyRef.current = false;
+  }, [saver]);
+
   const generateProgram = useCallback(async (): Promise<ProgramGenerateOutcome> => {
     cancelDebounce();
-    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    await flushIfDirty();
     const ctx = programContext(answersRef.current);
     if (!ctx) return { ok: false, code: "context_incomplete" };
     try {
@@ -632,7 +564,7 @@ export function ModuleBuilderShell({
     } catch {
       return { ok: false, code: "provider_error" };
     }
-  }, [saver, cancelDebounce, draftId, locale]);
+  }, [flushIfDirty, cancelDebounce, draftId, locale]);
 
   // Apply is ATOMIC from the Host's point of view: the whole approved journey is written in
   // ONE patch, so a failed save can never leave a half-applied program.
@@ -698,17 +630,6 @@ export function ModuleBuilderShell({
     [saver, cancelDebounce],
   );
 
-  // Adaptive Clarification (Slice 2.4C). A clarification answer is persisted through the
-  // canonical save path into a NAMESPACED `answers.clarification` key — it never overwrites
-  // a canonical Builder field and never publishes (excluded from the snapshot whitelist).
-  // Re-answering a dimension supersedes the prior answer; the state survives refresh.
-  const answerClarification = useCallback(
-    (answer: ClarificationAnswer) => {
-      const next = withClarificationAnswer(readClarificationState(answersRef.current), answer);
-      patchAnswers({ clarification: next }, true);
-    },
-    [patchAnswers],
-  );
 
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
@@ -817,50 +738,6 @@ export function ModuleBuilderShell({
       t={t}
     />
   );
-  /*
-    The assistive Direction Copilot lives under the problem step. It appears once the PROBLEM
-    meets the existing minimum validity, and never blocks manual progression.
-
-    `stepBlocker`, not `stepBlockers` (Slice 3.2R-R2.1): the Copilot reads the problem statement
-    and suggests a capability/behaviour/evidence direction from it. The training's NAME is not an
-    input to that, so an unnamed draft must still get help — gating it on the title would have
-    withheld assistance for a missing field the assistance has nothing to do with.
-  */
-  const copilotNode = (
-    <DirectionCopilot
-      problemStatement={answers.problem ?? ""}
-      ready={stepBlocker(1, answers) === null}
-      onGenerate={generateDirections}
-      onApply={applyDirection}
-      t={t.copilot}
-    />
-  );
-  // Module-draft Copilot lives on the Learning Approach step; it appears only once the
-  // canonical minimum context (problem, audience, behavior, evidence) is valid.
-  const moduleCtx = moduleDraftContext(answers);
-  // The deterministic sufficiency verdict is recomputed from the canonical context + the
-  // persisted clarification answers on every render — so it re-derives correctly after a
-  // refresh and an already-answered dimension is never re-asked.
-  const clarificationAssessment = moduleCtx
-    ? assessClarification(moduleCtx, readClarificationState(answers))
-    : undefined;
-  const moduleDraftNode = (
-    <ModuleDraftCopilot
-      ready={moduleCtx !== null}
-      contextFingerprint={moduleCtx ? moduleDraftContextFingerprint(moduleCtx) : ""}
-      current={{
-        learningNeeds: normalizeLearningNeeds(answers),
-        completionPrompt: answers.completionPrompt ?? "",
-        arenaRecommended: answers.arenaRecommended,
-        followUpDays: answers.followUpDays,
-      }}
-      onGenerate={generateModuleDraft}
-      onApply={applyModuleDraft}
-      clarificationAssessment={clarificationAssessment}
-      onClarificationAnswer={answerClarification}
-      t={t.moduleDraft}
-    />
-  );
 
   return (
     /*
@@ -934,6 +811,13 @@ export function ModuleBuilderShell({
               `programContext(answers) !== null` — steps 1–5 — while the component printed a
               hand-written list of four, omitting the recurring moment entirely.
             */
+            /*
+              Slice R4-R8A — the canonical creation flow generates by itself and adopts what it
+              generated. `ready` still holds it, and still names the same missing input; what is
+              gone is the question, the confirmation, and the twelve keep/use rows whose answers
+              `initialSectionDecisions` already knew.
+            */
+            auto
             ready={programSourceMissing(answers).length === 0}
             notReadyReason={programSourceReason(programSourceMissing(answers)[0], t)}
             onGenerate={generateProgram}
@@ -955,6 +839,18 @@ export function ModuleBuilderShell({
               onApprovableChange={setJourneyApprovable}
               handoffSignal={adoptionHandoff}
             />
+          ) : generationPending ? (
+            /*
+              Slice R4-R8A — NOTHING WHILE A PROGRAM IS ON ITS WAY. The automatic adoption writes
+              the journey itself, so this button is about to become the preview it points at.
+              Offering it mid-flight asks the Host to build by hand the thing already arriving,
+              and two writers of `realityGroundedJourneyV1` racing is not a state worth having.
+
+              The button itself is KEPT for the two cases that genuinely reach it: a legacy draft
+              with no journey, and a Host who answered a failed generation with "continue on your
+              own". Neither may be left without a learner preview.
+            */
+            null
           ) : (
             <button
               type="button"
@@ -976,17 +872,27 @@ export function ModuleBuilderShell({
             }
             t={t}
           />
+          {/*
+            ONE FINAL DECISION, THEN THE JOB (Slice R4-R8A).
+
+            The Builder-source details fold away under the working preview as an optional
+            disclosure, and participation moves out of the two-column scan row to sit full width
+            directly above the CTA. It is the last thing the Host chooses and the only thing left
+            to choose, so nothing may render between it and the button.
+          */}
           <div className="lg:col-span-2">
             <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           </div>
-          <ParticipationModeChooser
-            mode={participationMode}
-            audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
-            intendedCount={intendedCount}
-            onIntendedCount={setIntendedCount}
-            onChange={setParticipationMode}
-            t={t}
-          />
+          <div className="lg:col-span-2">
+            <ParticipationModeChooser
+              mode={participationMode}
+              audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
+              intendedCount={intendedCount}
+              onIntendedCount={setIntendedCount}
+              onChange={setParticipationMode}
+              t={t}
+            />
+          </div>
           <div className="lg:col-span-2">
           <PublishAction
             missing={reviewMissing}
@@ -1016,7 +922,7 @@ export function ModuleBuilderShell({
           </div>
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
+        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -1247,8 +1153,6 @@ function renderStep(
   blocker: string | null,
   t: ModuleBuilderCopy,
   filesNode: React.ReactNode,
-  copilotNode: React.ReactNode,
-  moduleDraftNode: React.ReactNode,
   /**
    * Proposed text the Host has not authored. Shown in the field so they can accept it by
    * editing, and never written to the draft on its own (Slice 3.2L-R11.4B).
@@ -1298,7 +1202,6 @@ function renderStep(
             />
             <BlockerLine show={blocker === "problem_required"} text={t.s1Blocker} />
           </FieldBlock>
-          {copilotNode}
         </StepFrame>
       );
     case 2: {
@@ -1439,7 +1342,6 @@ function renderStep(
             <p className="text-xs leading-5 text-[#C9A66B]/80">{t.s5ArenaHint}</p>
           ) : null}
           <BlockerLine show={blocker === "learning_need_required"} text={t.s5Blocker} />
-          {moduleDraftNode}
         </StepFrame>
       );
     }
@@ -2184,7 +2086,19 @@ function AllTrainingDetails({
   onEdit: (step: number) => void;
   t: ModuleBuilderCopy;
 }) {
-  const [open, setOpen] = useState(missing.length > 0);
+  /*
+    OPTIONAL, ALWAYS (Slice R4-R8A).
+
+    This used to open itself whenever anything was missing, which made it the second surface
+    naming the same blockers `MissingSummary` already names beside the CTA — two review layers
+    for one fact, and the Founder read both. The blockers keep their one home down there, with
+    the same jump-to-step navigation; this stays a disclosure the Host opens if they want to
+    re-read what they wrote. The count stays in the summary line so it is still discoverable.
+
+    Written in the Builder's own locale now, too: a Korean Manager was reading five English
+    words on the surface that summarises their entirely Korean training.
+  */
+  const [open, setOpen] = useState(false);
   return (
     <section className="flex flex-col gap-3" data-testid="all-training-details">
       <button
@@ -2195,14 +2109,12 @@ function AllTrainingDetails({
         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
       >
         <span className="flex flex-col">
-          <span className="text-sm font-medium text-white/75">All training details</span>
+          <span className="text-sm font-medium text-white/75">{t.reviewDetailsToggle}</span>
           <span className="text-xs text-white/45">
-            {missing.length > 0
-              ? `${missing.length} still needs attention`
-              : "Everything you entered, and where to change it"}
+            {missing.length > 0 ? t.reviewDetailsAttention(missing.length) : t.reviewDetailsHint}
           </span>
         </span>
-        <span aria-hidden className="text-sm text-[#C9A66B]">{open ? "Hide" : "Show"}</span>
+        <span aria-hidden className="text-sm text-[#C9A66B]">{open ? "▴" : "▾"}</span>
       </button>
       {open ? <ReviewBody answers={answers} assets={assets} missing={missing} onEdit={onEdit} t={t} /> : null}
     </section>

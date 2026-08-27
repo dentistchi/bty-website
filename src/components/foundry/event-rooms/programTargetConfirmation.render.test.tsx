@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, act, fireEvent } from "@testing-library/react";
-import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import { ProgramAuthorship, type ProgramGenerateOutcome } from "./ProgramAuthorship";
+import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
  * Slice 3.2L-R1.3 — the paid action confirms its target first.
@@ -13,6 +14,14 @@ import { ModuleBuilderShell } from "./ModuleBuilderShell";
  * nothing until the target is explicitly confirmed.
  *
  * The provider is stubbed throughout. No paid call is ever made here.
+ *
+ * RETARGETED, NOT WEAKENED (Slice R4-R8A). The canonical Review now generates by itself, so
+ * these guarantees can no longer be reached by driving `ModuleBuilderShell` — there is no entry
+ * button to press and no modal to confirm. They are properties of `ProgramAuthorship`'s MANUAL
+ * path, which is unchanged and still the component's behaviour, so they are measured on the
+ * component directly. Two of them were never about the modal at all — one submission intent per
+ * generation, and a new intent per run — and those moved to
+ * `hostAuthoringSimplificationA.test.tsx`, where the automatic request they now describe is.
  */
 
 const CANONICAL_ID = "093b0361-7cc8-4688-9f93-396d60582501";
@@ -34,7 +43,7 @@ const answersFor = (problem: string) => ({
 });
 
 const PROGRAM = {
-  display_title: "Handing over without gaps",
+  displayTitle: "Handing over without gaps",
   elements: [
     { kind: "why_it_matters", content: "AI why", rationale: "r" },
     { kind: "observable_standard", content: "AI standard", rationale: "r" },
@@ -44,54 +53,46 @@ const PROGRAM = {
   warnings: [],
 };
 
-type Call = { url: string; method: string; body: unknown };
-
-/** Records EVERY request so "the provider was not called" is measured, not assumed. */
-function mockServer(opts: {
-  drafts: Record<string, { current_step: number; answers: Record<string, unknown> }>;
-  programResponse?: () => Response | Promise<Response>;
+/**
+ * Records EVERY paid attempt and EVERY draft write, so "the provider was not called" and
+ * "nothing was written" stay measured rather than assumed — the same two counters the shell
+ * harness kept, now bound to the two props that are the only ways either can happen.
+ */
+function mount(opts: {
+  draftId: string;
+  answers: Record<string, unknown>;
+  ready?: boolean;
+  generate?: () => ProgramGenerateOutcome;
 }) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      const method = (init?.method ?? "GET").toUpperCase();
-      calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null });
-
-      if (url.includes("program-draft")) {
-        return opts.programResponse
-          ? opts.programResponse()
-          : new Response(JSON.stringify({ program: PROGRAM, evidence_ceiling: "c", attempt_id: "att-1" }), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            });
-      }
-      const id = Object.keys(opts.drafts).find((d) => url.includes(d));
-      if (method === "GET" && id) {
-        return new Response(
-          JSON.stringify({
-            draft: { id, status: "draft", current_step: opts.drafts[id].current_step, answers: opts.drafts[id].answers, assets: [] },
-            program_generation_active: false,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
-    }),
+  const generateSpy = vi.fn(async (): Promise<ProgramGenerateOutcome> =>
+    opts.generate
+      ? opts.generate()
+      : {
+          ok: true,
+          proposal: PROGRAM as never,
+          evidenceCeiling: "c",
+          attemptId: "att-1",
+          contextFingerprint: "fp-1",
+        },
   );
-  const providerCalls = () => calls.filter((c) => c.url.includes("program-draft"));
-  const draftWrites = () => calls.filter((c) => c.method === "PATCH");
-  return { calls, providerCalls, draftWrites };
-}
-
-async function openDraft(id: string) {
-  const r = render(<ModuleBuilderShell draftId={id} locale="en" onExit={() => {}} />);
-  await act(async () => {
-    await Promise.resolve();
-  });
-  await screen.findByTestId("program-generate");
-  return r;
+  const applySpy = vi.fn();
+  const r = render(
+    <ProgramAuthorship
+      draftId={opts.draftId}
+      locale="en"
+      answers={opts.answers as unknown as BuilderAnswers}
+      journey={undefined}
+      ready={opts.ready ?? true}
+      onGenerate={generateSpy}
+      onApply={applySpy}
+      currentContextFingerprint="fp-1"
+    />,
+  );
+  return {
+    ...r,
+    providerCalls: () => generateSpy.mock.calls,
+    draftWrites: () => applySpy.mock.calls,
+  };
 }
 
 const pressGenerate = async () => {
@@ -113,8 +114,7 @@ afterEach(() => {
 
 describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   it("G1 — pressing the entry button opens the confirmation and calls NO provider", async () => {
-    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    const { providerCalls, draftWrites } = mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
 
     expect(screen.getByTestId("program-target-confirm")).toBeTruthy();
@@ -123,8 +123,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   });
 
   it("G2 — Go back spends nothing and restores focus to the entry button", async () => {
-    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    const { providerCalls, draftWrites } = mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-target-cancel"));
@@ -140,8 +139,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   });
 
   it("Escape dismisses without spending anything", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    const { providerCalls } = mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     await act(async () => {
       fireEvent.keyDown(document, { key: "Escape" });
@@ -153,8 +151,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
 
 describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   it("G3 — canonical draft: shows its focus, bound to its own id", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
 
     const el = screen.getByTestId("program-target-focus");
@@ -165,8 +162,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("G4 — wrong draft: shows ITS focus, and the canonical focus is absent", async () => {
-    mockServer({ drafts: { [WRONG_ID]: { current_step: 9, answers: answersFor(WRONG_FOCUS) } } });
-    await openDraft(WRONG_ID);
+    mount({ draftId: WRONG_ID, answers: answersFor(WRONG_FOCUS) });
     await pressGenerate();
 
     const el = screen.getByTestId("program-target-focus");
@@ -176,13 +172,9 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("G5 — switching drafts shows only the NEW target; no stale value survives", async () => {
-    mockServer({
-      drafts: {
-        [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) },
-        [WRONG_ID]: { current_step: 9, answers: answersFor(WRONG_FOCUS) },
-      },
-    });
-    await openDraft(CANONICAL_ID);
+    // Two mounts, which is what switching drafts is: the confirmation binds its target when it
+    // OPENS, so the second must be unable to show the first one's focus.
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     expect(screen.getByTestId("program-target-focus").textContent).toBe(CANONICAL_FOCUS);
     await act(async () => {
@@ -190,7 +182,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
     });
 
     cleanup();
-    await openDraft(WRONG_ID);
+    mount({ draftId: WRONG_ID, answers: answersFor(WRONG_FOCUS) });
     await pressGenerate();
     expect(screen.getByTestId("program-target-focus").textContent).toBe(WRONG_FOCUS);
     expect(screen.getByTestId("program-target-focus").getAttribute("data-target-draft-id")).toBe(WRONG_ID);
@@ -198,8 +190,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("the primary action names what will happen — not a generic Continue/Confirm/Yes", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     const label = screen.getByTestId("program-target-confirm-action").textContent ?? "";
     expect(label).toBe("Draft program for this training");
@@ -207,8 +198,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("states plainly that nothing is added or published yet", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     expect(screen.getByTestId("program-target-confirm").textContent).toContain(
       "Nothing will be added or published until you review and apply it",
@@ -218,8 +208,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
 
 describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
   it("G8 — rapid taps create exactly ONE provider request", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    const { providerCalls } = mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
 
     const btn = screen.getByTestId("program-target-confirm-action");
@@ -231,43 +220,21 @@ describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
     expect(providerCalls(), "one gesture must buy at most one generation").toHaveLength(1);
   });
 
-  it("one confirmation sends exactly one submission intent", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
-    await pressGenerate();
-    await pressConfirm();
-
-    expect(providerCalls()).toHaveLength(1);
-    const body = providerCalls()[0].body as { submission_intent_id?: string; context_fingerprint?: string };
-    expect(body.submission_intent_id).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(body.context_fingerprint, "the request carries the bound fingerprint").toBeTruthy();
-  });
-
-  it("reopening after a completed run issues a NEW intent, never a replay", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
-    await pressGenerate();
-    await pressConfirm();
-    const first = (providerCalls()[0].body as { submission_intent_id: string }).submission_intent_id;
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-discard"));
-    });
-    await pressGenerate();
-    await pressConfirm();
-    const second = (providerCalls()[1].body as { submission_intent_id: string }).submission_intent_id;
-    expect(second).not.toBe(first);
-  });
+  /*
+    MOVED (Slice R4-R8A): "one confirmation sends exactly one submission intent" and "reopening
+    issues a NEW intent, never a replay" measured the REQUEST the shell builds, not this modal.
+    The shell still builds it — automatically now — so both assertions live in
+    `hostAuthoringSimplificationA.test.tsx` against the path that actually issues them.
+  */
 });
 
 describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
   it("G7 — an already-active generation refuses without a proposal", async () => {
-    mockServer({
-      drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } },
-      programResponse: () =>
-        new Response(JSON.stringify({ error: "program_generation_in_progress" }), { status: 409 }),
+    mount({
+      draftId: CANONICAL_ID,
+      answers: answersFor(CANONICAL_FOCUS),
+      generate: () => ({ ok: false, code: "program_generation_in_progress" }),
     });
-    await openDraft(CANONICAL_ID);
     await pressGenerate();
     await pressConfirm();
     expect(screen.queryByTestId("program-review")).toBeNull();
@@ -275,12 +242,11 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
   });
 
   it("G6 — a stale target refuses with its specific reason and no proposal", async () => {
-    mockServer({
-      drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } },
-      programResponse: () =>
-        new Response(JSON.stringify({ error: "stale_context", refusal: "status_no_longer_draft" }), { status: 409 }),
+    mount({
+      draftId: CANONICAL_ID,
+      answers: answersFor(CANONICAL_FOCUS),
+      generate: () => ({ ok: false, code: "stale_context", refusal: "status_no_longer_draft" }),
     });
-    await openDraft(CANONICAL_ID);
     await pressGenerate();
     await pressConfirm();
     expect(screen.queryByTestId("program-review")).toBeNull();
@@ -288,8 +254,7 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
   });
 
   it("G11 — confirm → success → Discard writes no journey to the draft", async () => {
-    const { draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    const { draftWrites } = mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     await pressConfirm();
     expect(screen.getByTestId("program-review")).toBeTruthy();
@@ -297,17 +262,13 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-discard"));
     });
-    const journeyWrites = draftWrites().filter((c) =>
-      JSON.stringify((c.body as { answers?: unknown })?.answers ?? {}).includes("realityGroundedJourneyV1"),
-    );
-    expect(journeyWrites, "Discard must never persist a journey").toHaveLength(0);
+    expect(draftWrites(), "Discard must never persist a journey").toHaveLength(0);
   });
 });
 
 describe("[3.2L-R1.3] missing focus and accessibility", () => {
   it("G9 — a draft with no focus shows the neutral fallback, and invents nothing", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: { audienceType: "everyone" } } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: { audienceType: "everyone" }, ready: false });
     // The entry action is blocked while the required inputs are missing, so the paid path
     // is unreachable — but if it is reached, the fallback is neutral.
     expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(true);
@@ -316,8 +277,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   it("G9b — a long focus keeps its distinguishing tail and does not truncate", async () => {
     const shared = "Our handoffs at shift change keep missing steps and this creates risk for everyone involved daily";
     const long = `${shared}, especially on the night shift.`;
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(long) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(long) });
     await pressGenerate();
     const el = screen.getByTestId("program-target-focus");
     expect(el.textContent).toBe(long);
@@ -326,8 +286,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   });
 
   it("G10 — the confirmation is a labelled dialog that takes focus, with a 44px touch target", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
 
     const dialog = document.querySelector('[role="dialog"]');
@@ -346,8 +305,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   });
 
   it("the target label is announced before the actions", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
-    await openDraft(CANONICAL_ID);
+    mount({ draftId: CANONICAL_ID, answers: answersFor(CANONICAL_FOCUS) });
     await pressGenerate();
     const html = screen.getByTestId("program-target-confirm").innerHTML;
     expect(html.indexOf("Training program target")).toBeLessThan(html.indexOf("program-target-confirm-action"));

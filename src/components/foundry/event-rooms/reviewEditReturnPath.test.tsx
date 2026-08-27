@@ -73,10 +73,25 @@ const settle = async () => {
     await new Promise((r) => setTimeout(r, 700));
   });
 };
-const onReview = () => screen.queryByTestId("review-row-recurringMoment") !== null;
+/*
+  Slice R4-R8A — the Builder-source rows moved into an optional disclosure, so "am I on Review?"
+  can no longer be answered by one of them being present. The create action is on Review and
+  nowhere else, which makes it the honest anchor; the rows are OPENED before they are read.
+*/
+const onReview = () => screen.queryByTestId("publish-cta") !== null;
+/** Reveal the Builder-source detail rows, which is what the Founder taps to reach an Edit. */
+const openDetails = async () => {
+  const toggle = screen.queryByTestId("all-training-details-toggle");
+  if (toggle && toggle.getAttribute("aria-expanded") === "false") {
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+  }
+};
 const onMomentStep = () => screen.queryByText("When does this usually happen?") !== null;
 /** Open a section the way the Review DETAIL list does — the row's own Edit control. */
 const editRow = async (section: string) => {
+  await openDetails();
   await act(async () => {
     fireEvent.click(screen.getByTestId(`review-row-${section}`).querySelector("button")!);
   });
@@ -152,12 +167,15 @@ describe("[3.2P-R3.6-R2] C/D/H/I — the answer is durable before the return", (
     cleanup();
     mount({ step: 9, answers: draft.answers });
     await waitFor(() => expect(onReview()).toBe(true));
+    // The value lives in the detail rows, which are a disclosure now — open them to read it.
+    await openDetails();
     expect(screen.getByText("During morning huddles")).toBeTruthy();
   });
 
   it("D — Review stops asking for it once it is answered", async () => {
     mount({ step: 9, answers: { ...CANONICAL, recurringMoment: "During morning huddles" } as BuilderAnswers });
     await waitFor(() => expect(onReview()).toBe(true));
+    await openDetails();
     expect(screen.getByText("During morning huddles")).toBeTruthy();
     // The "needs attention" row is gone; nothing is outstanding.
     expect(screen.queryByText("Add when this situation usually happens.")).toBeNull();

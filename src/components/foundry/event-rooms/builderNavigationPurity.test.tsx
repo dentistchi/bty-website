@@ -130,14 +130,29 @@ describe("[3.2L-R11.4E] opening a draft's review by link writes nothing", () => 
   /** The canonical draft's real state: developed content, resume position well before review. */
   const DURABLE_STEP = 2;
 
+  /*
+    ONE COUNTER PER KIND OF REQUEST (Slice R4-R8A).
+
+    R11.4E's claim is that arriving on Review must not MUTATE THE DRAFT — a deep link is a way
+    of looking, not a way of editing. That is unchanged. What changed is that Review now issues
+    a POST of its own to `program-draft`, deliberately, and the original single `saved` bucket
+    counted every non-GET together — so leaving it as it was would have reported the new
+    generation as a draft write and hidden the very thing the suite exists to watch.
+  */
   function mountDeepLinked(initialView?: "review") {
-    const saved: unknown[] = [];
+    const draftWrites: unknown[] = [];
+    const generations: unknown[] = [];
     global.fetch = vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+      const u = String(url);
+      if (u.includes("/program-draft")) {
+        if ((init?.method ?? "GET") !== "GET") generations.push({ method: init?.method });
+        return { ok: true, status: 200, json: async () => ({ eligible: true }) } as never;
+      }
       if (init?.method && init.method !== "GET") {
-        saved.push({ method: init.method, body: init.body });
+        draftWrites.push({ method: init.method, body: init.body });
         return { ok: true, status: 200, json: async () => ({ draft: {} }) } as never;
       }
-      if (String(url).includes("/api/bty/foundry/modules/")) {
+      if (u.includes("/api/bty/foundry/modules/")) {
         return {
           ok: true, status: 200,
           json: async () => ({ draft: { id: "d-1", status: "draft", current_step: DURABLE_STEP, answers: CANONICAL, module_version: 1 } }),
@@ -146,35 +161,40 @@ describe("[3.2L-R11.4E] opening a draft's review by link writes nothing", () => 
       return { ok: true, status: 200, json: async () => ({}) } as never;
     }) as never;
     render(<ModuleBuilderShell draftId="d-1" locale="en" initialView={initialView} onExit={vi.fn()} />);
-    return saved;
+    return { draftWrites, generations };
   }
+
+  /** Review is the only screen carrying the create action, so it is the honest anchor. */
+  const onReview = () => waitFor(() => expect(screen.queryByTestId("publish-cta")).toBeTruthy(), { timeout: 3000 });
 
   it("lands on Review even though the durable position is earlier", async () => {
     mountDeepLinked("review");
-    await waitFor(() => expect(screen.queryByTestId("program-authorship-entry")).toBeTruthy(), { timeout: 3000 });
-    // The generation entry only exists on the review step.
-    expect(screen.getByTestId("program-generate")).toBeTruthy();
+    await onReview();
   });
 
-  it("issues NO write of any kind while opening", async () => {
-    const saved = mountDeepLinked("review");
-    await waitFor(() => expect(screen.queryByTestId("program-authorship-entry")).toBeTruthy(), { timeout: 3000 });
+  it("issues NO write to the draft while opening", async () => {
+    const { draftWrites } = mountDeepLinked("review");
+    await onReview();
     await act(async () => { await new Promise((r) => setTimeout(r, 1000)); });
-    expect(saved, JSON.stringify(saved).slice(0, 200)).toEqual([]);
+    expect(draftWrites, JSON.stringify(draftWrites).slice(0, 200)).toEqual([]);
   });
 
   it("without the link it still opens at the Host's own position", async () => {
     mountDeepLinked();
     await act(async () => { await new Promise((r) => setTimeout(r, 500)); });
-    expect(screen.queryByTestId("program-authorship-entry")).toBeNull();
+    expect(screen.queryByTestId("publish-cta")).toBeNull();
   });
 
-  it("pressing the generation entry only opens the existing confirmation", async () => {
-    const saved = mountDeepLinked("review");
-    await waitFor(() => expect(screen.queryByTestId("program-generate")).toBeTruthy(), { timeout: 3000 });
-    await act(async () => { fireEvent.click(screen.getByTestId("program-generate")); });
-    expect(screen.getByTestId("program-target-confirm-action")).toBeTruthy();
-    // Still nothing written, and nothing posted to program-draft.
-    expect(saved).toEqual([]);
+  it("the generation the deep link triggers is ONE, and is not a draft write", async () => {
+    /*
+      REPLACES "pressing the generation entry only opens the existing confirmation" (Slice
+      R4-R8A). There is no entry to press: the deep link itself is what starts the work now, so
+      the thing worth pinning is that it starts it ONCE and that the draft is still untouched.
+    */
+    const { draftWrites, generations } = mountDeepLinked("review");
+    await onReview();
+    await act(async () => { await new Promise((r) => setTimeout(r, 1000)); });
+    expect(generations.length).toBeLessThanOrEqual(1);
+    expect(draftWrites).toEqual([]);
   });
 });
