@@ -656,6 +656,68 @@ export type ResumeIneligibility =
 
 export type ResumeEligibility = { ok: true } | { ok: false; reason: ResumeIneligibility };
 
+/**
+ * THE LATEST TERMINAL VERDICT FOR ONE DRAFT AND ONE SET OF ANSWERS (Slice R4-R9A).
+ *
+ * WHY THIS EXISTS. A non-retryable refusal was, until now, a fact that lived only in the tab
+ * that received it. Reload, reopen from Learn, restart the app, and the automatic path found
+ * an idle surface with a complete draft and started another generation — for inputs already
+ * proven to produce the same refusal. The Founder's second paid call came from a tap; the
+ * third, fourth and fifth would have come from simply looking.
+ *
+ * NO NEW PERSISTENCE. `foundry_program_generation_attempts` already records the fingerprint the
+ * attempt was authored from and the verdict it reached, so the truth is asked of the ledger that
+ * has it. Owner-scoped and draft-scoped, so another Host's attempt is indistinguishable from one
+ * that never existed.
+ *
+ * Fails OPEN, deliberately, and this is the one place that direction is right: an unreadable
+ * ledger must not be able to wedge a Host out of generating. The cost of a wrong "no verdict" is
+ * one generation the automatic path would have run anyway; the cost of a wrong "refused" is a
+ * training nobody can create.
+ */
+export async function readTerminalVerdictForContext(
+  admin: SupabaseClient,
+  input: { draftId: string; ownerUserId: string; fingerprint: string },
+): Promise<{ code: string; refusal: string | null; kind: string | null } | null> {
+  try {
+    const { data, error } = await admin
+      .from(ATTEMPTS)
+      .select("outcome,refusal_code,refusal_kind,lifecycle_state,finished_at,started_at")
+      .eq("draft_id", input.draftId)
+      .eq("owner_user_id", input.ownerUserId)
+      .eq("context_fingerprint", input.fingerprint)
+      .order("started_at", { ascending: false })
+      .limit(1);
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+    const row = data[0] as {
+      outcome: string | null;
+      refusal_code: string | null;
+      refusal_kind: string | null;
+      finished_at: string | null;
+    };
+    // An attempt still in flight has reached no verdict; the lease already governs that case.
+    if (row.finished_at === null) return null;
+    // A success is not a verdict to recover from — the proposal path owns it.
+    if (row.outcome === "success" || !row.outcome) return null;
+    /*
+      ONLY A REFUSED PROGRAM IS A VERDICT TO RESTORE.
+
+      A provider that was unreachable last night decided nothing about this training, and
+      restoring it would leave a Host looking at a failure the next call would clear. Those rows
+      return null and the automatic path runs exactly as it does today.
+
+      `outcome` is the ATTEMPT's vocabulary and `generationRecovery` reads the ROUTE's; they meet
+      at the refusal code, which is present on precisely the rows that carry a verdict. Reporting
+      `invalid_output` beside it is what the route itself returns for this outcome, so a Host is
+      told the same thing whether the refusal happened a second ago or last week.
+    */
+    if (!row.refusal_code) return null;
+    return { code: "invalid_output", refusal: row.refusal_code, kind: row.refusal_kind };
+  } catch {
+    return null;
+  }
+}
+
 export async function readResumeEligibility(
   admin: SupabaseClient,
   input: { attemptId: string; draftId: string; ownerUserId: string; currentFingerprint: string },

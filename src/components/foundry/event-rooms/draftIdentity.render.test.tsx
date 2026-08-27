@@ -93,8 +93,13 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
 
     // Visible identity …
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
-    // … and it came from THIS draft's payload, not a cached or inferred value.
-    expect(seen).toEqual([CANONICAL_ID]);
+    /*
+      … and it came from THIS draft's payload, not a cached or inferred value. Asserted on the
+      SET since Slice R4-R9A: Review also asks the ledger whether this context was already
+      refused, which is a second GET on the same draft. The claim was never "exactly one
+      request" — it is "no other draft was read", and that is what this now says.
+    */
+    expect([...new Set(seen)]).toEqual([CANONICAL_ID]);
     // The details disclosure is still collapsed — identity did not depend on it.
     expect(screen.getByTestId("all-training-details-toggle").getAttribute("aria-expanded")).not.toBe("true");
     expect(screen.queryByText("Review what you’ve built.")).toBeNull();
@@ -130,7 +135,9 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
     });
     await open(CANONICAL_ID);
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
-    expect(seen).toEqual([CANONICAL_ID]);
+    // Slice R4-R9A — the SET, for the same reason as G1: Review makes a second read of this
+    // same draft to ask the ledger about its context. No OTHER draft is read, which is the claim.
+    expect([...new Set(seen)]).toEqual([CANONICAL_ID]);
     expect(screen.queryByText(INCIDENT_PROBLEM)).toBeNull();
   });
 
@@ -140,7 +147,17 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         const method = (init?.method ?? "GET").toUpperCase();
-        if (url.includes("program-draft")) return new Promise(() => {}); // never settles = pending
+        /*
+          Slice R4-R9A — only the POST hangs. Review asks the ledger first ("has this context
+          already been refused?"), and hanging THAT would mean generation never starts, which is
+          the opposite of the state this test is about.
+        */
+        if (url.includes("program-draft")) {
+          if (method !== "POST") {
+            return new Response(JSON.stringify({ refusal: null }), { status: 200, headers: { "Content-Type": "application/json" } });
+          }
+          return new Promise(() => {}); // never settles = a generation genuinely in flight
+        }
         if (method === "GET") {
           return new Response(
             JSON.stringify({
@@ -187,7 +204,13 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       }),
     );
     await open(CANONICAL_ID);
-    await screen.findByTestId("program-auto-failed");
+    /*
+      Slice R4-R9A — this stub answers a refusal WITHOUT a retryability verdict, and an
+      unestablished verdict is treated as non-retryable: the safe direction, because offering a
+      retry that cannot succeed costs a paid provider call. So the surface is the blocked one.
+      What this test holds is unchanged — the draft still names itself, and publish is not wedged.
+    */
+    await screen.findByTestId("program-auto-blocked");
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     // …and publication is not left wedged by the refusal.
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);

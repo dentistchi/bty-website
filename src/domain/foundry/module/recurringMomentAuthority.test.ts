@@ -413,7 +413,8 @@ describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row acce
     */
     expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX }).ok).toBe(true);
     expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING }).ok).toBe(true);
-    expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING }).value?.currentStep).toBe(BUILDER_STEP_MAX);
+    const clamped = validateDraftPatch({ currentStep: LIVE_STEP_CEILING });
+    expect(clamped.ok && clamped.value.currentStep).toBe(BUILDER_STEP_MAX);
     expect(validateDraftPatch({ currentStep: LIVE_STEP_CEILING + 1 }).ok).toBe(false);
     expect(validateDraftPatch({ currentStep: 0 }).ok).toBe(false);
   });

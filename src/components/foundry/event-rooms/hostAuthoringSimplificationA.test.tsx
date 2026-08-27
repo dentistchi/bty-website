@@ -297,7 +297,9 @@ describe("R4-R8A — one generator, running itself", () => {
       generate: () => {
         if (fail) {
           fail = false;
-          return { error: "provider_unavailable" };
+          // Slice R4-R9A — the server's verdict travels with the failure now, and only a
+          // retryable one offers a retry. A provider outage is exactly that.
+          return { error: "provider_unavailable", retryable: true, recovery_target: null };
         }
         return { program: PROPOSAL, evidence_ceiling: "", attempt_id: ATTEMPT, context_fingerprint: FINGERPRINT };
       },
@@ -532,39 +534,41 @@ describe("R4-R8A — legacy drafts are not migrated, rewritten or broken", () =>
 });
 
 describe("R4-R8A — failure leaves a way out, and publish truth is untouched", () => {
-  it("T17 — a provider failure offers retry and continue, and retry spends exactly once more", async () => {
+  it("T17 — a RETRYABLE provider failure offers retry, and retry spends exactly once more", async () => {
+    /*
+      NARROWED BY SLICE R4-R9A, and this test is why that slice exists. It used to assert that a
+      failure offered BOTH "다시 시도" and "직접 계속하기" — against a stub that succeeds on retry,
+      so it proved the client re-POSTs and nothing more. On a live Korean draft the refusal was
+      deterministic: the retry made a real second provider call, received a genuinely different
+      program, and hit the identical rule. And "직접 계속하기" seeded a journey with four of eight
+      required sections and a Create button that could never enable.
+
+      So the retry belongs to failures that decided nothing about the training, and the manual
+      path belongs nowhere. `recoveryTruth.test.tsx` holds the non-retryable half.
+    */
     const s = openReview({
-      generate: () => ({ error: "provider_unavailable", refusal: null }),
+      generate: () => ({ error: "provider_unavailable", retryable: true, recovery_target: null }),
       generateStatus: 503,
     });
     await screen.findByTestId("program-auto-failed");
     expect(s.calls.generate).toBe(1);
+    expect(screen.queryByTestId("program-auto-manual"), "the dead path is offered nowhere").toBeNull();
     fireEvent.click(screen.getByTestId("program-auto-retry"));
     await waitFor(() => expect(s.calls.generate).toBe(2));
   });
 
-  it("T17b — continuing without a program leaves an editable, publishable training", async () => {
-    openReview({ generate: () => ({ error: "provider_unavailable" }), generateStatus: 503 });
-    await screen.findByTestId("program-auto-failed");
-    fireEvent.click(screen.getByTestId("program-auto-manual"));
-    await waitFor(() => expect(screen.queryByTestId("program-auto-failed")).toBeNull());
-    // The Host is not stranded: the learner preview is reachable and the CTA still exists.
-    expect(screen.getByTestId("publish-cta")).toBeTruthy();
-  });
-
-  it("T17c — a failed save can be written again WITHOUT buying a second program", async () => {
+  it("T17b — a refusal with no established retryability offers NO retry and NO manual continue", async () => {
     /*
-      A save failure is not a generation failure. The manual panel could afford to offer nothing
-      — the Host was still looking at the review and could press Apply again — but the automatic
-      path has no such screen, so without this the training is stranded. The retry must re-apply
-      the proposal already in hand; regenerating would spend for a failed PATCH.
+      REPLACES "continuing without a program leaves an editable, publishable training" — measured
+      false on draft `adb75f6a`: it left four of eight sections and a permanently disabled Create.
+      An unestablished verdict is treated as non-retryable, which is the safe direction: a
+      withheld retry costs a tap, an offered one that cannot succeed costs a provider call.
     */
-    const s = openReview({ failPatch: 1 });
-    await screen.findByTestId("program-auto-save-failed");
-    expect(s.calls.generate).toBe(1);
-    fireEvent.click(screen.getByTestId("program-auto-save-retry"));
-    await screen.findByTestId("program-auto-done");
-    expect(s.calls.generate, "re-applying must not reach the provider").toBe(1);
+    openReview({ generate: () => ({ error: "invalid_output", refusal: "non_observable_standard" }), generateStatus: 502 });
+    await screen.findByTestId("program-auto-blocked");
+    expect(screen.queryByTestId("program-auto-retry")).toBeNull();
+    expect(screen.queryByTestId("program-auto-manual")).toBeNull();
+    expect(screen.getByTestId("program-blocked-repair")).toBeTruthy();
   });
 
   it("T13 — the publish gate is the same predicate it was before this slice", () => {

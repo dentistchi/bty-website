@@ -148,6 +148,16 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
   material_review_required: { section: "material", step: 6 },
 };
 
+/**
+ * The Review section and Builder step a blocking code opens, or null for a code this map does
+ * not know. Exported since Slice R4-R9A so a generation-refusal recovery CTA lands on exactly
+ * the step the Review screen already sends a Host to for that answer — one authority, read
+ * twice, rather than two tables that agree until they do not.
+ */
+export function sectionForBlockingCode(code: string): ReviewMissingSection | null {
+  return CODE_TO_SECTION[code] ?? null;
+}
+
 /** Every blocking code the readiness gates can emit — used to prove the map is total. */
 export const ALL_BLOCKING_CODES: readonly string[] = [
   "title_required",

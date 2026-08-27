@@ -94,7 +94,12 @@ export function journeyElementId(kind: JourneyElementKind): string {
 const asText = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 /** Which BuilderAnswers field grounds each participant-facing element. */
-const KIND_SOURCE: Partial<Record<JourneyElementKind, keyof BuilderAnswers>> = {
+/**
+ * WHICH HOST ANSWER GROUNDS EACH KIND. Exported since Slice R4-R9A, because a generation
+ * refusal has to send the Host back to the answer the refused section was written from, and
+ * a second copy of this table in the recovery path is exactly how the two would drift.
+ */
+export const JOURNEY_KIND_SOURCE: Partial<Record<JourneyElementKind, keyof BuilderAnswers>> = {
   why_it_matters: "problem",
   observable_standard: "observableBehavior",
   evidence: "successEvidence",
@@ -127,7 +132,7 @@ export function mapAnswersToJourney(
   const elements: JourneyElement[] = [];
 
   for (const kind of JOURNEY_KIND_ORDER) {
-    const field = KIND_SOURCE[kind];
+    const field = JOURNEY_KIND_SOURCE[kind];
     if (!field) continue; // no grounded source in V1 → never emit (no invention)
     const content = asText(a[field]);
     const required = REQUIRED_JOURNEY_KINDS.includes(kind);

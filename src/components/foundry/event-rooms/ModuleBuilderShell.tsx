@@ -121,6 +121,12 @@ export function ModuleBuilderShell({
   /** Read inside callbacks without re-creating them on every toggle. */
   const reviewOverrideRef = useRef(initialView === "review");
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  /*
+    Slice R4-R9A — lifted out of `AllTrainingDetails` so the generic recovery CTA can open it.
+    A refusal about a section no Host answer owns has to land somewhere real, and "the details
+    you entered" is the honest destination on the screen they are already looking at.
+  */
+  const [detailsOpen, setDetailsOpen] = useState(false);
   /**
    * HAS THIS SESSION CHANGED THE DRAFT? (Slice R4-R8A)
    *
@@ -384,6 +390,27 @@ export function ModuleBuilderShell({
    * Review Edit row — the missing-input summary and the detail list alike — rather than only the
    * one that exposed the defect.
    */
+  /**
+   * WHERE A REFUSED SECTION SENDS THE HOST (Slice R4-R9A).
+   *
+   * A step when the refusal traces to one of their answers. When it does not — `scenario`,
+   * `action_decision`, `field_application` and `follow_up` are BTY's own sections and no Builder
+   * field owns them — the entered details open instead, on the screen they are already on. The
+   * one thing it never does is nothing.
+   */
+  const repairSource = useCallback(
+    (step: number | null) => {
+      if (step === null) {
+        setDetailsOpen(true);
+        return;
+      }
+      jumpTo(step);
+    },
+    // `jumpTo` is declared below; the closure reads it at call time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const jumpTo = useCallback(
     (target: number) => {
       returnToReviewRef.current = true;
@@ -522,6 +549,38 @@ export function ModuleBuilderShell({
     dirtyRef.current = false;
   }, [saver]);
 
+  /**
+   * HAS THIS EXACT CONTEXT ALREADY BEEN REFUSED? (Slice R4-R9A)
+   *
+   * Read-only and owner-scoped; no provider call, no attempt row, no draft write. Fails OPEN —
+   * a network fault answers "no verdict", because being unable to read the ledger must not stop
+   * a Host creating a training. The opposite direction is what this whole slice is repairing.
+   */
+  const checkContextRefusal = useCallback(
+    async (fingerprint: string) => {
+      try {
+        const res = await fetch(
+          `/api/bty/foundry/modules/${draftId}/program-draft?context=${encodeURIComponent(fingerprint)}`,
+          { credentials: "include", cache: "no-store" },
+        );
+        if (!res.ok) return null;
+        const data = (await res.json().catch(() => null)) as {
+          refusal?: { code?: unknown; refusal?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null } | null;
+        } | null;
+        const r = data?.refusal;
+        if (!r || typeof r.code !== "string") return null;
+        const target =
+          r.recovery_target && typeof r.recovery_target.field === "string" && typeof r.recovery_target.step === "number"
+            ? { field: r.recovery_target.field, step: r.recovery_target.step }
+            : null;
+        return { code: r.code, refusal: typeof r.refusal === "string" ? r.refusal : null, recovery: target };
+      } catch {
+        return null;
+      }
+    },
+    [draftId],
+  );
+
   const generateProgram = useCallback(async (): Promise<ProgramGenerateOutcome> => {
     cancelDebounce();
     await flushIfDirty();
@@ -543,6 +602,7 @@ export function ModuleBuilderShell({
       });
       const data = (await res.json().catch(() => ({}))) as {
         program?: unknown; evidence_ceiling?: string; attempt_id?: string | null; context_fingerprint?: string; error?: string; refusal?: string | null;
+        retryable?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null;
       };
       if (res.ok && data.program) {
         return {
@@ -553,7 +613,22 @@ export function ModuleBuilderShell({
           contextFingerprint: data.context_fingerprint ?? "",
         };
       }
-      return { ok: false, code: data.error ?? "invalid_output", refusal: data.refusal ?? null };
+      /*
+        Slice R4-R9A — the server's own verdict travels with the failure. `retryable` is passed
+        through UNCHANGED, including when it is absent: an undefined answer means "could not be
+        established", and the surface treats that as non-retryable rather than inventing a `true`.
+      */
+      const target =
+        data.recovery_target && typeof data.recovery_target.field === "string" && typeof data.recovery_target.step === "number"
+          ? { field: data.recovery_target.field, step: data.recovery_target.step }
+          : null;
+      return {
+        ok: false,
+        code: data.error ?? "invalid_output",
+        refusal: data.refusal ?? null,
+        retryable: typeof data.retryable === "boolean" ? data.retryable : undefined,
+        recovery: target,
+      };
     } catch {
       return { ok: false, code: "provider_error" };
     }
@@ -685,6 +760,13 @@ export function ModuleBuilderShell({
     : [];
   // Journey-enabled once the Host has opted into the learner preview (Slice 3.2C-B3A).
   const journeyEnabled = answers.realityGroundedJourneyV1 !== undefined;
+  /*
+    Slice R4-R9A — would seeding a journey by hand produce one that can actually be published?
+    Asked with the SAME predicate Publish uses, against the seed that button would create, so
+    the two can never disagree about whether the path leads anywhere.
+  */
+  const seedWouldBeIncomplete =
+    !journeyEnabled && missingProgramKinds(answers, mapAnswersToJourney(answers, locale)).length > 0;
   // The SINGLE readiness source the Review screen consults — the exact gate that the
   // server re-enforces at publish, plus the PDF-asset gate the client can see locally.
   // Every entry maps to a visible, highlightable Review row (Slice 2.4A.3).
@@ -815,6 +897,8 @@ export function ModuleBuilderShell({
             notReadyReason={programSourceReason(programSourceMissing(answers)[0], t)}
             onGenerate={generateProgram}
             onCheckResume={checkProgramResume}
+            onCheckContextRefusal={checkContextRefusal}
+            onRepairSource={repairSource}
             currentContextFingerprint={programFingerprint}
             adoptionRefusal={adoptionRefusal}
             onDismissRefusal={() => setAdoptionRefusal(null)}
@@ -832,8 +916,20 @@ export function ModuleBuilderShell({
               onApprovableChange={setJourneyApprovable}
               handoffSignal={adoptionHandoff}
             />
-          ) : generationPending ? (
+          ) : generationPending || seedWouldBeIncomplete ? (
             /*
+              Slice R4-R9A — AND NOTHING WHEN SEEDING WOULD BUILD A TRAINING NOBODY CAN CREATE.
+
+              MEASURED on the Founder's failed Korean draft: after a refused generation this
+              button was the remaining way forward, and taking it produced a journey with four of
+              the eight sections the training requires. `JourneyPreview` renders only the elements
+              a journey HAS, so the other four could not be written there either — Create stayed
+              disabled with no surface able to clear it. A second dead end behind the first.
+
+              The predicate is the publish gate's own: if the seed would leave required kinds
+              missing, the button is not a way forward and is not offered. A legacy draft whose
+              answers DO seed a complete journey still gets it, which is the case it exists for.
+
               Slice R4-R8A — NOTHING WHILE A PROGRAM IS ON ITS WAY. The automatic adoption writes
               the journey itself, so this button is about to become the preview it points at.
               Offering it mid-flight asks the Host to build by hand the thing already arriving,
@@ -874,7 +970,7 @@ export function ModuleBuilderShell({
             to choose, so nothing may render between it and the button.
           */}
           <div className="lg:col-span-2">
-            <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} onPatch={patchAnswers} t={t} />
+            <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} onPatch={patchAnswers} open={detailsOpen} onOpenChange={setDetailsOpen} t={t} />
           </div>
           <div className="lg:col-span-2">
             <ParticipationModeChooser
@@ -2192,6 +2288,8 @@ function AllTrainingDetails({
   missing,
   onEdit,
   onPatch,
+  open,
+  onOpenChange,
   t,
 }: {
   answers: BuilderAnswers;
@@ -2200,6 +2298,9 @@ function AllTrainingDetails({
   onEdit: (step: number) => void;
   /** Slice R4-R8B — the three derived design rows are changed here, not on a step. */
   onPatch: Patch;
+  /** Slice R4-R9A — owned by Review, so a recovery CTA can open it. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   t: ModuleBuilderCopy;
 }) {
   /*
@@ -2214,12 +2315,11 @@ function AllTrainingDetails({
     Written in the Builder's own locale now, too: a Korean Manager was reading five English
     words on the surface that summarises their entirely Korean training.
   */
-  const [open, setOpen] = useState(false);
   return (
     <section className="flex flex-col gap-3" data-testid="all-training-details">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => onOpenChange(!open)}
         aria-expanded={open}
         data-testid="all-training-details-toggle"
         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"

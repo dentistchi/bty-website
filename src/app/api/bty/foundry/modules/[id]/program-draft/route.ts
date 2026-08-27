@@ -4,7 +4,8 @@ import { getOwnerDraft } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
 import { generateProgram, evidenceCeilingFor } from "@/lib/bty/foundry/events/programAuthorshipService";
 import { currentSourceIdentity } from "@/lib/bty/foundry/arena/sourceIdentity";
-import { readResumeEligibility, resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { readResumeEligibility,
+  readTerminalVerdictForContext, resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import {
   programContext,
   programSourceBlocker,
@@ -13,6 +14,7 @@ import {
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { isGenerationUuid } from "@/domain/foundry/module/program-generation-lease";
+import { generationRecovery } from "@/domain/foundry/module/generation-recovery";
 
 export const runtime = "nodejs";
 
@@ -48,7 +50,49 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { user, admin, base } = gate.ctx;
 
   const { id } = await ctx.params;
-  const attemptId = new URL(req.url).searchParams.get("attempt") ?? "";
+  const params = new URL(req.url).searchParams;
+
+  /*
+    SECOND QUESTION, SAME READ-ONLY ROUTE (Slice R4-R9A): "has this exact set of answers already
+    been refused?" Asked before the automatic path spends, so reopening a draft that BTY has
+    already declined costs nothing. Still no provider call, no attempt row, no draft write.
+  */
+  if (params.has("context")) {
+    const wanted = params.get("context") ?? "";
+    const ctxDraft = await getOwnerDraft(admin, user.id, id);
+    if (!ctxDraft || ctxDraft.status !== "draft") return managerJson(base, req, { refusal: null }, 200);
+    const answersNow = (ctxDraft.answers ?? {}) as BuilderAnswers;
+    const ctxNow = programContext(answersNow);
+    // A fingerprint the draft no longer has answers no question the client is asking.
+    if (!ctxNow || !wanted || programContextFingerprint(ctxNow) !== wanted) {
+      return managerJson(base, req, { refusal: null }, 200);
+    }
+    const verdict = await readTerminalVerdictForContext(admin, {
+      draftId: id,
+      ownerUserId: user.id,
+      fingerprint: wanted,
+    });
+    if (!verdict) return managerJson(base, req, { refusal: null }, 200);
+    const recovery = generationRecovery(verdict.code, verdict.refusal, verdict.kind);
+    // A retryable verdict is not restored: it decided nothing, and withholding generation over
+    // it would strand a Host behind a provider outage that has since ended.
+    if (recovery.retryable) return managerJson(base, req, { refusal: null }, 200);
+    return managerJson(
+      base,
+      req,
+      {
+        refusal: {
+          code: verdict.code,
+          refusal: verdict.refusal,
+          retryable: false,
+          recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
+        },
+      },
+      200,
+    );
+  }
+
+  const attemptId = params.get("attempt") ?? "";
   if (!isGenerationUuid(attemptId)) {
     return managerJson(base, req, { eligible: false, reason: "attempt_not_found" }, 200);
   }
@@ -115,7 +159,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
    * the attempt row exists, with its own code, in Builder language — not discovered by paying.
    */
   const sourceBlocker = programSourceBlocker(answers);
-  if (sourceBlocker) return managerJson(base, req, { error: sourceBlocker }, 409);
+  if (sourceBlocker) {
+    // Slice R4-R9A — a pre-payable source fault names the Host's own answer too, through the
+    // same rule, so the two roads to a failure surface cannot describe recovery differently.
+    const recovery = generationRecovery(sourceBlocker, null, null);
+    return managerJson(
+      base,
+      req,
+      {
+        error: sourceBlocker,
+        retryable: recovery.retryable,
+        recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
+      },
+      409,
+    );
+  }
 
   // Stale-context protection. The client echoes the fingerprint it was showing; if the
   // draft has moved since, refuse rather than author from something the Host is no
@@ -184,7 +242,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         : result.code === "provider_unavailable"
           ? 503
           : 502;
-    return managerJson(base, req, { error: result.code, refusal: result.refusal ?? null }, status);
+    /*
+      RECOVERY TRUTH TRAVELS WITH THE FAILURE (Slice R4-R9A).
+
+      The client used to decide whether to offer a retry by reading the WORDING of the refusal
+      copy it had chosen for the code. Measured on a live Korean draft: a semantic refusal whose
+      ledger row says `structural_retryable: false` was offered "다시 시도", the Founder tapped
+      it, and a second provider call was made and paid for to reach the same verdict.
+
+      So the server says it. `generationRecovery` is the same pure rule the recovery surface and
+      the re-entry guard below both read, which is what stops three answers to one question.
+    */
+    const recovery = generationRecovery(result.code, result.refusal, result.refusalKind);
+    return managerJson(
+      base,
+      req,
+      {
+        error: result.code,
+        refusal: result.refusal ?? null,
+        retryable: recovery.retryable,
+        recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
+      },
+      status,
+    );
   }
 
   return managerJson(base, req, {

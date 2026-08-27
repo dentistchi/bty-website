@@ -446,10 +446,27 @@ export type ModuleBuilderCopy = {
    * the Host to adopt what it drafted. These five lines are the whole visible surface of a
    * generation that runs, applies itself and gets out of the way.
    */
+  /**
+   * NON-RETRYABLE REFUSAL (Slice R4-R9A). BTY read a program back and would not use it; the
+   * same answers produce the same verdict, so there is one honest action and it is the Host's
+   * own answer. The wording blames nobody: measured on the live draft, the Host's sentence
+   * validates cleanly on its own — the fault was in the action BTY composed from it.
+   */
+  paBlockedTitle: (section: string) => string;
+  paBlockedBody: string;
+  paBlockedCta: (field: string) => string;
+  paBlockedGenericCta: string;
+  /** The Host-facing name of each answer a refusal can send someone back to. */
+  hostSourceField: Record<"problem" | "audienceType" | "recurringMoment" | "observableBehavior" | "successEvidence" | "materialIntent", string>;
   paAutoWorking: string;
   paAutoDone: string;
   paAutoFailedTitle: string;
   paAutoRetry: string;
+  /**
+   * RETIRED (Slice R4-R9A) — "carry on without a program" was measured to end in an
+   * unpublishable training, so nothing offers it any more. The key stays for the two locale
+   * tables to keep the same shape; delete both halves together or neither.
+   */
   paAutoManual: string;
   /** The collapsed Builder-source detail disclosure on the single working preview. */
   reviewDetailsToggle: string;
@@ -498,6 +515,24 @@ const arenaFollowLabel = (
   seven: string,
   thirty: string,
 ): string => (days === 7 ? seven : days === 30 ? thirty : none);
+
+/**
+ * 을 / 를 — the object particle, chosen by whether the preceding syllable ends in a consonant.
+ *
+ * Korean picks it by SOUND, so a template that hard-codes one is wrong roughly half the time.
+ * "행동 기준" takes 을; "자료" takes 를. The Founder reads these sentences, and a wrong particle
+ * is the kind of thing that makes a screen feel written by a machine.
+ *
+ * Hangul syllables are contiguous from U+AC00, and the final consonant is the value modulo 28 —
+ * zero means there is none. A trailing non-Hangul character (a digit, a Latin word) has no
+ * reliable answer, so it falls back to 를, which reads acceptably after most of them.
+ */
+export function objectParticle(word: string): "을" | "를" {
+  const last = word.trim().slice(-1);
+  const code = last.charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "를";
+  return (code - 0xac00) % 28 !== 0 ? "을" : "를";
+}
 
 export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
   en: {
@@ -775,6 +810,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "Training program target",
     paUntitledDraft: "Untitled training draft",
     paApplyFootnote: "Applying adds it to your draft. It still isn’t approved, published, or visible to anyone.",
+    paBlockedTitle: (section) => `BTY couldn’t draft ${section}.`,
+    paBlockedBody: "Have a look at your answer, or put it a little differently, and carry on.",
+    paBlockedCta: (field) => `Check ${field}`,
+    paBlockedGenericCta: "Check what you entered",
+    hostSourceField: {
+      problem: "what keeps going wrong",
+      audienceType: "who this is for",
+      recurringMoment: "when it happens",
+      observableBehavior: "the standard",
+      successEvidence: "what success looks like",
+      materialIntent: "the material",
+    },
     paAutoWorking: "BTY is drafting your training…",
     paAutoDone: "BTY drafted your training.",
     paAutoFailedTitle: "BTY couldn’t draft your training.",
@@ -1190,6 +1237,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "초안을 만들 훈련",
     paUntitledDraft: "이름 없는 훈련",
     paApplyFootnote: "적용하면 내 초안에 들어갑니다. 아직 확정되거나 공개되지 않고, 아무에게도 보이지 않습니다.",
+    paBlockedTitle: (section) => `BTY가 ${section}${objectParticle(section)} 초안으로 만들지 못했습니다.`,
+    paBlockedBody: "적어 주신 내용을 확인하거나 표현을 조금 바꾼 뒤 다시 진행하세요.",
+    paBlockedCta: (field) => `${field} 확인하기`,
+    paBlockedGenericCta: "입력한 내용 확인하기",
+    hostSourceField: {
+      problem: "반복되는 문제",
+      audienceType: "대상",
+      recurringMoment: "반복되는 시점",
+      observableBehavior: "행동 기준",
+      successEvidence: "성공 기준",
+      materialIntent: "자료",
+    },
     paAutoWorking: "BTY가 초안을 만드는 중…",
     paAutoDone: "BTY가 초안을 만들었습니다.",
     paAutoFailedTitle: "BTY가 초안을 만들지 못했습니다.",

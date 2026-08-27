@@ -102,7 +102,20 @@ export type ProgramGenerateErrorCode =
 
 export type ProgramGenerateResult =
   | { ok: true; value: ProgramValidated; attemptId: string | null; contextFingerprint: string }
-  | { ok: false; code: ProgramGenerateErrorCode; refusal?: string };
+  | {
+      ok: false;
+      code: ProgramGenerateErrorCode;
+      refusal?: string;
+      /**
+       * WHICH SECTION BTY REFUSED (Slice R4-R9A).
+       *
+       * The service has always had it — `finish` writes it to the ledger as `refusal_kind` —
+       * and then dropped it on the way out, so the only caller that could act on it, the
+       * Builder, never saw which of the Host's answers the refused section was written from.
+       * Carrying it costs nothing and is what lets a failure name a job instead of a screen.
+       */
+      refusalKind?: string | null;
+    };
 
 function logOutcome(outcome: string, code?: string): void {
   // Outcome and code only — never the Host's intent or the generated program.
@@ -561,7 +574,7 @@ export async function generateProgram(
       });
     }
     logOutcome("failed", refusal ?? code);
-    return { ok: false as const, code, refusal };
+    return { ok: false as const, code, refusal, refusalKind: refusalKind ?? null };
   };
 
   if (!isLlmAvailable()) {

@@ -88,7 +88,20 @@ export type ProgramGenerateOutcome =
       /** The Host-input authority this proposal was written from (Slice 3.2L-R11). */
       contextFingerprint: string;
     }
-  | { ok: false; code: string; refusal?: string | null };
+  | {
+      ok: false;
+      code: string;
+      refusal?: string | null;
+      /**
+       * SERVER TRUTH, NOT A GUESS FROM THE COPY (Slice R4-R9A). Absent means the caller could
+       * not establish it, and the surface then treats the failure as NON-retryable — the safe
+       * direction, because a retry that cannot succeed costs a provider call and a Host's trust,
+       * while a withheld one costs a tap.
+       */
+      retryable?: boolean;
+      /** The Host's own answer to revisit, and the Builder step it lives on. */
+      recovery?: { field: string; step: number } | null;
+    };
 
 export function ProgramAuthorship({
   sectionRef,
@@ -98,6 +111,8 @@ export function ProgramAuthorship({
   journey,
   ready,
   auto = false,
+  onCheckContextRefusal,
+  onRepairSource,
   notReadyReason,
   onGenerate,
   onCheckResume,
@@ -144,6 +159,27 @@ export function ProgramAuthorship({
    * being asked", not "again".
    */
   auto?: boolean;
+  /**
+   * Has this exact set of answers already been refused? (Slice R4-R9A)
+   *
+   * Asked ONCE before the automatic path spends, so reopening a draft BTY has already declined
+   * costs nothing. Read-only and server-owned; absent means the caller cannot ask, and the
+   * surface then behaves exactly as it did before — it generates.
+   */
+  onCheckContextRefusal?: (fingerprint: string) => Promise<{
+    code: string;
+    refusal: string | null;
+    recovery: { field: string; step: number } | null;
+  } | null>;
+  /**
+   * Take the Host to the answer a refusal names.
+   *
+   * `null` means the refused section traces to no Host answer — `scenario`, `action_decision`,
+   * `field_application` and `follow_up` are BTY's own — and the caller should open the entered
+   * details instead. It is NOT "do nothing": a recovery CTA that cannot act is the same false
+   * action this slice exists to remove, in a quieter costume.
+   */
+  onRepairSource?: (step: number | null) => void;
   /**
    * The NEXT thing the Host needs to provide, in the Builder's own words (Slice R4-R2F).
    *
@@ -277,10 +313,23 @@ export function ProgramAuthorship({
    * that clear the cache.
    */
   const [resumeSettled, setResumeSettled] = useState(false);
-  /** The Host chose to carry on without a program. Auto mode then renders nothing at all. */
-  const [autoDismissed, setAutoDismissed] = useState(false);
+/*
+    `autoDismissed` IS GONE (Slice R4-R9A). It existed to record "the Host chose to carry on
+    without a program", and that choice is no longer offered, because it was measured to end in
+    a journey with four of eight required sections and a Create button that could never enable.
+    A state nothing can enter is a state that misleads the next reader.
+  */
   const autoStartedRef = useRef(false);
   const autoAppliedRef = useRef(false);
+  /**
+   * WHAT THE HOST CAN DO ABOUT THIS FAILURE, established by the server (Slice R4-R9A).
+   *
+   * Set from the generation result, or restored from the ledger for a context that was already
+   * refused. Non-null ⇒ the automatic path must not start, whatever else is true.
+   */
+  const [blocked, setBlocked] = useState<{ code: string; refusal: string | null; recovery: { field: string; step: number } | null } | null>(null);
+  /** Has the "was this context already refused?" question been answered yet? */
+  const [verdictSettled, setVerdictSettled] = useState(false);
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
 
@@ -430,6 +479,14 @@ export function ProgramAuthorship({
       // "didn't meet our honesty rules".
       setFailure(resolveRefusalCopy(r.code, r.refusal));
       setFailureCode(r.refusal ?? r.code);
+      /*
+        Slice R4-R9A — the server said whether another call could differ. `!== true` rather than
+        `=== false`: a caller that could not establish retryability leaves it undefined, and an
+        unknown answer must not be read as permission to spend again.
+      */
+      if (r.retryable !== true) {
+        setBlocked({ code: r.code, refusal: r.refusal ?? null, recovery: r.recovery ?? null });
+      }
       setPhase("failed");
       return;
     }
@@ -643,6 +700,41 @@ export function ProgramAuthorship({
   }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId, onPendingChange]);
 
   /**
+   * HAS THIS CONTEXT ALREADY BEEN REFUSED? (Slice R4-R9A)
+   *
+   * Runs once per fingerprint, before generation, and only in the automatic path — the manual
+   * path is a Host explicitly asking, and a Host who asks is entitled to spend. Fails OPEN: a
+   * caller that cannot ask, or a server that cannot answer, settles the question as "no verdict"
+   * and the flow proceeds exactly as it did before. Being unable to read the ledger must not be
+   * able to stop somebody creating a training.
+   */
+  const verdictAskedRef = useRef("");
+  useEffect(() => {
+    if (!auto || !currentContextFingerprint) return;
+    if (verdictAskedRef.current === currentContextFingerprint) return;
+    verdictAskedRef.current = currentContextFingerprint;
+    setVerdictSettled(false);
+    setBlocked(null);
+    if (!onCheckContextRefusal) {
+      setVerdictSettled(true);
+      return;
+    }
+    let live = true;
+    void onCheckContextRefusal(currentContextFingerprint)
+      .then((v) => {
+        if (!live) return;
+        if (v) setBlocked(v);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (live) setVerdictSettled(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [auto, currentContextFingerprint, onCheckContextRefusal]);
+
+  /**
    * AUTOMATIC GENERATION (Slice R4-R8A).
    *
    * The Founder measured three separate "shall BTY make this for you?" gestures in one
@@ -664,9 +756,16 @@ export function ProgramAuthorship({
    * automatic RETRY is not, and would be exactly the hidden repeat spend this must not cause.
    */
   useEffect(() => {
-    if (!auto || autoStartedRef.current || autoDismissed) return;
+    if (!auto || autoStartedRef.current) return;
     if (phase !== "idle" || !ready || !resumeSettled) return;
     if (failure || !currentContextFingerprint) return;
+    /*
+      Slice R4-R9A — TWO CONDITIONS, ONE JOB: never spend on a context already proven to fail.
+      `verdictSettled` holds the effect while the question is in flight, exactly as
+      `resumeSettled` holds it for the cached-proposal question; `blocked` holds it forever after
+      a non-retryable answer, until the Host changes an input and the fingerprint moves.
+    */
+    if (!verdictSettled || blocked) return;
     /*
       A TRAINING THAT ALREADY HAS ITS PROGRAM DOES NOT NEED ANOTHER ONE.
 
@@ -681,7 +780,7 @@ export function ProgramAuthorship({
     if (missing.length === 0) return;
     autoStartedRef.current = true;
     void generate();
-  }, [auto, autoDismissed, phase, ready, resumeSettled, failure, currentContextFingerprint, missing.length, generate]);
+  }, [auto, phase, ready, resumeSettled, verdictSettled, blocked, failure, currentContextFingerprint, missing.length, generate]);
 
   /**
    * AUTOMATIC ADOPTION (Slice R4-R8A).
@@ -699,7 +798,7 @@ export function ProgramAuthorship({
    * something invalid — it takes the recovery surface, where the Host can retry or move on.
    */
   useEffect(() => {
-    if (!auto || autoAppliedRef.current || autoDismissed) return;
+    if (!auto || autoAppliedRef.current) return;
     if (phase !== "review" || !proposal) return;
     if (proposalIsStale) return;
     autoAppliedRef.current = true;
@@ -710,7 +809,7 @@ export function ProgramAuthorship({
       return;
     }
     void apply();
-  }, [auto, autoDismissed, phase, proposal, proposalIsStale, reviewBlock, apply]);
+  }, [auto, phase, proposal, proposalIsStale, reviewBlock, apply]);
 
   /**
    * The Host asked for another draft after a failure. An explicit gesture, so it may spend —
@@ -740,13 +839,6 @@ export function ProgramAuthorship({
     setPhase("review");
   }, []);
 
-  /** No program, no trap. The seeded journey below is still editable and still publishable. */
-  const continueManually = useCallback(() => {
-    setAutoDismissed(true);
-    setFailure(null);
-    setFailureCode("");
-    setPhase("idle");
-  }, []);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -822,18 +914,59 @@ export function ProgramAuthorship({
     honest wording and the recovery the Founder needed on a real Korean training.
   */
   if (auto) {
-    if (autoDismissed) return null;
+
+    /*
+      NON-RETRYABLE: ONE TRUTHFUL ACTION (Slice R4-R9A).
+
+      Both actions this replaces were measured false on a live Korean draft. "다시 시도" made a
+      real second provider call, received a genuinely different program, and hit the identical
+      rule — the inputs had not changed, so the verdict could not. "직접 계속하기" seeded a
+      journey with four of the eight required sections and left Create permanently disabled,
+      with no surface on which the missing four could be written.
+
+      What is left is the only thing that can actually change the outcome: the Host's own answer.
+      The sentence names the section BTY could not draft and the field to look at, and blames
+      nobody — measured, the Host's sentence validates cleanly on its own; the fault was in the
+      action BTY composed from it. Rendered whether the refusal arrived just now or was restored
+      from the ledger on reopen, because a Host must not be told two different stories about the
+      same failure depending on when they looked.
+    */
+    if (blocked) {
+      const fieldKey = blocked.recovery?.field as keyof typeof t.hostSourceField | undefined;
+      const fieldName = fieldKey ? t.hostSourceField[fieldKey] : null;
+      const step = blocked.recovery?.step;
+      return (
+        <section
+          ref={sectionRef}
+          className="flex flex-col gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3.5"
+          data-testid="program-auto-blocked"
+        >
+          <p className="text-sm font-medium text-amber-100/90" data-testid="program-blocked-title">
+            {fieldName ? t.paBlockedTitle(fieldName) : t.paAutoFailedTitle}
+          </p>
+          <p className="text-sm leading-6 text-amber-100/75">{t.paBlockedBody}</p>
+          <button
+            type="button"
+            onClick={() => onRepairSource?.(step ?? null)}
+            data-testid="program-blocked-repair"
+            className="mt-0.5 min-h-[44px] self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {fieldName ? t.paBlockedCta(fieldName) : t.paBlockedGenericCta}
+          </button>
+        </section>
+      );
+    }
 
     if (phase === "failed") {
       /*
-        RETRY ONLY WHERE RETRYING IS THE REMEDY (Slice R4-R8A, honouring 3.2L-R5).
+        RETRYABLE ONLY. A refusal that reached this branch is one the server said another call
+        could clear — a provider that was unreachable, slow, or returned something unreadable.
 
-        `start_a_new_draft` and `wait_and_try_later` describe faults that another attempt can
-        genuinely clear. `add_the_real_material` and `adjust_your_training_inputs` do not: the
-        inputs are unchanged, so a retry is a paid re-roll dressed as a fix, which is the exact
-        thing the R4 window did to the Founder. Those keep their note and the way out.
+        `직접 계속하기` IS GONE FROM HERE TOO (Slice R4-R9A), and not because it was untidy: it
+        was measured to produce an unpublishable training. Making manual journey authoring
+        complete is a separate product architecture, and until it exists, offering the path is
+        offering a dead end. A Host who does not want to retry leaves the way they arrived.
       */
-      const retryable = failure?.recovery === "start_a_new_draft" || failure?.recovery === "wait_and_try_later";
       return (
         <section
           ref={sectionRef}
@@ -844,31 +977,14 @@ export function ProgramAuthorship({
           {failure?.explanation ? (
             <p className="text-sm leading-6 text-amber-100/75">{failure.explanation}</p>
           ) : null}
-          {!retryable && failure ? (
-            <p className="text-xs leading-5 text-amber-100/60" data-testid="program-auto-no-retry">
-              {RECOVERY_NOTE[failure.recovery]}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2 pt-0.5">
-            {retryable ? (
-              <button
-                type="button"
-                onClick={retryAuto}
-                data-testid="program-auto-retry"
-                className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
-              >
-                {t.paAutoRetry}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={continueManually}
-              data-testid="program-auto-manual"
-              className="min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium text-amber-100/85 underline underline-offset-4"
-            >
-              {t.paAutoManual}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={retryAuto}
+            data-testid="program-auto-retry"
+            className="mt-0.5 min-h-[44px] self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {t.paAutoRetry}
+          </button>
         </section>
       );
     }
@@ -880,6 +996,12 @@ export function ProgramAuthorship({
         NOT READY IS NOT WORKING. Nothing is in flight and nothing will be until the Builder
         answers exist, so saying "drafting…" would be a lie the Host waits on. Publish is
         already blocked by the same gap, named by `MissingSummary`.
+      */
+      /*
+        NOT READY IS A DIFFERENT STATE FROM NOT YET ASKED (Slice R4-R9A). The ledger question is
+        a fast read, and while it is in flight the training IS on its way — so it wears the
+        working line. Wearing the not-ready sentence instead would name a missing input that is
+        not missing, which is the class of untruth this whole slice is about.
       */
       if (!ready || !currentContextFingerprint) {
         return (
@@ -918,24 +1040,20 @@ export function ProgramAuthorship({
         >
           <p className="text-sm font-medium text-amber-100/90">{t.paApplyFailedTitle}</p>
           <p className="text-sm leading-6 text-amber-100/75">{t.paApplyFailedBody}</p>
-          <div className="flex flex-wrap items-center gap-2 pt-0.5">
-            <button
-              type="button"
-              onClick={retryApply}
-              data-testid="program-auto-save-retry"
-              className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
-            >
-              {t.paAutoRetry}
-            </button>
-            <button
-              type="button"
-              onClick={continueManually}
-              data-testid="program-auto-manual"
-              className="min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium text-amber-100/85 underline underline-offset-4"
-            >
-              {t.paAutoManual}
-            </button>
-          </div>
+          {/*
+            Slice R4-R9A — "직접 계속하기" is gone from here for the same measured reason it is
+            gone from the generation failure above: the program was never written, so carrying on
+            by hand leaves the same incomplete journey and the same disabled Create button. This
+            retry writes the proposal already in hand and reaches the provider not at all.
+          */}
+          <button
+            type="button"
+            onClick={retryApply}
+            data-testid="program-auto-save-retry"
+            className="mt-0.5 min-h-[44px] self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {t.paAutoRetry}
+          </button>
         </section>
       );
     }
