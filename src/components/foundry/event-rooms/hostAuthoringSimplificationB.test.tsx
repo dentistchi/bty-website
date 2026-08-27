@@ -111,7 +111,13 @@ function server(opts: { answers?: BuilderAnswers; currentStep?: number } = {}) {
       if (init?.method === "PATCH") {
         calls.patch += 1;
         patched.push(JSON.parse(String(init.body ?? "{}")));
-        return jsonRes({ ok: true, program_adoption: { status: "adopted" } });
+        /*
+          Slice R4-R9B — THE REAL RESPONSE KEY. These fixtures answered `program_adoption`, a key
+          the shell never reads: it reads `adoption`. So no adoption outcome — success OR refusal
+          — was ever asserted from the canonical path, which is how a live `proposal_mismatch`
+          reached the Founder through suites that were entirely green.
+        */
+        return jsonRes({ ok: true, adoption: { ok: true, receipt: "recorded" } });
       }
       return jsonRes({
         draft: {

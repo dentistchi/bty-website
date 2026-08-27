@@ -565,7 +565,10 @@ export function ModuleBuilderShell({
         );
         if (!res.ok) return null;
         const data = (await res.json().catch(() => null)) as {
-          refusal?: { code?: unknown; refusal?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null } | null;
+          refusal?: {
+            code?: unknown; refusal?: unknown; recovery_mode?: unknown;
+            recovery_target?: { field?: unknown; step?: unknown } | null;
+          } | null;
         } | null;
         const r = data?.refusal;
         if (!r || typeof r.code !== "string") return null;
@@ -573,7 +576,12 @@ export function ModuleBuilderShell({
           r.recovery_target && typeof r.recovery_target.field === "string" && typeof r.recovery_target.step === "number"
             ? { field: r.recovery_target.field, step: r.recovery_target.step }
             : null;
-        return { code: r.code, refusal: typeof r.refusal === "string" ? r.refusal : null, recovery: target };
+        return {
+          code: r.code,
+          refusal: typeof r.refusal === "string" ? r.refusal : null,
+          mode: typeof r.recovery_mode === "string" ? r.recovery_mode : undefined,
+          recovery: target,
+        };
       } catch {
         return null;
       }
@@ -602,7 +610,7 @@ export function ModuleBuilderShell({
       });
       const data = (await res.json().catch(() => ({}))) as {
         program?: unknown; evidence_ceiling?: string; attempt_id?: string | null; context_fingerprint?: string; error?: string; refusal?: string | null;
-        retryable?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null;
+        retryable?: unknown; recovery_mode?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null;
       };
       if (res.ok && data.program) {
         return {
@@ -627,6 +635,7 @@ export function ModuleBuilderShell({
         code: data.error ?? "invalid_output",
         refusal: data.refusal ?? null,
         retryable: typeof data.retryable === "boolean" ? data.retryable : undefined,
+        mode: typeof data.recovery_mode === "string" ? data.recovery_mode : undefined,
         recovery: target,
       };
     } catch {

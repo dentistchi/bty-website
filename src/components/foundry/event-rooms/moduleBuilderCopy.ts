@@ -452,8 +452,18 @@ export type ModuleBuilderCopy = {
    * own answer. The wording blames nobody: measured on the live draft, the Host's sentence
    * validates cleanly on its own — the fault was in the action BTY composed from it.
    */
+  /**
+   * REGENERATE ALLOWED (Slice R4-R9B) — a provider response BTY refused, from a valid Host
+   * source. Measured: the same context succeeded on a later attempt, so telling the Host to go
+   * and change a correct answer was both an accusation and wrong.
+   */
+  paRegenTitle: (section: string) => string;
+  paRegenBody: string;
+  paRegenCta: string;
   paBlockedTitle: (section: string) => string;
   paBlockedBody: string;
+  /** Slice R4-R9B — the reassurance beside an adoption refusal, in the Host's language. */
+  paApplyOtherChangesSaved: string;
   paBlockedCta: (field: string) => string;
   paBlockedGenericCta: string;
   /** The Host-facing name of each answer a refusal can send someone back to. */
@@ -810,8 +820,12 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "Training program target",
     paUntitledDraft: "Untitled training draft",
     paApplyFootnote: "Applying adds it to your draft. It still isn’t approved, published, or visible to anyone.",
+    paRegenTitle: (section) => `BTY couldn’t draft ${section}.`,
+    paRegenBody: "Your answers are fine. Ask BTY to write it again, or take another look at them first.",
+    paRegenCta: "Have BTY write it again",
     paBlockedTitle: (section) => `BTY couldn’t draft ${section}.`,
-    paBlockedBody: "Have a look at your answer, or put it a little differently, and carry on.",
+    paBlockedBody: "BTY can’t draft from this answer as it stands. Have a look at it, or put it a little differently, and carry on.",
+    paApplyOtherChangesSaved: "Your other changes were saved.",
     paBlockedCta: (field) => `Check ${field}`,
     paBlockedGenericCta: "Check what you entered",
     hostSourceField: {
@@ -1237,8 +1251,12 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paTargetAriaLabel: "초안을 만들 훈련",
     paUntitledDraft: "이름 없는 훈련",
     paApplyFootnote: "적용하면 내 초안에 들어갑니다. 아직 확정되거나 공개되지 않고, 아무에게도 보이지 않습니다.",
+    paRegenTitle: (section) => `BTY가 ${section}${objectParticle(section)} 초안으로 만들지 못했습니다.`,
+    paRegenBody: "적어 주신 내용에는 문제가 없습니다. BTY에게 다시 만들게 하거나, 내용을 먼저 확인해 보세요.",
+    paRegenCta: "BTY 다시 만들기",
     paBlockedTitle: (section) => `BTY가 ${section}${objectParticle(section)} 초안으로 만들지 못했습니다.`,
-    paBlockedBody: "적어 주신 내용을 확인하거나 표현을 조금 바꾼 뒤 다시 진행하세요.",
+    paBlockedBody: "지금 내용으로는 BTY가 초안을 만들 수 없습니다. 내용을 확인하거나 표현을 조금 바꾼 뒤 다시 진행하세요.",
+    paApplyOtherChangesSaved: "고치신 다른 내용은 저장되었습니다.",
     paBlockedCta: (field) => `${field} 확인하기`,
     paBlockedGenericCta: "입력한 내용 확인하기",
     hostSourceField: {

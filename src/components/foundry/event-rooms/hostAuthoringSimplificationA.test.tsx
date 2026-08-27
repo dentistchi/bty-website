@@ -138,7 +138,13 @@ function server(opts: ServerOpts = {}) {
         calls.patch += 1;
         if ((opts.failPatch ?? 0) >= calls.patch) return jsonRes({ error: "save_failed" }, 500);
         patched.push(JSON.parse(String(init.body ?? "{}")));
-        return jsonRes({ ok: true, program_adoption: { status: "adopted" } });
+        /*
+          Slice R4-R9B — THE REAL RESPONSE KEY. These fixtures answered `program_adoption`, a key
+          the shell never reads: it reads `adoption`. So no adoption outcome — success OR refusal
+          — was ever asserted from the canonical path, which is how a live `proposal_mismatch`
+          reached the Founder through suites that were entirely green.
+        */
+        return jsonRes({ ok: true, adoption: { ok: true, receipt: "recorded" } });
       }
       return jsonRes({
         draft: {
@@ -299,7 +305,7 @@ describe("R4-R8A — one generator, running itself", () => {
           fail = false;
           // Slice R4-R9A — the server's verdict travels with the failure now, and only a
           // retryable one offers a retry. A provider outage is exactly that.
-          return { error: "provider_unavailable", retryable: true, recovery_target: null };
+          return { error: "provider_unavailable", retryable: true, recovery_mode: "transient_retry", recovery_target: null };
         }
         return { program: PROPOSAL, evidence_ceiling: "", attempt_id: ATTEMPT, context_fingerprint: FINGERPRINT };
       },
@@ -547,7 +553,7 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
       path belongs nowhere. `recoveryTruth.test.tsx` holds the non-retryable half.
     */
     const s = openReview({
-      generate: () => ({ error: "provider_unavailable", retryable: true, recovery_target: null }),
+      generate: () => ({ error: "provider_unavailable", retryable: true, recovery_mode: "transient_retry", recovery_target: null }),
       generateStatus: 503,
     });
     await screen.findByTestId("program-auto-failed");

@@ -425,6 +425,99 @@ export const ADOPTION_REFUSAL_COPY: Record<AdoptionRefusal, { headline: string; 
 };
 
 /** The honest fallback for a reason this build does not recognise — never a guess at why. */
+/**
+ * THE KOREAN THE HOST ACTUALLY READS (Slice R4-R9B).
+ *
+ * MEASURED on device: a Korean Host was shown "This program wasn't added. Your other changes were
+ * saved." and "This isn't the program that record refers to…", in English, on an entirely Korean
+ * screen — and underneath them one unconditional sentence claiming their training had changed,
+ * on a draft whose fingerprint was byte-identical.
+ *
+ * Two faults, one table. Each reason now says only what is TRUE of it, and the recovery line is
+ * part of the reason instead of a sentence printed under all eight.
+ */
+export const ADOPTION_REFUSAL_COPY_KO: Record<AdoptionRefusal, { headline: string; explanation: string; recovery: string }> = {
+  proposal_no_longer_valid: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "이 초안은 더 이상 사용할 수 없습니다. 적어 주신 내용과 문장은 그대로입니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+  context_moved: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    // The ONE reason for which "your training changed" is true.
+    explanation: "BTY가 이 초안을 만든 뒤 교육 내용이 바뀌었습니다.",
+    recovery: "지금 내용으로 BTY가 다시 만들게 하세요.",
+  },
+  proposal_mismatch: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    /*
+      NEVER "교육 내용이 변경되었습니다" AGAIN. Measured false twice — on `d04d48e1` in English and
+      on `adb75f6a` in Korean — both times with a byte-identical fingerprint. What is true is only
+      that the program on screen is not the one this record refers to.
+    */
+    explanation: "화면의 초안이 이 기록이 가리키는 초안과 달라서 기록에 남기지 못했습니다. 적어 주신 내용과 문장은 그대로입니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+  superseded_attempt: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "이 교육에 더 새로운 초안이 만들어져서, 이전 초안은 추가할 수 없습니다.",
+    recovery: "새 초안을 확인하세요.",
+  },
+  attempt_not_found: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "이 초안의 기록을 찾지 못했습니다. 적어 주신 내용과 문장은 그대로입니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+  attempt_other_draft: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "이 기록은 다른 교육의 것입니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+  attempt_not_successful: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "이 초안은 끝까지 만들어지지 않았습니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+  no_journey_in_same_patch: {
+    headline: "이 초안은 추가되지 않았습니다.",
+    explanation: "추가할 내용이 함께 오지 않았습니다.",
+    recovery: "BTY에게 다시 만들게 하세요.",
+  },
+};
+
+/** The honest fallback for a reason this build does not recognise. */
+export const ADOPTION_REFUSAL_UNKNOWN_KO = {
+  headline: "이 초안은 추가되지 않았습니다.",
+  explanation: "적어 주신 내용과 문장은 그대로입니다.",
+  recovery: "BTY에게 다시 만들게 하세요.",
+};
+
+/**
+ * Adoption-refusal copy in the Host's own language, with its own recovery sentence.
+ *
+ * `recovery` is per-reason since R4-R9B. It used to be one sentence printed under every refusal,
+ * which is how a Host was told their training had changed by a screen whose own explanation said
+ * the opposite, on the same card.
+ */
+export function resolveAdoptionRefusal(
+  reason: string | null | undefined,
+  locale: "en" | "ko",
+): { headline: string; explanation: string; recovery: string } {
+  if (locale === "ko") {
+    return reason && reason in ADOPTION_REFUSAL_COPY_KO
+      ? ADOPTION_REFUSAL_COPY_KO[reason as AdoptionRefusal]
+      : ADOPTION_REFUSAL_UNKNOWN_KO;
+  }
+  const en = resolveAdoptionRefusalCopy(reason);
+  const recovery =
+    reason === "context_moved"
+      ? "Have BTY write it again from what your training says now."
+      : reason === "superseded_attempt"
+        ? "Look at the newer draft."
+        : "Have BTY write it again.";
+  return { ...en, recovery };
+}
+
 export const ADOPTION_REFUSAL_UNKNOWN = {
   headline: "This program wasn’t added.",
   explanation: "Your other changes were saved. Draft the program again — your training answers are unchanged.",

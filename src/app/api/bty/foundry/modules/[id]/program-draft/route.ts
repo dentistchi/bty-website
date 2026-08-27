@@ -74,9 +74,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     });
     if (!verdict) return managerJson(base, req, { refusal: null }, 200);
     const recovery = generationRecovery(verdict.code, verdict.refusal, verdict.kind);
-    // A retryable verdict is not restored: it decided nothing, and withholding generation over
-    // it would strand a Host behind a provider outage that has since ended.
-    if (recovery.retryable) return managerJson(base, req, { refusal: null }, 200);
+    /*
+      Slice R4-R9B — RESTORED FOR EVERYTHING EXCEPT A TRANSIENT FAILURE.
+
+      R9A skipped every `retryable` verdict, which was right for an outage and wrong for a
+      semantic refusal: a refusal that is regenerable must STILL be remembered, or reopening
+      would silently start the generation the Host never asked for. The distinction is the mode,
+      not the boolean — `transient_retry` decided nothing and is forgotten; `regenerate_allowed`
+      decided something and is shown, with a button the Host may press.
+    */
+    if (recovery.mode === "transient_retry") return managerJson(base, req, { refusal: null }, 200);
     return managerJson(
       base,
       req,
@@ -84,7 +91,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         refusal: {
           code: verdict.code,
           refusal: verdict.refusal,
-          retryable: false,
+          retryable: recovery.retryable,
+          recovery_mode: recovery.mode,
           recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
         },
       },
@@ -169,6 +177,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       {
         error: sourceBlocker,
         retryable: recovery.retryable,
+        recovery_mode: recovery.mode,
         recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
       },
       409,
@@ -261,6 +270,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         error: result.code,
         refusal: result.refusal ?? null,
         retryable: recovery.retryable,
+        // Slice R4-R9B — WHAT the Host may do, not merely whether. Three modes, one word.
+        recovery_mode: recovery.mode,
         recovery_target: recovery.target ? { field: recovery.target.field, step: recovery.target.section.step } : null,
       },
       status,

@@ -64,7 +64,8 @@ function server(opts: Opts = {}) {
               body: {
                 error: "invalid_output",
                 refusal: "non_observable_standard",
-                retryable: false,
+                retryable: true,
+                recovery_mode: "regenerate_allowed",
                 recovery_target: { field: "observableBehavior", step: 4 },
               },
             };
@@ -105,7 +106,8 @@ function openReview(opts: Opts = {}, locale: "en" | "ko" = "ko") {
 const LEDGER_REFUSAL = {
   code: "invalid_output",
   refusal: "non_observable_standard",
-  retryable: false,
+  retryable: true,
+  recovery_mode: "regenerate_allowed",
   recovery_target: { field: "observableBehavior", step: 4 },
 };
 
@@ -115,26 +117,27 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.localStorage.clear();
 describe("R4-R9A — a non-retryable refusal offers one truthful action", () => {
   it("T2/T3/T4 — no 다시 시도, no 직접 계속하기, one source-repair CTA", async () => {
     openReview();
-    const panel = await screen.findByTestId("program-auto-blocked");
+    const panel = await screen.findByTestId("program-auto-regen");
     expect(screen.queryByTestId("program-auto-retry"), "다시 시도 must not be offered").toBeNull();
     expect(screen.queryByTestId("program-auto-manual"), "직접 계속하기 must not be offered").toBeNull();
-    expect(screen.getByTestId("program-blocked-repair")).toBeTruthy();
+    expect(screen.getByTestId("program-regen-retry")).toBeTruthy();
     // Exactly one action on the surface.
-    expect(panel.querySelectorAll("button")).toHaveLength(1);
+    expect(panel.querySelectorAll("button")).toHaveLength(2);
   });
 
   it("T4b — it says what BTY could not draft, in the Host's language, and blames nobody", async () => {
     openReview();
-    const title = await screen.findByTestId("program-blocked-title");
+    const title = await screen.findByTestId("program-regen-title");
     expect(title.textContent).toBe("BTY가 행동 기준을 초안으로 만들지 못했습니다.");
-    expect(screen.getByTestId("program-blocked-repair").textContent).toBe("행동 기준 확인하기");
-    const surface = (await screen.findByTestId("program-auto-blocked")).textContent ?? "";
+    expect(screen.getByTestId("program-regen-retry").textContent).toBe("BTY 다시 만들기");
+    expect(screen.getByTestId("program-regen-source").textContent).toBe("행동 기준 확인하기");
+    const surface = (await screen.findByTestId("program-auto-regen")).textContent ?? "";
     for (const blame of ["잘못", "오류", "실패했습니다"]) expect(surface, blame).not.toContain(blame);
   });
 
   it("T14 — no validator or internal vocabulary reaches the Host", async () => {
     openReview();
-    const surface = (await screen.findByTestId("program-auto-blocked")).textContent ?? "";
+    const surface = (await screen.findByTestId("program-auto-regen")).textContent ?? "";
     for (const internal of [
       "observable_standard", "non_observable_standard", "action_reclaims_authority",
       "observable_action", "invalid_output", "elements.", "structural_retryable", "retryable",
@@ -145,17 +148,17 @@ describe("R4-R9A — a non-retryable refusal offers one truthful action", () => 
 
   it("T5/T6 — the CTA opens the behaviour step, and reaches no provider", async () => {
     const s = openReview();
-    fireEvent.click(await screen.findByTestId("program-blocked-repair"));
+    fireEvent.click(await screen.findByTestId("program-regen-source"));
     // Step 4 is "이 훈련 후, 무엇을 다르게 해야 하나요?" — the answer the refusal names.
     expect(await screen.findByText(MODULE_BUILDER_COPY.ko.s3Q)).toBeTruthy();
-    expect(s.calls.provider, "repairing must never spend").toBe(1);
+    expect(s.calls.provider, "looking at the source must never spend").toBe(1);
   });
 
   it("the English surface says the same thing", async () => {
     openReview({}, "en");
-    const title = await screen.findByTestId("program-blocked-title");
+    const title = await screen.findByTestId("program-regen-title");
     expect(title.textContent).toBe("BTY couldn’t draft the standard.");
-    expect(screen.getByTestId("program-blocked-repair").textContent).toBe("Check the standard");
+    expect(screen.getByTestId("program-regen-retry").textContent).toBe("Have BTY write it again");
   });
 });
 
@@ -167,26 +170,27 @@ describe("R4-R9A — the same failed context does not re-spend", () => {
       already proven to fail.
     */
     const s = openReview({ contextRefusal: LEDGER_REFUSAL });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     await waitFor(() => expect(s.calls.contextRead).toBe(1));
     expect(s.calls.provider).toBe(0);
     expect(screen.queryByTestId("program-auto-retry")).toBeNull();
-    expect(screen.getByTestId("program-blocked-repair").textContent).toBe("행동 기준 확인하기");
+    expect(screen.getByTestId("program-regen-retry").textContent).toBe("BTY 다시 만들기");
+    expect(screen.getByTestId("program-regen-source").textContent).toBe("행동 기준 확인하기");
   });
 
   it("T8 — and a second mount of the same draft still makes ZERO", async () => {
     const first = openReview({ contextRefusal: LEDGER_REFUSAL });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     cleanup();
     const again = openReview({ contextRefusal: LEDGER_REFUSAL });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     expect(first.calls.provider + again.calls.provider).toBe(0);
   });
 
   it("T7b — a ledger that cannot answer fails OPEN: generation still runs", async () => {
     // Being unable to read the ledger must never be able to stop somebody creating a training.
     const s = openReview({ contextRefusal: null });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     expect(s.calls.provider).toBe(1);
   });
 
@@ -197,21 +201,21 @@ describe("R4-R9A — the same failed context does not re-spend", () => {
     const s = openReview({
       answers: edited,
       contextRefusal: null,
-      post: () => ({ status: 502, body: { error: "invalid_output", refusal: "non_observable_standard", retryable: false, recovery_target: { field: "observableBehavior", step: 4 } } }),
+      post: () => ({ status: 502, body: { error: "invalid_output", refusal: "non_observable_standard", retryable: true, recovery_mode: "regenerate_allowed", recovery_target: { field: "observableBehavior", step: 4 } } }),
     });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     expect(s.calls.provider, "exactly one attempt for the new context").toBe(1);
   });
 });
 
 describe("R4-R9A — a genuinely retryable failure is unchanged", () => {
-  const TRANSIENT = { status: 503, body: { error: "provider_unavailable", refusal: null, retryable: true, recovery_target: null } };
+  const TRANSIENT = { status: 503, body: { error: "provider_unavailable", refusal: null, retryable: true, recovery_mode: "transient_retry", recovery_target: null } };
 
   it("T11 — it still offers 다시 시도", async () => {
     openReview({ post: () => TRANSIENT });
     await screen.findByTestId("program-auto-failed");
     expect(screen.getByTestId("program-auto-retry")).toBeTruthy();
-    expect(screen.queryByTestId("program-auto-blocked")).toBeNull();
+    expect(screen.queryByTestId("program-auto-regen")).toBeNull();
   });
 
   it("T12 — tapping it makes exactly ONE more provider call", async () => {
@@ -245,26 +249,70 @@ describe("R4-R9A — a refusal about BTY's own section still lands somewhere rea
   */
   const OWN_SECTION = {
     status: 502,
-    body: { error: "invalid_output", refusal: "scenario_without_pressure", retryable: false, recovery_target: null },
+    body: { error: "invalid_output", refusal: "scenario_without_pressure", retryable: true, recovery_mode: "regenerate_allowed", recovery_target: null },
   };
 
-  it("falls back to the generic CTA rather than inventing a field", async () => {
+  it("offers regeneration with no source escape, because no Host answer owns it", async () => {
     openReview({ post: () => OWN_SECTION });
-    await screen.findByTestId("program-auto-blocked");
-    const cta = screen.getByTestId("program-blocked-repair");
-    expect(cta.textContent).toBe(MODULE_BUILDER_COPY.ko.paBlockedGenericCta);
-    expect((cta as HTMLButtonElement).disabled).toBe(false);
+    const panel = await screen.findByTestId("program-auto-regen");
+    expect(screen.getByTestId("program-regen-retry").textContent).toBe(MODULE_BUILDER_COPY.ko.paRegenCta);
+    // No "check your answer" escape is invented for a section the Host never wrote.
+    expect(screen.queryByTestId("program-regen-source")).toBeNull();
+    expect(panel.querySelectorAll("button")).toHaveLength(1);
   });
 
-  it("and tapping it opens the entered details, spending nothing", async () => {
+  it("T11 — and tapping it makes exactly ONE more provider call", async () => {
     const s = openReview({ post: () => OWN_SECTION });
-    await screen.findByTestId("program-auto-blocked");
-    expect((await screen.findByTestId("all-training-details-toggle")).getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(screen.getByTestId("program-blocked-repair"));
-    await waitFor(() =>
-      expect(screen.getByTestId("all-training-details-toggle").getAttribute("aria-expanded")).toBe("true"),
-    );
+    await screen.findByTestId("program-auto-regen");
     expect(s.calls.provider).toBe(1);
+    fireEvent.click(screen.getByTestId("program-regen-retry"));
+    await waitFor(() => expect(s.calls.provider).toBe(2));
+  });
+});
+
+describe("R4-R9B — regeneration is one deliberate call, and reopen is still free", () => {
+  it("T11/T12 — the measured refusal regenerates once, and may succeed", async () => {
+    /*
+      THE CORRECTION R9B EXISTS FOR. On the Founder's draft, attempt #3 succeeded on the exact
+      fingerprint two refusals had rejected — so a regeneration is not a paid re-roll of a settled
+      verdict, it is the honest next step. One tap, one call, and a success reaches the preview.
+    */
+    let refuse = true;
+    const s = openReview({
+      post: () =>
+        refuse
+          ? ((refuse = false),
+            { status: 502, body: { error: "invalid_output", refusal: "non_observable_standard", retryable: true, recovery_mode: "regenerate_allowed", recovery_target: { field: "observableBehavior", step: 4 } } })
+          : { status: 502, body: { error: "provider_unavailable", retryable: true, recovery_mode: "transient_retry", recovery_target: null } },
+    });
+    await screen.findByTestId("program-auto-regen");
+    expect(s.calls.provider).toBe(1);
+    fireEvent.click(screen.getByTestId("program-regen-retry"));
+    await waitFor(() => expect(s.calls.provider).toBe(2));
+    // The second response was transient, so the plain retry surface takes over — one call, no chain.
+    await screen.findByTestId("program-auto-failed");
+    await new Promise((r) => setTimeout(r, 200));
+    expect(s.calls.provider, "nothing chains a third call by itself").toBe(2);
+  });
+
+  it("T10 — a remembered regenerable refusal still spends NOTHING on reopen", async () => {
+    const s = openReview({ contextRefusal: LEDGER_REFUSAL });
+    await screen.findByTestId("program-auto-regen");
+    await waitFor(() => expect(s.calls.contextRead).toBe(1));
+    expect(s.calls.provider, "reopening must never spend").toBe(0);
+  });
+
+  it("T20 — and it never claims the training changed when it did not", async () => {
+    openReview({ contextRefusal: LEDGER_REFUSAL });
+    const surface = (await screen.findByTestId("program-auto-regen")).textContent ?? "";
+    expect(surface).not.toContain("교육 내용이 변경되었습니다");
+    expect(surface).not.toContain("다시 초안 만들기");
+  });
+
+  it("T19 — the KO recovery surface carries no English", async () => {
+    openReview({ contextRefusal: LEDGER_REFUSAL });
+    const surface = (await screen.findByTestId("program-auto-regen")).textContent ?? "";
+    expect(surface).not.toMatch(/[A-Za-z]{4,}/);
   });
 });
 
@@ -276,7 +324,7 @@ describe("R4-R9A — the second dead end is closed too", () => {
       written anywhere and Create stayed disabled forever.
     */
     openReview({ contextRefusal: LEDGER_REFUSAL });
-    await screen.findByTestId("program-auto-blocked");
+    await screen.findByTestId("program-auto-regen");
     expect(screen.queryByTestId("journey-start")).toBeNull();
   });
 });
@@ -298,7 +346,7 @@ describe("R4-R9A — Simplification A/B is unchanged", () => {
   it("T15 — one generator, one preview, no keep/use, no extra review layer", async () => {
     openReview({
       contextRefusal: null,
-      post: () => ({ status: 502, body: { error: "provider_unavailable", retryable: true, recovery_target: null } }),
+      post: () => ({ status: 502, body: { error: "provider_unavailable", retryable: true, recovery_mode: "transient_retry", recovery_target: null } }),
     });
     await screen.findByTestId("program-auto-failed");
     expect(screen.queryByTestId("program-authorship-entry")).toBeNull();

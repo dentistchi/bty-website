@@ -73,7 +73,7 @@ beforeEach(() => {
 });
 
 describe("[R4-R9A · T1] the failure response carries the server's own verdict", () => {
-  it("a refused program serialises retryable=false and the Host answer to revisit", async () => {
+  it("a refused program serialises regenerate_allowed and the Host answer to revisit", async () => {
     // EXACTLY the measured refusal: attempt `0382af99`, both calls, on live deploy 8266f35f.
     generateProgram.mockResolvedValue({
       ok: false,
@@ -87,7 +87,13 @@ describe("[R4-R9A · T1] the failure response carries the server's own verdict",
     });
     const res = await POST(req, { params });
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.retryable).toBe(false);
+    /*
+      CORRECTED BY R9B. Attempt #3 on the Founder's draft succeeded on the SAME fingerprint two
+      refusals had rejected, so a semantic refusal is a fact about one response, not the context.
+      The Host may ask BTY again; what they are told is `regenerate_allowed`, not "retry".
+    */
+    expect(body.recovery_mode).toBe("regenerate_allowed");
+    expect(body.retryable).toBe(true);
     expect(body.recovery_target).toEqual({ field: "observableBehavior", step: 4 });
     // The Host-facing surface renders from these two; the raw codes stay for the ledger.
     expect(body.refusal).toBe("non_observable_standard");
@@ -100,6 +106,7 @@ describe("[R4-R9A · T1] the failure response carries the server's own verdict",
       body: JSON.stringify({ locale: "ko", submission_intent_id: "b3000000-0000-4000-8000-000000000004", context_fingerprint: FINGERPRINT }),
     });
     const body = (await (await POST(req, { params })).json()) as Record<string, unknown>;
+    expect(body.recovery_mode).toBe("transient_retry");
     expect(body.retryable).toBe(true);
     expect(body.recovery_target).toBeNull();
   });
@@ -112,7 +119,7 @@ describe("[R4-R9A · T7] the ledger can be asked about a context without spendin
   it("an already-refused context answers with the recovery, and calls no provider", async () => {
     terminalVerdict.mockResolvedValue({ code: "invalid_output", refusal: "non_observable_standard", kind: "observable_standard" });
     const body = (await (await ask(FINGERPRINT)).json()) as { refusal: Record<string, unknown> | null };
-    expect(body.refusal).toMatchObject({ retryable: false, recovery_target: { field: "observableBehavior", step: 4 } });
+    expect(body.refusal).toMatchObject({ recovery_mode: "regenerate_allowed", recovery_target: { field: "observableBehavior", step: 4 } });
     expect(generateProgram, "asking must never generate").not.toHaveBeenCalled();
   });
 
@@ -122,8 +129,9 @@ describe("[R4-R9A · T7] the ledger can be asked about a context without spendin
     expect(body.refusal).toBeNull();
   });
 
-  it("a RETRYABLE terminal verdict is not restored — it decided nothing about the training", async () => {
+  it("a TRANSIENT terminal verdict is not restored — it decided nothing about the training", async () => {
     // A provider outage last night must not strand a Host behind a failure that has since ended.
+    // A regenerable refusal IS restored (above): it decided something, and reopening must not spend.
     terminalVerdict.mockResolvedValue({ code: "provider_unavailable", refusal: null, kind: null });
     const body = (await (await ask(FINGERPRINT)).json()) as { refusal: unknown };
     expect(body.refusal).toBeNull();

@@ -309,6 +309,15 @@ async function proveAdoption(
       reason KEEP cannot be asserted by a caller: the server decides which sections were ever
       the Host's to preserve.
     */
+    /*
+      MEASURED AND LEFT ALONE (Slice R4-R9B). A fresh Simplification-B adoption was refused
+      `proposal_mismatch`, and offering this evidence for an initial claim looked like the repair.
+      It is not: an end-to-end test through the real authority showed the claim still refused,
+      because the fault was never the missing reference — it was a skewed composition on the
+      client (`effectiveFollowUpDays`, repaired in `ProgramAuthorship`). With the two sides
+      composing identically the strict digest rule passes on its own, and widening what the
+      authority is handed would be risk with nothing to buy.
+    */
     mixedAuthorship: input.preAdoptionJourney
       ? {
           requiredKinds: requiredProgramKinds(input.answers),

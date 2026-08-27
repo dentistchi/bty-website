@@ -21,10 +21,10 @@ import {
   type SectionDecision,
 } from "@/domain/foundry/module/program-authorship";
 import { isMetaStandardText } from "@/domain/foundry/module/program-coherence";
-import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { draftIdentityStatement, effectiveFollowUpDays, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
-import { resolveRefusalCopy, resolveAdoptionRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
+import { resolveRefusalCopy, resolveAdoptionRefusal, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
 import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
 import { EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
@@ -99,6 +99,8 @@ export type ProgramGenerateOutcome =
        * while a withheld one costs a tap.
        */
       retryable?: boolean;
+      /** Slice R4-R9B — WHAT the Host may do; absent means the caller could not establish it. */
+      mode?: string;
       /** The Host's own answer to revisit, and the Builder step it lives on. */
       recovery?: { field: string; step: number } | null;
     };
@@ -169,6 +171,7 @@ export function ProgramAuthorship({
   onCheckContextRefusal?: (fingerprint: string) => Promise<{
     code: string;
     refusal: string | null;
+    mode?: string;
     recovery: { field: string; step: number } | null;
   } | null>;
   /**
@@ -327,7 +330,7 @@ export function ProgramAuthorship({
    * Set from the generation result, or restored from the ledger for a context that was already
    * refused. Non-null ⇒ the automatic path must not start, whatever else is true.
    */
-  const [blocked, setBlocked] = useState<{ code: string; refusal: string | null; recovery: { field: string; step: number } | null } | null>(null);
+  const [blocked, setBlocked] = useState<{ code: string; refusal: string | null; mode?: string; recovery: { field: string; step: number } | null } | null>(null);
   /** Has the "was this context already refused?" question been answered yet? */
   const [verdictSettled, setVerdictSettled] = useState(false);
 
@@ -405,7 +408,24 @@ export function ProgramAuthorship({
       */
       setDecisions(initialSectionDecisions(journey, entry.proposal));
       setEdits(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, e.content])));
-      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null, answers, [], locale);
+      /*
+        THE DESIGN'S FOLLOW-UP, NOT THE STORED FIELD (Slice R4-R9B).
+
+        MEASURED on the Founder's draft `adb75f6a`: the adoption was refused `proposal_mismatch`
+        with a byte-identical fingerprint and the receipt went unfiled. This line was why. Slice
+        R4-R8B made the follow-up DERIVED — a fresh draft stores no `followUpDays` — and every
+        server-side reader was re-anchored to `effectiveFollowUpDays`, which answers 7. This one
+        client-side reader was missed and kept answering 0.
+
+        So the server composed WHAT HAPPENS NEXT for a seven-day follow-up and the review surface
+        re-rendered it for none. Slice R4-R5C13-R1 makes the surface adopt what it RENDERED, so
+        the adopted sentence differed from the one the durable digest was taken over — and the
+        adoption authority correctly refused a journey that was not the proposal it claimed.
+
+        The authority was right. The composition was skewed. One reader, re-anchored to the same
+        function every other caller already uses.
+      */
+      const c = contractsFromProposal(entry.proposal, effectiveFollowUpDays(answers), answers.problem ?? "", answers.completionPrompt ?? null, answers, [], locale);
       setContracts(c);
       setBaseContracts(c);
       setOpenDetails(null);
@@ -484,8 +504,13 @@ export function ProgramAuthorship({
         `=== false`: a caller that could not establish retryability leaves it undefined, and an
         unknown answer must not be read as permission to spend again.
       */
-      if (r.retryable !== true) {
-        setBlocked({ code: r.code, refusal: r.refusal ?? null, recovery: r.recovery ?? null });
+      /*
+        Slice R4-R9B — a TRANSIENT failure is the only one that keeps the plain retry surface.
+        Everything else is remembered, so reopening cannot silently start the generation the Host
+        never asked for; what differs between the remembered modes is what they are offered.
+      */
+      if (r.mode !== "transient_retry") {
+        setBlocked({ code: r.code, refusal: r.refusal ?? null, mode: r.mode, recovery: r.recovery ?? null });
       }
       setPhase("failed");
       return;
@@ -816,6 +841,24 @@ export function ProgramAuthorship({
    * what it may not do is spend without one, which is why the effect above refuses to run
    * while `failure` is set and why this is the only thing that clears it.
    */
+  /**
+   * ONE DELIBERATE REGENERATION (Slice R4-R9B).
+   *
+   * Clears the remembered verdict and releases the automatic effect, which then makes exactly one
+   * call with a fresh submission intent. No chaining, no counter, no automatic escalation — the
+   * existing rate limits and attempt lineage stay the only authorities on how often this may
+   * happen, and reopening the draft afterwards still spends nothing.
+   */
+  const regenerate = useCallback(() => {
+    autoStartedRef.current = false;
+    autoAppliedRef.current = false;
+    submittingRef.current = false;
+    setBlocked(null);
+    setFailure(null);
+    setFailureCode("");
+    setPhase("idle");
+  }, []);
+
   const retryAuto = useCallback(() => {
     autoStartedRef.current = false;
     autoAppliedRef.current = false;
@@ -935,6 +978,50 @@ export function ProgramAuthorship({
       const fieldKey = blocked.recovery?.field as keyof typeof t.hostSourceField | undefined;
       const fieldName = fieldKey ? t.hostSourceField[fieldKey] : null;
       const step = blocked.recovery?.step;
+      /*
+        REGENERATE ALLOWED (Slice R4-R9B). BTY read a program back and would not use it, and the
+        Host's own answers are valid — measured, and measured again by attempt #3 on the Founder's
+        draft, which succeeded on the same fingerprint two refusals had already rejected. So the
+        primary action is to ask BTY again, the Host's answer is an OPTIONAL second look, and
+        nobody is told to change something that is not wrong.
+
+        It still costs a deliberate tap: nothing here spends by itself, and reopening spends
+        nothing at all, which is the guarantee `blocked` exists to keep.
+      */
+      if (blocked.mode === "regenerate_allowed") {
+        return (
+          <section
+            ref={sectionRef}
+            className="flex flex-col gap-2 rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3.5"
+            data-testid="program-auto-regen"
+          >
+            <p className="text-sm font-medium text-amber-100/90" data-testid="program-regen-title">
+              {fieldName ? t.paRegenTitle(fieldName) : t.paAutoFailedTitle}
+            </p>
+            <p className="text-sm leading-6 text-amber-100/75">{t.paRegenBody}</p>
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={regenerate}
+                data-testid="program-regen-retry"
+                className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+              >
+                {t.paRegenCta}
+              </button>
+              {fieldName ? (
+                <button
+                  type="button"
+                  onClick={() => onRepairSource?.(step ?? null)}
+                  data-testid="program-regen-source"
+                  className="min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium text-amber-100/85 underline underline-offset-4"
+                >
+                  {t.paBlockedCta(fieldName)}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        );
+      }
       return (
         <section
           ref={sectionRef}
@@ -1190,7 +1277,9 @@ export function ProgramAuthorship({
         wrote this draft" — measured false on production draft `d04d48e1`, whose fingerprint was
         byte-identical. An unrecognised reason gets the honest fallback rather than a guess.
       */
-      const copy = resolveAdoptionRefusalCopy(adoptionRefusal ?? null);
+      // Slice R4-R9B — the Host's own language, and a recovery sentence that belongs to THIS
+      // reason rather than one printed under all eight.
+      const copy = resolveAdoptionRefusal(adoptionRefusal ?? null, locale);
       return (
         /*
           COMPACT, NEVER QUIET (Slice R4-R2E-R3). A failure keeps BOTH sentences and its amber
@@ -1199,7 +1288,7 @@ export function ProgramAuthorship({
         */
         <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3.5 py-2.5" data-testid="program-apply-refused">
           <p className="text-sm font-medium text-amber-100/90" data-testid="program-refused-headline">
-            {copy.headline} Your other changes were saved.
+            {locale === "ko" ? `${copy.headline} ${t.paApplyOtherChangesSaved}` : `${copy.headline} Your other changes were saved.`}
           </p>
           <p className="mt-0.5 text-sm leading-5 text-amber-100/75" data-testid="program-refused-explanation">
             {copy.explanation}
@@ -1221,7 +1310,7 @@ export function ProgramAuthorship({
             is discarded here rather than reused, so it cannot be adopted by another route.
           */}
           <p className="mt-2 text-sm leading-5 text-amber-100/85" data-testid="program-refused-recovery">
-            {t.programRefusedRecovery}
+            {copy.recovery}
           </p>
           <button
             type="button"

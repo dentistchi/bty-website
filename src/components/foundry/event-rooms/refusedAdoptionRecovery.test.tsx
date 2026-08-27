@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { render, screen, cleanup, fireEvent, act, waitFor } from "@testing-library/react";
 import { ProgramAuthorship } from "./ProgramAuthorship";
 import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
+import { resolveAdoptionRefusal } from "./programRefusalCopy";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
@@ -109,8 +110,19 @@ describe("[R4-R5C14A-R3 · T1-T4] a refused adoption offers one way out", () => 
     const panel = await intoRefusedState();
     // 1 — nothing new was adopted; 2 — the Host's other changes are safe.
     expect(screen.getByTestId("program-refused-headline").textContent).toContain("Your other changes were saved.");
-    // 3/4 — why the old draft cannot be used, and the one action that fixes it.
-    expect(screen.getByTestId("program-refused-recovery").textContent).toBe(MODULE_BUILDER_COPY.en.programRefusedRecovery);
+    /*
+      3/4 — why the old draft cannot be used, and the one action that fixes it.
+
+      Slice R4-R9B — the recovery sentence is now PER REASON. It used to be one line printed under
+      all eight refusals, which is how a Korean Host was told their training had changed by a card
+      whose own explanation said the opposite. Asserted against the resolver rather than a single
+      constant, so a reason that gains its own wording keeps this test honest instead of breaking it.
+    */
+    expect(screen.getByTestId("program-refused-recovery").textContent).toBe(
+      resolveAdoptionRefusal("proposal_mismatch", "en").recovery,
+    );
+    // And it must never claim the training moved unless that is what happened.
+    expect(screen.getByTestId("program-refused-recovery").textContent).not.toMatch(/changed after BTY/i);
     const buttons = panel.querySelectorAll("button");
     expect(buttons.length, "exactly one action, not zero and not a second generator").toBe(1);
     expect(buttons[0].getAttribute("data-testid")).toBe("program-refused-retry");
