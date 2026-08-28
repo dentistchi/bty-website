@@ -62,8 +62,24 @@ export function JourneyReading({
 }) {
   if (!journey || journey.elements.length === 0) return null;
   const lang = locale === "ko" ? "ko" : "en";
-  // The completion_check is delivered by the existing completion step, not the reading list.
-  const blocks = journey.elements.filter((e) => e.kind !== "completion_check");
+  /*
+    TWO KINDS ARE DELIVERED BY THEIR OWN CONTROLS, NOT BY THIS LIST (Slice C17A Single-Ask V1).
+    `completion_check` was always excluded for that reason. `action_decision` joins it on the same
+    reasoning, and on measured evidence.
+
+    MEASURED on the Founder's own completed run (event `6b1ba8b5`, progress `c2e66f5e`): in the
+    written-guidance and document rooms the reading list and the decision control sit in ONE
+    return, so once the learner declared the guidance read, the byte-identical C17A sentence —
+    "이것을 가장 먼저 해볼 상황은 언제인가요? 그때 무엇을 하겠어요?" — was on screen twice at once:
+    here as a question with no way to answer it, and again above `decision-context` with the ask
+    and the textarea. Only the second copy does anything.
+
+    THE VIDEO ROOM IS UNAFFECTED, and that is why this belongs here rather than behind a
+    room-specific prop: its watch and response stages are separate screens, so it never duplicated
+    the sentence — and all three rooms read `action_decision` straight off the journey for their
+    own `decision-context`, never from this list. No room can lose its only copy.
+  */
+  const blocks = journey.elements.filter((e) => e.kind !== "completion_check" && e.kind !== "action_decision");
   if (blocks.length === 0) return null;
   return (
     <section className="flex flex-col gap-4" data-testid="journey-reading">
