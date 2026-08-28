@@ -342,7 +342,21 @@ export const CONTRACT_DEFECT_REASONS = [
 ] as const;
 
 /** Which field failed, so a refusal is diagnosable without echoing model prose. */
-export type ContractDefect = { field: ContractField; reason: (typeof CONTRACT_DEFECT_REASONS)[number] };
+export type ContractDefect = {
+  field: ContractField;
+  reason: (typeof CONTRACT_DEFECT_REASONS)[number];
+  /**
+   * WHICH AUTHORITY WAS RECLAIMED (Slice R4-R10A-R1) — engineering truth, never persisted.
+   *
+   * `reason` stays inside the ledger's closed nine-value CHECK, so this needs no migration and
+   * changes nothing about what is stored. It exists because the two failures behave differently
+   * and diagnosing them from one shared code is what made the Founder's own refusal unresolvable:
+   * `action_reclaims_authority` alone cannot say whether a model named the person or the moment.
+   *
+   * Host-facing copy is unaffected and stays simple.
+   */
+  authority?: "actor" | "moment";
+};
 
 /**
  * THE MODEL HAS NO FIELD FOR A SUBJECT (Slice 3.2P-R3.7-R2).
@@ -584,45 +598,72 @@ export function actionNamesActorKo(action: string, answers: BuilderAnswers | und
   return new RegExp("[A-Za-z][A-Za-z .'-]*" + KO_SUBJECT_PARTICLE + "(?=\\s|$)").test(a);
 }
 
+/**
+ * Korean connectives that end a temporal clause.
+ *
+ * Matched as a whole TOKEN or a token's ending — `들었을 때`, `발생한 뒤`, `확인 후`, `끝나기 전에` —
+ * so a connective is a clause boundary rather than a substring found anywhere.
+ */
+const KO_TEMPORAL_CONNECTIVES: readonly string[] = ["때마다", "때", "전에", "후에", "뒤에", "직전", "직후", "뒤", "후", "전"];
+
 /** Occasion words that claim a moment on their own, whatever the Host's trigger says. */
 const KO_FREQUENCY = /(?:^|\s)(?:매번|매일|매주|매월|항상|늘|언제나)(?=\s|$)|때마다/;
-
-/** Korean clause endings that place an action in time. Consulted only beside the Host's words. */
-const KO_TEMPORAL_CLAUSE = /\s때(?=\s|$|[,.])|때마다|전에|후에|직전에/;
 
 /** Content tokens of a Korean phrase: particles stripped, one-character noise dropped. */
 function koContentTokens(text: string): string[] {
   return String(text)
     .split(/[\s,.·]+/)
-    .map((t) => t.replace(/(?:을|를|이|가|은|는|의|에|에서|와|과|로|으로|도|만)$/u, ""))
+    .map((t) => t.replace(/(?:이나|이며|을|를|이|가|은|는|의|에|에서|와|과|로|으로|도|만)$/u, ""))
     .filter((t) => t.length >= 2);
 }
 
+/** Do two Korean content tokens refer to the same thing? Containment, so 요청 ≡ 요청이나. */
+function koTokenMatches(a: string, b: string): boolean {
+  return a === b || a.includes(b) || b.includes(a);
+}
+
 /**
- * Does the action reclaim the HOST'S moment?
+ * DOES THE ACTION REPRODUCE THE HOST'S TEMPORAL CONDITION? (Slice R4-R10A-R1)
  *
- * The Host's trigger is the evidence, which is what keeps this from becoming "no temporal words
- * allowed". Two content tokens shared with the trigger is a restatement; one shared token plus a
- * temporal clause ending is the same restatement written shorter. A bare frequency adverbial
- * claims an occasion while borrowing none of the Host's words, so it stands on its own.
+ * V1 asked a different question — "do the action and the trigger share two content words?" — and
+ * the Founder's own training disproved it within a day. Its moment was
+ * `고객의 요청이나 변경 사항을 들었을 때`, so 고객 and 요청 are the OBJECT of nearly every honest
+ * action about it, and `고객 요청을 CRM에 기록한다` was refused. Vocabulary overlap is a fact about
+ * subject matter. Reclaiming WHEN is a fact about STRUCTURE.
+ *
+ * So the rule now needs a temporal SKELETON: a connective ending a clause, AND that clause naming
+ * something the Host's moment names. Both halves are required, and each rules out one failure:
+ *
+ *   · without the connective, `고객 요청을 다시 확인한다` is refused — the measured false positive;
+ *   · without the trigger link, `확인 후 결과를 기록한다` is refused — a temporal word that has
+ *     nothing to do with the Host's occasion, which §4 of the brief names explicitly.
+ *
+ * A bare frequency adverbial stands alone: it claims an occasion while borrowing none of the
+ * Host's words, so there is nothing to link it to.
  */
 export function actionNamesMomentKo(action: string, trigger: string): boolean {
   const a = action.trim();
   if (a.length === 0) return false;
   if (KO_FREQUENCY.test(a)) return true;
-  const triggerTokens = new Set(koContentTokens(trigger));
-  if (triggerTokens.size === 0) return false;
-  let shared = 0;
-  for (const tok of new Set(koContentTokens(a))) {
-    for (const tt of triggerTokens) {
-      if (tok === tt || tok.includes(tt) || tt.includes(tok)) {
-        shared += 1;
-        break;
-      }
-    }
+
+  const triggerTokens = koContentTokens(trigger);
+  if (triggerTokens.length === 0) return false;
+
+  const tokens = a.split(/[\s,.·]+/).filter(Boolean);
+  const CLAUSE_LOOKBACK = 4;
+  for (let i = 0; i < tokens.length; i += 1) {
+    const isConnective = KO_TEMPORAL_CONNECTIVES.some((c) => tokens[i] === c || tokens[i].endsWith(c));
+    if (!isConnective) continue;
+    /*
+      The clause is what precedes the connective, bounded. Four tokens is enough for every Korean
+      temporal clause the Host writes here (`고객의 요청이나 변경 사항을 들었을 때`) and short
+      enough that a connective late in a sentence cannot reach back over the whole action.
+    */
+    const span = tokens.slice(Math.max(0, i - CLAUSE_LOOKBACK), i + 1).join(" ");
+    const spanTokens = koContentTokens(span);
+    if (spanTokens.some((st) => triggerTokens.some((tt) => koTokenMatches(st, tt)))) return true;
   }
-  if (shared >= 2) return true;
-  return shared >= 1 && KO_TEMPORAL_CLAUSE.test(a);
+  return false;
 }
 
 /**
@@ -849,10 +890,10 @@ export function validateBehaviorContract(
       authorised on its own terms, and the prompt carries the language contract meanwhile.
     */
     if (actionNamesActorKo(value.observableAction, opts.answers)) {
-      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
+      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority", authority: "actor" } };
     }
     if (actionNamesMomentKo(value.observableAction, value.trigger) || EN_TEMPORAL_IN_KO.test(value.observableAction)) {
-      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
+      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority", authority: "moment" } };
     }
   }
   if (actionNamesActor(value.observableAction) || actionNamesMoment(value.observableAction)) {
