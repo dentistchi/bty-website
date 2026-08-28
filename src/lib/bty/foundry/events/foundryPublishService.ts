@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { isJourneyApprovable, journeyCompletionCheck } from "@/domain/foundry/module/journey";
 import { missingProgramKinds } from "@/domain/foundry/module/program-authorship";
 import { classifyRealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
@@ -8,6 +8,7 @@ import {
   buildModuleSnapshot,
   buildPublishedGuidance,
   completionPromptOrNull,
+  publishedTrainingTitle,
   sharedQuestionOrNull,
   PUBLISHED_GUIDANCE_KEY,
 } from "@/domain/foundry/module/module-publish";
@@ -442,9 +443,12 @@ export async function publishDraft(
     return { ok: false, reason: "decision_missing" };
   }
 
-  const title = journeyEnabled
-    ? (journey!.displayTitle ?? "").trim()
-    : (draftTitleFrom(answers) ?? answers.problem ?? "").trim();
+  /*
+    THE HOST'S OWN NAME (Slice Title Authority V1). One decision, made in one domain function —
+    see `publishedTrainingTitle` for why `journey.displayTitle` was left alone rather than
+    reseeded, and why a legacy draft with no authored title still publishes under it.
+  */
+  const title = publishedTrainingTitle(answers, journeyEnabled ? journey! : null);
   if (!title) return { ok: false, reason: "title_required" };
 
   const promptRaw = journeyEnabled

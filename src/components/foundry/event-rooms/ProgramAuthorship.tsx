@@ -124,6 +124,7 @@ export function ProgramAuthorship({
   onDismissRefusal,
   onPendingChange,
   onAdopted,
+  onTitleAuthored,
 }: {
   /**
    * R4-R7A-R2 — so Review's repair CTA can bring this surface into view on a phone. The
@@ -218,6 +219,15 @@ export function ProgramAuthorship({
      */
     decisions?: Record<string, string>,
   ) => Promise<ProgramApplyOutcome> | void;
+  /**
+   * THE HOST RENAMED THEIR TRAINING (Slice Title Authority V1).
+   *
+   * Called only when the Host actually typed into the program-title field, with the name they
+   * typed. Deliberately SEPARATE from `onApply`: the adopted journey's `displayTitle` is the
+   * PROPOSAL's identity — it is hashed into the adoption digest — while the training's name is
+   * `answers.title`. Routing one through the other is what produced two names for one training.
+   */
+  onTitleAuthored?: (title: string) => void;
   /**
    * The Host-input authority as it is RIGHT NOW. Compared against the fingerprint the
    * proposal was written from, so a proposal cannot silently overwrite answers the Host
@@ -695,6 +705,13 @@ export function ProgramAuthorship({
       Now: a missing outcome is a failure, the cache survives anything but a real adoption, and a
       thrown error becomes a visible, retryable state.
     */
+    /*
+      The Host's own name for the training, recorded where the training is named. Only on a real
+      edit: the default `use` carries BTY's suggested PROGRAM title, which never renames a
+      training the Host already named at Step 1.
+    */
+    if (titleDecision === "edit" && titleEdit.trim().length > 0) onTitleAuthored?.(titleEdit.trim());
+
     let outcome: ProgramApplyOutcome;
     try {
       outcome =
@@ -722,7 +739,7 @@ export function ProgramAuthorship({
       clearCachedProposal(draftId);
     }
     setPhase("applied");
-  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId, onPendingChange]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, onTitleAuthored, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId, onPendingChange]);
 
   /**
    * HAS THIS CONTEXT ALREADY BEEN REFUSED? (Slice R4-R9A)

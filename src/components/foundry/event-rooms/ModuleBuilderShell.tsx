@@ -914,6 +914,8 @@ export function ModuleBuilderShell({
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
             onAdopted={() => setAdoptionHandoff((n) => n + 1)}
+            /* One training, one name — a rename in authorship review lands where publish reads. */
+            onTitleAuthored={(title) => patchAnswers({ title }, true)}
           />
           </div>
           <div className="lg:col-span-2">

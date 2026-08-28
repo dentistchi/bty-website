@@ -272,8 +272,21 @@ export function JourneyPreview({
   const confirmTitle = useCallback(() => {
     const t = titleDraft.trim();
     if (!t) return;
-    persist({ ...journey, displayTitle: t, displayTitleStatus: "grounded" });
-  }, [journey, persist, titleDraft]);
+    /*
+      ONE TRAINING, ONE NAME (Slice Title Authority V1).
+
+      This wrote only `displayTitle`, so a Host who renamed their training here left
+      `answers.title` — the field the draft list shows and publish now reads — holding the OLD
+      name. Both are written together, in one patch, so a rename cannot half-land.
+
+      `displayTitle` is still written because it is the proposal's identity (it is hashed into the
+      adoption digest) and because `displayTitleStatus: "grounded"` is the Review approval gate.
+      Naming the training and confirming the program are the same gesture here; they are simply
+      two different records of it.
+    */
+    setJourney({ ...journey, displayTitle: t, displayTitleStatus: "grounded" });
+    onPatch({ realityGroundedJourneyV1: { ...journey, displayTitle: t, displayTitleStatus: "grounded" }, title: t }, true);
+  }, [journey, onPatch, titleDraft]);
 
   return (
     <section

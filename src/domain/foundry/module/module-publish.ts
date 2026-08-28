@@ -16,12 +16,14 @@
  */
 
 import {
+  draftTitleFrom,
   effectiveArenaRecommended,
   effectiveFollowUpDays,
   effectiveLearningNeeds,
   stepBlockers,
   type BuilderAnswers,
 } from "./module-builder";
+import type { RealityGroundedJourneyV1 } from "./journey";
 import { MATERIAL_INTENT_CONTENT_TYPE, type GuidanceContentType } from "../events/content-type";
 
 // ---------------------------------------------------------------------------
@@ -434,4 +436,38 @@ export function completionPromptOrNull(answers: BuilderAnswers | undefined): str
 export function sharedQuestionOrNull(answers: BuilderAnswers | undefined): string | null {
   const v = (answers?.sharedQuestion ?? "").trim();
   return v.length > 0 ? v : null;
+}
+
+
+/**
+ * THE NAME A PUBLISHED TRAINING CARRIES (Slice Title Authority V1).
+ *
+ * MEASURED: the Founder authored 회의 후 실행 확인하기, published it, and could not find it — the
+ * room row said 회의 후 할 일의 담당자 및 마감일 확인하기, because publish read
+ * `journey.displayTitle` while the draft card read `answers.title`. One training, two Host-facing
+ * names, and the one that vanished was the one they typed. A training nobody can find by the name
+ * they gave it is missing in the only sense that matters.
+ *
+ * THE HOST'S TITLE IS THE TRAINING'S IDENTITY, and this is the single place that decides it.
+ *
+ * WHY `displayTitle` WAS NOT SIMPLY REPLACED — the alternative that looks like the tidier fix.
+ * `displayTitle` is hashed into `proposalDigest` / `journeyDigest`, which is how `adoption-authority`
+ * proves an adopted journey IS the generated proposal. Seeding it from the Host would make every
+ * fresh training digest as Host-edited and be refused `proposal_mismatch` — the refusal Recovery
+ * Truth B closed on a real draft. So `displayTitle` keeps its one real job, identifying the
+ * PROPOSAL, and stops being a second name for the training.
+ *
+ * THE FALLBACK IS THE JOURNEY, NEVER THE PROBLEM (§6 — no retroactive rename). Drafts authored
+ * before Step 1 asked for a name have no `title`, and `draftTitleFrom` would fall back to the
+ * problem's first line — renaming historical trainings after a recurring-condition sentence, the
+ * very defect 3.2R-R2.1 removed from the learner-facing seed. Those keep their journey title.
+ * The problem-derived fallback survives only where it always was: the non-journey path.
+ */
+export function publishedTrainingTitle(
+  answers: BuilderAnswers | undefined,
+  journey: RealityGroundedJourneyV1 | null,
+): string {
+  const authored = typeof answers?.title === "string" ? answers.title.trim() : "";
+  if (journey) return authored.length > 0 ? authored : (journey.displayTitle ?? "").trim();
+  return (draftTitleFrom(answers) ?? answers?.problem ?? "").trim();
 }

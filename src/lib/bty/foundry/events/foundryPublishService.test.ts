@@ -276,18 +276,48 @@ function journeyDraft(journey: Record<string, unknown>): Row {
 }
 
 describe("publishDraft — Journey-enabled (B3A)", () => {
-  it("uses the approved Journey displayTitle + completion_check (NOT the raw problem line / completionPrompt) and freezes the Journey into the snapshot", async () => {
+  /*
+    RETARGETED, NOT WEAKENED (Slice Title Authority V1). This asserted that the published event
+    took its title from `journey.displayTitle`. That is exactly the behaviour the Founder hit: the
+    training they named 회의 후 실행 확인하기 published as the model's sentence and read as missing.
+    The Host's own name is now the training's identity. Everything else this test protected —
+    the completion check coming from the Journey rather than `completionPrompt`, and the exact
+    Journey being frozen into the snapshot — is unchanged and still asserted here.
+  */
+  it("publishes under the HOST's own title, and still takes completion_check from the Journey", async () => {
     const tables: Tables = { foundry_module_drafts: [journeyDraft(groundedJourney())], foundry_event_module: [] };
     const admin = makeFakeAdmin(tables);
     const r = await publishDraft(admin, OWNER, "d-yt", "en");
     expect(r.ok).toBe(true);
-    // title + completion came from the approved Journey
     const call = createTrainingEvent.mock.calls[0];
-    expect(call[2].title).toBe("Read-back before sign-off");
+    expect(call[2].title, "published training must retain the Host-authored title").toBe("Read Back Before Sign-Off");
     expect(call[2].completion_prompt).toBe("What read-back will you commit to?");
-    // the exact approved Journey is in the immutable snapshot
+    /*
+      AND THE PROPOSAL'S IDENTITY IS UNTOUCHED. `displayTitle` is hashed into the adoption digest,
+      so the frozen Journey must still carry the title it was adopted with — naming the training
+      is not editing the program.
+    */
     const snap = tables.foundry_event_module[0].module_snapshot as Row;
     expect((snap.realityGroundedJourneyV1 as Row).displayTitle).toBe("Read-back before sign-off");
+  });
+
+  it("a draft with no authored title cannot publish at all — so publish never has to invent a name", async () => {
+    /*
+      MEASURED WHILE BUILDING TITLE AUTHORITY V1, and it makes the invariant stronger than it
+      looked. `stepBlockers` pushes `title_required`, so readiness refuses a nameless draft before
+      publish is reached: EVERY publishable draft carries a Host-authored title. The journey
+      fallback in `publishedTrainingTitle` is therefore a defensive shape for direct callers, not
+      a live path — and no existing training can be renamed by this slice, because none of them
+      can reach publish without the name their Host gave them.
+    */
+    const base = journeyDraft(groundedJourney());
+    const nameless = { ...base, answers: { ...(base.answers as Row), title: undefined } };
+    const tables: Tables = { foundry_module_drafts: [nameless], foundry_event_module: [] };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en");
+    expect(r.ok).toBe(false);
+    expect(createTrainingEvent).not.toHaveBeenCalled();
+    expect(tables.foundry_event_module).toHaveLength(0);
   });
 
   it("BLOCKS publish while the Journey is not fully grounded (needs_confirmation) — nothing created", async () => {
