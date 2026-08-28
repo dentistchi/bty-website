@@ -2056,6 +2056,14 @@ export function validateProgramProposal(
     actor: CANONICAL_ACTOR,
     trigger: ctx?.recurringMoment ?? recurringMomentFrom(answers),
     criterion: ctx?.successEvidence ?? completionCriterionFrom(answers),
+  }, {
+    /*
+      Slice R4-R10A — the locale and the Host's answers reach the authority rules, so a Korean
+      training is judged by Korean rules. Without this the new detectors exist and never run,
+      which is the shape of the defect they were written for.
+    */
+    locale,
+    answers,
   });
   // A well-formed contract that states no behavior. Not retryable: the shape was right.
   if (!contractResult.ok) {

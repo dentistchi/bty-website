@@ -38,6 +38,7 @@
 import { JOURNEY_KIND_ORDER, type JourneyElementKind } from "./journey";
 import { journeyCopy, type JourneyLocale } from "./journeyLocaleCopy";
 import { isInterrogativeAction } from "./observableStandardShape";
+import type { BuilderAnswers } from "./module-builder";
 
 // ---------------------------------------------------------------------------
 // Entity lifecycle — one authority for "does this text presuppose a thing exists?"
@@ -510,6 +511,148 @@ const FREQUENCY_ADVERBIAL = new RegExp(
 /** A leading subordinate clause that closes on a comma — "after the meeting ends, record it". */
 const LEADING_TIME_CLAUSE = /^\s*(?:when|once|as|after|before|at|on)\b[^,]{0,80},/i;
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * KOREAN AUTHORITY DETECTION (Slice R4-R10A)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * MEASURED BEFORE ANY OF THIS WAS WRITTEN: a 56-fixture Korean corpus across five Host contexts
+ * scored 26/56 against the shipped validator. Every Korean actor leak passed. Every Korean moment
+ * leak passed. An action restating the Host's recurring moment VERBATIM passed. The English-only
+ * rules below cannot fire on Hangul, so for a Korean training the authority boundary was not
+ * weakly enforced — it was unenforced.
+ *
+ * WHAT THESE RULES DELIBERATELY ARE NOT:
+ *
+ *   · NOT "any noun + 이/가/은/는 is an actor". `상대가 이해한 내용을 한 번 확인한다` is a clean
+ *     action and stays one; a subject particle is a grammatical fact, not a reclaim. Only
+ *     expressions the HOST'S OWN CONTEXT establishes as the actor count.
+ *   · NOT "any temporal word is a moment". What is forbidden is reclaiming the moment the HOST
+ *     wrote, so the Host's trigger is the evidence — not a list of time words.
+ *   · NOT a Latin-character ban. `KPI를 확인한다`, `CRM에 기록한다`, `QR 코드를 스캔한다` and
+ *     `Slack에 공유한다` are ordinary Korean workplace sentences, and every one is in the corpus
+ *     as an ACCEPT. Acronyms are acceptance examples, never a closed vocabulary.
+ */
+
+/** Korean subject and topic markers — the only particles that can make a noun the actor. */
+const KO_SUBJECT_PARTICLE = "(?:이|가|은|는)";
+
+/** Second person, in both languages. The server writes the actor; nobody else may name one. */
+const SECOND_PERSON_ACTORS: readonly string[] = ["당신", "여러분", "너희", "너", "you"];
+
+/**
+ * The expressions THIS Host's context establishes as the actor.
+ *
+ * `audienceDetail` is the Host's own words for who this is for, so it is the strongest available
+ * evidence — and its final token too, because a model that writes `팀 리더` in one sentence
+ * writes `리더` in the next. Nothing generic is added: with no Host detail, only second-person
+ * forms count, which is the conservative direction.
+ */
+function actorExpressionsFor(answers: BuilderAnswers | undefined): string[] {
+  const out: string[] = [...SECOND_PERSON_ACTORS];
+  const detail = String((answers ?? {}).audienceDetail ?? "").trim();
+  if (detail.length > 0) {
+    out.push(detail);
+    const last = detail.split(/\s+/).filter(Boolean).pop();
+    if (last && last.length >= 2) out.push(last);
+  }
+  return out;
+}
+
+const escapeForRegex = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Does the action name WHO, in Korean?
+ *
+ * Three shapes, every one requiring an actor EXPRESSION rather than merely a person-shaped noun:
+ * a Host-established role or second person carrying a subject/topic particle; a bare English
+ * `you`; and a Latin phrase wearing a Korean subject particle, which is how a mixed-script
+ * response smuggles an actor in (`the team leader가 …`).
+ */
+export function actionNamesActorKo(action: string, answers: BuilderAnswers | undefined): boolean {
+  const a = action.trim();
+  if (a.length === 0) return false;
+  for (const expr of actorExpressionsFor(answers)) {
+    if (/^you$/i.test(expr)) {
+      if (/(?:^|\s)you(?=\s|$)/i.test(a)) return true;
+      continue;
+    }
+    const re = new RegExp("(?:^|[\\s(])" + escapeForRegex(expr) + "\\s*" + KO_SUBJECT_PARTICLE + "(?=\\s|$)");
+    if (re.test(a)) return true;
+  }
+  // A Latin phrase wearing a Korean subject particle is an actor by construction.
+  return new RegExp("[A-Za-z][A-Za-z .'-]*" + KO_SUBJECT_PARTICLE + "(?=\\s|$)").test(a);
+}
+
+/** Occasion words that claim a moment on their own, whatever the Host's trigger says. */
+const KO_FREQUENCY = /(?:^|\s)(?:매번|매일|매주|매월|항상|늘|언제나)(?=\s|$)|때마다/;
+
+/** Korean clause endings that place an action in time. Consulted only beside the Host's words. */
+const KO_TEMPORAL_CLAUSE = /\s때(?=\s|$|[,.])|때마다|전에|후에|직전에/;
+
+/** Content tokens of a Korean phrase: particles stripped, one-character noise dropped. */
+function koContentTokens(text: string): string[] {
+  return String(text)
+    .split(/[\s,.·]+/)
+    .map((t) => t.replace(/(?:을|를|이|가|은|는|의|에|에서|와|과|로|으로|도|만)$/u, ""))
+    .filter((t) => t.length >= 2);
+}
+
+/**
+ * Does the action reclaim the HOST'S moment?
+ *
+ * The Host's trigger is the evidence, which is what keeps this from becoming "no temporal words
+ * allowed". Two content tokens shared with the trigger is a restatement; one shared token plus a
+ * temporal clause ending is the same restatement written shorter. A bare frequency adverbial
+ * claims an occasion while borrowing none of the Host's words, so it stands on its own.
+ */
+export function actionNamesMomentKo(action: string, trigger: string): boolean {
+  const a = action.trim();
+  if (a.length === 0) return false;
+  if (KO_FREQUENCY.test(a)) return true;
+  const triggerTokens = new Set(koContentTokens(trigger));
+  if (triggerTokens.size === 0) return false;
+  let shared = 0;
+  for (const tok of new Set(koContentTokens(a))) {
+    for (const tt of triggerTokens) {
+      if (tok === tt || tok.includes(tt) || tt.includes(tok)) {
+        shared += 1;
+        break;
+      }
+    }
+  }
+  if (shared >= 2) return true;
+  return shared >= 1 && KO_TEMPORAL_CLAUSE.test(a);
+}
+
+/**
+ * An English time or frequency word inside a Korean action.
+ *
+ * Separate from the Korean rules because it needs no relation to the Host's trigger: an English
+ * temporal function word in a Korean training's action is a moment written in the wrong language,
+ * and no legitimate Korean sentence needs one.
+ */
+const EN_TEMPORAL_IN_KO = /(?:^|\s)(?:before|after|during|while|whenever|when|every|each)(?=\s|$)/i;
+
+/**
+ * IS THIS ACTION SIMPLY NOT IN THE TRAINING'S LANGUAGE? (Slice R4-R10A)
+ *
+ * The most conservative rule in this file, and deliberately not language identification: an
+ * action with ANY Hangul in it is Korean enough. Only prose with no Hangul at all — and enough
+ * Latin words to be prose rather than a code — is a mismatch. `KPI를 확인한다` has Hangul and
+ * passes; `check the KPI` has none and does not.
+ *
+ * The prompt owns natural-language QUALITY. This owns only the clear mismatch, because a
+ * validator cannot repair language: it can only refuse, and refusing a borderline sentence costs
+ * a Host a generation over a judgement this is not qualified to make.
+ */
+export function actionLanguageMismatchKo(action: string): boolean {
+  const a = action.trim();
+  if (a.length === 0) return false;
+  if (/[가-힣]/.test(a)) return false;
+  return (a.match(/[A-Za-z][A-Za-z'-]*/g) ?? []).length >= 2;
+}
+
 /** Does this action name WHEN, which the Host owns? */
 export function actionNamesMoment(action: string): boolean {
   const a = action.trim();
@@ -609,6 +752,12 @@ export type ServerBehaviorAuthority = {
 export function validateBehaviorContract(
   raw: unknown,
   server: ServerBehaviorAuthority,
+  /**
+   * The training's locale and the Host's own answers (Slice R4-R10A). OPTIONAL, and its absence
+   * is not a default — it means the caller cannot say, and the Korean rules then do not run at
+   * all. Every existing caller keeps its exact behaviour until it passes this.
+   */
+  opts?: { locale?: JourneyLocale; answers?: BuilderAnswers },
 ): { ok: true; value: BehaviorContract } | { ok: false; defect: ContractDefect } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return { ok: false, defect: { field: "observableAction", reason: "missing" } };
@@ -679,6 +828,33 @@ export function validateBehaviorContract(
     shipped to a Founder. Not repairable: a model that reclaims a settled authority is not one
     sentence away from right, and offering it a creative retry invites the same move again.
   */
+  /*
+    KOREAN PARITY (Slice R4-R10A). The rules below are English-only — measured at 26/56 on a
+    Korean corpus — so for a `ko` training they enforced nothing. These apply the same authority
+    boundary in Korean, using the Host's own audience and trigger as the evidence rather than a
+    list of person-nouns or time-words. `opts` absent ⇒ behaviour byte-identical to before.
+  */
+  if (opts?.locale === "ko") {
+    /*
+      LANGUAGE MISMATCH IS DETECTED BUT NOT YET REFUSED (Slice R4-R10A).
+
+      `actionLanguageMismatchKo` is written, exported and covered by six fixtures — and it is not
+      wired in here, deliberately. A refusal needs a reason, and the reason vocabulary is pinned
+      to `foundry_program_call_behavior_contract_reason_check`, a closed nine-value CHECK: two
+      parity tests exist precisely to stop the domain knowing a reason the ledger cannot store.
+      They caught this within minutes of it being written, which is the argument for keeping them.
+
+      Emitting an existing reason instead would be worse than waiting — a language fault recorded
+      as `action_reclaims_authority` is a diagnostic that lies. So the rule waits for a migration
+      authorised on its own terms, and the prompt carries the language contract meanwhile.
+    */
+    if (actionNamesActorKo(value.observableAction, opts.answers)) {
+      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
+    }
+    if (actionNamesMomentKo(value.observableAction, value.trigger) || EN_TEMPORAL_IN_KO.test(value.observableAction)) {
+      return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
+    }
+  }
   if (actionNamesActor(value.observableAction) || actionNamesMoment(value.observableAction)) {
     return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
   }

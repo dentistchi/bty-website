@@ -324,6 +324,37 @@ export function systemPrompt(
     "- Do NOT write what the program proves. BTY states that itself, from what the journey actually records.",
     "- WHY THIS MATTERS explains the problem the host described. It must NOT promise outcomes — no claim that this improves project success, collaboration, productivity, safety or results.",
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
+    /*
+      THE ACTION CONTRACT IS NOT PARTICIPANT-FACING TEXT (Slice R4-R10A).
+
+      MEASURED: the line above was the ONLY locale-conditional string in this entire prompt, and
+      it is scoped to participant-facing text — while `action_verb` and `action_detail` are
+      CONTRACT fields the server composes into a sentence. Every example for them was English,
+      and so was every WRONG example teaching the authority boundary. A model returning English
+      action fields for a Korean training was conforming to the prompt as written.
+ 
+      So the contract is named explicitly, in the training's own language, with the same two
+      prohibitions the validator enforces — and with the acronym allowance stated, because the
+      repair for language must never become "no Latin characters": KPI, CRM, QR, Slack and
+      product names are ordinary Korean workplace vocabulary.
+    */
+    ...(isKo
+      ? [
+          "",
+          "ACTION CONTRACT — action_verb and action_detail (these are NOT prose; the server builds the sentence):",
+          "- Write action_verb and action_detail in KOREAN, as a Korean training would say them.",
+          "- Ordinary workplace acronyms, product names and codes may stay in Latin script: KPI, CRM, QR, Slack, API.",
+          "- NEVER name WHO does it. The server writes the subject.",
+          "- NEVER name WHEN it happens. The host already fixed the occasion.",
+          "- NEVER repeat the host's success evidence. Completion is already decided.",
+          "- Write only the action itself.",
+          'CORRECT: action_verb "확인하다", action_detail "담당자와 마감일을 확인한다".',
+          'WRONG — names WHO: "팀 리더가 담당자와 마감일을 확인한다".',
+          'WRONG — names WHEN: "회의가 끝나기 전에 담당자와 마감일을 확인한다".',
+          'WRONG — repeats the evidence: copying the host\'s success criterion into the action.',
+          'WRONG — wrong language: "confirm the owner and deadline" for a Korean training.',
+        ]
+      : []),
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
     '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"action_verb":string,"action_detail":string},"scenario_contract":{"pressure_frame":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
