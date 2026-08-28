@@ -539,8 +539,9 @@ const LEADING_TIME_CLAUSE = /^\s*(?:when|once|as|after|before|at|on)\b[^,]{0,80}
  * WHAT THESE RULES DELIBERATELY ARE NOT:
  *
  *   · NOT "any noun + 이/가/은/는 is an actor". `상대가 이해한 내용을 한 번 확인한다` is a clean
- *     action and stays one; a subject particle is a grammatical fact, not a reclaim. Only
- *     expressions the HOST'S OWN CONTEXT establishes as the actor count.
+ *     action and stays one; a subject particle is a grammatical fact, not a reclaim. Since
+ *     V1-R2 the only expressions that count are SECOND PERSON — see the actor rule below for
+ *     why the Host's own role words stopped counting.
  *   · NOT "any temporal word is a moment". What is forbidden is reclaiming the moment the HOST
  *     wrote, so the Host's trigger is the evidence — not a list of time words.
  *   · NOT a Latin-character ban. `KPI를 확인한다`, `CRM에 기록한다`, `QR 코드를 스캔한다` and
@@ -554,39 +555,56 @@ const KO_SUBJECT_PARTICLE = "(?:이|가|은|는)";
 /** Second person, in both languages. The server writes the actor; nobody else may name one. */
 const SECOND_PERSON_ACTORS: readonly string[] = ["당신", "여러분", "너희", "너", "you"];
 
-/**
- * The expressions THIS Host's context establishes as the actor.
- *
- * `audienceDetail` is the Host's own words for who this is for, so it is the strongest available
- * evidence — and its final token too, because a model that writes `팀 리더` in one sentence
- * writes `리더` in the next. Nothing generic is added: with no Host detail, only second-person
- * forms count, which is the conservative direction.
- */
-function actorExpressionsFor(answers: BuilderAnswers | undefined): string[] {
-  const out: string[] = [...SECOND_PERSON_ACTORS];
-  const detail = String((answers ?? {}).audienceDetail ?? "").trim();
-  if (detail.length > 0) {
-    out.push(detail);
-    const last = detail.split(/\s+/).filter(Boolean).pop();
-    if (last && last.length >= 2) out.push(last);
-  }
-  return out;
-}
-
 const escapeForRegex = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Does the action name WHO, in Korean?
  *
- * Three shapes, every one requiring an actor EXPRESSION rather than merely a person-shaped noun:
- * a Host-established role or second person carrying a subject/topic particle; a bare English
- * `you`; and a Latin phrase wearing a Korean subject particle, which is how a mixed-script
- * response smuggles an actor in (`the team leader가 …`).
+ * Two shapes, both requiring an actor EXPRESSION rather than merely a person-shaped noun: second
+ * person carrying a subject/topic particle (or a bare English `you`), and a Latin phrase wearing
+ * a Korean subject particle, which is how a mixed-script response smuggles an actor in
+ * (`the team leader가 …`).
+ *
+ * THE HOST'S ROLE WORDS ARE GONE FROM THIS RULE (Slice V1-R2), and that is a product decision
+ * rather than a simplification.
+ *
+ * V1 also counted the Host's `audienceDetail` and its final token, on the reasoning that they are
+ * the strongest available evidence of who the actor is. Measured on a `specific_role` / `팀 리더`
+ * training, that refused ordinary Korean:
+ *
+ *     확인한 내용을 팀 리더가 정한 양식에 기록한다      ← 팀 리더가 modifies 정한
+ *     제출한 자료를 리더가 요청한 순서대로 검토한다     ← 리더가 modifies 요청한
+ *
+ * Korean relativizes with a bare subject-marked noun, so an embedded clause and a reclaimed actor
+ * are the same characters in the same position — `팀 리더가 승인한 내용을 기록한다` (a clean action)
+ * and `팀 리더가 핵심 내용을 확인한다` (a reclaim) differ only in what the NEXT word does.
+ * Separating them is clause parsing, and this file does not parse Korean.
+ *
+ * WHAT THE REFUSAL WAS PROTECTING: nothing a person reads. The generated ACTION is intermediate.
+ * `baseActionPhrase` has one call site (`renderStandardSentence`), which R4-R5C14A marked as no
+ * longer learner-facing; `deriveInstructionalContent` returns null for `observable_standard`, so
+ * THE STANDARD on both the learner's and the Host's screen is the Host's own `observableBehavior`
+ * carried verbatim; the actor is `CANONICAL_ACTOR`, passed in as server authority with no schema
+ * field for the model to write; and no path persists a proposal or a contract. The same reasoning
+ * had already closed the generic-role question (`팀원이 …`) as harmless variance one slice
+ * earlier — keeping a Host-role rule while that stayed absent was the inconsistency.
+ *
+ * ACCEPTED INTERMEDIATE VARIANCE, stated plainly rather than called a fix: after this slice
+ * `action_verb: "팀"` + `action_detail: "리더가 핵심 내용을 확인한다"` is ACCEPTED. It is reachable —
+ * a one-token role puts the particle on the verb field and `actionVerbDefect` refuses it first,
+ * but a multi-token role does not — and it is inert for every reason above. `koActorAuthority`
+ * asserts it as a residual, not as a desirable output; the prompt still forbids writing a subject.
+ *
+ * THIS ACCEPTANCE EXPIRES IF ANY OF THESE BECOMES FALSE. Re-audit before shipping code that
+ * renders `observableAction` into participant-facing text, persists a `BehaviorContract`, derives
+ * learner content from `baseActionPhrase`, or treats the model's action as authority for WHO. The
+ * invariants are asserted in `koActorAuthority.test.ts` (T10–T13) so the change that breaks one
+ * of them fails there rather than reaching a Host.
  */
-export function actionNamesActorKo(action: string, answers: BuilderAnswers | undefined): boolean {
+export function actionNamesActorKo(action: string): boolean {
   const a = action.trim();
   if (a.length === 0) return false;
-  for (const expr of actorExpressionsFor(answers)) {
+  for (const expr of SECOND_PERSON_ACTORS) {
     if (/^you$/i.test(expr)) {
       if (/(?:^|\s)you(?=\s|$)/i.test(a)) return true;
       continue;
@@ -797,6 +815,13 @@ export function validateBehaviorContract(
    * The training's locale and the Host's own answers (Slice R4-R10A). OPTIONAL, and its absence
    * is not a default — it means the caller cannot say, and the Korean rules then do not run at
    * all. Every existing caller keeps its exact behaviour until it passes this.
+   *
+   * `answers` HAS NO READER SINCE V1-R2, and saying so is the point of this sentence rather than
+   * leaving a reader to discover it. The Korean actor rule was its last consumer; it now decides
+   * on the action alone. The field stays because the two travel together from `programContext`
+   * and because the residual V1-R2 accepts is defined in terms of the Host's audience — a
+   * re-audit reaches for it here. Nothing today consults it, and no rule should start without
+   * re-reading the invalidation note on `actionNamesActorKo`.
    */
   opts?: { locale?: JourneyLocale; answers?: BuilderAnswers },
 ): { ok: true; value: BehaviorContract } | { ok: false; defect: ContractDefect } {
@@ -889,7 +914,7 @@ export function validateBehaviorContract(
       as `action_reclaims_authority` is a diagnostic that lies. So the rule waits for a migration
       authorised on its own terms, and the prompt carries the language contract meanwhile.
     */
-    if (actionNamesActorKo(value.observableAction, opts.answers)) {
+    if (actionNamesActorKo(value.observableAction)) {
       return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority", authority: "actor" } };
     }
     if (actionNamesMomentKo(value.observableAction, value.trigger) || EN_TEMPORAL_IN_KO.test(value.observableAction)) {

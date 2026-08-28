@@ -50,7 +50,26 @@ export const KO_CONTEXTS: readonly KoContext[] = [
       "점검 항목이 모두 확인 표시되어 있다.", "점검 항목을 확인한다."),
 ];
 
-export type Expectation = "accept" | "refuse_actor" | "refuse_moment" | "refuse_language";
+/**
+ * `accept_inert_role` IS A CHANGED SPECIFICATION, NOT A FIXTURE BENT TO THE CODE (Slice V1-R2).
+ *
+ * Seven fixtures below were written `refuse_actor` because the model had named the Host's own
+ * audience as the subject. V1-R2 re-decided that question and this file records the re-decision
+ * in the open rather than editing the verdicts quietly:
+ *
+ *   · the refusal could not be kept without also refusing legitimate Korean. `팀 리더가 승인한
+ *     내용을 기록한다` is an embedded relative clause and `팀 리더가 핵심 내용을 확인한다` is a
+ *     reclaim; they share their first three tokens, and separating them is clause parsing.
+ *   · the refusal protected nothing a person reads. THE STANDARD is the Host's own sentence, the
+ *     actor is server-written, and no path persists the contract — so the subject the model wrote
+ *     reaches neither the learner nor the Host.
+ *
+ * So these seven are ACCEPTED, and the expectation says WHY they are accepted, which plain
+ * `accept` would not. They are a tolerated defect, not good output: the prompt still forbids
+ * writing a subject, and `koActorAuthority.test.ts` asserts the invariants that make tolerating
+ * it safe. The second-person fixtures in the same block are untouched and still refuse.
+ */
+export type Expectation = "accept" | "accept_inert_role" | "refuse_actor" | "refuse_moment" | "refuse_language";
 
 export type Fixture = {
   readonly context: string;
@@ -88,16 +107,16 @@ export const KO_ACTION_FIXTURES: readonly Fixture[] = [
   f("shift", "clean/double check", "대조하다", "기록과 실제 투약량을 대조한다", "accept", "plain"),
 
   // ── 10 KO WHO-RECLAIM ──────────────────────────────────────────────────────
-  f("meeting", "actor/팀 리더가", "확인하다", "팀 리더가 담당자와 마감일을 확인한다", "refuse_actor", "names the Host's audience as subject"),
-  f("meeting", "actor/팀 리더는", "확인하다", "팀 리더는 담당자와 마감일을 확인한다", "refuse_actor", "topic marker, same reclaim"),
-  f("meeting", "actor/리더가", "확인하다", "리더가 담당자와 마감일을 확인한다", "refuse_actor", "shortened role, still the audience"),
+  f("meeting", "actor/팀 리더가", "확인하다", "팀 리더가 담당자와 마감일을 확인한다", "accept_inert_role", "names the Host's audience as subject — V1-R2: reachable, and inert"),
+  f("meeting", "actor/팀 리더는", "확인하다", "팀 리더는 담당자와 마감일을 확인한다", "accept_inert_role", "topic marker, same reclaim — V1-R2: same verdict as the subject marker"),
+  f("meeting", "actor/리더가", "확인하다", "리더가 담당자와 마감일을 확인한다", "accept_inert_role", "shortened role — V1-R2: indistinguishable from 리더가 요청한 …"),
   f("meeting", "actor/당신이", "확인하다", "당신이 담당자와 마감일을 확인한다", "refuse_actor", "second person — the server writes the actor"),
   f("handover", "actor/당신은", "말하다", "당신은 해야 할 일을 말한다", "refuse_actor", "second person, topic marker"),
   f("handover", "actor/여러분이", "말하다", "여러분이 완료 시점을 말한다", "refuse_actor", "plural second person"),
-  f("shift", "actor/간호사가", "복창하다", "간호사가 투약량을 복창한다", "refuse_actor", "the Host's own audience detail"),
-  f("shift", "actor/간호사는", "복창하다", "간호사는 투약량을 복창한다", "refuse_actor", "topic marker"),
-  f("support", "actor/상담원이", "기록하다", "상담원이 다음 조치를 기록한다", "refuse_actor", "audience detail as subject"),
-  f("release", "actor/엔지니어링 리드가", "확인하다", "엔지니어링 리드가 점검 항목을 확인한다", "refuse_actor", "multi-word audience detail"),
+  f("shift", "actor/간호사가", "복창하다", "간호사가 투약량을 복창한다", "accept_inert_role", "the Host's own audience detail — V1-R2 accepts here; the one-token role is refused earlier by actionVerbDefect when it leads the action"),
+  f("shift", "actor/간호사는", "복창하다", "간호사는 투약량을 복창한다", "accept_inert_role", "topic marker — same as above"),
+  f("support", "actor/상담원이", "기록하다", "상담원이 다음 조치를 기록한다", "accept_inert_role", "audience detail as subject — inert intermediate variance"),
+  f("release", "actor/엔지니어링 리드가", "확인하다", "엔지니어링 리드가 점검 항목을 확인한다", "accept_inert_role", "multi-word audience detail — the shape that bypasses the arity gate; see koActorAuthority T9"),
 
   // ── 10 KO WHEN-RECLAIM ─────────────────────────────────────────────────────
   f("meeting", "moment/verbatim trigger", "확인하다", "회의가 끝나기 전에 다음 할 일을 정할 때 담당자를 확인한다", "refuse_moment", "the Host's moment, verbatim"),

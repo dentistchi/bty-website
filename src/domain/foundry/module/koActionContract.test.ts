@@ -30,7 +30,13 @@ export function judge(fx: Fixture, locale: "en" | "ko"): Outcome {
  * closed nine-value CHECK, so splitting them needs a migration and is not smuggled in here.
  */
 function matches(expect: Fixture["expect"], o: Outcome): boolean {
-  if (expect === "accept") return o.ok;
+  /*
+    `accept_inert_role` IS ITS OWN EXPECTATION, not an alias for `accept` (Slice V1-R2). Both
+    require the validator to pass, and the distinction is kept in the corpus because a reader
+    asking "why is a Host-role subject allowed?" must find the answer next to the fixture rather
+    than in a commit message. See the type's docblock in `koActionContract.fixtures`.
+  */
+  if (expect === "accept" || expect === "accept_inert_role") return o.ok;
   if (o.ok) return false;
   return o.reason === "action_reclaims_authority";
 }
