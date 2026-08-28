@@ -19,6 +19,7 @@ import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetai
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import MeWeeklyTrace from "@/components/app-shell/MeWeeklyTrace";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
+import SavedForLater from "@/components/app-shell/SavedForLater";
 import EventCreateClient from "@/components/bty/events/EventCreateClient";
 import EventHostList from "@/components/bty/events/EventHostList";
 import EventHostDetail from "@/components/bty/events/EventHostDetail";
@@ -1410,6 +1411,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Field Action producer deep links (Slice 3.1B-3N-5C.3), both Today-owned + in-shell:
   //   `?tab=today&fieldActionAssignment=<assignmentId>` → create/open the Field Action for a completed assignment
   //   `?tab=today&fieldActionContract=<contractId>`      → edit + resubmit a rejected Field Action
+  /*
+    TODAY → SAVED FOR LATER (Slice R1B-C2-R1). Shell-owned focused-view state, the SAME grammar the
+    Today tab already uses twice (FieldActionForm, HostActionReviewDetail): Today renders a quiet
+    entry, the shell owns the destination, the focused component owns its Back. Deliberately its own
+    state and its own branch — never merged into a reminder, an actionStatus item or a Today count,
+    because Committed != Saved.
+  */
+  const [savedOpen, setSavedOpen] = useState(false);
   const [fieldActionAssignmentId, setFieldActionAssignmentId] = useState<string | null>(null);
   const [fieldActionContractId, setFieldActionContractId] = useState<string | null>(null);
   // Field Actions Focused Surface V1: `?tab=practice&fieldAction=<contractId>` opens the focused
@@ -1805,7 +1814,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
-            {fieldActionAssignmentId || fieldActionContractId ? (
+            {savedOpen ? (
+              // Saved for later — a separate Today lane, never an obligation. Back → Today.
+              <SavedForLater locale={locale} onBack={() => setSavedOpen(false)} />
+            ) : fieldActionAssignmentId || fieldActionContractId ? (
               // Slice 3.1B-3N-5C.3: Today-owned Field Action producer (author / resubmit). Back → Today.
               <FieldActionForm
                 locale={locale}
@@ -1834,6 +1846,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
                 <TodayHome
                   locale={locale}
+                  onOpenSaved={() => setSavedOpen(true)}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
                   onOpenLeadershipFollowUp={(target) => {

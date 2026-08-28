@@ -76,6 +76,9 @@ const COPY: Record<Locale, {
   showLess: string;
   todayHeader: string;
   showMore: string;
+  /** A destination, not an obligation — no count, no urgency. */
+  savedForLater: string;
+  savedForLaterSub: string;
   todayEmpty: string;
   catEyebrow: Record<PrimaryActionCandidate["category"], string>;
   // Deterministic empty-day fallbacks (tiers 6–8).
@@ -103,6 +106,8 @@ const COPY: Record<Locale, {
     showLess: "Show less",
     todayHeader: "Today",
     showMore: "Show more",
+    savedForLater: "Saved for later",
+    savedForLaterSub: "Things you chose not to lose.",
     todayEmpty: "You're all caught up for today.",
     catEyebrow: {
       ACTION_REVISION: "Needs revision",
@@ -139,6 +144,8 @@ const COPY: Record<Locale, {
     showLess: "접기",
     todayHeader: "오늘",
     showMore: "더 보기",
+    savedForLater: "나중을 위해",
+    savedForLaterSub: "잃어버리고 싶지 않아 담아둔 것들.",
     todayEmpty: "오늘 할 일을 모두 마쳤습니다.",
     catEyebrow: {
       ACTION_REVISION: "수정 필요",
@@ -178,6 +185,7 @@ export default function TodayHome({
   onNavigate,
   onOpenItem,
   onOpenLeadershipFollowUp,
+  onOpenSaved,
 }: {
   locale: string;
   /** In-shell tab navigation for the deterministic fallback CTAs (no route reload). */
@@ -198,6 +206,15 @@ export default function TodayHome({
    *  target is derived from the SERVER's canonical deepLink via the shared sanitizer — never from
    *  display text — so the UI carries no routing/authorization logic of its own. */
   onOpenLeadershipFollowUp?: (target: { eventId: string; section: HostFocusSection; focusId: string }) => void;
+  /**
+   * SAVED FOR LATER (Slice R1B-C2-R1) — opens the shell-owned focused capture lane.
+   *
+   * Today renders only the ENTRY; the shell owns the destination, matching the two focused views
+   * this tab already has. TodayHome deliberately fetches NOTHING for it: the capture list is read
+   * by the focused view itself, so Today's own data semantics are untouched and no capture can
+   * reach a reminder, an actionStatus item, or any Today count.
+   */
+  onOpenSaved?: () => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -583,6 +600,30 @@ export default function TodayHome({
             </button>
           ) : null}
         </div>
+      ) : null}
+
+      {/*
+        A DIFFERENT CATEGORY OF THING, PLACED LAST.
+
+        Everything above this line is something the person owes, is due, or must attend to. This is
+        not. It sits at the bottom of Today, outside every section whose semantics mean due /
+        required / commitment / reminder / action-status, as its own quiet destination.
+
+        ALWAYS VISIBLE, and never counted. It is a durable place, so it should not appear and vanish
+        with its contents — but a number here would turn "things I chose not to lose" into a backlog
+        to drive down, which is the one thing this object must never become. No count, no badge, no
+        urgency colour: the same neutral surface as the row above, and nothing that reads as owed.
+      */}
+      {onOpenSaved ? (
+        <button
+          type="button"
+          data-testid="today-saved-entry"
+          onClick={onOpenSaved}
+          className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
+        >
+          <span className="text-[0.8rem] text-white/70">{t.savedForLater}</span>
+          <span className="text-[0.72rem] leading-5 text-white/40">{t.savedForLaterSub}</span>
+        </button>
       ) : null}
     </div>
   );

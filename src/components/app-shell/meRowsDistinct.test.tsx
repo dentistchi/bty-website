@@ -84,10 +84,21 @@ describe("Me root nav — every row is a distinct destination", () => {
     const seen: string[] = [];
     for (const testId of rows.map((r) => r.getAttribute("data-testid")).filter(Boolean) as string[]) {
       fireEvent.click(screen.getByTestId(testId));
+      /*
+        EXHAUSTIVE, not a catch-all (extended in Slice R1B-C2).
+
+        This resolver previously ended in a single `"center-or-other"` bucket, which was accurate
+        while Center was the only remaining destination. Adding Me → Saved for later made two
+        GENUINELY DIFFERENT views resolve to the same label, so the guard reported a duplicate that
+        did not exist. Every destination is now named by its own root test id — which also makes the
+        guard STRICTER than before: a catch-all could have hidden two rows that really did collide.
+      */
       const view =
         screen.queryByTestId("foundry-my-learning") ? "my-learning"
         : screen.queryByTestId("me-account") ? "account"
-        : "center-or-other";
+        : screen.queryByTestId("me-saved") ? "saved"
+        : screen.queryByTestId("me-center") ? "center"
+        : "unknown";
       seen.push(view);
       // Back to the Me root for the next probe.
       const nav = screen.getByRole("navigation", { name: /App navigation/i });
