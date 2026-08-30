@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase";
 import { isNative } from "@/lib/native/isNative";
 import { authCallbackSupportLine, type AuthCallbackReason } from "@/lib/auth/authCallbackReason";
 import { clearAccountScopedStorage } from "@/lib/native/accountScopedStorage";
-import { tracePkce, readPkceTrace, formatPkceTrace } from "@/lib/auth/pkceTrace";
 
 function parseHashParams(hash: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -70,9 +69,6 @@ function AuthCallbackForm() {
     let mounted = true;
 
     async function run(supabaseClient: NonNullable<typeof supabase>) {
-      /* R1H diagnostic — P3: verifier state on arrival at the callback, before any provider
-         boot logic has had a chance to touch storage. */
-      await tracePkce("P3_callback_mount");
       const code = searchParams.get("code");
       const type = searchParams.get("type");
       const next = searchParams.get("next");
@@ -126,11 +122,7 @@ function AuthCallbackForm() {
       }
 
       if (code) {
-        /* R1H diagnostic — P5: the verifier the exchange is ABOUT to use. If this fingerprint
-           differs from P2, something replaced it; if it is absent, something removed it. */
-        await tracePkce("P5_before_exchange");
         const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
-        await tracePkce(error ? "P6_exchange_error" : "P6_exchange_ok");
         if (!mounted) return;
         if (error) {
           const { data: recovered } = await supabaseClient.auth.getSession();
@@ -244,16 +236,6 @@ function AuthCallbackForm() {
         <p className="mt-2 text-center text-xs text-neutral-500" data-testid="auth-callback-reason">
           {authCallbackSupportLine(reason, providerCode)}
         </p>
-      ) : null}
-      {/* R1H TEMPORARY: the PKCE lifecycle, fingerprints only — never a verifier, code or token.
-          Shown on failure so one screenshot answers "was the verifier at P5 the one from P2?". */}
-      {reason ? (
-        <pre
-          data-testid="auth-callback-pkce-trace"
-          className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-all text-left text-[10px] leading-4 text-neutral-500"
-        >
-          {formatPkceTrace(readPkceTrace()).join("\n") || "(no trace)"}
-        </pre>
       ) : null}
       <Link
         href={target}
