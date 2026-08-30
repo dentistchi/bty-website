@@ -40,6 +40,14 @@ export type TeamsCaptureInput = {
   captured_at?: string | null;
   channel_id?: string | null;
   chat_id?: string | null;
+  /**
+   * WHY the user has this item, not what it means. Slice T1 adds the one reason that exists today
+   * (`explicit_save`); a future @mention path needs to be distinguishable from a deliberate save,
+   * and recording it at capture time is the only moment the distinction is knowable. Provenance
+   * only: it never reaches `external_key`, so the same message saved twice by different routes is
+   * still one capture.
+   */
+  capture_reason?: string | null;
 };
 
 export type CaptureSourceResolution =
@@ -109,6 +117,8 @@ export function resolveTeamsCaptureSource(input: TeamsCaptureInput): CaptureSour
   // Named `_source` because it is what the SOURCE reported, never BTY's own captured_at column.
   const capturedAtSource = optional(input?.captured_at);
   if (capturedAtSource) sourceMetadata.captured_at_source = capturedAtSource;
+  const captureReason = optional(input?.capture_reason);
+  if (captureReason) sourceMetadata.capture_reason = captureReason;
 
   const preview = optional(input?.preview_text);
 
