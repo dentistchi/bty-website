@@ -340,6 +340,43 @@ export default function LoginCard({ locale, nextPath, initialError, forceAccount
           setOauthProvider(null);
           return;
         }
+        /*
+          THE "BELOW" THAT WAS NEVER WRITTEN (Slice M1-R1).
+
+          `skipBrowserRedirect: isNative()` above says: "Native: keep the WebView put and open the
+          authorize URL in the system browser BELOW." There was no below. `data` was destructured
+          and never read, so on the installed app the sequence was:
+
+            tap Microsoft → signInWithOAuth returns { url } → nothing opens it
+            → no error, so no error branch → busy state never cleared
+            → "연결 중… 잠시만 기다려 주세요." forever.
+
+          Google never reached this: native Google returns early through the SocialLogin SDK a few
+          lines up. Azure was the first provider ever to arrive here on a device.
+
+          WHY NAVIGATE THE WEBVIEW RATHER THAN A SYSTEM BROWSER. Google's separate native path
+          exists because Google BLOCKS OAuth in embedded WebViews (`disallowed_useragent`), and this
+          shell has no Universal Links, so a system-browser round trip could not hand the session
+          back. Microsoft/Entra imposes no such restriction, and the BTY shell is a hosted-URL
+          WKWebView already sitting on the production origin — so an in-place navigation returns to
+          `/{locale}/auth/callback` on that SAME origin and the existing callback restores the
+          session exactly as it does on web. One pipeline, not a second auth architecture.
+        */
+        const authorizeUrl = typeof data?.url === "string" ? data.url : "";
+        if (authorizeUrl) {
+          window.location.assign(authorizeUrl);
+          return;
+        }
+        /*
+          No URL and no error: on web Supabase already navigated, but on native that combination
+          means the launch silently failed. Never leave someone on a permanent spinner.
+        */
+        if (isNative()) {
+          setPhase("error");
+          setError(userFacingOauthOrOtpError("oauth-launch-failed", t));
+          setOauthProvider(null);
+          return;
+        }
       } catch (e) {
         setPhase("error");
         setError(userFacingOauthOrOtpError(e instanceof Error ? e.message : undefined, t));
