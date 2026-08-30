@@ -57,6 +57,7 @@ function AuthCallbackForm() {
     completely different places.
   */
   const [reason, setReason] = useState<AuthCallbackReason | null>(null);
+  const [providerCode, setProviderCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -71,6 +72,33 @@ function AuthCallbackForm() {
       const code = searchParams.get("code");
       const type = searchParams.get("type");
       const next = searchParams.get("next");
+
+      /*
+        THE PROVIDER'S OWN REFUSAL, READ BEFORE ANYTHING ELSE (Slice M1-R2).
+
+        MEASURED against production: when the provider or Supabase refuses, the callback IS reached
+        at the correct path, carrying `error` / `error_code` / `error_description` — in BOTH the
+        query string AND the fragment. This function checked neither, so a real refusal fell past
+        `code`, past the token pair, past the existing session, and reported itself as `no_code`.
+
+        That mislabel had a cost. `no_code` is documented as "what a rejected `redirect_to` looks
+        like", so a genuine Microsoft refusal sent the previous audit hunting redirect
+        configuration. The production `redirect_to` values were then measured and found ACCEPTED —
+        which is how the real answer surfaced. The error was on the URL the whole time; nothing
+        read it.
+
+        Read the fragment as well as the query: that is where an implicit response puts it, and a
+        fragment never reaches a server log, so this is the only place it can be seen at all.
+      */
+      const errHash = parseHashParams(typeof window !== "undefined" ? window.location.hash : "");
+      const providerError = searchParams.get("error") ?? errHash.error ?? "";
+      if (providerError) {
+        setStatus("error");
+        setReason("provider_error");
+        setProviderCode(searchParams.get("error_code") ?? errHash.error_code ?? providerError);
+        setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
 
       function redirectAfterSession() {
         // Slice 3.1B-3N-5B.1: a new session is now established. Drop the PREVIOUS account's
@@ -206,7 +234,7 @@ function AuthCallbackForm() {
       */}
       {reason ? (
         <p className="mt-2 text-center text-xs text-neutral-500" data-testid="auth-callback-reason">
-          {authCallbackSupportLine(reason)}
+          {authCallbackSupportLine(reason, providerCode)}
         </p>
       ) : null}
       <Link

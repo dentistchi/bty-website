@@ -103,8 +103,33 @@ describe("R4-R4B-R1 · 4/10 · a timeout is never a sign-out", () => {
 });
 
 describe("R4-R4B-R1 · 11–16 · the callback names its own branch", () => {
-  it("11/12/13 — exactly three reasons, one per measured branch", () => {
-    expect([...AUTH_CALLBACK_REASONS]).toEqual(["no_code", "exchange_failed", "set_session_failed"]);
+  /*
+    GREW TO FOUR IN M1-R2, DELIBERATELY, AND THE RECORD OF WHY STAYS HERE.
+
+    The set is still one slug per MEASURED branch — a fourth branch was measured, not invented.
+    Production emits `error`/`error_code`/`error_description` on the callback URL (query AND
+    fragment) when the provider refuses, and the callback read neither: a real Microsoft refusal
+    reported itself as `no_code`, whose own documentation says that means a rejected `redirect_to`.
+    The audit chased redirect configuration until the production redirect_to values were measured
+    as accepted. `provider_error` exists so that failure names itself.
+  */
+  it("11/12/13 — one reason per measured branch, and only measured branches", () => {
+    expect([...AUTH_CALLBACK_REASONS]).toEqual([
+      "no_code",
+      "exchange_failed",
+      "set_session_failed",
+      "provider_error",
+    ]);
+  });
+
+  it("a provider error carries the provider's own code, sanitised to a safe slug", () => {
+    expect(authCallbackSupportLine("provider_error", "server_error")).toBe("Reference: provider_error:server_error");
+    // free text, punctuation, spaces and case are all stripped — the slug is safe to read aloud
+    expect(authCallbackSupportLine("provider_error", "Bad Request! <x>")).toBe("Reference: provider_error:badrequestx");
+    // and a missing code degrades to the bare reason rather than a dangling colon
+    expect(authCallbackSupportLine("provider_error", null)).toBe("Reference: provider_error");
+    // other reasons are unchanged
+    expect(authCallbackSupportLine("no_code")).toBe("Reference: no_code");
   });
 
   it("14/15 — 'no reason' is representable, so a success carries no diagnostic", () => {

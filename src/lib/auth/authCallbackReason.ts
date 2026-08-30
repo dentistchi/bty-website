@@ -20,7 +20,12 @@
  *   set_session_failed  a token pair was present and `setSession` refused it. A token-validity
  *                       question, not a redirect one.
  */
-export const AUTH_CALLBACK_REASONS = ["no_code", "exchange_failed", "set_session_failed"] as const;
+export const AUTH_CALLBACK_REASONS = [
+  "no_code",
+  "exchange_failed",
+  "set_session_failed",
+  "provider_error",
+] as const;
 
 export type AuthCallbackReason = (typeof AUTH_CALLBACK_REASONS)[number];
 
@@ -34,6 +39,15 @@ export function isAuthCallbackReason(v: unknown): v is AuthCallbackReason {
  * for whoever reads the report, not product copy, and translating it would make two failures look
  * like different problems.
  */
-export function authCallbackSupportLine(reason: AuthCallbackReason): string {
+export function authCallbackSupportLine(reason: AuthCallbackReason, providerCode?: string | null): string {
+  /*
+    A provider error is only actionable with the provider's own code, so it is appended — but
+    sanitised to a conservative slug shape first. `error_description` is deliberately NEVER used
+    here: it is free text from an external system and could carry an address or a name.
+  */
+  if (reason === "provider_error") {
+    const slug = (providerCode ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 48);
+    return slug ? `Reference: ${reason}:${slug}` : `Reference: ${reason}`;
+  }
   return `Reference: ${reason}`;
 }
