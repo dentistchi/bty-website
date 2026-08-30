@@ -83,3 +83,42 @@ describe("LoginCard — OAuth prompt", () => {
     expect(screen.queryByText("Continue with Google")).toBeNull();
   });
 });
+
+/**
+ * MICROSOFT-FIRST CUTOVER (Slice R1C-B-2R / M1).
+ *
+ * BTY's canonical identity is the Entra pair (tid, oid). Microsoft states the `profile` scope is
+ * REQUIRED to receive `oid`. Before this slice the call passed no scopes at all, so `oid` would
+ * never arrive and every future Teams lookup would resolve to NOT_LINKED — with no error anywhere
+ * to notice. These assertions exist so that failure can never be reintroduced silently.
+ */
+describe("LoginCard — Microsoft scopes", () => {
+  it("Continue with Microsoft requests openid profile email", async () => {
+    process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS = "google,microsoft";
+    render(<LoginCard locale="en" nextPath="/en/bty" />);
+    fireEvent.click(screen.getByText("Continue with Microsoft"));
+    await waitFor(() => {
+      const arg = mockSignInWithOAuth.mock.calls[0][0] as {
+        provider: string;
+        options?: { scopes?: string };
+      };
+      expect(arg.provider).toBe("azure");
+      expect(arg.options?.scopes ?? "").toContain("profile");
+      expect(arg.options?.scopes).toBe("openid profile email");
+    });
+  });
+
+  it("Google is UNTOUCHED — it must not inherit Microsoft scopes", async () => {
+    process.env.NEXT_PUBLIC_BTY_AUTH_PROVIDERS = "google,microsoft";
+    render(<LoginCard locale="en" nextPath="/en/bty" />);
+    fireEvent.click(screen.getByText("Continue with Google"));
+    await waitFor(() => {
+      const arg = mockSignInWithOAuth.mock.calls[0][0] as {
+        provider: string;
+        options?: { scopes?: string };
+      };
+      expect(arg.provider).toBe("google");
+      expect(arg.options?.scopes, "Google carries no scopes override").toBeUndefined();
+    });
+  });
+});

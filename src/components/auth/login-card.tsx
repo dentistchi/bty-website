@@ -316,6 +316,22 @@ export default function LoginCard({ locale, nextPath, initialError, forceAccount
               branch ignored the prop it was handed. Scopes are untouched.
             */
             ...(forceAccountSelection ? { queryParams: { prompt: "select_account" } } : {}),
+            /*
+              MICROSOFT NEEDS `profile`, OR BTY CANNOT IDENTIFY THE PERSON (Slice R1C-B-2R / M1).
+
+              BTY is Microsoft-first: a BTY account IS a Microsoft account, and the canonical
+              identity is the Entra pair (tid, oid) — the same pair a Teams invoke supplies as
+              `channelData.tenant.id` and `activity.from.aadObjectId`.
+
+              Microsoft's ID-token reference is explicit: "Because the `oid` allows multiple apps
+              to correlate users, the `profile` scope is required to receive this claim." This call
+              previously passed NO scopes at all, so `oid` would simply never arrive and every
+              future Teams lookup would resolve to NOT_LINKED — silently, with no error anywhere.
+
+              AZURE ONLY, deliberately. Google's behaviour and scopes are untouched (the note above
+              says "Scopes are untouched" about the chooser change, and that stays true for Google).
+            */
+            ...(provider === "azure" ? { scopes: "openid profile email" } : {}),
           },
         });
         if (oauthError) {
