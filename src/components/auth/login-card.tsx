@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase, supabase as supabaseMaybe } from "@/lib/supabase";
 import { isNative } from "@/lib/native/isNative";
 import { storeNativeSession } from "@/lib/native/durableSession";
+import { startPkceAttempt, tracePkce } from "@/lib/auth/pkceTrace";
 
 export type LoginCardLocale = "en" | "ko";
 
@@ -296,6 +297,9 @@ export default function LoginCard({ locale, nextPath, initialError, forceAccount
           return;
         }
         const redirectTo = buildOAuthRedirectTo(locale, nextPath);
+        /* R1H diagnostic — P1: verifier state immediately BEFORE we ask for a new one. */
+        const pkceAttempt = startPkceAttempt();
+        await tracePkce("P1_before_signIn", pkceAttempt);
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
@@ -334,6 +338,9 @@ export default function LoginCard({ locale, nextPath, initialError, forceAccount
             ...(provider === "azure" ? { scopes: "openid profile email" } : {}),
           },
         });
+        /* R1H diagnostic — P2: the verifier signInWithOAuth just wrote. This fingerprint is the
+           one the exchange MUST still see at P5. */
+        await tracePkce("P2_after_signIn", pkceAttempt);
         if (oauthError) {
           setPhase("error");
           setError(userFacingOauthOrOtpError(oauthError.message, t));
