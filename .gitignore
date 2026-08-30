@@ -65,3 +65,6 @@ assets/
 
 # Slice 3.2L-R1.4 real-pixel gate scratch (built + removed per run)
 .viewport-harness/
+
+# Teams app package build output (contains only public ids, but is a build artifact)
+teams/dist/
