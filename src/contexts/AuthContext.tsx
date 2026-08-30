@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
+import { isEstablishingSessionPath } from "@/lib/auth/nativeRestoreBoundary";
 import {
   AuthReadUnreachable,
   isAuthReadTimeout,
@@ -173,7 +174,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // gate returns unauthenticated even though the iOS Keychain still holds valid
       // session material. Rebuild from Keychain, then re-read the gate. Web is
       // unchanged: isNative() is false, so restoreNativeSession() no-ops → false.
-      if ((!j || !j.ok || !j.user) && isNative()) {
+      /*
+        NEVER RESTORE AN OLD SESSION WHILE A NEW ONE IS BEING ESTABLISHED (Slice R1G).
+
+        `AuthProvider` wraps the ROOT layout, so this runs on EVERY route — including
+        `/{locale}/auth/callback`, whose entire job is to turn a fresh OAuth code into a session.
+        On that route the gate is legitimately unauthenticated (the session does not exist yet),
+        which is exactly the condition that triggers the restore below.
+
+        That restore calls `supabase.auth.setSession(...)`, and auth-js's `_saveSession()` — the
+        success path of setSession — calls removeItemAsync on `<storageKey>-code-verifier`. So the
+        restore DESTROYS the PKCE verifier belonging to the sign-in currently in flight, racing the
+        callback's own `exchangeCodeForSession`. Production showed exactly that:
+
+          POST /auth/v1/token?grant_type=pkce → 400 bad_code_verifier
+          "code challenge does not match previously saved code verifier"
+
+        It is native-only because `isNative()` gates it — which is precisely why the web flow was
+        unaffected while the installed app failed every time.
+
+        Restoring a stale session on the callback route is redundant as well as destructive: the
+        callback is about to establish the real one. Skip it there and let the exchange finish.
+      */
+      const onAuthCallback =
+        isEstablishingSessionPath(typeof window !== "undefined" ? window.location.pathname : null);
+      if ((!j || !j.ok || !j.user) && isNative() && !onAuthCallback) {
         const restored = await restoreNativeSession();
         if (restored) {
           sessionInflight = null;
