@@ -56,3 +56,17 @@
 - 로그인 관련 이슈:
   - 먼저 `/api/auth/session`에서 request cookie 유무 / status / body 확인
   - 상세: `docs/CONTEXT.md` §3 Supabase Auth 및 §4 작업 규칙
+
+## TEAMS_BOT_APP_ID (Slice T1)
+
+- **Where**: Cloudflare Worker secret (`wrangler secret put TEAMS_BOT_APP_ID`).
+- **Purpose**: the Microsoft App ID of the BTY Teams bot. `POST /api/bty/teams/invoke` verifies every
+  inbound Bot Framework token against it as the JWT **audience**, so a token minted for another bot
+  is refused.
+- **Fails closed**: if unset, the Teams invoke endpoint rejects all requests. It is never a
+  "skip validation" switch.
+- An App ID is not secret in the cryptographic sense, but it is kept out of the repo with the rest of
+  the deployment config. This route needs **no client secret** — it only verifies inbound tokens and
+  never calls back into the Bot Connector.
+- **Separate from** `AZURE_AD_CLIENT_ID` and the Supabase Azure OAuth app: a different application
+  identity, deliberately not shared. Canonical human identity remains Microsoft `tid` + `oid`.

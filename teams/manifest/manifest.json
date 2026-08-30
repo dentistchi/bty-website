@@ -1,0 +1,43 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "${TEAMS_APP_ID}",
+  "packageName": "com.btyarena.teams",
+  "developer": {
+    "name": "BTY Training Center",
+    "websiteUrl": "https://arena.btydaily.com",
+    "privacyUrl": "https://arena.btydaily.com/en/privacy",
+    "termsOfUseUrl": "https://arena.btydaily.com/en/terms"
+  },
+  "name": {
+    "short": "BTY",
+    "full": "BTY Training Center"
+  },
+  "description": {
+    "short": "Save a Teams message to BTY so you don't lose it.",
+    "full": "Adds one action to the message menu: Save to BTY. The message you pick is saved to your BTY \"Saved for later\" list with a link back to the original conversation. It does not become a commitment, a deadline or a task until you decide it should. BTY reads no other messages."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0B1F3A",
+  "composeExtensions": [
+    {
+      "botId": "${TEAMS_BOT_APP_ID}",
+      "commands": [
+        {
+          "id": "saveToBty",
+          "type": "action",
+          "title": "Save to BTY",
+          "description": "Save this message to BTY so you don't lose it.",
+          "context": ["message"],
+          "fetchTask": true
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity"],
+  "validDomains": ["arena.btydaily.com"]
+}
