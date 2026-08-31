@@ -21,8 +21,12 @@ const STAGE = "teams/dist/.stage";
 const OUT = "teams/dist/bty-arena-teams-t1.zip";
 
 const botAppId = (process.env.TEAMS_BOT_APP_ID ?? "").trim();
-if (!botAppId) {
-  console.error("[teams-package] TEAMS_BOT_APP_ID is required (the bot/client Application ID).");
+const rawManifest = readFileSync(join(SRC, "manifest.json"), "utf8");
+// The bot App ID is PUBLIC — it ships inside the manifest Teams distributes — so once it is
+// committed there, packaging needs no environment at all. The env var stays supported for a
+// rebuild against a different bot, and is REQUIRED only while a placeholder is still present.
+if (rawManifest.includes("${TEAMS_BOT_APP_ID}") && !botAppId) {
+  console.error("[teams-package] manifest still has ${TEAMS_BOT_APP_ID}; set TEAMS_BOT_APP_ID to substitute it.");
   process.exit(1);
 }
 
@@ -30,7 +34,7 @@ rmSync(STAGE, { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
 for (const f of ["color.png", "outline.png"]) cpSync(join(SRC, f), join(STAGE, f));
 
-const manifest = readFileSync(join(SRC, "manifest.json"), "utf8").replaceAll("${TEAMS_BOT_APP_ID}", botAppId);
+const manifest = botAppId ? rawManifest.replaceAll("${TEAMS_BOT_APP_ID}", botAppId) : rawManifest;
 
 // Refuse to ship an unresolved placeholder or a malformed manifest.
 if (/\$\{[^}]+\}/.test(manifest)) {

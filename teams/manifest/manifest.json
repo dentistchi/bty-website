@@ -25,7 +25,7 @@
   "accentColor": "#0B1F3A",
   "composeExtensions": [
     {
-      "botId": "${TEAMS_BOT_APP_ID}",
+      "botId": "820f231b-9dbb-4c84-94c5-65bc43d35d91",
       "commands": [
         {
           "id": "saveToBty",
