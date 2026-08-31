@@ -41,6 +41,17 @@ function activity(over: Record<string, unknown> = {}) {
   };
 }
 
+
+/** The single line of text a fetchTask confirmation card carries. */
+function cardText(body: Record<string, unknown>): string {
+  const task = (body.task ?? {}) as Record<string, unknown>;
+  const value = (task.value ?? {}) as Record<string, unknown>;
+  const card = (value.card ?? {}) as Record<string, unknown>;
+  const content = (card.content ?? {}) as Record<string, unknown>;
+  const first = ((content.body ?? []) as Record<string, unknown>[])[0] ?? {};
+  return String(first.text ?? "");
+}
+
 async function POST(r: NextRequest) {
   const mod = await import("@/app/api/bty/teams/invoke/route");
   return mod.POST(r);
@@ -82,7 +93,7 @@ describe("POST /api/bty/teams/invoke", () => {
     resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "NOT_LINKED" });
     const res = await POST(req(activity()));
     expect(ensureActionCapture).not.toHaveBeenCalled();
-    expect((await res.json()).task.value).toBe("Sign in to BTY with Microsoft first.");
+    expect(cardText(await res.json())).toBe("Sign in to BTY with Microsoft first.");
   });
 
   it("an ambiguous or failed lookup fails closed without writing", async () => {
@@ -92,7 +103,7 @@ describe("POST /api/bty/teams/invoke", () => {
       resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status });
       const res = await POST(req(activity()));
       expect(ensureActionCapture).not.toHaveBeenCalled();
-      expect((await res.json()).task.value).toBe("BTY couldn't save this yet.");
+      expect(cardText(await res.json())).toBe("BTY couldn't save this yet.");
     }
   });
 
@@ -100,7 +111,7 @@ describe("POST /api/bty/teams/invoke", () => {
     ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
     const res = await POST(req(activity()));
     const body = await res.json();
-    expect(body.task.value).toBe("Saved to BTY.");
+    expect(cardText(body)).toBe("Saved to BTY.");
     expect(JSON.stringify(body)).not.toContain("Duplicate");
   });
 
@@ -112,9 +123,39 @@ describe("POST /api/bty/teams/invoke", () => {
 
   it("the reply envelope follows the invoke type", async () => {
     const fetchRes = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect((await fetchRes.json()).task.value).toBe("Saved to BTY.");
+    expect(cardText(await fetchRes.json())).toBe("Saved to BTY.");
     const submitRes = await POST(req(activity({ name: "composeExtension/submitAction" })));
     expect((await submitRes.json()).composeExtension.text).toBe("Saved to BTY.");
+  });
+
+
+  it("RENDER CONTRACT — a successful fetchTask returns a Teams-renderable card, not a bare message", async () => {
+    const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
+    const body = await res.json();
+    expect(body.task.type).toBe("continue");
+    const card = body.task.value.card;
+    expect(card.contentType).toBe("application/vnd.microsoft.card.adaptive");
+    expect(card.content.type).toBe("AdaptiveCard");
+    expect(cardText(body)).toBe("Saved to BTY.");
+    // Confirmation, not a form: nothing to fill in and nothing to press.
+    expect(card.content.body).toHaveLength(1);
+    expect(card.content.actions).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("Input.");
+  });
+
+  it("a duplicate save returns the SAME renderable confirmation", async () => {
+    ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
+    const body = await (await POST(req(activity()))).json();
+    expect(body.task.type).toBe("continue");
+    expect(cardText(body)).toBe("Saved to BTY.");
+    expect(JSON.stringify(body)).not.toContain("Duplicate");
+  });
+
+  it("the confirmation card leaks no internal or Microsoft identifiers", async () => {
+    const body = JSON.stringify(await (await POST(req(activity()))).json());
+    for (const secret of [RESOLVED_USER, TID, OID, "c1", "29:addr", "m1"]) {
+      expect(body).not.toContain(secret);
+    }
   });
 
   it("never returns internal ids or Microsoft identifiers to Teams", async () => {

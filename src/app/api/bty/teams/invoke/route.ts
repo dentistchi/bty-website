@@ -45,12 +45,46 @@ export const dynamic = "force-dynamic";
  * Teams renders this text to the user. Calm, specific, and never technical.
  *
  * The envelope differs by invoke: a `fetchTask` expects a `task` response, a `submitAction` expects
- * a `composeExtension` one. Replying in the wrong shape shows the user a generic Teams error even
- * though the save succeeded, so the shape follows the request rather than a fixed choice.
+ * a `composeExtension` one. Replying in the wrong shape shows a generic Teams error even though the
+ * save succeeded, so the shape follows the request rather than a fixed choice.
+ *
+ * WHY A CARD AND NOT `type: "message"`. The documented contract offers both -- "`continue` to
+ * present a form, or `message` for a simple pop-up" -- and `message` is what this returned first,
+ * because a one-line confirmation is exactly a simple pop-up. On the Founder's iPhone it rendered
+ * NOTHING, twice, on invokes that were otherwise completely successful: JWT valid, identity
+ * RESOLVED, capture written, HTTP 200. The save worked and the person could not tell.
+ *
+ * So this returns the other documented shape: `continue` with the smallest possible Adaptive Card.
+ * I could not find documentation stating that mobile drops `type: "message"`, so this is a change
+ * made on device evidence rather than on a citation -- worth knowing if it ever needs revisiting.
+ *
+ * The card is deliberately one line with NO input fields and NO submit action: the product
+ * requirement is tap -> confirmation -> done, and anything the user must fill in or press would be
+ * a form we do not need. A dialog they dismiss is the smallest thing the platform will actually
+ * show them.
  */
+const ADAPTIVE_CARD = "application/vnd.microsoft.card.adaptive";
+
+function confirmationCard(text: string) {
+  return {
+    title: "BTY",
+    height: "small",
+    width: "small",
+    card: {
+      contentType: ADAPTIVE_CARD,
+      content: {
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+        type: "AdaptiveCard",
+        version: "1.4",
+        body: [{ type: "TextBlock", text, wrap: true, size: "Medium" }],
+      },
+    },
+  };
+}
+
 function say(text: string, invokeName?: TeamsInvokeName) {
   return invokeName === TEAMS_INVOKE_FETCH_TASK
-    ? NextResponse.json({ task: { type: "message", value: text } })
+    ? NextResponse.json({ task: { type: "continue", value: confirmationCard(text) } })
     : NextResponse.json({ composeExtension: { type: "message", text } });
 }
 
