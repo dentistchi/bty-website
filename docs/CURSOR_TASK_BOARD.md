@@ -856,6 +856,16 @@ Final contract: creator = approved + leader-track; participant = valid `btyev1` 
 
 **[x] HOTFIX Center 28-day assessment gate + public result locale CTA — DEPLOYED (2026-06-02):** [UI+DEPLOY] Bug 1 — `TrainProgressCard` now requires a completed 50Q assessment (`hasAssessment={submissions.length>0}`, already-fetched signal, 0 new fetch); no submission → "먼저 50문항 진단 완료" + `/${locale}/assessment` card instead of the false "program ready" card (fail-safe: empty→prompt). Bug 1b — `(public)/assessment/result` CTA `/en/train/start` → `` `/${lang}/train/start` `` (public group has no locale param; `lang` is the in-scope client state; localized `ResultClient.tsx:390` already correct, untouched). **Verify HARD:** tsc 0 / terminology 13 (+0) / inner commit `9825a1aa` / active Version `b2a4abc8` (deployments list newest 100%) / 3-way PASS (active ↔ HEAD 9825a1aa ↔ worker.js mtime 16:34:46Z) / live-worker grep both http 200 (result `/en/train/start`=0 + lang-concat present; center gate string present). **Verify PENDING (executor attest):** runtime browser 4-item (new=50Q card / existing=28-day unchanged / KO result=/ko/train/start / 9-step regression) — code live-verified, authed/localStorage browser observation not run (headless auth N/A); diff is Center + (public) result only → no arena 9-step flow code touched → regression risk ~0 by inspection. **Not pushed** (origin push not requested). Bug 2 (fresh-user avatar empty equip) = backlog, untouched.
 
+## T1 — TEAMS MESSAGE ACTION → BTY ACTION CAPTURE · CLOSED (2026-08-31)
+
+- [x] **T1 · PASS / CLOSED / FOUNDER DEVICE VERIFIED** — production `5c2d6014fac566e212369e3be2d74ab9fc11266d`, Teams package **1.0.2**, no migration, no schema change.
+- Teams explicit message action → `composeExtension/fetchTask` → Bot Framework JWT → `(tid, aadObjectId)` → canonical resolver → `bty_action_captures` (`explicit_save`) → Adaptive Card "Saved to BTY." → Today ▸ Saved for later → Open in Teams. All seven device-proven.
+- **CAPTURE != COMMITMENT invariant held**: captures 4, promoted 0, `bty_action_contracts` 0.
+- **Graph permissions: NONE** (delegated and application) for BTY runtime.
+- Five defects preceded the first successful save — v1.17 `packageName`, missing `bots` declaration, `composeExtensions[].scopes` (does not exist; scopes live on `bots[].scopes`), **no per-user installation despite an org-catalog publish**, and a **numeric** mobile `messagePayload.id`. Each measured, not inferred.
+- Open (separate housekeeping, NOT part of this slice): remove temp Entra app "BTY Teams Provisioning Temp" `4d0ec01c…` and its tenant-wide `TeamsAppInstallation.ReadWriteForUser` consent.
+- Next: **T2 — Saved-for-later triage / swipe (classification + dismiss)**.
+
 ## SESSION CLOSURE 2026-06-02 (launch-eve) — closed + post-launch backlog
 
 **Closed this session (all observed, not inferred):**
