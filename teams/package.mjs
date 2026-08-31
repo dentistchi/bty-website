@@ -64,11 +64,27 @@ if (unknown.length) {
   process.exit(1);
 }
 
-// One capability, and only one.
+// One capability, and only one. `bots` is EXPECTED here, not extra surface: a bot-based compose
+// extension is powered by a bot, and Teams installs that bot only if the manifest declares it.
 const commands = parsed.composeExtensions?.[0]?.commands ?? [];
-if (parsed.staticTabs || parsed.configurableTabs || parsed.bots || commands.length !== 1) {
+if (parsed.staticTabs || parsed.configurableTabs || commands.length !== 1 || (parsed.composeExtensions ?? []).length !== 1) {
   console.error("[teams-package] manifest exposes more than the single T1 message action");
   process.exit(1);
+}
+
+// EVERY compose-extension botId must also appear in `bots`.
+//
+// This is the defect that shipped as 1.0.0: the package declared a bot-powered message action and
+// never declared the bot. It is schema-valid — `bots` is optional — so validation passed, the app
+// installed cleanly org-wide, and the command simply never appeared in the message menu. Nothing
+// reports an error; the capability is just absent. Every Microsoft sample with this command shape
+// declares the bot, so the agreement is checked here rather than discovered on a device again.
+const declaredBots = new Set((parsed.bots ?? []).map((b) => b?.botId));
+for (const ce of parsed.composeExtensions ?? []) {
+  if (ce?.botId && !declaredBots.has(ce.botId)) {
+    console.error("[teams-package] composeExtensions botId is not declared in `bots` — Teams will not install the bot, and the message action will not appear");
+    process.exit(1);
+  }
 }
 writeFileSync(join(STAGE, "manifest.json"), manifest);
 
