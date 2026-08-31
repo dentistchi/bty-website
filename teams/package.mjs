@@ -52,6 +52,18 @@ for (const [label, value] of [
     process.exit(1);
   }
 }
+// Every top-level key must be one Teams v1.17 actually defines. The published schema sets
+// `additionalProperties: false`, so ONE unknown key rejects the whole upload — and Teams stops at
+// the first failure, so the next unknown key would only surface on the next attempt. This list is
+// the property set of the v1.17 schema the manifest declares, checked offline so a bad package
+// never reaches a person. (T1 shipped a `packageName` this way; it is not a v1.17 property.)
+const V1_17_TOP_LEVEL = new Set(["$schema", "accentColor", "activities", "authorization", "bots", "composeExtensions", "configurableProperties", "configurableTabs", "connectors", "dashboardCards", "defaultBlockUntilAdminAction", "defaultGroupCapability", "defaultInstallScope", "description", "developer", "devicePermissions", "extensions", "graphConnector", "icons", "id", "isFullScreen", "localizationInfo", "manifestVersion", "meetingExtensionDefinition", "name", "permissions", "publisherDocsUrl", "showLoadingIndicator", "staticTabs", "subscriptionOffer", "supportedChannelTypes", "validDomains", "version", "webApplicationInfo"]);
+const unknown = Object.keys(parsed).filter((k) => k !== "$schema" && !V1_17_TOP_LEVEL.has(k));
+if (unknown.length) {
+  console.error("[teams-package] top-level properties not defined in Teams v1.17:", unknown.join(", "));
+  process.exit(1);
+}
+
 // One capability, and only one.
 const commands = parsed.composeExtensions?.[0]?.commands ?? [];
 if (parsed.staticTabs || parsed.configurableTabs || parsed.bots || commands.length !== 1) {
