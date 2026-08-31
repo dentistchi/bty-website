@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "id": "374ec662-0deb-4e0b-8514-e38a035a349e",
   "developer": {
     "name": "BTY Training Center",
@@ -25,7 +25,7 @@
   "bots": [
     {
       "botId": "820f231b-9dbb-4c84-94c5-65bc43d35d91",
-      "scopes": ["personal", "groupChat"],
+      "scopes": ["personal", "team", "groupChat"],
       "isNotificationOnly": false
     }
   ],
