@@ -113,6 +113,25 @@ export function previewFromBody(raw: unknown): string | null {
 }
 
 /**
+ * A Teams message id, normalised to a string.
+ *
+ * MEASURED ON THE WIRE, not taken from the docs. Microsoft's published fetchTask example shows
+ * `"id": "1611060744833"` -- a string -- and the iPhone Teams client sends the same field as a
+ * JSON NUMBER. Reading it as a string only meant every real mobile save was refused as
+ * `missing_message` while the payload was in fact complete.
+ *
+ * A number is therefore accepted and stringified, which also keeps the idempotency key identical
+ * across clients: the same message saved from mobile and from desktop must produce one capture,
+ * and it would not if one platform's id round-tripped differently. Everything else is still
+ * rejected -- booleans, objects, NaN and Infinity included -- so the field stays fail-closed.
+ */
+export function messageIdOf(raw: unknown): string {
+  if (typeof raw === "string") return raw.trim();
+  if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
+  return "";
+}
+
+/**
  * Parse a VERIFIED Teams invoke into the identity tuple and the capture payload.
  *
  * Returns a typed refusal rather than throwing: an activity we cannot read is a "this message
@@ -134,7 +153,7 @@ export function parseTeamsMessageAction(activity: unknown): TeamsInvokeParse {
   if (!conversationId) return { ok: false, code: "missing_conversation" };
 
   const payload = obj(obj(a.value).messagePayload);
-  const messageId = str(payload.id);
+  const messageId = messageIdOf(payload.id);
   if (!messageId) return { ok: false, code: "missing_message" };
 
   const channelId = opt(obj(payload.channelIdentity).channelId);

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  messageIdOf,
   parseTeamsMessageAction,
   canonicalConversationId,
   previewFromBody,
@@ -129,6 +130,91 @@ describe("Teams message action → capture input (pure)", () => {
     expect(s.sourceMetadata.capture_reason).toBe("explicit_save");
     expect(s.externalKey).not.toContain("explicit_save");
     expect(s.externalKey).toBe(`teams:${TID}:19:abc@thread.tacv2:1700000000000`);
+  });
+
+
+  /**
+   * THE LIVE MOBILE WIRE. Shape measured from the Founder's iPhone on 2026-08-31: the exact
+   * `value` and `messagePayload` key sets Teams sent, with `id` as a JSON NUMBER. Microsoft's
+   * documented example uses a string, so this is the case the docs would never have produced.
+   */
+  function mobileActivity() {
+    return {
+      name: TEAMS_INVOKE_FETCH_TASK,
+      type: "invoke",
+      channelData: { tenant: { id: TID } },
+      from: { id: "29:addr", aadObjectId: OID },
+      conversation: { id: "19:chat@thread.v2" },
+      value: {
+        commandId: "saveToBty",
+        commandContext: "message",
+        context: {},
+        messagePayload: {
+          id: 1756680000000,
+          replyToId: null,
+          linkToMessage: "https://teams.microsoft.com/l/message/19:chat@thread.v2/1756680000000",
+          subject: null,
+          body: { contentType: "html", content: "<div>Can you review the staffing plan?</div>" },
+          reactions: [],
+          from: { user: { displayName: "Dr. X", id: "someone" } },
+          createdDateTime: "2026-08-31T21:00:00Z",
+          locale: "en-us",
+          importance: "normal",
+          deleted: false,
+          summary: null,
+          lastModifiedDateTime: null,
+          mentions: [],
+          attachments: [],
+        },
+      },
+    };
+  }
+
+  it("LIVE WIRE — the real mobile fetchTask parses, numeric message id and all", () => {
+    const r = parseTeamsMessageAction(mobileActivity());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.tenantId).toBe(TID);
+    expect(r.aadObjectId).toBe(OID);
+    const s = resolveTeamsCaptureSource(r.capture);
+    expect(s.ok).toBe(true);
+    if (!s.ok) return;
+    expect(s.externalKey).toBe(`teams:${TID}:19:chat@thread.v2:1756680000000`);
+    expect(s.previewText).toBe("Can you review the staffing plan?");
+  });
+
+  it("a numeric id and its string spelling are the SAME capture", () => {
+    const num = parseTeamsMessageAction(mobileActivity());
+    const str_ = mobileActivity();
+    (str_.value.messagePayload as Record<string, unknown>).id = "1756680000000";
+    const asString = parseTeamsMessageAction(str_);
+    expect(num.ok && asString.ok).toBe(true);
+    if (!num.ok || !asString.ok) return;
+    const key = (c: typeof num.capture) => {
+      const s = resolveTeamsCaptureSource(c);
+      return s.ok ? s.externalKey : null;
+    };
+    expect(key(num.capture)).toBe(key(asString.capture));
+  });
+
+  it("messageIdOf stays fail-closed on everything that is not an id", () => {
+    expect(messageIdOf("m1")).toBe("m1");
+    expect(messageIdOf("  m1  ")).toBe("m1");
+    expect(messageIdOf(1756680000000)).toBe("1756680000000");
+    expect(messageIdOf(0)).toBe("0");
+    for (const bad of [null, undefined, true, false, {}, [], NaN, Infinity, -Infinity, ""]) {
+      expect(messageIdOf(bad)).toBe("");
+    }
+  });
+
+  it("a near-miss key is NOT accepted as the message id", () => {
+    const a = mobileActivity();
+    const p = a.value.messagePayload as Record<string, unknown>;
+    delete p.id;
+    p.messageId = 1756680000000;   // plausible-looking, not the measured field
+    const r = parseTeamsMessageAction(a);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("missing_message");
   });
 
   it("an unsafe deep link is dropped rather than rendered", () => {
