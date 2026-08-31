@@ -83,11 +83,23 @@ export async function POST(req: NextRequest) {
   //    single-purpose message action, deliberately not a general bot.
   const parsed = parseTeamsMessageAction(activity);
   if (!parsed.ok) {
-    if (parsed.code === "unsupported_invoke") {
-      console.error("[teams-invoke] unsupported invoke", { supported: TEAMS_SUPPORTED_INVOKE_NAMES });
-      return say(MSG.cannotSave);
-    }
-    console.error("[teams-invoke] activity not usable", { code: parsed.code });
+    // TEMPORARY (T1 first-invoke diagnosis). The first real mobile tap was refused here, and the
+    // log said only what we ACCEPT -- never what ARRIVED -- so the one fact needed to explain it
+    // was the one fact not recorded. These are shape facts, not user data: an activity type and
+    // name, and booleans for whether the identity and payload fields were present at all. No id,
+    // no tenant, no message text. Remove once the received activity is known.
+    const a = (activity ?? {}) as Record<string, unknown>;
+    const o = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
+    console.error("[teams-invoke] activity refused", {
+      code: parsed.code,
+      receivedType: typeof a.type === "string" ? a.type : "(none)",
+      receivedName: typeof a.name === "string" ? a.name : "(none)",
+      supported: TEAMS_SUPPORTED_INVOKE_NAMES,
+      hasTenantId: typeof o(o(a.channelData).tenant).id === "string",
+      hasAadObjectId: typeof o(a.from).aadObjectId === "string",
+      hasMessagePayload: Object.keys(o(o(a.value).messagePayload)).length > 0,
+      topLevelKeys: Object.keys(a).slice(0, 12),
+    });
     return say(MSG.cannotSave);
   }
 
