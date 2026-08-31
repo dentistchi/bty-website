@@ -99,6 +99,13 @@ export async function POST(req: NextRequest) {
       hasAadObjectId: typeof o(a.from).aadObjectId === "string",
       hasMessagePayload: Object.keys(o(o(a.value).messagePayload)).length > 0,
       topLevelKeys: Object.keys(a).slice(0, 12),
+      // `missing_message` means the payload arrived but carried no usable id. Two candidates,
+      // and these three lines separate them without printing a single value: the id may sit
+      // under a different key (key NAMES tell us), or it may be a JSON number rather than a
+      // string, which the string helper silently drops (typeof tells us).
+      valueKeys: Object.keys(o(a.value)).slice(0, 12),
+      messagePayloadKeys: Object.keys(o(o(a.value).messagePayload)).slice(0, 20),
+      messageIdType: typeof o(o(a.value).messagePayload).id,
     });
     return say(MSG.cannotSave);
   }
