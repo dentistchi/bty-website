@@ -6,10 +6,8 @@ import { verifyBotFrameworkToken } from "@/lib/bty/teams/botTokenVerifier.server
 import {
   parseTeamsMessageAction,
   TEAMS_INVOKE_FETCH_TASK,
-  TEAMS_SUPPORTED_INVOKE_NAMES,
   type TeamsInvokeName,
 } from "@/domain/teams/invokeActivity";
-import { identifierFingerprint } from "@/lib/bty/teams/identityFingerprint";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,30 +115,10 @@ export async function POST(req: NextRequest) {
   //    single-purpose message action, deliberately not a general bot.
   const parsed = parseTeamsMessageAction(activity);
   if (!parsed.ok) {
-    // TEMPORARY (T1 first-invoke diagnosis). The first real mobile tap was refused here, and the
-    // log said only what we ACCEPT -- never what ARRIVED -- so the one fact needed to explain it
-    // was the one fact not recorded. These are shape facts, not user data: an activity type and
-    // name, and booleans for whether the identity and payload fields were present at all. No id,
-    // no tenant, no message text. Remove once the received activity is known.
-    const a = (activity ?? {}) as Record<string, unknown>;
-    const o = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
-    console.error("[teams-invoke] activity refused", {
-      code: parsed.code,
-      receivedType: typeof a.type === "string" ? a.type : "(none)",
-      receivedName: typeof a.name === "string" ? a.name : "(none)",
-      supported: TEAMS_SUPPORTED_INVOKE_NAMES,
-      hasTenantId: typeof o(o(a.channelData).tenant).id === "string",
-      hasAadObjectId: typeof o(a.from).aadObjectId === "string",
-      hasMessagePayload: Object.keys(o(o(a.value).messagePayload)).length > 0,
-      topLevelKeys: Object.keys(a).slice(0, 12),
-      // `missing_message` means the payload arrived but carried no usable id. Two candidates,
-      // and these three lines separate them without printing a single value: the id may sit
-      // under a different key (key NAMES tell us), or it may be a JSON number rather than a
-      // string, which the string helper silently drops (typeof tells us).
-      valueKeys: Object.keys(o(a.value)).slice(0, 12),
-      messagePayloadKeys: Object.keys(o(o(a.value).messagePayload)).slice(0, 20),
-      messageIdType: typeof o(o(a.value).messagePayload).id,
-    });
+    // A refusal logs its reason code and nothing else. App-lifecycle activities land here too --
+    // Teams sends `installationUpdate` and `conversationUpdate` to the same endpoint when the app
+    // is installed -- so this path is ordinary traffic, not an incident.
+    console.error("[teams-invoke] activity refused", { code: parsed.code });
     return say(MSG.cannotSave);
   }
 
@@ -153,18 +131,11 @@ export async function POST(req: NextRequest) {
   // 3. IDENTITY. `aadObjectId` is the Entra `oid`; `from.id` and email are never consulted.
   const resolution = await resolveBtyUserFromMicrosoftIdentity(admin, parsed.tenantId, parsed.aadObjectId);
 
-  // The first-invoke identity gate (Slice T1 §G). Fingerprints only — one-way, 8 hex wide, enough
-  // to compare two observations and useless for reconstructing an identifier. A RESOLVED status is
-  // itself the proof that `aadObjectId` equals the stored `oid`, because the resolver matches on
-  // exact lower-cased equality of both segments; these lines exist so a human can SEE that.
-  console.info("[teams-invoke] identity gate", {
-    status: resolution.status,
-    teams_tid_fp: await identifierFingerprint(parsed.tenantId),
-    teams_oid_fp: await identifierFingerprint(parsed.aadObjectId),
-  });
-
   if (resolution.status !== "RESOLVED") {
     // NOT_LINKED must never create a user, and an ambiguous or failed lookup must never guess one.
+    // The status is a fixed enum, never an identifier, so it is safe to record and worth having:
+    // it is the difference between "this person has no BTY account" and "the lookup broke".
+    console.error("[teams-invoke] identity not resolved", { status: resolution.status });
     return say(resolution.status === "NOT_LINKED" ? MSG.signIn : MSG.serverBusy, parsed.invokeName);
   }
 
