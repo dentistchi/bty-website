@@ -181,3 +181,54 @@ export function parseTeamsMessageAction(activity: unknown): TeamsInvokeParse {
     },
   };
 }
+
+// ===========================================================================
+// SLICE A1 — the SECOND message action: Track with BTY.
+//
+// ADDITIVE. Everything above is untouched: `parseTeamsMessageAction` still
+// returns exactly what it returned for T1, and the Save to BTY path does not
+// read a single new field. The two commands are told apart by `value.commandId`,
+// which was already present on the real wire (measured on the Founder's iPhone,
+// 2026-08-31: `commandId: "saveToBty"`), so distinguishing them needs no new
+// platform dependency.
+// ===========================================================================
+
+/** The two commands this app exposes. Anything else is refused. */
+export const TEAMS_COMMAND_SAVE = "saveToBty" as const;
+export const TEAMS_COMMAND_TRACK = "trackWithBty" as const;
+export type TeamsCommandId = typeof TEAMS_COMMAND_SAVE | typeof TEAMS_COMMAND_TRACK;
+
+/**
+ * Which command a verified invoke is for.
+ *
+ * Returns null for an unknown id rather than defaulting to Save — a silent
+ * default is how a future command would quietly write the wrong object.
+ */
+export function readCommandId(activity: unknown): TeamsCommandId | null {
+  const id = str(obj(obj(activity).value).commandId);
+  return id === TEAMS_COMMAND_SAVE || id === TEAMS_COMMAND_TRACK ? id : null;
+}
+
+export type TeamsTrackSubmission =
+  | { ok: true; hostFraming: string; pickedRaw: string }
+  | { ok: false; code: "missing_framing" | "missing_recipients" };
+
+/**
+ * Read the Track dialog's submitted fields, and ONLY those.
+ *
+ * A dialog submit arrives as `composeExtension/submitAction` with the form values under
+ * `value.data`. Exactly two keys are read; anything else the client sends is ignored rather than
+ * merged, so a crafted payload cannot introduce a field this product does not have.
+ *
+ * The recipient string is returned RAW and canonicalised elsewhere
+ * (`parsePickedRecipients`), so the identity rule lives in one place rather than
+ * in whichever parser happened to see the value first.
+ */
+export function parseTeamsTrackSubmission(activity: unknown): TeamsTrackSubmission {
+  const data = obj(obj(obj(activity).value).data);
+  const hostFraming = str(data.hostFraming);
+  if (!hostFraming) return { ok: false, code: "missing_framing" };
+  const pickedRaw = str(data.recipients);
+  if (!pickedRaw) return { ok: false, code: "missing_recipients" };
+  return { ok: true, hostFraming, pickedRaw };
+}

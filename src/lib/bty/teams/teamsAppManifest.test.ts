@@ -58,9 +58,9 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.5, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.6, and points $schema at the same version", () => {
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.5");
+    expect(manifest.version).toBe("1.0.6");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -74,10 +74,9 @@ describe("Teams app manifest — capability", () => {
     expect(manifest.bots?.[0]?.isNotificationOnly).toBe(false);
   });
 
-  it("exposes exactly one message action, unchanged", () => {
+  it("keeps Save to BTY EXACTLY as it shipped — a change here is a regression, not an addition", () => {
     const commands = manifest.composeExtensions?.[0]?.commands ?? [];
     expect(manifest.composeExtensions).toHaveLength(1);
-    expect(commands).toHaveLength(1);
     expect(commands[0]?.id).toBe("saveToBty");
     expect(commands[0]?.type).toBe("action");
     expect(commands[0]?.title).toBe("Save to BTY");
@@ -85,6 +84,16 @@ describe("Teams app manifest — capability", () => {
     // put it somewhere this product does not use.
     expect(commands[0]?.context).toEqual(["message"]);
     expect(commands[0]?.fetchTask).toBe(true);
+  });
+
+  it("adds Track with BTY as the SECOND command, and exposes no third", () => {
+    const commands = manifest.composeExtensions?.[0]?.commands ?? [];
+    expect(commands).toHaveLength(2);
+    expect(commands.map((c) => c?.id)).toEqual(["saveToBty", "trackWithBty"]);
+    expect(commands[1]?.type).toBe("action");
+    expect(commands[1]?.title).toBe("Track with BTY");
+    expect(commands[1]?.context).toEqual(["message"]);
+    expect(commands[1]?.fetchTask).toBe(true);
   });
 
   it("declares tier1 channel support, which is what private and shared channels require", () => {
@@ -148,10 +157,10 @@ describe("Teams app manifest — personal tab (Slice A0)", () => {
     expect(manifest.webApplicationInfo?.resource).toBe(`api://arena.btydaily.com/botid-${BOT_ID}`);
   });
 
-  it("keeps the message action untouched — Track with BTY is A1, not A0", () => {
-    const commands = manifest.composeExtensions?.[0]?.commands ?? [];
-    expect(commands).toHaveLength(1);
-    expect(commands[0]?.id).toBe("saveToBty");
+  it("keeps the personal tab surface exactly as A0.1 left it", () => {
+    // A1 adds a message action. It must not disturb the default-landing ordering that A0.1
+    // established, or the app goes back to opening on Chat.
+    expect(manifest.staticTabs?.map((t) => t.entityId)).toEqual(["btyHome", "conversations"]);
   });
 });
 

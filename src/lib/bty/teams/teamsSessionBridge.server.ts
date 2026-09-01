@@ -51,7 +51,8 @@ export type TeamsBridgeSession = {
 };
 
 export type TeamsBridgeResult =
-  | { ok: true; session: TeamsBridgeSession }
+  /** `userId` is the canonical resolved user — carried so callers need not resolve it twice. */
+  | { ok: true; session: TeamsBridgeSession; userId: string }
   /** The person has a Microsoft account and no BTY account yet. NOTHING was written. */
   | { ok: false; kind: "needs_first_sign_in" }
   | {
@@ -175,6 +176,7 @@ export async function bridgeTeamsIdentityToSession(
   const s = verified.session;
   return {
     ok: true,
+    userId,
     session: {
       access_token: s.access_token,
       refresh_token: s.refresh_token,

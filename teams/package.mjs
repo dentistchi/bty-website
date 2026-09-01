@@ -89,13 +89,26 @@ if (parsed.configurableTabs) {
   console.error("[teams-package] configurableTabs are not part of the A0 surface");
   process.exit(1);
 }
-if (commands.length !== 1 || (parsed.composeExtensions ?? []).length !== 1) {
-  console.error("[teams-package] manifest must expose exactly one compose extension with one command");
+// Slice A1 — TWO known commands now, and only these two, in this order. `saveToBty` shipped and
+// is device-proven; a change to it is a regression to an existing capability, not an addition.
+const EXPECTED_COMMANDS = ["saveToBty", "trackWithBty"];
+if ((parsed.composeExtensions ?? []).length !== 1) {
+  console.error("[teams-package] manifest must expose exactly one compose extension");
   process.exit(1);
 }
-if (commands[0]?.id !== "saveToBty") {
-  console.error("[teams-package] the single compose command must remain `saveToBty` (Track with BTY is A1, not A0)");
+if (commands.length !== EXPECTED_COMMANDS.length
+    || commands.some((c, i) => c?.id !== EXPECTED_COMMANDS[i])) {
+  console.error(`[teams-package] compose commands must be exactly [${EXPECTED_COMMANDS.join(", ")}]`);
   process.exit(1);
+}
+for (const c of commands) {
+  // Both act on a MESSAGE and open a dialog. A `compose`/`commandBox` context would put them
+  // somewhere this product has no behaviour for.
+  if (c?.type !== "action" || c?.fetchTask !== true
+      || !Array.isArray(c?.context) || c.context.length !== 1 || c.context[0] !== "message") {
+    console.error(`[teams-package] command ${c?.id} must be a fetchTask action in the message context`);
+    process.exit(1);
+  }
 }
 
 // ORDER IS THE MECHANISM (Slice A0.1). Microsoft: "Bot acts as the default landing capability if

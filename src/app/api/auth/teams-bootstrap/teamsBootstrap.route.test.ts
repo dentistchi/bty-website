@@ -15,13 +15,14 @@ const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const getUserById = vi.fn();
 const generateLink = vi.fn();
 const verifyOtp = vi.fn();
+const rpc = vi.fn();
 
 vi.mock("@/lib/bty/teams/tabSsoTokenVerifier.server", () => ({ verifyTeamsTabSsoToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({
   resolveBtyUserFromMicrosoftIdentity,
 }));
 vi.mock("@/lib/supabase-admin", () => ({
-  getSupabaseAdmin: () => ({ auth: { admin: { getUserById, generateLink } } }),
+  getSupabaseAdmin: () => ({ auth: { admin: { getUserById, generateLink } }, rpc }),
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: { verifyOtp } }),
@@ -65,6 +66,7 @@ beforeEach(() => {
     error: null,
   });
   verifyOtp.mockResolvedValue({ data: { user: { id: USER }, session: SESSION }, error: null });
+  rpc.mockResolvedValue({ data: [{ bound: 0 }], error: null });
 });
 
 describe("teams-bootstrap — RESOLVED", () => {
@@ -133,6 +135,31 @@ describe("teams-bootstrap — RESOLVED", () => {
     const res = await POST(req());
     expect(res.status).toBe(503);
     expect(generateLink).not.toHaveBeenCalled();
+  });
+});
+
+describe("teams-bootstrap — announcement binding (Slice A1)", () => {
+  it("binds recipient rows frozen for THIS Microsoft identity, using the resolved user", async () => {
+    await POST(req());
+    expect(rpc).toHaveBeenCalledWith("bty_bind_announcement_recipients", {
+      p_user_id: USER,
+      p_tenant_id: TID,
+      p_aad_object_id: OID,
+    });
+  });
+
+  it("a failed binding NEVER fails the sign-in", async () => {
+    // A person's ability to open BTY must not depend on an announcement lookup.
+    rpc.mockResolvedValue({ data: null, error: { code: "42P01", message: "boom" } });
+    const res = await POST(req());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ session: SESSION });
+  });
+
+  it("does NOT bind for someone with no BTY account — a recipient row is not an account", async () => {
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "NOT_LINKED" });
+    await POST(req());
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

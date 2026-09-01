@@ -5,9 +5,14 @@ import { resolveBtyUserFromMicrosoftIdentity } from "@/lib/bty/identity-link/mic
 import { verifyBotFrameworkToken } from "@/lib/bty/teams/botTokenVerifier.server";
 import {
   parseTeamsMessageAction,
+  parseTeamsTrackSubmission,
+  readCommandId,
+  TEAMS_COMMAND_TRACK,
   TEAMS_INVOKE_FETCH_TASK,
   type TeamsInvokeName,
 } from "@/domain/teams/invokeActivity";
+import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
+import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,8 +91,19 @@ function say(text: string, invokeName?: TeamsInvokeName) {
     : NextResponse.json({ composeExtension: { type: "message", text } });
 }
 
+/** A dialog (or a confirmation) rather than a bare message — see the card note above. */
+function dialog(value: unknown, invokeName?: TeamsInvokeName) {
+  return invokeName === TEAMS_INVOKE_FETCH_TASK
+    ? NextResponse.json({ task: { type: "continue", value } })
+    : NextResponse.json({ task: { type: "continue", value } });
+}
+
 const MSG = {
   saved: "Saved to BTY.",
+  trackNoFraming: "Add a line about what they should know or do.",
+  trackNoPeople: "Choose at least one person.",
+  trackNoSource: "BTY couldn't read the original message.",
+  trackFailed: "BTY couldn't start tracking this yet.",
   signIn: "Sign in to BTY with Microsoft first.",
   cannotSave: "This message couldn't be saved to BTY.",
   serverBusy: "BTY couldn't save this yet.",
@@ -118,8 +134,17 @@ export async function POST(req: NextRequest) {
     // A refusal logs its reason code and nothing else. App-lifecycle activities land here too --
     // Teams sends `installationUpdate` and `conversationUpdate` to the same endpoint when the app
     // is installed -- so this path is ordinary traffic, not an incident.
-    console.error("[teams-invoke] activity refused", { code: parsed.code });
-    return say(MSG.cannotSave);
+    /*
+      Slice A1 — name the command even when the parse failed, because the two failures need
+      different words and, more importantly, different diagnosis. A Track submit that arrives
+      WITHOUT `messagePayload` is the one platform behaviour this slice could not measure in
+      advance (Microsoft's documented submitAction sample is compose-context and does not show
+      it). If that is what is happening, it must be loud in the log rather than look like an
+      unreadable message.
+    */
+    const cmd = readCommandId(activity);
+    console.error("[teams-invoke] activity refused", { code: parsed.code, command: cmd ?? "unknown" });
+    return say(cmd === TEAMS_COMMAND_TRACK ? MSG.trackNoSource : MSG.cannotSave);
   }
 
   const admin = getSupabaseAdmin();
@@ -137,6 +162,44 @@ export async function POST(req: NextRequest) {
     // it is the difference between "this person has no BTY account" and "the lookup broke".
     console.error("[teams-invoke] identity not resolved", { status: resolution.status });
     return say(resolution.status === "NOT_LINKED" ? MSG.signIn : MSG.serverBusy, parsed.invokeName);
+  }
+
+  /*
+    3b. WHICH COMMAND (Slice A1). `value.commandId` was already on the real wire before A1 —
+    measured on the Founder's iPhone, 2026-08-31 — so telling the two message actions apart needs
+    no new platform dependency. An unknown id is refused rather than defaulted to Save: a silent
+    default is how a future command quietly writes the wrong object.
+  */
+  if (readCommandId(activity) === TEAMS_COMMAND_TRACK) {
+    // The dialog itself. Nothing is written for merely opening it.
+    if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
+      return dialog(trackDialogCard(), parsed.invokeName);
+    }
+
+    const submission = parseTeamsTrackSubmission(activity);
+    if (!submission.ok) {
+      return say(submission.code === "missing_framing" ? MSG.trackNoFraming : MSG.trackNoPeople, parsed.invokeName);
+    }
+
+    const tracked = await trackAnnouncement(admin, {
+      ownerUserId: resolution.userId,
+      capture: parsed.capture,
+      hostFramingRaw: submission.hostFraming,
+      pickedRaw: submission.pickedRaw,
+    });
+
+    if (!tracked.ok) {
+      console.error("[teams-invoke] track refused", { reason: tracked.reason });
+      const copy =
+        tracked.reason === "invalid_framing"
+          ? MSG.trackNoFraming
+          : tracked.reason === "zero_recipients"
+            ? MSG.trackNoPeople
+            : MSG.trackFailed;
+      return say(copy, parsed.invokeName);
+    }
+
+    return dialog(trackConfirmationCard(tracked.count), TEAMS_INVOKE_FETCH_TASK);
   }
 
   // 4. CAPTURE. Idempotent by `UNIQUE(user_id, source_type, external_key)`; a repeat save returns

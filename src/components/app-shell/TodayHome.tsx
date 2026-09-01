@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import NeedsYourResponse from "@/components/app-shell/NeedsYourResponse";
 import { buildYesterdaySummary, type YesterdayCounts } from "@/domain/daily/yesterdaySummary";
 import { normalizeTodayItems, todayVisible } from "@/domain/daily/todayList";
 import {
@@ -601,6 +602,18 @@ export default function TodayHome({
           ) : null}
         </div>
       ) : null}
+
+      {/*
+        SOMEBODY IS WAITING ON THIS PERSON (Slice A1).
+
+        Placed above Saved for later and below everything owed, because it is neither: a colleague
+        explicitly asked THEM something and is waiting for an answer. It renders nothing when there
+        is nothing to answer — unlike Saved for later, this is not a durable destination, it is a
+        queue that should be empty most days.
+
+        It carries no count and no badge. The obligation is to the person who asked, not to a number.
+      */}
+      <NeedsYourResponse locale={loc} />
 
       {/*
         A DIFFERENT CATEGORY OF THING, PLACED LAST.

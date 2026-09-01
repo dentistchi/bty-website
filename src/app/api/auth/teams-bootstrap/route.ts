@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyTeamsTabSsoToken } from "@/lib/bty/teams/tabSsoTokenVerifier.server";
 import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge.server";
+import { bindAnnouncementRecipients } from "@/lib/bty/announcement/trackAnnouncement.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +79,23 @@ export async function POST(req: NextRequest) {
   const result = await bridgeTeamsIdentityToSession(admin, verified.identity);
 
   if (result.ok) {
+    /*
+      Slice A1 — bind any announcement recipient rows frozen for this Microsoft identity.
+      
+      This is the ONE place it belongs: the identity has just been verified and resolved, so both
+      halves of the tuple are trustworthy and the canonical user id is known. It creates nothing —
+      a recipient row is never permission to make an account — and it is idempotent, so the
+      overwhelmingly common case (no pending rows) costs one indexed lookup.
+
+      Deliberately NOT awaited into the failure path: a person's sign-in must never fail because a
+      binding did. The function already swallows its own errors and returns 0.
+    */
+    await bindAnnouncementRecipients(
+      admin,
+      result.userId,
+      verified.identity.tenantId,
+      verified.identity.aadObjectId,
+    );
     return json({ session: result.session }, 200);
   }
 
