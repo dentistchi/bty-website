@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { isDestructiveTargetAllowed } from "@/lib/bty/safety/destructiveTargetGuard.server";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveE2EAuthUserIdByEmail } from "@/engine/integration/e2e-test-fixtures.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -59,7 +60,14 @@ async function resolveCleanupTargetUserId(
   };
 }
 
+/**
+ * P0-R1: every branch below is a statement about the ENVIRONMENT; none was a statement about the
+ * DATABASE. `VERCEL_ENV` is never set on Cloudflare, so "not production" was true on production.
+ * The shared target boundary is now required FIRST and cannot be satisfied by any label — the
+ * remaining branches can only narrow it further, never widen it.
+ */
 function isE2eCleanupEnvironment(): boolean {
+  if (!isDestructiveTargetAllowed()) return false;
   if (process.env.VERCEL_ENV === "production") return false;
   if (process.env.NODE_ENV === "development") return true;
   if (process.env.E2E_ALLOW_TEST_CLEANUP === "1") return true;

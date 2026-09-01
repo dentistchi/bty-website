@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { isDestructiveTargetAllowed } from "@/lib/bty/safety/destructiveTargetGuard.server";
 
 export const runtime = "nodejs";
 
+/**
+ * P0-R1: this endpoint deletes a user's Arena history and Action Contracts, and it was measured
+ * LIVE ON PRODUCTION — the old rule (`NODE_ENV !== "production" || BTY_ENV === "staging"`) was
+ * satisfied by `wrangler.toml`'s `BTY_ENV = "staging"`, which the production Worker ships because
+ * production and staging are ONE environment here. Any authenticated production user could reach it.
+ *
+ * The label is no longer trusted. Authority is the shared destructive-target boundary: an explicit
+ * opt-in AND a Supabase project that is not production, evaluated against the very connection this
+ * route would delete through. Fail closed.
+ */
 function isResetAllowed(): boolean {
-  const env = process.env.BTY_ENV?.trim().toLowerCase();
-  return process.env.NODE_ENV !== "production" || env === "staging";
+  return isDestructiveTargetAllowed();
 }
 
 type ResetBody = {

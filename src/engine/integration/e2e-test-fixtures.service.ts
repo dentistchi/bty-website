@@ -8,6 +8,7 @@
  * @see resolveE2ETestUserId — `E2E_FIXTURE_USER_ID` → `SMOKE_TEST_USER_ID` → `LOOP_HEALTH_TEST_USER_ID` → {@link FIXTURE_USER_ID}.
  */
 
+import { assertDestructiveTargetAllowed } from "@/lib/bty/safety/destructiveTargetGuard.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unlockedAssetsForTier } from "@/engine/avatar/avatar-assets.service";
 import type { AvatarTier } from "@/engine/avatar/avatar-state.service";
@@ -260,6 +261,9 @@ export async function seedFixtureUser(): Promise<void> {
  * Removes the resolved fixture auth user (cascades FK children) and clears leftover rows for {@link resolveE2ETestUserId}.
  */
 export async function clearFixtureUser(): Promise<void> {
+  // P0-R1: deleting an auth user cascades into every table keyed to it. Refuse before any client,
+  // credential or delete — a test helper must never be able to reach the production project.
+  assertDestructiveTargetAllowed("e2e-test-fixtures.clearFixtureUser");
   const admin = getSupabaseAdmin();
   if (!admin) {
     console.warn("[e2e-test-fixtures] clearFixtureUser skipped (no Supabase admin client).");

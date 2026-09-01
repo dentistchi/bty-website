@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
 const mockRequireUser = vi.fn();
@@ -31,7 +31,13 @@ describe("POST /api/dev/reset-arena-state", () => {
       base: new Response(),
     });
     process.env.BTY_ENV = "staging";
+    // P0-R1: the guard no longer trusts BTY_ENV. Existing behaviour stays reachable exactly as the
+    // boundary intends — an explicitly opted-in, explicitly NON-production project.
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://disposabletestproject.supabase.co");
+    vi.stubEnv("E2E_ALLOW_TEST_CLEANUP", "1");
   });
+
+  afterEach(() => vi.unstubAllEnvs());
 
   it("full reset deletes all selector history tables so next session starts at core_01", async () => {
     function makeDeleteChain(rows: unknown[]) {
@@ -68,14 +74,19 @@ describe("POST /api/dev/reset-arena-state", () => {
     expect((json.client as Record<string, unknown>).next_entry).toBe("core_01_training_system_exposure");
   });
 
-  it("returns 404 when reset is not allowed", async () => {
-    vi.stubEnv("BTY_ENV", "production");
-    // NODE_ENV is read-only; isResetAllowed() only gates on staging/dev via BTY_ENV check when NODE_ENV=production
-    // Simulate the "production + no staging override" case by removing the staging flag
-    const res = await POST(makeReq());
-    // With BTY_ENV=production and test NODE_ENV (not production), isResetAllowed returns true.
-    // This test is a documentation placeholder — production guard is verified by BTY_ENV gate.
-    expect([200, 404]).toContain(res.status);
+  it("P0-R1: refuses on the PRODUCTION project before any database access, even with BTY_ENV=staging", async () => {
+    // The exact live configuration measured during the P0 audit: BTY_ENV="staging" shipped in
+    // wrangler.toml on the production Worker, an authenticated user, and the production database.
+    vi.stubEnv("BTY_ENV", "staging");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://mveycersmqfiuddslnrj.supabase.co");
+    vi.stubEnv("E2E_ALLOW_TEST_CLEANUP", "1");
+
+    const res = await POST(makeReq({ mode: "full" }));
+
+    expect(res.status).toBe(404);
+    // The refusal must precede the database entirely: no admin client is even requested, so no
+    // credential is used and no delete can have been issued.
+    expect(mockGetSupabaseAdmin).not.toHaveBeenCalled();
   });
 
   it("soft_current abandons older IN_PROGRESS runs and removes orphan no_change pending", async () => {

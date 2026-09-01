@@ -5,6 +5,7 @@
  * this module is the single implementation for contract emails and validation.
  */
 
+import { assertDestructiveTargetAllowed } from "@/lib/bty/safety/destructiveTargetGuard.server";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { unlockedAssetsForTier } from "@/engine/avatar/avatar-assets.service";
 import type { AvatarTier } from "@/engine/avatar/avatar-state.service";
@@ -115,6 +116,9 @@ async function ensureSmokeScenarioRow(admin: SupabaseClient): Promise<void> {
 }
 
 async function deleteAuthUserIfPresent(admin: SupabaseClient, userId: string, label: string): Promise<void> {
+  // P0-R1: deleting an auth user cascades into every table keyed to it. Refuse before any client,
+  // credential or delete — a test helper must never be able to reach the production project.
+  assertDestructiveTargetAllowed("e2e-three-contract-users.deleteAuthUserIfPresent");
   const { error: delErr } = await admin.auth.admin.deleteUser(userId);
   if (delErr) {
     const m = delErr.message.toLowerCase();
