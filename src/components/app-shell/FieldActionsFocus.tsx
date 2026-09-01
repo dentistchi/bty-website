@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import { useRouter } from "next/navigation";
+import { navigateWithinFrame } from "@/lib/bty/teams/teamsAwareNavigate";
 import {
   fieldActionLearnerGroup,
   FIELD_ACTION_GROUP_ORDER,
@@ -487,7 +488,15 @@ export default function FieldActionsFocus({
                     data-testid="fa-observation-item"
                     data-state={o.state}
                     className={rowCls}
-                    onClick={() => router.push(`/${loc}/observe/${encodeURIComponent(o.followupId)}`)}
+                    onClick={() =>
+                      // Slice A0 — identical to `router.push` everywhere except inside the Teams
+                      // tab, where `/observe` is an X-Frame-Options: DENY page and pushing it
+                      // would blank the frame rather than navigate. There it opens externally.
+                      navigateWithinFrame(
+                        (href) => router.push(href),
+                        `/${loc}/observe/${encodeURIComponent(o.followupId)}`,
+                      )
+                    }
                   >
                     <span className="min-w-0 truncate text-sm font-medium text-white/85">{o.learnerLabel}</span>
                     {/*

@@ -33,8 +33,10 @@ type Manifest = {
   supportsChannelFeatures?: string;
   supportedChannelTypes?: unknown;
   permissions?: unknown;
+  staticTabs?: { entityId?: string; name?: string; contentUrl?: string; websiteUrl?: string; scopes?: string[] }[];
+  configurableTabs?: unknown;
+  webApplicationInfo?: { id?: string; resource?: string };
   validDomains?: unknown;
-  webApplicationInfo?: unknown;
   authorization?: unknown;
   bots?: { botId?: string; scopes?: string[]; isNotificationOnly?: boolean }[];
   composeExtensions?: {
@@ -56,9 +58,9 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.3, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.4, and points $schema at the same version", () => {
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.3");
+    expect(manifest.version).toBe("1.0.4");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -93,14 +95,67 @@ describe("Teams app manifest — capability", () => {
   });
 });
 
+describe("Teams app manifest — personal tab (Slice A0)", () => {
+  it("declares exactly one personal static tab, pointing at /teams", () => {
+    // The tab renders the SAME BtyDailyAppShell in place. It must not point at /{locale}/app:
+    // that route keeps `X-Frame-Options: DENY`, so framing it would blank the tab.
+    expect(manifest.staticTabs).toHaveLength(1);
+    const tab = manifest.staticTabs?.[0];
+    expect(tab?.entityId).toBe("btyHome");
+    expect(tab?.name).toBe("BTY");
+    expect(tab?.contentUrl).toBe("https://arena.btydaily.com/teams");
+    expect(tab?.websiteUrl).toBe("https://arena.btydaily.com");
+    expect(tab?.scopes).toEqual(["personal"]);
+  });
+
+  it("declares no configurable tabs", () => {
+    expect(manifest.configurableTabs).toBeUndefined();
+  });
+
+  it("binds tab SSO to this app's OWN bot, in the documented api:// shape", () => {
+    // Microsoft's documented Application ID URI for an app carrying a bot, a message extension and
+    // a tab is `api://<domain>/botid-<botAppId>` — which is why A0 needs no new Entra app. A
+    // resource that disagreed with the Entra registration would install cleanly and then fail
+    // every silent sign-in on device, which is exactly the class of defect this file exists for.
+    expect(manifest.webApplicationInfo?.id).toBe(BOT_ID);
+    expect(manifest.webApplicationInfo?.resource).toBe(`api://arena.btydaily.com/botid-${BOT_ID}`);
+  });
+
+  it("keeps the message action untouched — Track with BTY is A1, not A0", () => {
+    const commands = manifest.composeExtensions?.[0]?.commands ?? [];
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.id).toBe("saveToBty");
+  });
+});
+
 describe("Teams app manifest — permission boundary", () => {
   it("introduces no Microsoft Graph surface", () => {
-    // `webApplicationInfo` and `authorization` are the two places a Graph permission can enter a
-    // manifest. Both absent is the whole T1 privacy claim: Teams hands us the chosen message, and
-    // BTY can read nothing else.
-    expect(manifest.webApplicationInfo).toBeUndefined();
+    /*
+      THE PRIVACY CLAIM, CORRECTED (Slice A0).
+
+      T1 asserted this as "`webApplicationInfo` and `authorization` are both absent". Half of that
+      was wrong the moment it was written: `webApplicationInfo` is the TAB SSO BINDING — it names
+      an Application ID URI so Teams can request a token for this app — and it carries no Graph
+      permission of any kind. The marker for Graph/RSC is `authorization.resourceSpecific`.
+
+      So the assertion now says what it always meant: no RSC block, no Graph scope, anywhere. The
+      SSO binding is asserted positively above, as the required thing it is.
+    */
     expect(manifest.authorization).toBeUndefined();
-    expect(JSON.stringify(manifest)).not.toContain("resourceSpecific");
+    const raw = JSON.stringify(manifest);
+    expect(raw).not.toContain("resourceSpecific");
+    for (const graphish of [
+      "graph.microsoft.com",
+      "ChannelMember.Read",
+      "TeamMember.Read",
+      "ChatMember.Read",
+      "ChannelMessage.Read",
+      "ChatMessage.Read",
+      "Directory.Read",
+      "User.Read.All",
+    ]) {
+      expect(raw).not.toContain(graphish);
+    }
   });
 
   it("requests only identity, and only its own domain", () => {

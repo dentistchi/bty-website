@@ -1,0 +1,252 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
+import { getSupabase } from "@/lib/supabase";
+import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
+import {
+  installTeamsApiTransport,
+  installTeamsFrameContainment,
+} from "@/lib/bty/teams/teamsTabTransport";
+
+/**
+ * The BTY Personal Tab. Slice A0.
+ *
+ * ONE JOB: turn the identity Teams already holds into the Supabase session the existing BTY shell
+ * already expects, then get out of the way and render that shell. There is deliberately no Teams
+ * product UI here — the same `BtyDailyAppShell` renders Today / Learn / Practice / Me, and this
+ * file adds a bootstrap in front of it and a frame guard around it.
+ *
+ * THE LIFECYCLE, ONCE PER TAB LOAD:
+ *
+ *   app.initialize() → authentication.getAuthToken()   ← silent; Teams caches this token itself
+ *   POST /api/auth/teams-bootstrap  (Bearer <Entra token>)
+ *   → { session }            supabase.auth.setSession(...)  → render
+ *   → { needsFirstSignIn }   one user-initiated popup, once per person ever → re-bootstrap
+ *
+ * NOTHING DURABLE IS STORED. The Supabase client under `/teams` is memory-only (see
+ * `src/lib/supabase.ts`), and nothing here writes to localStorage, sessionStorage, IndexedDB, a
+ * cookie, the URL, `window.name`, or a Teams card. Durability belongs to Teams, which already
+ * caches the Entra token, and to Supabase, which owns the user record. A cold load simply
+ * bootstraps again.
+ *
+ * BOOTSTRAP RUNS ONCE PER TAB SESSION, never per render and never per API call. `/auth/v1/verify`
+ * is limited to 360/hour with bursts of 30 per IP and is not configurable, and BTY's calls all
+ * egress from one Worker — so a bootstrap per render would spend an organisation-wide budget on
+ * nothing. Once the session exists, Supabase's ordinary refresh keeps it alive on a separate and
+ * much larger budget.
+ */
+
+type Phase =
+  | { k: "starting" }
+  | { k: "needs_first_sign_in" }
+  | { k: "signing_in" }
+  | { k: "ready"; locale: "en" | "ko" }
+  | { k: "retry"; message: string }
+  | { k: "failed"; message: string };
+
+/** Bounded backoff for a throttled bootstrap. Never unbounded, never instant. */
+const RETRY_DELAYS_MS = [1500, 4000, 10000];
+
+const COPY = {
+  starting: "Opening BTY…",
+  signingIn: "Waiting for Microsoft…",
+  firstTitle: "BTY",
+  firstBody: "Connect your Microsoft account once to start using BTY here.",
+  firstCta: "Continue with Microsoft",
+  retry: "BTY couldn't open yet. Trying again…",
+  failed: "BTY couldn't open yet.",
+  failedCta: "Open BTY",
+} as const;
+
+/** Teams' own language, used only when the person has expressed no BTY preference. */
+function localeFromTeams(raw: unknown): "en" | "ko" | null {
+  const s = typeof raw === "string" ? raw.toLowerCase() : "";
+  if (s.startsWith("ko")) return "ko";
+  if (s.startsWith("en")) return "en";
+  return null;
+}
+
+export default function TeamsTabShell() {
+  const [phase, setPhase] = useState<Phase>({ k: "starting" });
+  /** The live access token, read through a getter by the transport so refresh is picked up. */
+  const accessTokenRef = useRef<string | null>(null);
+  /** Bootstrap is idempotent per tab; this stops StrictMode and re-renders from spending budget. */
+  const startedRef = useRef(false);
+  const attemptRef = useRef(0);
+
+  /** Install the transport + containment exactly once, before any shell fetch can run. */
+  useEffect(() => {
+    const uninstallTransport = installTeamsApiTransport(() => accessTokenRef.current);
+    const uninstallContainment = installTeamsFrameContainment((url) => {
+      void (async () => {
+        try {
+          const { app } = await import("@microsoft/teams-js");
+          await app.openLink(url);
+        } catch {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      })();
+    });
+    return () => {
+      uninstallTransport();
+      uninstallContainment();
+    };
+  }, []);
+
+  const bootstrap = useCallback(async (): Promise<void> => {
+    const { app, authentication } = await import("@microsoft/teams-js");
+    await app.initialize();
+
+    // Silent for anyone already signed into Teams. Teams caches and returns the token itself.
+    const entraToken = await authentication.getAuthToken();
+
+    const res = await fetch("/api/auth/teams-bootstrap", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${entraToken}` },
+      cache: "no-store",
+    });
+
+    if (res.status === 429) throw Object.assign(new Error("rate_limited"), { retryable: true });
+    if (!res.ok) throw Object.assign(new Error(`bootstrap_${res.status}`), { retryable: res.status >= 500 });
+
+    const body = (await res.json()) as
+      | { needsFirstSignIn: true }
+      | { session: { access_token: string; refresh_token: string } };
+
+    if ("needsFirstSignIn" in body) {
+      setPhase({ k: "needs_first_sign_in" });
+      return;
+    }
+
+    // A genuine Supabase session. From here the browser Supabase client, RLS, `auth.uid()` and
+    // every existing component behave exactly as they do on the web.
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.setSession({
+      access_token: body.session.access_token,
+      refresh_token: body.session.refresh_token,
+    });
+    if (error) throw Object.assign(new Error("set_session_failed"), { retryable: false });
+
+    accessTokenRef.current = body.session.access_token;
+    // Keep the transport's token current across Supabase's own refreshes.
+    supabase.auth.onAuthStateChange((_e, session) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+
+    let ctxLocale: "en" | "ko" | null = null;
+    try {
+      const ctx = await app.getContext();
+      ctxLocale = localeFromTeams(ctx?.app?.locale);
+    } catch {
+      /* context is a convenience here, never an authority */
+    }
+    const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
+    const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
+    setPhase({ k: "ready", locale });
+  }, []);
+
+  const run = useCallback(async () => {
+    try {
+      await bootstrap();
+    } catch (e) {
+      const retryable = Boolean((e as { retryable?: unknown })?.retryable);
+      const delay = RETRY_DELAYS_MS[attemptRef.current];
+      if (retryable && delay !== undefined) {
+        attemptRef.current += 1;
+        setPhase({ k: "retry", message: COPY.retry });
+        window.setTimeout(() => void run(), delay);
+        return;
+      }
+      // Fail closed. No fabricated session, no cached identity, no silent email fallback.
+      accessTokenRef.current = null;
+      setPhase({ k: "failed", message: COPY.failed });
+    }
+  }, [bootstrap]);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    void run();
+  }, [run]);
+
+  /**
+   * First-ever sign-in. A USER ACTION, never automatic: Microsoft's own guidance is that an
+   * auto-opened auth popup gets blocked by the browser and confuses the person.
+   *
+   * The popup returns the literal `"ok"` and NOTHING else — no token, no email, no user id. That
+   * is deliberate: Microsoft's documented pattern hands tokens back through `localStorage`, and
+   * Microsoft also documents that pattern failing under third-party storage partitioning, which is
+   * the default on iOS. The session is re-derived server-side instead, so the failure mode never
+   * applies.
+   */
+  const onFirstSignIn = useCallback(async () => {
+    setPhase({ k: "signing_in" });
+    try {
+      const { authentication } = await import("@microsoft/teams-js");
+      await authentication.authenticate({
+        url: `${window.location.origin}/teams/link`,
+        width: 600,
+        height: 620,
+      });
+      attemptRef.current = 0;
+      await run();
+    } catch {
+      setPhase({ k: "needs_first_sign_in" });
+    }
+  }, [run]);
+
+  if (phase.k === "ready") return <BtyDailyAppShell locale={phase.locale} />;
+
+  const line =
+    phase.k === "starting"
+      ? COPY.starting
+      : phase.k === "signing_in"
+        ? COPY.signingIn
+        : phase.k === "retry"
+          ? phase.message
+          : phase.k === "failed"
+            ? phase.message
+            : "";
+
+  return (
+    <main
+      data-testid="teams-tab-gate"
+      data-phase={phase.k}
+      className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center text-white"
+    >
+      <p className="text-lg font-semibold">{COPY.firstTitle}</p>
+
+      {phase.k === "needs_first_sign_in" ? (
+        <>
+          <p className="max-w-xs text-sm text-white/70">{COPY.firstBody}</p>
+          <button
+            type="button"
+            data-testid="teams-first-sign-in"
+            onClick={() => void onFirstSignIn()}
+            className="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {COPY.firstCta}
+          </button>
+        </>
+      ) : (
+        <p className="text-sm text-white/70">{line}</p>
+      )}
+
+      {phase.k === "failed" ? (
+        <button
+          type="button"
+          data-testid="teams-retry"
+          onClick={() => {
+            attemptRef.current = 0;
+            setPhase({ k: "starting" });
+            void run();
+          }}
+          className="rounded-lg border border-white/30 px-5 py-2.5 text-sm font-semibold"
+        >
+          {COPY.failedCta}
+        </button>
+      ) : null}
+    </main>
+  );
+}

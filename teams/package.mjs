@@ -71,11 +71,64 @@ if (unknown.length) {
   process.exit(1);
 }
 
-// One capability, and only one. `bots` is EXPECTED here, not extra surface: a bot-based compose
-// extension is powered by a bot, and Teams installs that bot only if the manifest declares it.
+// ---------------------------------------------------------------------------
+// THE A0 SAFETY CONTRACT (was: the T1 single-message-action contract).
+//
+// T1's rule was "one compose command and NO tabs", and it did its job — it is why a tab could not
+// arrive by accident. A0 adds a personal tab deliberately, so the rule is REPLACED rather than
+// deleted: the package must now carry exactly one personal static tab, exactly one compose
+// command still named `saveToBty`, no configurable tabs, and an SSO binding that names this app's
+// own bot. Anything more is still refused.
+//
+// `webApplicationInfo` is an SSO BINDING, not a Graph surface. The Graph markers are
+// `authorization` / `resourceSpecific`, and those must stay absent — that is asserted separately
+// below so the two claims can never be confused for one another again.
+// ---------------------------------------------------------------------------
 const commands = parsed.composeExtensions?.[0]?.commands ?? [];
-if (parsed.staticTabs || parsed.configurableTabs || commands.length !== 1 || (parsed.composeExtensions ?? []).length !== 1) {
-  console.error("[teams-package] manifest exposes more than the single T1 message action");
+if (parsed.configurableTabs) {
+  console.error("[teams-package] configurableTabs are not part of the A0 surface");
+  process.exit(1);
+}
+if (commands.length !== 1 || (parsed.composeExtensions ?? []).length !== 1) {
+  console.error("[teams-package] manifest must expose exactly one compose extension with one command");
+  process.exit(1);
+}
+if (commands[0]?.id !== "saveToBty") {
+  console.error("[teams-package] the single compose command must remain `saveToBty` (Track with BTY is A1, not A0)");
+  process.exit(1);
+}
+
+const tabs = parsed.staticTabs ?? [];
+if (tabs.length !== 1) {
+  console.error("[teams-package] manifest must declare exactly one personal static tab");
+  process.exit(1);
+}
+const tab = tabs[0] ?? {};
+if (
+  tab.entityId !== "btyHome" ||
+  tab.contentUrl !== "https://arena.btydaily.com/teams" ||
+  !Array.isArray(tab.scopes) ||
+  tab.scopes.length !== 1 ||
+  tab.scopes[0] !== "personal"
+) {
+  console.error("[teams-package] the static tab must be the personal BTY tab pointing at /teams");
+  process.exit(1);
+}
+
+// The SSO binding must name THIS app's bot, in the exact Application ID URI shape Microsoft
+// documents for an app carrying a bot, a message extension and a tab. A resource that disagreed
+// with the Entra registration would install fine and then fail every silent sign-in on device.
+const wai = parsed.webApplicationInfo ?? {};
+const expectedResource = `api://arena.btydaily.com/botid-${parsed.bots?.[0]?.botId}`;
+if (wai.id !== parsed.bots?.[0]?.botId || wai.resource !== expectedResource) {
+  console.error("[teams-package] webApplicationInfo must bind this app's own bot id and its api:// resource");
+  process.exit(1);
+}
+
+// THE PRIVACY CLAIM, stated where it actually lives: no Graph, no RSC. Not "no
+// webApplicationInfo" — that property is the SSO binding above and is now REQUIRED.
+if (parsed.authorization || JSON.stringify(parsed).includes("resourceSpecific")) {
+  console.error("[teams-package] manifest introduces a Microsoft Graph / RSC surface");
   process.exit(1);
 }
 

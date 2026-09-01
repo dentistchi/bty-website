@@ -97,6 +97,50 @@ export function copyCookiesAndDebug(
   }
 }
 
+/**
+ * The Supabase ACCESS TOKEN a Teams-tab request carries, or null. Slice A0.
+ *
+ * DO NOT CONFUSE THIS WITH A MICROSOFT TOKEN. The bearer read here is a Supabase access token
+ * that `POST /api/auth/teams-bootstrap` already minted for a Microsoft identity it verified. The
+ * Entra token's authority ends at that route and never reaches this one, so nothing in this file
+ * needs to know Microsoft exists.
+ */
+export function bearerAccessToken(req: NextRequest): string | null {
+  const header = req.headers.get("authorization");
+  if (!header) return null;
+  const m = /^Bearer\s+(.+)$/i.exec(header.trim());
+  const t = m?.[1]?.trim();
+  return t ? t : null;
+}
+
+/**
+ * A Supabase client whose authority is a bearer access token rather than cookies.
+ *
+ * The header is attached GLOBALLY, not just used for `getUser()`, because callers keep using the
+ * returned client for real work — `requireConsentedUser` hands it to `isConsentCurrent`, which
+ * reads `arena_profiles` under RLS. A client that could identify the user but not act as them
+ * would authenticate correctly and then read nothing, which is a worse failure than refusing.
+ */
+function createBearerClient(accessToken: string) {
+  return createServerClient(url, key, {
+    cookies: { getAll: () => [], setAll: () => {} },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
+}
+
+/**
+ * AUTHENTICATION ONLY, and deliberately still only that (see `requireConsentedUser`).
+ *
+ * TWO TRANSPORTS, ONE SESSION AUTHORITY (Slice A0). Web and native carry the Supabase session in
+ * `SameSite=Lax` cookies. A Teams personal tab cannot — it is a third-party browsing context, and
+ * Microsoft documents that Teams iOS blocks third-party cookies for personal apps outright — so it
+ * carries the SAME session in an `Authorization` header instead. Both paths end at
+ * `supabase.auth.getUser()`, resolve to the same `auth.users.id`, and give the same `auth.uid()`
+ * under RLS. This is a second transport, never a second session model and never a second identity.
+ *
+ * The cookie path is tried first and is completely unchanged, so no existing caller can be
+ * affected: a request that carries cookies never reaches the bearer branch.
+ */
 export async function requireUser(req: NextRequest) {
   const base = NextResponse.json({ ok: true }, { status: 200 });
   const cookieSecure = authCookieSecureForRequest(req);
@@ -123,7 +167,21 @@ export async function requireUser(req: NextRequest) {
   });
   const { data, error } = await supabase.auth.getUser();
   const user = data?.user ?? null;
-  return { user, supabase, base, error };
+  if (user) return { user, supabase, base, error };
+
+  // No cookie session. A Teams tab has none by construction, so fall back to the bearer it does
+  // carry. Anything else — a browser with an expired cookie and no header — still returns null
+  // here and gets the existing 401, unchanged.
+  const token = bearerAccessToken(req);
+  if (!token) return { user: null, supabase, base, error };
+
+  const bearer = createBearerClient(token);
+  const viaBearer = await bearer.auth.getUser(token);
+  const bearerUser = viaBearer.data?.user ?? null;
+  if (!bearerUser) return { user: null, supabase, base, error: viaBearer.error ?? error };
+
+  // The bearer client is returned as `supabase` so downstream RLS reads act as this user.
+  return { user: bearerUser, supabase: bearer, base, error: null };
 }
 
 export function unauthenticated(req: NextRequest, base: NextResponse) {

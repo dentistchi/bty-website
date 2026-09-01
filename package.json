@@ -66,6 +66,7 @@
     "today-mirror:pilot-shadow": "npx --yes tsx scripts/today-mirror-pilot-shadow.ts"
   },
   "dependencies": {
+    "@microsoft/teams-js": "^2.55.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@supabase/ssr": "^0.5.2",
