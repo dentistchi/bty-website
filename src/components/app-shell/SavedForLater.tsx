@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
+import SwipeReveal from "@/components/app-shell/SwipeReveal";
 
 /**
  * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
@@ -121,6 +122,147 @@ const COPY: Record<Locale, {
   },
 };
 
+/**
+ * One saved message.
+ *
+ * MODULE-LEVEL ON PURPOSE. Declared inside `SavedForLater` this was a new component type on
+ * every parent render, so React remounted every row whenever anything changed — losing an
+ * in-progress swipe and any transient row state with it. The SAME card whether it stands alone or sits inside an expanded
+ * conversation — a message does not become a different thing because it has neighbours.
+ */
+function CaptureCard({
+it,
+t,
+pendingId,
+failedId,
+openRow,
+setOpenRow,
+choose,
+}: {
+it: SavedCapture;
+t: (typeof COPY)[Locale];
+pendingId: string | null;
+failedId: string | null;
+openRow: string | null;
+setOpenRow: (next: string | null | ((cur: string | null) => string | null)) => void;
+choose: (id: string, choice: TriageChoice) => void;
+}) {
+  const undecided = it.triageChoice === null;
+  const surface =
+    "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
+    // Soon reads a little more present; Later stays quiet. Neither is urgent, and neither is
+    // ever red — nothing here is late, because nothing is owed.
+    (it.triageChoice === "soon"
+      ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
+      : "border-white/8 bg-white/[0.02]");
+
+  /* Swipe reveals the SAME two actions the card already shows, and only on a row that still has
+     a decision open. It calls the identical `choose`, so there is one mutation path, one
+     optimistic update and one rollback — the tray is a shortcut, never a second implementation. */
+  const tray = (
+    <>
+      {(
+        [
+          ["soon", t.soon] as const,
+          ["later", t.later] as const,
+        ] satisfies readonly (readonly [TriageChoice, string])[]
+      ).map(([choice, label]) => (
+        <button
+          key={choice}
+          type="button"
+          data-testid={`swipe-triage-${choice}`}
+          disabled={pendingId !== null}
+          onClick={() => {
+            setOpenRow(null);
+            void choose(it.id, choice);
+          }}
+          className={
+            "w-[88px] px-3 text-[0.85rem] font-medium disabled:opacity-50 " +
+            (choice === "soon" ? "bg-[#C9A66B]/20 text-[#E5B769]" : "bg-white/[0.06] text-white/75")
+          }
+        >
+          {label}
+        </button>
+      ))}
+    </>
+  );
+
+  const body = (
+    <div className={surface}>
+      <span className="text-[0.95rem] text-white/85">{previewOf(it, t)}</span>
+      <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
+        {contextLine(t, it.sourceMetadata ?? {})}
+      </span>
+      {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
+      {it.sourceUrl ? (
+        <a
+          href={it.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="saved-open"
+          className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
+        >
+          {t.open}
+        </a>
+      ) : null}
+
+      {/* The one decision, and only while it is still open. Two plain buttons, sized for a thumb,
+          no icon to decode and no gesture to discover. Message-level, always — never on a group. */}
+      {undecided ? (
+        <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
+          {(
+            [
+              ["soon", t.soon] as const,
+              ["later", t.later] as const,
+            ] satisfies readonly (readonly [TriageChoice, string])[]
+          ).map(([choice, label]) => (
+            <button
+              key={choice}
+              type="button"
+              data-testid={`saved-triage-${choice}`}
+              disabled={pendingId !== null}
+              onClick={() => void choose(it.id, choice)}
+              className={
+                "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
+                (choice === "soon"
+                  ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
+                  : "border-white/12 bg-white/[0.03] text-white/70")
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {failedId === it.id ? (
+        <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
+          {t.notSaved}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
+      <SwipeReveal
+        enabled={undecided}
+        isOpen={openRow === it.id}
+        onOpen={() => setOpenRow(it.id)}
+        onClose={() => setOpenRow((cur) => (cur === it.id ? null : cur))}
+        actions={tray}
+      >
+        {body}
+      </SwipeReveal>
+    </li>
+  );
+}
+
+/** A preview exists for recognition; when there is none, say so plainly rather than invent one. */
+function previewOf(c: SavedCapture, t: (typeof COPY)[Locale]): string {
+  return c.previewText && c.previewText.trim() !== "" ? c.previewText : t.noPreview;
+}
+
 /** Context line: the source, plus whatever real provenance exists. Never a guess. */
 function contextLine(t: (typeof COPY)[Locale], m: Record<string, unknown>): string {
   const sender = typeof m?.sender_display === "string" ? m.sender_display.trim() : "";
@@ -137,6 +279,8 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   const [pendingId, setPendingId] = useState<string | null>(null);
   /** Which conversations are open. Local only — a reading position is not worth persisting. */
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  /** Only ONE row may sit revealed. Opening another closes the previous one by construction. */
+  const [openRow, setOpenRow] = useState<string | null>(null);
   const toggle = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -218,82 +362,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     { key: "later", heading: t.groupLater, rows: items.filter((i) => i.triageChoice === "later") },
   ];
 
-  const previewOf = (it: SavedCapture) =>
-    it.previewText && it.previewText.trim() !== "" ? it.previewText : t.noPreview;
 
-  /**
-   * One saved message. The SAME card whether it stands alone or sits inside an expanded
-   * conversation — a message does not become a different thing because it has neighbours.
-   */
-  function CaptureCard({ it }: { it: SavedCapture }) {
-    const undecided = it.triageChoice === null;
-    return (
-      <li
-        data-testid="saved-item"
-        data-triage={it.triageChoice ?? "none"}
-        className={
-          "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
-          // Soon reads a little more present; Later stays quiet. Neither is urgent, and neither is
-          // ever red — nothing here is late, because nothing is owed.
-          (it.triageChoice === "soon"
-            ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
-            : "border-white/8 bg-white/[0.02]")
-        }
-      >
-        <span className="text-[0.95rem] text-white/85">{previewOf(it)}</span>
-        <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
-          {contextLine(t, it.sourceMetadata ?? {})}
-        </span>
-        {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
-        {it.sourceUrl ? (
-          <a
-            href={it.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="saved-open"
-            className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
-          >
-            {t.open}
-          </a>
-        ) : null}
-
-        {/* The one decision, and only while it is still open. Two plain buttons, sized for a thumb,
-            no icon to decode and no gesture to discover. Message-level, always — never on a group. */}
-        {undecided ? (
-          <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
-            {(
-              [
-                ["soon", t.soon] as const,
-                ["later", t.later] as const,
-              ] satisfies readonly (readonly [TriageChoice, string])[]
-            ).map(([choice, label]) => (
-              <button
-                key={choice}
-                type="button"
-                data-testid={`saved-triage-${choice}`}
-                disabled={pendingId !== null}
-                onClick={() => void choose(it.id, choice)}
-                className={
-                  "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
-                  (choice === "soon"
-                    ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
-                    : "border-white/12 bg-white/[0.03] text-white/70")
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {failedId === it.id ? (
-          <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
-            {t.notSaved}
-          </p>
-        ) : null}
-      </li>
-    );
-  }
 
   return (
     <section className="flex flex-col gap-3" data-testid="saved-view">
@@ -345,7 +414,16 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                       saved message in this lane passes straight through as the card it always was. */}
                   {groupByConversation(lane.rows).map((conv) =>
                     conv.count === 1 ? (
-                      <CaptureCard key={conv.captures[0].id} it={conv.captures[0]} />
+                      <CaptureCard
+                        key={conv.captures[0].id}
+                        it={conv.captures[0]}
+                        t={t}
+                        pendingId={pendingId}
+                        failedId={failedId}
+                        openRow={openRow}
+                        setOpenRow={setOpenRow}
+                        choose={choose}
+                      />
                     ) : (
                       <li key={conv.key} data-testid="saved-conversation" data-count={conv.count}>
                         <button
@@ -366,7 +444,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                             </span>
                           </span>
                           <span className="flex items-start justify-between gap-3">
-                            <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture)}</span>
+                            <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture, t)}</span>
                             <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/35">
                               {expanded.has(conv.key) ? "▾" : "▸"}
                             </span>
@@ -378,7 +456,16 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                         {expanded.has(conv.key) ? (
                           <ul className="mt-2 flex flex-col gap-2 pl-3" data-testid="saved-conversation-messages">
                             {conv.captures.map((it) => (
-                              <CaptureCard key={it.id} it={it} />
+                              <CaptureCard
+                                key={it.id}
+                                it={it}
+                                t={t}
+                                pendingId={pendingId}
+                                failedId={failedId}
+                                openRow={openRow}
+                                setOpenRow={setOpenRow}
+                                choose={choose}
+                              />
                             ))}
                           </ul>
                         ) : null}
