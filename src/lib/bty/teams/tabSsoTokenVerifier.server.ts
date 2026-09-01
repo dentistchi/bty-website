@@ -99,23 +99,67 @@ export function bearerToken(header: string | null): string | null {
   return t ? t : null;
 }
 
+/** Decode a token's payload WITHOUT verifying it. Only ever used to route or to diagnose. */
+function unverifiedPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    return JSON.parse(
+      Buffer.from(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"),
+    ) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Read `tid` from an UNVERIFIED token, for the sole purpose of choosing which tenant's keys to
  * verify against. The value is a routing hint until the signature check passes; a wrong `tid`
  * routes to a key set under which the token does not validate.
  */
 function unverifiedTenantId(token: string): string | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const json = JSON.parse(
-      Buffer.from(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"),
-    ) as Record<string, unknown>;
-    const tid = typeof json.tid === "string" ? json.tid.trim().toLowerCase() : "";
-    return GUID.test(tid) ? tid : null;
-  } catch {
-    return null;
-  }
+  const tid = (() => {
+    const v = unverifiedPayload(token)?.tid;
+    return typeof v === "string" ? v.trim().toLowerCase() : "";
+  })();
+  return GUID.test(tid) ? tid : null;
+}
+
+/**
+ * WHY A REJECTED TOKEN GETS ONE LINE OF SHAPE (Slice A0-RUNTIME).
+ *
+ * `jose` reports a stable code — `ERR_JWT_CLAIM_VALIDATION_FAILED` — for BOTH a wrong audience and
+ * a wrong issuer, which is exactly the ambiguity that costs a device cycle: the code says a claim
+ * was wrong and never which one or what it actually held. On a live SSO failure the difference
+ * between "Entra minted this for a different resource" and "this is a v1.0 token" is the whole
+ * diagnosis, and neither is inferable from the code alone.
+ *
+ * WHAT IS SAFE TO SAY, AND WHY EACH ITEM IS:
+ *   aud   OUR OWN resource identifier. Whatever Entra put there names an application of ours and
+ *         is already published in the Teams manifest. It is the one value worth having verbatim.
+ *   iss   reported as a VERSION ONLY (`v2.0` / `v1.0` / `other`). The raw issuer embeds the tenant
+ *         GUID, so the shape is reported and the identifier is not.
+ *   tid / oid / exp  presence and validity as booleans. Never the values.
+ *
+ * NEVER: the token, any header, `email`, `preferred_username`, `upn`, `name`, `sub`, or the tenant
+ * and object ids themselves. This function cannot emit them — it reads four fields and returns
+ * primitives.
+ */
+function rejectionShape(token: string): Record<string, unknown> {
+  const p = unverifiedPayload(token);
+  if (!p) return { decodable: false };
+  const iss = typeof p.iss === "string" ? p.iss : "";
+  const exp = typeof p.exp === "number" ? p.exp : null;
+  return {
+    decodable: true,
+    // The measured audience, verbatim: it is our own identifier, and it is the answer.
+    aud: typeof p.aud === "string" ? p.aud : Array.isArray(p.aud) ? p.aud.join(",") : "(absent)",
+    // Version only. `/v2.0` is required; a v1.0 token means the app still issues the old format.
+    issVersion: iss.endsWith("/v2.0") ? "v2.0" : iss.startsWith("https://sts.windows.net/") ? "v1.0" : "other",
+    tidPresent: typeof p.tid === "string" && GUID.test(p.tid.trim().toLowerCase()),
+    oidPresent: typeof p.oid === "string" && GUID.test(p.oid.trim().toLowerCase()),
+    expired: exp === null ? null : exp * 1000 < Date.now(),
+  };
 }
 
 /**
@@ -188,10 +232,13 @@ export async function verifyTeamsTabSsoToken(
     });
     payload = verified.payload as Record<string, unknown>;
   } catch (e) {
-    // `jose` error codes are stable and say nothing secret (e.g. ERR_JWT_EXPIRED).
+    // `jose` error codes are stable and say nothing secret (e.g. ERR_JWT_EXPIRED). The shape is
+    // added because the code alone cannot distinguish a wrong audience from a wrong issuer.
     const code = (e as { code?: unknown })?.code;
     console.error("[teams-tab-sso] rejected: token verification failed", {
       code: typeof code === "string" ? code : "unknown",
+      expectedAud: audience,
+      ...rejectionShape(token),
     });
     return { ok: false, reason: "invalid_token" };
   }

@@ -226,18 +226,76 @@ describe("verifyTeamsTabSsoToken — every refusal fails closed", () => {
     expect(await verify(`Bearer ${await sign()}`, null)).toEqual({ ok: false, reason: "not_configured" });
   });
 
-  it("never logs the token or any Microsoft identifier", async () => {
+  it("never logs the token, the tenant, the object id, or any personal claim", async () => {
+    /*
+      The contract CHANGED deliberately in A0-RUNTIME and this test says how. A rejection now
+      reports the measured `aud` verbatim, because `aud` is OUR OWN resource identifier, already
+      published in the Teams manifest, and it is the single value that distinguishes "Entra minted
+      this for a different resource" from every other claim failure.
+
+      Everything that identifies a PERSON or a TENANT is still forbidden, and that is what is
+      asserted here: the raw token, `tid`, `oid`, and email/upn/name/sub.
+    */
     const logged: unknown[] = [];
     (console.error as unknown as { mockImplementation: (f: (...a: unknown[]) => void) => void })
       .mockImplementation((...a: unknown[]) => logged.push(...a));
     const verify = await loadVerifier();
-    const token = await sign({ aud: "api://arena.btydaily.com/botid-other" });
+    const token = await sign({
+      aud: "api://arena.btydaily.com/botid-other",
+      claims: {
+        email: "founder@bty.example",
+        preferred_username: "founder@bty.example",
+        upn: "founder@bty.example",
+        name: "The Founder",
+        sub: "per-application-pairwise-subject",
+      },
+    });
     await verify(`Bearer ${token}`);
     const dump = JSON.stringify(logged);
     expect(dump).not.toContain(token);
     expect(dump).not.toContain(TID);
     expect(dump).not.toContain(OID);
-    expect(dump).not.toContain(BOT_APP_ID);
+    for (const personal of [
+      "founder@bty.example",
+      "The Founder",
+      "per-application-pairwise-subject",
+    ]) {
+      expect(dump).not.toContain(personal);
+    }
+  });
+
+  it("reports the MEASURED audience, so a resource mismatch is readable in one line", async () => {
+    const logged: unknown[] = [];
+    (console.error as unknown as { mockImplementation: (f: (...a: unknown[]) => void) => void })
+      .mockImplementation((...a: unknown[]) => logged.push(...a));
+    const verify = await loadVerifier();
+    // The exact real-world suspect: Entra issuing for the bare client id instead of the api:// URI.
+    await verify(`Bearer ${await sign({ aud: BOT_APP_ID })}`);
+    const dump = JSON.stringify(logged);
+    expect(dump).toContain(`"aud":"${BOT_APP_ID}"`);
+    expect(dump).toContain(`"expectedAud":"${AUDIENCE}"`);
+    expect(dump).toContain('"issVersion":"v2.0"');
+    expect(dump).toContain('"tidPresent":true');
+    expect(dump).toContain('"oidPresent":true');
+    expect(dump).toContain('"expired":false');
+  });
+
+  it("names a v1.0 issuer specifically, rather than calling it a claim failure", async () => {
+    const logged: unknown[] = [];
+    (console.error as unknown as { mockImplementation: (f: (...a: unknown[]) => void) => void })
+      .mockImplementation((...a: unknown[]) => logged.push(...a));
+    const verify = await loadVerifier();
+    await verify(`Bearer ${await sign({ iss: `https://sts.windows.net/${TID}/` })}`);
+    expect(JSON.stringify(logged)).toContain('"issVersion":"v1.0"');
+  });
+
+  it("reports an expired token as expired rather than as a mystery", async () => {
+    const logged: unknown[] = [];
+    (console.error as unknown as { mockImplementation: (f: (...a: unknown[]) => void) => void })
+      .mockImplementation((...a: unknown[]) => logged.push(...a));
+    const verify = await loadVerifier();
+    await verify(`Bearer ${await sign({ exp: Math.floor(Date.now() / 1000) - 3600 })}`);
+    expect(JSON.stringify(logged)).toContain('"expired":true');
   });
 });
 

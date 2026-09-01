@@ -94,12 +94,46 @@ export default function TeamsTabShell() {
     };
   }, []);
 
-  const bootstrap = useCallback(async (): Promise<void> => {
-    const { app, authentication } = await import("@microsoft/teams-js");
-    await app.initialize();
+  /**
+   * Tell the server WHICH pre-bootstrap step failed (Slice A0-RUNTIME).
+   *
+   * A failure before the token exists sends no request, so a live tail sees nothing — which is
+   * indistinguishable from nobody having tapped. This carries a short step name and NO token, and
+   * the 401 it receives is expected and ignored.
+   */
+  const reportPreBootstrapFailure = useCallback(async (step: string): Promise<void> => {
+    try {
+      await fetch("/api/auth/teams-bootstrap", {
+        method: "POST",
+        headers: { "X-BTY-Teams-Client-Error": step },
+        cache: "no-store",
+      });
+    } catch {
+      /* diagnostics must never become a second failure */
+    }
+  }, []);
 
-    // Silent for anyone already signed into Teams. Teams caches and returns the token itself.
-    const entraToken = await authentication.getAuthToken();
+  const bootstrap = useCallback(async (): Promise<void> => {
+    /*
+      Each pre-bootstrap step is named, because they fail for completely different reasons: a chunk
+      that did not load, a tab that is not really inside Teams, and an Entra refusal are three
+      different repairs and one indistinguishable screen.
+    */
+    let step = "import_teams_js";
+    let app: typeof import("@microsoft/teams-js").app;
+    let entraToken: string;
+    try {
+      const sdk = await import("@microsoft/teams-js");
+      app = sdk.app;
+      step = "app_initialize";
+      await app.initialize();
+      step = "get_auth_token";
+      // Silent for anyone already signed into Teams. Teams caches and returns the token itself.
+      entraToken = await sdk.authentication.getAuthToken();
+    } catch (e) {
+      await reportPreBootstrapFailure(step);
+      throw e;
+    }
 
     const res = await fetch("/api/auth/teams-bootstrap", {
       method: "POST",

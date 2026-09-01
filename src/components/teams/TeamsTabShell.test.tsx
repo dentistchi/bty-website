@@ -138,6 +138,62 @@ describe("TeamsTabShell — the silent path", () => {
   });
 });
 
+describe("TeamsTabShell — a pre-bootstrap failure names its own step (A0-RUNTIME)", () => {
+  /*
+    Without this, a failure before the token exists sends NO request, and a live tail sees nothing
+    -- indistinguishable from nobody having tapped. Each step reports itself, with no token.
+  */
+  function beacons() {
+    return fetchSpy.mock.calls
+      .map((c) => (c[1] as RequestInit | undefined)?.headers as Record<string, string> | undefined)
+      .map((h) => h?.["X-BTY-Teams-Client-Error"])
+      .filter(Boolean);
+  }
+
+  it("reports get_auth_token when Teams refuses the token", async () => {
+    stubFetch(ok);
+    getAuthToken.mockRejectedValue(new Error("resource disabled"));
+    render(<TeamsTabShell />);
+    await waitFor(() =>
+      expect(screen.getByTestId("teams-tab-gate").getAttribute("data-phase")).toBe("failed"),
+    );
+    expect(beacons()).toEqual(["get_auth_token"]);
+  });
+
+  it("reports app_initialize when the tab is not really inside Teams", async () => {
+    stubFetch(ok);
+    initialize.mockRejectedValue(new Error("not in teams"));
+    render(<TeamsTabShell />);
+    await waitFor(() =>
+      expect(screen.getByTestId("teams-tab-gate").getAttribute("data-phase")).toBe("failed"),
+    );
+    expect(beacons()).toEqual(["app_initialize"]);
+  });
+
+  it("the beacon carries NO Authorization header and never a token", async () => {
+    stubFetch(ok);
+    getAuthToken.mockRejectedValue(new Error("nope"));
+    render(<TeamsTabShell />);
+    await waitFor(() =>
+      expect(screen.getByTestId("teams-tab-gate").getAttribute("data-phase")).toBe("failed"),
+    );
+    const call = fetchSpy.mock.calls.find(
+      (c) => (c[1] as RequestInit | undefined)?.headers &&
+        ((c[1] as RequestInit).headers as Record<string, string>)["X-BTY-Teams-Client-Error"],
+    );
+    const headers = (call?.[1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
+    expect(JSON.stringify(call)).not.toContain("teams-entra-token");
+  });
+
+  it("sends NO beacon when the bootstrap is actually reached", async () => {
+    stubFetch(ok);
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
+    expect(beacons()).toEqual([]);
+  });
+});
+
 describe("TeamsTabShell — first-ever user", () => {
   it("offers ONE user-initiated button and opens no popup by itself", async () => {
     stubFetch(() =>

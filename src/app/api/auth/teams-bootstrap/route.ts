@@ -39,7 +39,27 @@ function json(body: unknown, status: number) {
   return res;
 }
 
+/**
+ * A tokenless beacon for failures that happen BEFORE this route is reachable (Slice A0-RUNTIME).
+ *
+ * If TeamsJS fails to load, `app.initialize()` rejects, or `getAuthToken()` refuses, the tab never
+ * sends a request — so a live tail sees nothing, and "nothing" is ambiguous: it reads identically
+ * to a person who never tapped. This lets the client say WHICH pre-bootstrap step failed, using
+ * the endpoint that already exists.
+ *
+ * The value is clamped to a short opaque code and nothing else is read from it. The request still
+ * carries no token and still gets the same 401 — this changes no behaviour, only observability.
+ */
+const CLIENT_ERROR_HEADER = "x-bty-teams-client-error";
+
 export async function POST(req: NextRequest) {
+  const clientError = (req.headers.get(CLIENT_ERROR_HEADER) ?? "").trim().slice(0, 64);
+  if (clientError) {
+    console.error("[teams-bootstrap] client reported a pre-bootstrap failure", {
+      step: clientError.replace(/[^a-zA-Z0-9._:-]/g, ""),
+    });
+  }
+
   // 1. AUTHENTICATE FIRST.
   const verified = await verifyTeamsTabSsoToken(req.headers.get("authorization"));
   if (!verified.ok) {
