@@ -10,7 +10,9 @@
  *                                 keys login.botframework.com/v1/.well-known/keys
  *
  *   Teams TAB SSO Entra JWT       iss https://login.microsoftonline.com/{tid}/v2.0
- *                                 aud api://<host>/botid-<botAppId>  (the Application ID URI)
+ *                                 aud THIS app under either spelling — the bare client id (what a
+ *                                     v2.0 token actually carries, measured on device) or the
+ *                                     Application ID URI. See `tabSsoAudiences`.
  *                                 keys the TENANT's own OIDC discovery document
  *
  * They share a bot App ID and nothing else. Verifying a tab token with the bot verifier would
@@ -36,8 +38,11 @@
  * application's view of a user, never a user. `oid` is the claim Microsoft documents as unique
  * across applications, and it is the only one this module reads as identity.
  *
- * WHAT IS NEVER LOGGED: the token, any header, any claim value, the audience, the tenant, or any
- * Microsoft identifier. Failures log a short stable reason code and nothing else.
+ * WHAT IS NEVER LOGGED: the token, any header, `email`, `preferred_username`, `upn`, `name`,
+ * `sub`, or the tenant and object ids themselves. A REJECTION additionally reports the measured
+ * `aud` — our own resource identifier, already published in the manifest — plus the issuer VERSION
+ * and three booleans, because the `jose` error code alone cannot distinguish a wrong audience from
+ * a wrong issuer and that ambiguity cost a device cycle exactly once. See `rejectionShape`.
  *
  * FAILS CLOSED on every path, including an unconfigured deployment.
  */
@@ -84,6 +89,41 @@ export function tabSsoAudience(botAppId: string | undefined = process.env.TEAMS_
   const id = (botAppId ?? "").trim().toLowerCase();
   if (!GUID.test(id)) return null;
   return `api://${TAB_HOST}/botid-${id}`;
+}
+
+/**
+ * THE TWO SPELLINGS OF THE SAME RESOURCE — corrected on device evidence (Slice A0-RUNTIME).
+ *
+ * A0 accepted only the Application ID URI, on the strength of Microsoft's Teams tab SSO article,
+ * and shipped a test asserting that a token addressed to the bare bot app id "is not a tab token".
+ * The first real launch disproved it. The Founder's live token verified its SIGNATURE against the
+ * tenant's own published keys, carried `iss` `.../v2.0`, a valid `tid`, a valid `oid` and a future
+ * `exp` — and was refused for one reason:
+ *
+ *     expectedAud  api://arena.btydaily.com/botid-820f231b-…
+ *     aud          820f231b-…                                  ← what Entra actually issued
+ *
+ * That is documented identity-platform behaviour, not a misconfiguration: a **v2.0** access token
+ * carries the resource application's **client ID** in `aud`, whereas a v1.0 token carries the App
+ * ID URI. `requestedAccessTokenVersion: 2` is required for Teams SSO, so the GUID form is the
+ * NORMAL case and the URI form was the guess.
+ *
+ * WHY ACCEPTING BOTH IS NOT A WIDENING OF TRUST. They are two spellings of ONE application — this
+ * bot, whose id already gates the Bot Framework path and is published in the manifest. A token
+ * minted for any other application still fails, and a token with no audience still fails. What
+ * changes is only that BTY now recognises its own resource under the name Entra actually uses.
+ *
+ * Both are kept rather than swapping one guess for another: if the app's token version were ever
+ * changed, the URI form would reappear, and a silent refusal is exactly the failure this cost a
+ * device cycle to find once.
+ */
+export function tabSsoAudiences(
+  botAppId: string | undefined = process.env.TEAMS_BOT_APP_ID,
+): string[] | null {
+  const id = (botAppId ?? "").trim().toLowerCase();
+  if (!GUID.test(id)) return null;
+  // v1.0 spelling first (the manifest's `webApplicationInfo.resource`), then the v2.0 spelling.
+  return [`api://${TAB_HOST}/botid-${id}`, id];
 }
 
 /** The tenant's own OIDC issuer. Never `/common`. */
@@ -197,10 +237,10 @@ async function getTenantJwks(tenantId: string) {
  */
 export async function verifyTeamsTabSsoToken(
   authorizationHeader: string | null,
-  audience: string | null = tabSsoAudience(),
+  audience: string | string[] | null = tabSsoAudiences(),
   keyResolver?: JWTVerifyGetKey,
 ): Promise<TabSsoVerification> {
-  if (!audience) {
+  if (!audience || (Array.isArray(audience) && audience.length === 0)) {
     console.error("[teams-tab-sso] rejected: application id uri not configured");
     return { ok: false, reason: "not_configured" };
   }
@@ -237,7 +277,7 @@ export async function verifyTeamsTabSsoToken(
     const code = (e as { code?: unknown })?.code;
     console.error("[teams-tab-sso] rejected: token verification failed", {
       code: typeof code === "string" ? code : "unknown",
-      expectedAud: audience,
+      expectedAud: Array.isArray(audience) ? audience.join(" | ") : audience,
       ...rejectionShape(token),
     });
     return { ok: false, reason: "invalid_token" };

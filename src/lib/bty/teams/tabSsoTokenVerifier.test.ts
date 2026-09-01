@@ -53,7 +53,7 @@ async function sign(
 
 async function loadVerifier() {
   const { verifyTeamsTabSsoToken } = await import("@/lib/bty/teams/tabSsoTokenVerifier.server");
-  return (auth: string | null, audience: string | null = AUDIENCE) =>
+  return (auth: string | null, audience: string | string[] | null = [AUDIENCE, BOT_APP_ID]) =>
     verifyTeamsTabSsoToken(auth, audience, jwks);
 }
 
@@ -124,16 +124,19 @@ describe("verifyTeamsTabSsoToken — every refusal fails closed", () => {
     expect(r).toEqual({ ok: false, reason: "invalid_token" });
   });
 
-  it("rejects a wrong AUDIENCE — a token for the bare bot app id is not a tab token", async () => {
+  it("rejects an audience belonging to a DIFFERENT application", async () => {
     const verify = await loadVerifier();
-    expect(await verify(`Bearer ${await sign({ aud: BOT_APP_ID })}`)).toEqual({
-      ok: false,
-      reason: "invalid_token",
-    });
-    expect(await verify(`Bearer ${await sign({ aud: "api://arena.btydaily.com/botid-other" })}`)).toEqual({
-      ok: false,
-      reason: "invalid_token",
-    });
+    for (const aud of [
+      "api://arena.btydaily.com/botid-other",
+      "00000000-0000-0000-0000-000000000000",
+      "api://someone-else.example/botid-820f231b-9dbb-4c84-94c5-65bc43d35d91",
+      "https://graph.microsoft.com",
+    ]) {
+      expect(await verify(`Bearer ${await sign({ aud })}`), `aud ${aud}`).toEqual({
+        ok: false,
+        reason: "invalid_token",
+      });
+    }
   });
 
   it("rejects an EXPIRED token", async () => {
@@ -269,11 +272,13 @@ describe("verifyTeamsTabSsoToken — every refusal fails closed", () => {
     (console.error as unknown as { mockImplementation: (f: (...a: unknown[]) => void) => void })
       .mockImplementation((...a: unknown[]) => logged.push(...a));
     const verify = await loadVerifier();
-    // The exact real-world suspect: Entra issuing for the bare client id instead of the api:// URI.
-    await verify(`Bearer ${await sign({ aud: BOT_APP_ID })}`);
+    const FOREIGN = "11112222-3333-4444-5555-666677778888";
+    await verify(`Bearer ${await sign({ aud: FOREIGN })}`);
     const dump = JSON.stringify(logged);
-    expect(dump).toContain(`"aud":"${BOT_APP_ID}"`);
-    expect(dump).toContain(`"expectedAud":"${AUDIENCE}"`);
+    expect(dump).toContain(`"aud":"${FOREIGN}"`);
+    // Both accepted spellings are reported, so the operator sees what was actually required.
+    expect(dump).toContain(AUDIENCE);
+    expect(dump).toContain(BOT_APP_ID);
     expect(dump).toContain('"issVersion":"v2.0"');
     expect(dump).toContain('"tidPresent":true');
     expect(dump).toContain('"oidPresent":true');
@@ -296,6 +301,39 @@ describe("verifyTeamsTabSsoToken — every refusal fails closed", () => {
     const verify = await loadVerifier();
     await verify(`Bearer ${await sign({ exp: Math.floor(Date.now() / 1000) - 3600 })}`);
     expect(JSON.stringify(logged)).toContain('"expired":true');
+  });
+});
+
+describe("the two spellings of this app's own resource (A0-RUNTIME device correction)", () => {
+  it("ACCEPTS the bare client id — what a v2.0 token actually carries", async () => {
+    /*
+      A0 asserted the opposite, and the first real Teams launch disproved it: the Founder's live
+      token verified its signature against the tenant's published keys, carried iss .../v2.0, a
+      valid tid and oid and a future exp, and was refused solely because `aud` was the client id
+      rather than the App ID URI. A v2.0 access token carries the resource app's client id.
+    */
+    const verify = await loadVerifier();
+    expect(await verify(`Bearer ${await sign({ aud: BOT_APP_ID })}`)).toEqual({
+      ok: true,
+      identity: { tenantId: TID, aadObjectId: OID },
+    });
+  });
+
+  it("still accepts the Application ID URI, so a token-version change cannot silently break it", async () => {
+    const verify = await loadVerifier();
+    expect(await verify(`Bearer ${await sign({ aud: AUDIENCE })}`)).toEqual({
+      ok: true,
+      identity: { tenantId: TID, aadObjectId: OID },
+    });
+  });
+
+  it("tabSsoAudiences returns exactly those two, both naming THIS app", async () => {
+    const { tabSsoAudiences } = await import("@/lib/bty/teams/tabSsoTokenVerifier.server");
+    expect(tabSsoAudiences(BOT_APP_ID)).toEqual([AUDIENCE, BOT_APP_ID]);
+    expect(tabSsoAudiences(BOT_APP_ID.toUpperCase())).toEqual([AUDIENCE, BOT_APP_ID]);
+    for (const bad of [undefined, "", "   ", "not-a-guid"]) {
+      expect(tabSsoAudiences(bad)).toBeNull();
+    }
   });
 });
 
