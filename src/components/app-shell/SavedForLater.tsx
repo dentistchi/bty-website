@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
+import { groupByConversation } from "@/domain/action-capture/conversationGroup";
 
 /**
  * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
@@ -15,6 +16,19 @@ import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
  * no priority, no checkbox, no completion affordance, no XP, no Arena/Host/verification/learning
  * language anywhere in this file. Saved != Promised — a row here has made no claim on the person,
  * and the surface must never imply one.
+ *
+ * WHAT T2.1 ADDS. Several messages saved from ONE Teams conversation collapse into one compact
+ * card inside their lane, because three stacked full-size cards from the same chat read as three
+ * problems when they are one. Grouping is VISUAL ONLY: triage stays message-level, a group has no
+ * decision of its own, and there are deliberately no bulk controls — with no undo in V1, one tap
+ * must never decide for messages the person has not read. A conversation with one saved message
+ * renders exactly as it did before, with no group chrome at all.
+ *
+ * Grouping happens AFTER the lane split, never across it, so a conversation whose messages hold
+ * different decisions simply appears in each lane it has messages in. The key is computed by a
+ * pure domain function from tenant + conversation id and is opaque; sender is display material
+ * only, and grouping by it would merge a private-channel post into a 1:1 chat — measured on live
+ * data, not imagined.
  *
  * WHAT T2 ADDS, AND WHAT IT REFUSES TO ADD. One decision per saved item: Soon or Later. Both are
  * VISIBLE BUTTONS, because a hidden gesture must never be the only way to do a required thing —
@@ -58,6 +72,7 @@ const COPY: Record<Locale, {
   groupNew: string;
   groupSoon: string;
   groupLater: string;
+  savedCount: (n: number) => string;
   soon: string;
   later: string;
   notSaved: string;
@@ -78,6 +93,8 @@ const COPY: Record<Locale, {
     groupNew: "New",
     groupSoon: "Soon",
     groupLater: "Later",
+    // Says how much is here, never how much is left to do. Only ever shown on a group of 2+.
+    savedCount: (n) => `${n} saved messages`,
     soon: "Soon",
     later: "Later",
     // The card has already moved back to where it was; the controls are visible again, so the
@@ -97,6 +114,7 @@ const COPY: Record<Locale, {
     groupNew: "새로 담은 것",
     groupSoon: "곧",
     groupLater: "나중에",
+    savedCount: (n) => `저장한 메시지 ${n}개`,
     soon: "곧",
     later: "나중에",
     notSaved: "저장되지 않았습니다.",
@@ -117,6 +135,16 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   /** Which card's decision failed to save. Scoped to one row — never a screen-level error. */
   const [failedId, setFailedId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  /** Which conversations are open. Local only — a reading position is not worth persisting. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async (): Promise<boolean> => {
     try {
@@ -184,11 +212,88 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     [items, pendingId],
   );
 
-  const groups: { key: "new" | "soon" | "later"; heading: string; rows: SavedCapture[] }[] = [
+  const lanes: { key: "new" | "soon" | "later"; heading: string; rows: SavedCapture[] }[] = [
     { key: "new", heading: t.groupNew, rows: items.filter((i) => i.triageChoice === null) },
     { key: "soon", heading: t.groupSoon, rows: items.filter((i) => i.triageChoice === "soon") },
     { key: "later", heading: t.groupLater, rows: items.filter((i) => i.triageChoice === "later") },
   ];
+
+  const previewOf = (it: SavedCapture) =>
+    it.previewText && it.previewText.trim() !== "" ? it.previewText : t.noPreview;
+
+  /**
+   * One saved message. The SAME card whether it stands alone or sits inside an expanded
+   * conversation — a message does not become a different thing because it has neighbours.
+   */
+  function CaptureCard({ it }: { it: SavedCapture }) {
+    const undecided = it.triageChoice === null;
+    return (
+      <li
+        data-testid="saved-item"
+        data-triage={it.triageChoice ?? "none"}
+        className={
+          "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
+          // Soon reads a little more present; Later stays quiet. Neither is urgent, and neither is
+          // ever red — nothing here is late, because nothing is owed.
+          (it.triageChoice === "soon"
+            ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
+            : "border-white/8 bg-white/[0.02]")
+        }
+      >
+        <span className="text-[0.95rem] text-white/85">{previewOf(it)}</span>
+        <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
+          {contextLine(t, it.sourceMetadata ?? {})}
+        </span>
+        {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
+        {it.sourceUrl ? (
+          <a
+            href={it.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="saved-open"
+            className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
+          >
+            {t.open}
+          </a>
+        ) : null}
+
+        {/* The one decision, and only while it is still open. Two plain buttons, sized for a thumb,
+            no icon to decode and no gesture to discover. Message-level, always — never on a group. */}
+        {undecided ? (
+          <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
+            {(
+              [
+                ["soon", t.soon] as const,
+                ["later", t.later] as const,
+              ] satisfies readonly (readonly [TriageChoice, string])[]
+            ).map(([choice, label]) => (
+              <button
+                key={choice}
+                type="button"
+                data-testid={`saved-triage-${choice}`}
+                disabled={pendingId !== null}
+                onClick={() => void choose(it.id, choice)}
+                className={
+                  "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
+                  (choice === "soon"
+                    ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
+                    : "border-white/12 bg-white/[0.03] text-white/70")
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {failedId === it.id ? (
+          <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
+            {t.notSaved}
+          </p>
+        ) : null}
+      </li>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-3" data-testid="saved-view">
@@ -228,85 +333,58 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
         <p className="text-sm text-white/40" role="status" data-testid="saved-empty">{t.empty}</p>
       ) : (
         <div className="flex flex-col gap-5" data-testid="saved-list">
-          {groups.map((g) =>
-            // An empty group is not a place yet, so it is not drawn. No zero, no badge, no count.
-            g.rows.length === 0 ? null : (
-              <div key={g.key} className="flex flex-col gap-2" data-testid={`saved-group-${g.key}`}>
+          {lanes.map((lane) =>
+            // An empty lane is not a place yet, so it is not drawn. No zero, no badge, no count.
+            lane.rows.length === 0 ? null : (
+              <div key={lane.key} className="flex flex-col gap-2" data-testid={`saved-group-${lane.key}`}>
                 <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/35">
-                  {g.heading}
+                  {lane.heading}
                 </span>
                 <ul className="flex flex-col gap-2">
-                  {g.rows.map((it) => {
-                    const preview = it.previewText && it.previewText.trim() !== "" ? it.previewText : t.noPreview;
-                    const undecided = it.triageChoice === null;
-                    return (
-                      <li
-                        key={it.id}
-                        data-testid="saved-item"
-                        data-triage={it.triageChoice ?? "none"}
-                        className={
-                          "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
-                          // Soon reads a little more present; Later stays quiet. Neither is urgent,
-                          // and neither is ever red — nothing here is late, because nothing is owed.
-                          (it.triageChoice === "soon"
-                            ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
-                            : "border-white/8 bg-white/[0.02]")
-                        }
-                      >
-                        <span className="text-[0.95rem] text-white/85">{preview}</span>
-                        <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
-                          {contextLine(t, it.sourceMetadata ?? {})}
-                        </span>
-                        {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
-                        {it.sourceUrl ? (
-                          <a
-                            href={it.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            data-testid="saved-open"
-                            className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
-                          >
-                            {t.open}
-                          </a>
-                        ) : null}
+                  {/* Grouped AFTER the lane split, never across it (T2.1). A conversation with one
+                      saved message in this lane passes straight through as the card it always was. */}
+                  {groupByConversation(lane.rows).map((conv) =>
+                    conv.count === 1 ? (
+                      <CaptureCard key={conv.captures[0].id} it={conv.captures[0]} />
+                    ) : (
+                      <li key={conv.key} data-testid="saved-conversation" data-count={conv.count}>
+                        <button
+                          type="button"
+                          data-testid="saved-conversation-header"
+                          aria-expanded={expanded.has(conv.key)}
+                          onClick={() => toggle(conv.key)}
+                          className="flex w-full flex-col gap-1 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+                        >
+                          <span className="flex items-center justify-between gap-3">
+                            <span className="text-[0.78rem] text-white/45">
+                              {contextLine(t, conv.latestCapture.sourceMetadata ?? {})}
+                            </span>
+                            {/* Quiet, and a statement of fact — how much is here, never how much
+                                is left to do. Never rendered on Today. */}
+                            <span className="shrink-0 text-[0.72rem] text-white/35" data-testid="saved-conversation-count">
+                              {t.savedCount(conv.count)}
+                            </span>
+                          </span>
+                          <span className="flex items-start justify-between gap-3">
+                            <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture)}</span>
+                            <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/35">
+                              {expanded.has(conv.key) ? "▾" : "▸"}
+                            </span>
+                          </span>
+                        </button>
 
-                        {/* The one decision, and only while it is still open. Two plain buttons,
-                            sized for a thumb, no icon to decode and no gesture to discover. */}
-                        {undecided ? (
-                          <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
-                            {(
-                              [
-                                ["soon", t.soon] as const,
-                                ["later", t.later] as const,
-                              ] satisfies readonly (readonly [TriageChoice, string])[]
-                            ).map(([choice, label]) => (
-                              <button
-                                key={choice}
-                                type="button"
-                                data-testid={`saved-triage-${choice}`}
-                                disabled={pendingId !== null}
-                                onClick={() => void choose(it.id, choice)}
-                                className={
-                                  "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
-                                  (choice === "soon"
-                                    ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
-                                    : "border-white/12 bg-white/[0.03] text-white/70")
-                                }
-                              >
-                                {label}
-                              </button>
+                        {/* Expanded: every saved message, individually addressable — its own source
+                            link and its own decision. The GROUP never offers Soon/Later. */}
+                        {expanded.has(conv.key) ? (
+                          <ul className="mt-2 flex flex-col gap-2 pl-3" data-testid="saved-conversation-messages">
+                            {conv.captures.map((it) => (
+                              <CaptureCard key={it.id} it={it} />
                             ))}
-                          </div>
-                        ) : null}
-
-                        {failedId === it.id ? (
-                          <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
-                            {t.notSaved}
-                          </p>
+                          </ul>
                         ) : null}
                       </li>
-                    );
-                  })}
+                    ),
+                  )}
                 </ul>
               </div>
             ),
