@@ -1,5 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers as nextHeaders } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import {
+  readIncomingAuthorization,
+  bearerGlobalOption,
+  withBearerFallback,
+} from "@/lib/supabase/bearerTransport";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -13,8 +18,11 @@ export async function getSupabaseServerReadonly() {
   if (!url || !key) return null;
 
   const cookieStore = await cookies();
+  // Two transports (Slice A0.2), for consistency with every other factory.
+  const bearer = await readIncomingAuthorization(nextHeaders);
 
-  return createServerClient(url, key, {
+  return withBearerFallback(createServerClient(url, key, {
+    ...bearerGlobalOption(bearer),
     cookies: {
       getAll() {
         // ReadonlyRequestCookies에서 getAll() 사용
@@ -24,5 +32,5 @@ export async function getSupabaseServerReadonly() {
         // Server Component에서는 쿠키 세팅 불가/불필요 → NOOP
       },
     },
-  });
+  }), bearer);
 }

@@ -39,6 +39,9 @@ const COPY: Record<Locale, {
   consentLabel: string;
   consentHelp: string;
   consentPrivacy: string;
+  consentUnavailable: string;
+  consentSaveFailed: string;
+  consentRetry: string;
   today: string;
   yesterday: string;
   earlier: string;
@@ -58,6 +61,9 @@ const COPY: Record<Locale, {
     consentLabel: "Today personalization",
     consentHelp: "Use yesterday's private reflections for a short Today brief.",
     consentPrivacy: "Your reflection remains private and is never shown to the training Host.",
+    consentUnavailable: "Couldn't load this setting.",
+    consentSaveFailed: "Couldn't save that.",
+    consentRetry: "Retry",
     today: "TODAY",
     yesterday: "YESTERDAY",
     earlier: "EARLIER",
@@ -77,6 +83,9 @@ const COPY: Record<Locale, {
     consentLabel: "Today 개인화",
     consentHelp: "어제의 비공개 성찰을 바탕으로 짧은 Today 안내를 만듭니다.",
     consentPrivacy: "성찰 원문은 비공개이며 교육 담당자에게 공개되지 않습니다.",
+    consentUnavailable: "이 설정을 불러오지 못했습니다.",
+    consentSaveFailed: "저장하지 못했습니다.",
+    consentRetry: "다시 시도",
     today: "오늘",
     yesterday: "어제",
     earlier: "이전",
@@ -162,8 +171,21 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [items, setItems] = useState<Entry[] | null>(null);
+  /*
+    FOUR STATES, NEVER THREE (Slice A0.2).
+
+    `null` used to mean BOTH "still loading" and "we could not find out", and the read handler
+    collapsed every failure into `setConsent(false)` -- so a 401 rendered as a confident, valid
+    looking OFF. In the Teams tab that is exactly what happened, and the switch then appeared
+    simply not to work: the write 401'd too and the optimistic value rolled straight back.
+
+    A preference we could not read is NOT a preference that is off. `consentError` keeps those
+    apart, so the surface can say which one it means.
+  */
   const [consent, setConsent] = useState<boolean | null>(null);
+  const [consentError, setConsentError] = useState<"load" | "save" | null>(null);
   const [savingConsent, setSavingConsent] = useState(false);
+  const [consentAttempt, setConsentAttempt] = useState(0);
   const focusRef = useRef<HTMLLIElement | null>(null);
 
   const load = useCallback(async () => {
@@ -201,15 +223,21 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
     void (async () => {
       try {
         const res = await fetch("/api/me/conversation-preferences", { credentials: "include", cache: "no-store" });
-        if (res.ok) {
-          const d = (await res.json()) as { personalizeTodayFromReflections?: boolean };
-          setConsent(d?.personalizeTodayFromReflections === true);
-        } else setConsent(false);
+        if (!res.ok) {
+          // NOT `false`. We do not know what the preference is.
+          setConsent(null);
+          setConsentError("load");
+          return;
+        }
+        const d = (await res.json()) as { personalizeTodayFromReflections?: boolean };
+        setConsent(d?.personalizeTodayFromReflections === true);
+        setConsentError(null);
       } catch {
-        setConsent(false);
+        setConsent(null);
+        setConsentError("load");
       }
     })();
-  }, [load]);
+  }, [load, consentAttempt]);
 
   useEffect(() => {
     if (!focusEntryId || !items) return;
@@ -221,6 +249,7 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
     if (savingConsent || consent === null) return;
     const next = !consent;
     setSavingConsent(true);
+    setConsentError(null);
     setConsent(next); // optimistic
     try {
       const res = await fetch("/api/me/conversation-preferences", {
@@ -229,9 +258,15 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ personalizeTodayFromReflections: next }),
       });
-      if (!res.ok) setConsent(!next); // revert on failure
+      if (!res.ok) {
+        setConsent(!next); // roll the optimistic value back
+        setConsentError("save"); // …and SAY so, rather than looking inert
+        return;
+      }
+      setConsentError(null);
     } catch {
       setConsent(!next);
+      setConsentError("save");
     } finally {
       setSavingConsent(false);
     }
@@ -298,6 +333,23 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
         </button>
         <p className="text-xs leading-5 text-white/45">{t.consentHelp}</p>
         <p className="text-[0.7rem] leading-5 text-white/35">{t.consentPrivacy}</p>
+        {consentError ? (
+          <p className="mt-1 flex items-center gap-2 text-[0.72rem] text-white/55" data-testid="center-consent-error">
+            <span>{consentError === "load" ? t.consentUnavailable : t.consentSaveFailed}</span>
+            <button
+              type="button"
+              data-testid="center-consent-retry"
+              onClick={() => {
+                setConsentError(null);
+                if (consent === null) setConsentAttempt((n) => n + 1);
+                else void toggleConsent();
+              }}
+              className="rounded-md border border-white/15 px-2 py-0.5 text-[0.7rem] font-medium text-white/70"
+            >
+              {t.consentRetry}
+            </button>
+          </p>
+        ) : null}
       </div>
 
       {items === null ? (

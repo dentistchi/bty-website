@@ -3,6 +3,11 @@ import { isConsentCurrent } from "@/lib/legal/activeConsent";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { authCookieSecureForRequest } from "@/lib/bty/cookies/authCookies";
+import {
+  bearerFromAuthorization,
+  bearerGlobalOption,
+  withBearerFallback,
+} from "@/lib/supabase/bearerTransport";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -45,7 +50,10 @@ export function mergeCookiesForRouteHandler(
 
 export function createSupabaseRouteClient(req: NextRequest, res: NextResponse) {
   const secure = authCookieSecureForRequest(req);
-  return createServerClient(url, key, {
+  // Two transports (Slice A0.2) — the same shared behaviour every other factory uses.
+  const bearer = bearerFromAuthorization(req.headers.get("authorization"));
+  return withBearerFallback(createServerClient(url, key, {
+    ...bearerGlobalOption(bearer),
     cookies: {
       getAll() {
         return req.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
@@ -64,7 +72,7 @@ export function createSupabaseRouteClient(req: NextRequest, res: NextResponse) {
         });
       },
     },
-  });
+  }), bearer);
 }
 
 /** Copy Set-Cookie from Supabase refresh (tmp/base response) onto any JSON response — fixes 401 without losing session refresh on Edge. */
@@ -106,11 +114,7 @@ export function copyCookiesAndDebug(
  * needs to know Microsoft exists.
  */
 export function bearerAccessToken(req: NextRequest): string | null {
-  const header = req.headers.get("authorization");
-  if (!header) return null;
-  const m = /^Bearer\s+(.+)$/i.exec(header.trim());
-  const t = m?.[1]?.trim();
-  return t ? t : null;
+  return bearerFromAuthorization(req.headers.get("authorization"));
 }
 
 /**
@@ -124,7 +128,7 @@ export function bearerAccessToken(req: NextRequest): string | null {
 function createBearerClient(accessToken: string) {
   return createServerClient(url, key, {
     cookies: { getAll: () => [], setAll: () => {} },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    ...bearerGlobalOption(accessToken),
   });
 }
 

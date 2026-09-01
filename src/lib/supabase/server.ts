@@ -1,5 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers as nextHeaders } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import {
+  readIncomingAuthorization,
+  bearerGlobalOption,
+  withBearerFallback,
+} from "@/lib/supabase/bearerTransport";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -11,8 +16,11 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  */
 export async function createSupabaseRouteClient() {
   const cookieStore = await cookies();
+  // Two transports (Slice A0.2). Backs `/api/bty/my-page/state`, which the Teams shell fetches.
+  const bearer = await readIncomingAuthorization(nextHeaders);
 
-  return createServerClient(url, key, {
+  return withBearerFallback(createServerClient(url, key, {
+    ...bearerGlobalOption(bearer),
     cookies: {
       getAll() {
         return cookieStore.getAll().map((c) => ({ name: c.name, value: c.value }));
@@ -29,5 +37,5 @@ export async function createSupabaseRouteClient() {
         }
       },
     },
-  });
+  }), bearer);
 }
