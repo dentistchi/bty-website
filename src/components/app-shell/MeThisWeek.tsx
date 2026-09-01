@@ -27,6 +27,8 @@ const COPY = {
     actions: (n: number) => `${n} action ${n === 1 ? "plan" : "plans"}`,
     events: (n: number) => `${n} ${n === 1 ? "event" : "events"} joined`,
     quiet: "A quiet week so far.",
+    unavailable: "Couldn't load this week.",
+    retry: "Retry",
     loading: "Loading your week…",
   },
   ko: {
@@ -41,6 +43,8 @@ const COPY = {
     actions: (n: number) => `행동 계획 ${n}`,
     events: (n: number) => `참여한 이벤트 ${n}`,
     quiet: "아직 조용한 한 주입니다.",
+    unavailable: "이번 주를 불러오지 못했습니다.",
+    retry: "다시 시도",
     loading: "이번 주 불러오는 중…",
   },
 };
@@ -71,6 +75,20 @@ export default function MeThisWeek({
   // show a quiet loading state) from a proven-empty week.
   const [summary, setSummary] = useState<WeeklySummary | null>(() => getCachedSummary());
   const [loaded, setLoaded] = useState<boolean>(() => getCachedSummary() != null);
+  /*
+    A LOAD THAT FAILED IS NOT A LOAD STILL RUNNING (Slice A0-RUNTIME2).
+
+    This previously returned early on a non-OK response without ever ending the loading state, so a
+    401 rendered "Loading your week…" forever. The Founder met exactly that in the Teams tab, where
+    every inline-auth route was refusing. The auth cause is repaired centrally, but a card that can
+    spin indefinitely on ANY failure is its own defect — so the four states are now distinct:
+    loading, content, proven-empty, and failed-with-retry.
+
+    Stale-while-refresh is preserved: when a cached summary exists, a failure keeps showing it
+    rather than replacing real values with an error.
+  */
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,22 +96,29 @@ export default function MeThisWeek({
       try {
         const tz = deviceTz();
         const res = await fetch(`/api/me/today/weekly-activity${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, { credentials: "include", cache: "no-store" });
-        if (!res.ok) return; // failure → RETAIN the last successful values (never blank)
+        if (cancelled) return;
+        if (!res.ok) {
+          // Retain the last successful values (never blank), but STOP claiming to be loading.
+          setFailed(true);
+          return;
+        }
         const d = (await res.json()) as { summary?: WeeklySummary | null };
         if (cancelled) return;
         if (d.summary) {
           setSummary(d.summary);
           setCachedSummary(d.summary);
         }
+        setFailed(false);
         setLoaded(true);
       } catch {
-        /* fail-soft → retain the last successful values; the Orb + identity still render */
+        // fail-soft → retain the last successful values; the Orb + identity still render
+        if (!cancelled) setFailed(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, attempt]);
 
   const s = summary ?? {};
   // Attendance dots from the existing weekly rhythm (presence-as-light).
@@ -146,6 +171,23 @@ export default function MeThisWeek({
           // Proven-empty week (a completed load with no canonical values) — never shown merely
           // because a refresh is pending (that path retains the last values above).
           <p className="text-[0.82rem] text-white/50">{t.quiet}</p>
+        ) : failed ? (
+          // The load ended and did not succeed. Compact, truthful, and recoverable — never a
+          // spinner that outlives its request.
+          <p className="flex items-center gap-2 text-[0.82rem] text-white/50" data-testid="me-week-error">
+            <span>{t.unavailable}</span>
+            <button
+              type="button"
+              data-testid="me-week-retry"
+              onClick={() => {
+                setFailed(false);
+                setAttempt((n) => n + 1);
+              }}
+              className="rounded-md border border-white/15 px-2 py-0.5 text-[0.78rem] font-medium text-white/70"
+            >
+              {t.retry}
+            </button>
+          </p>
         ) : (
           // Initial no-data mount only — a quiet loading state, not a proven-zero claim.
           <p className="text-[0.82rem] text-white/30" role="status" data-testid="me-week-loading">{t.loading}</p>

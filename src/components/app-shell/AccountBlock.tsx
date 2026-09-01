@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signOutAccount } from "@/lib/native/accountSession";
 import { startGoogleOAuth } from "@/lib/native/googleOAuth";
 import { clearWeeklyActivityCache } from "@/lib/bty/daily/weeklyActivityCache";
+import { useTeamsHost } from "@/lib/bty/teams/useTeamsHost";
+import { teamsAccountLabel } from "@/domain/teams/accountLabel";
 
 /**
  * Me-tab account block — the canonical (and ONLY) account-management surface (Slice 3.1B-3N-5B.1).
@@ -19,6 +21,7 @@ type Locale = "en" | "ko";
 
 const COPY: Record<Locale, {
   signedInAs: string;
+  connectedWithTeams: string;
   switchAccount: string;
   signOut: string;
   switching: string;
@@ -27,6 +30,7 @@ const COPY: Record<Locale, {
 }> = {
   en: {
     signedInAs: "Signed in as",
+    connectedWithTeams: "Connected with Microsoft Teams",
     switchAccount: "Switch account",
     signOut: "Sign out",
     switching: "Switching account…",
@@ -35,6 +39,7 @@ const COPY: Record<Locale, {
   },
   ko: {
     signedInAs: "로그인 계정",
+    connectedWithTeams: "Microsoft Teams로 연결됨",
     switchAccount: "계정 전환",
     signOut: "로그아웃",
     switching: "계정 전환 중…",
@@ -46,7 +51,10 @@ const COPY: Record<Locale, {
 export default function AccountBlock({ locale }: { locale: string }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
+  const inTeams = useTeamsHost();
   const [email, setEmail] = useState<string | null>(null);
+  /** Name material from the CANONICAL user record. Presentation only — never identity. */
+  const [nameSource, setNameSource] = useState<{ fullName?: unknown; name?: unknown }>({});
   const [busy, setBusy] = useState<"switch" | "signout" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // In-flight latch: a rapid double-tap cannot start two simultaneous switches (state disables the
@@ -58,8 +66,13 @@ export default function AccountBlock({ locale }: { locale: string }) {
     void (async () => {
       try {
         const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
-        const data = (await res.json()) as { ok?: boolean; user?: { email?: string | null } };
-        if (!cancelled && data?.ok && data.user?.email) setEmail(data.user.email);
+        const data = (await res.json()) as {
+          ok?: boolean;
+          user?: { email?: string | null; user_metadata?: { full_name?: unknown; name?: unknown } };
+        };
+        if (cancelled || !data?.ok) return;
+        if (data.user?.email) setEmail(data.user.email);
+        setNameSource({ fullName: data.user?.user_metadata?.full_name, name: data.user?.user_metadata?.name });
       } catch {
         /* leave email null; the row still renders the labels + actions */
       }
@@ -111,10 +124,43 @@ export default function AccountBlock({ locale }: { locale: string }) {
         <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
           {t.signedInAs}
         </span>
-        <span data-testid="account-email" className="min-w-0 truncate text-[0.95rem] text-white/90">
-          {email ?? "…"}
-        </span>
+        {inTeams ? (
+          /*
+            TEAMS HOST (Slice A0-RUNTIME2). Names the person from the canonical user record and
+            says how they are connected. No email: it is not identity here and showing it would
+            imply otherwise. `teamsAccountLabel` guarantees a real string, so this row can never
+            render "…" again.
+          */
+          <>
+            <span data-testid="account-identity" className="min-w-0 truncate text-[0.95rem] text-white/90">
+              {teamsAccountLabel(nameSource).who}
+            </span>
+            <span data-testid="account-connection" className="text-xs text-white/45">
+              {t.connectedWithTeams}
+            </span>
+          </>
+        ) : (
+          <span data-testid="account-email" className="min-w-0 truncate text-[0.95rem] text-white/90">
+            {email ?? "…"}
+          </span>
+        )}
       </div>
+      {/*
+        TEAMS OWNS THE ACCOUNT (Slice A0-RUNTIME2). Both controls are withheld in the tab, and each
+        for its own measured reason, not for tidiness:
+
+        Switch account starts a Google OAuth chooser. Switching BTY while Teams stays signed in as
+        someone else produces two disagreeing identities in one window — and the next tab load would
+        silently bootstrap the Teams identity back over the choice, so the control cannot even keep
+        its promise.
+
+        Sign out clears a session that lives only in this tab's memory. The very next load calls
+        getAuthToken and mints the same session again, so the button would appear to do something
+        and reliably do nothing. Signing out of BTY in the Teams host means signing out of Teams.
+
+        Web and native are untouched: both controls render there exactly as before.
+      */}
+      {inTeams ? null : (
       <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
@@ -135,6 +181,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
           {busy === "signout" ? t.working : t.signOut}
         </button>
       </div>
+      )}
       {error ? (
         <p role="alert" className="text-sm leading-6 text-red-300/80">
           {error}

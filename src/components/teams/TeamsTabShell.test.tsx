@@ -109,6 +109,32 @@ describe("TeamsTabShell — the silent path", () => {
     expect(init.body).toBeUndefined();
   });
 
+  it("(8) does NOT mount the shell until setSession has COMPLETED", async () => {
+    /*
+      Ordering is the whole reason the shell's authenticated consumers work. Every one of them
+      fetches on mount; if the shell mounted while setSession was still in flight, the bearer would
+      not exist yet and each would 401 -- which is exactly the class of failure that produced an
+      endless "Loading your week...".
+    */
+    let releaseSetSession: (() => void) | null = null;
+    setSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseSetSession = () => resolve({ data: {}, error: null });
+        }),
+    );
+    stubFetch(ok);
+    render(<TeamsTabShell />);
+
+    // Bootstrap has returned a session and setSession is pending: the shell must NOT be mounted.
+    await waitFor(() => expect(setSession).toHaveBeenCalled());
+    expect(screen.queryByTestId("shell")).toBeNull();
+    expect(screen.getByTestId("teams-tab-gate")).toBeTruthy();
+
+    releaseSetSession!();
+    await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
+  });
+
   it("does NOT re-bootstrap on re-render — the verify budget is org-wide", async () => {
     stubFetch(ok);
     const { rerender } = render(<TeamsTabShell />);
