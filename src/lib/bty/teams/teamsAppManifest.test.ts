@@ -58,9 +58,9 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.4, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.5, and points $schema at the same version", () => {
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.4");
+    expect(manifest.version).toBe("1.0.5");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -96,16 +96,43 @@ describe("Teams app manifest — capability", () => {
 });
 
 describe("Teams app manifest — personal tab (Slice A0)", () => {
-  it("declares exactly one personal static tab, pointing at /teams", () => {
-    // The tab renders the SAME BtyDailyAppShell in place. It must not point at /{locale}/app:
-    // that route keeps `X-Frame-Options: DENY`, so framing it would blank the tab.
-    expect(manifest.staticTabs).toHaveLength(1);
+  it("declares the personal BTY tab FIRST — position is what makes it the default landing", () => {
+    /*
+      Slice A0.1. The personal app opened on Chat, and Microsoft says why: "Bot acts as the default
+      landing capability if its scope is defined as personal, even if you don't specify entityId as
+      conversations in staticTabs." The documented repair is ordering, not removal — the tab first,
+      the reserved `conversations` entry second.
+
+      The tab renders the SAME BtyDailyAppShell in place. It must not point at /{locale}/app: that
+      route keeps `X-Frame-Options: DENY`, so framing it would blank the tab.
+    */
+    expect(manifest.staticTabs).toHaveLength(2);
     const tab = manifest.staticTabs?.[0];
     expect(tab?.entityId).toBe("btyHome");
     expect(tab?.name).toBe("BTY");
     expect(tab?.contentUrl).toBe("https://arena.btydaily.com/teams");
     expect(tab?.websiteUrl).toBe("https://arena.btydaily.com");
     expect(tab?.scopes).toEqual(["personal"]);
+  });
+
+  it("declares the reserved `conversations` entry SECOND, so the bot chat stops landing first", () => {
+    const chat = manifest.staticTabs?.[1];
+    expect(chat?.entityId).toBe("conversations");
+    expect(chat?.scopes).toEqual(["personal"]);
+    // A reserved keyword, not a page: it names the bot chat and carries no url of its own.
+    expect(chat?.contentUrl).toBeUndefined();
+  });
+
+  it("KEEPS personal bot scope — removing it would withdraw Save to BTY from 1:1 chats", () => {
+    /*
+      Measured before touching this: `composeExtensions` has no `scopes` property of its own
+      (`additionalProperties: false`), so a message extension's availability derives from the bot
+      it names. Microsoft's guidance is that the personal scope is what makes action commands
+      available in one-on-one chats. Dropping it to hide the Chat tab would have silently removed
+      a shipped, device-proven capability — so the Chat tab is REORDERED, never removed.
+    */
+    expect(manifest.bots?.[0]?.scopes).toContain("personal");
+    expect(manifest.bots?.[0]?.scopes).toEqual(["personal", "team", "groupChat"]);
   });
 
   it("declares no configurable tabs", () => {

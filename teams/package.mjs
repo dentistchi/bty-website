@@ -98,9 +98,16 @@ if (commands[0]?.id !== "saveToBty") {
   process.exit(1);
 }
 
+// ORDER IS THE MECHANISM (Slice A0.1). Microsoft: "Bot acts as the default landing capability if
+// its scope is defined as personal, even if you don't specify entityId as conversations" — which
+// is why the personal app opened on Chat. The documented repair is to list the tab FIRST and the
+// reserved `conversations` entry (the bot chat) second. Personal bot scope is NOT removed: message
+// extensions carry no scopes of their own, so the 1:1 Save to BTY surface depends on it.
+//
+// Both entries are required, in this order, and nothing else may appear.
 const tabs = parsed.staticTabs ?? [];
-if (tabs.length !== 1) {
-  console.error("[teams-package] manifest must declare exactly one personal static tab");
+if (tabs.length !== 2) {
+  console.error("[teams-package] manifest must declare exactly two personal static tabs: the BTY tab, then `conversations`");
   process.exit(1);
 }
 const tab = tabs[0] ?? {};
@@ -111,7 +118,19 @@ if (
   tab.scopes.length !== 1 ||
   tab.scopes[0] !== "personal"
 ) {
-  console.error("[teams-package] the static tab must be the personal BTY tab pointing at /teams");
+  console.error("[teams-package] the FIRST static tab must be the personal BTY tab pointing at /teams — its position is what makes it the default landing capability");
+  process.exit(1);
+}
+const chat = tabs[1] ?? {};
+if (chat.entityId !== "conversations" || !Array.isArray(chat.scopes) || chat.scopes[0] !== "personal") {
+  console.error("[teams-package] the SECOND static tab must be the reserved `conversations` entry — without it the bot chat reclaims the default landing position");
+  process.exit(1);
+}
+
+// The 1:1 message action depends on this and nothing declares it but here.
+const botScopes = parsed.bots?.[0]?.scopes ?? [];
+if (!botScopes.includes("personal")) {
+  console.error("[teams-package] bots[0].scopes must keep `personal` — message extensions have no scopes of their own, and removing it withdraws Save to BTY from one-on-one chats");
   process.exit(1);
 }
 
