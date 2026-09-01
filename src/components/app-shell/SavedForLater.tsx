@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 
 /**
- * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1).
+ * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
  *
  * PROJECTED INTO TODAY, NOT CONVERTED INTO AN OBLIGATION. Today is where the person returns for
  * what matters now, and what they chose not to lose belongs there — but as its OWN lane. This
@@ -15,9 +16,16 @@ import { useCallback, useEffect, useState } from "react";
  * language anywhere in this file. Saved != Promised — a row here has made no claim on the person,
  * and the surface must never imply one.
  *
+ * WHAT T2 ADDS, AND WHAT IT REFUSES TO ADD. One decision per saved item: Soon or Later. Both are
+ * VISIBLE BUTTONS, because a hidden gesture must never be the only way to do a required thing —
+ * there is no swipe in V1. Choosing moves the card into that group and the controls go away; there
+ * is no Done, no Clear, no Dismiss, no Delete, no undo and no count, because none of those is a
+ * promise this object makes. `soon` is a position in this list. It is not a deadline, it never
+ * reaches Today's obligations, and it never becomes an Action Contract.
+ *
  * Data comes from the canonical owner-scoped read (`GET /api/bty/action-capture/mine`), which
- * returns `status='captured'` only. `bty_action_captures` has RLS enabled with zero policies, so
- * there is no browser-direct read path; this component never queries Supabase itself.
+ * returns `status='captured'` only, ALREADY ORDERED (undecided → soon → later). This component
+ * renders that order; it does not compute it.
  *
  * Nothing here is synthesized from metadata. When a message has no preview, the row says so
  * plainly rather than inventing a task title out of ids.
@@ -33,6 +41,8 @@ export type SavedCapture = {
   sourceMetadata: Record<string, unknown>;
   status: string;
   capturedAt: string | null;
+  triageChoice: TriageState;
+  triagedAt: string | null;
 };
 
 const COPY: Record<Locale, {
@@ -45,6 +55,12 @@ const COPY: Record<Locale, {
   noPreview: string;
   open: string;
   teams: string;
+  groupNew: string;
+  groupSoon: string;
+  groupLater: string;
+  soon: string;
+  later: string;
+  notSaved: string;
 }> = {
   en: {
     title: "Saved for later",
@@ -58,6 +74,15 @@ const COPY: Record<Locale, {
     noPreview: "Saved Teams message",
     open: "Open in Teams",
     teams: "Teams",
+    // Group headings name a PLACE, never a status or a workflow stage.
+    groupNew: "New",
+    groupSoon: "Soon",
+    groupLater: "Later",
+    soon: "Soon",
+    later: "Later",
+    // The card has already moved back to where it was; the controls are visible again, so the
+    // recovery is simply to press one. No dialog, and nothing lost.
+    notSaved: "That didn't save.",
   },
   ko: {
     title: "나중을 위해",
@@ -69,6 +94,12 @@ const COPY: Record<Locale, {
     noPreview: "저장한 Teams 메시지",
     open: "Teams에서 열기",
     teams: "Teams",
+    groupNew: "새로 담은 것",
+    groupSoon: "곧",
+    groupLater: "나중에",
+    soon: "곧",
+    later: "나중에",
+    notSaved: "저장되지 않았습니다.",
   },
 };
 
@@ -83,6 +114,9 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   const t = COPY[loc];
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [items, setItems] = useState<SavedCapture[]>([]);
+  /** Which card's decision failed to save. Scoped to one row — never a screen-level error. */
+  const [failedId, setFailedId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const load = useCallback(async (): Promise<boolean> => {
     try {
@@ -106,6 +140,55 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
       alive = false;
     };
   }, [load]);
+
+  /**
+   * Move the card immediately, then confirm with the server.
+   *
+   * OPTIMISTIC, BUT NEVER LOSSY. On failure the previous list is restored exactly as it was — the
+   * card returns to where it sat, with its controls, and says so quietly. A saved thing must not
+   * be able to disappear because a request failed.
+   */
+  const choose = useCallback(
+    async (id: string, choice: TriageChoice) => {
+      if (pendingId) return; // one decision at a time; a second tap is not a second decision
+      const previous = items;
+      setFailedId(null);
+      setPendingId(id);
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, triageChoice: choice, triagedAt: new Date().toISOString() } : it)),
+      );
+      try {
+        const res = await fetch(`/api/bty/action-capture/${encodeURIComponent(id)}/triage`, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ choice }),
+        });
+        const d = (await res.json().catch(() => null)) as { ok?: boolean; capture?: SavedCapture } | null;
+        if (!res.ok || d?.ok !== true || !d.capture) {
+          setItems(previous);
+          setFailedId(id);
+          return;
+        }
+        // Adopt the server's row so the rendered state is the stored state, not our guess.
+        const saved = d.capture;
+        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...saved } : it)));
+      } catch {
+        setItems(previous);
+        setFailedId(id);
+      } finally {
+        setPendingId(null);
+      }
+    },
+    [items, pendingId],
+  );
+
+  const groups: { key: "new" | "soon" | "later"; heading: string; rows: SavedCapture[] }[] = [
+    { key: "new", heading: t.groupNew, rows: items.filter((i) => i.triageChoice === null) },
+    { key: "soon", heading: t.groupSoon, rows: items.filter((i) => i.triageChoice === "soon") },
+    { key: "later", heading: t.groupLater, rows: items.filter((i) => i.triageChoice === "later") },
+  ];
 
   return (
     <section className="flex flex-col gap-3" data-testid="saved-view">
@@ -144,35 +227,91 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
       ) : items.length === 0 ? (
         <p className="text-sm text-white/40" role="status" data-testid="saved-empty">{t.empty}</p>
       ) : (
-        <ul className="flex flex-col gap-2" data-testid="saved-list">
-          {items.map((it) => {
-            const preview = it.previewText && it.previewText.trim() !== "" ? it.previewText : t.noPreview;
-            return (
-              <li
-                key={it.id}
-                data-testid="saved-item"
-                className="flex flex-col gap-1 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3"
-              >
-                <span className="text-[0.95rem] text-white/85">{preview}</span>
-                <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
-                  {contextLine(t, it.sourceMetadata ?? {})}
+        <div className="flex flex-col gap-5" data-testid="saved-list">
+          {groups.map((g) =>
+            // An empty group is not a place yet, so it is not drawn. No zero, no badge, no count.
+            g.rows.length === 0 ? null : (
+              <div key={g.key} className="flex flex-col gap-2" data-testid={`saved-group-${g.key}`}>
+                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/35">
+                  {g.heading}
                 </span>
-                {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
-                {it.sourceUrl ? (
-                  <a
-                    href={it.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="saved-open"
-                    className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
-                  >
-                    {t.open}
-                  </a>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                <ul className="flex flex-col gap-2">
+                  {g.rows.map((it) => {
+                    const preview = it.previewText && it.previewText.trim() !== "" ? it.previewText : t.noPreview;
+                    const undecided = it.triageChoice === null;
+                    return (
+                      <li
+                        key={it.id}
+                        data-testid="saved-item"
+                        data-triage={it.triageChoice ?? "none"}
+                        className={
+                          "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
+                          // Soon reads a little more present; Later stays quiet. Neither is urgent,
+                          // and neither is ever red — nothing here is late, because nothing is owed.
+                          (it.triageChoice === "soon"
+                            ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
+                            : "border-white/8 bg-white/[0.02]")
+                        }
+                      >
+                        <span className="text-[0.95rem] text-white/85">{preview}</span>
+                        <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
+                          {contextLine(t, it.sourceMetadata ?? {})}
+                        </span>
+                        {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
+                        {it.sourceUrl ? (
+                          <a
+                            href={it.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-testid="saved-open"
+                            className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
+                          >
+                            {t.open}
+                          </a>
+                        ) : null}
+
+                        {/* The one decision, and only while it is still open. Two plain buttons,
+                            sized for a thumb, no icon to decode and no gesture to discover. */}
+                        {undecided ? (
+                          <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
+                            {(
+                              [
+                                ["soon", t.soon] as const,
+                                ["later", t.later] as const,
+                              ] satisfies readonly (readonly [TriageChoice, string])[]
+                            ).map(([choice, label]) => (
+                              <button
+                                key={choice}
+                                type="button"
+                                data-testid={`saved-triage-${choice}`}
+                                disabled={pendingId !== null}
+                                onClick={() => void choose(it.id, choice)}
+                                className={
+                                  "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
+                                  (choice === "soon"
+                                    ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
+                                    : "border-white/12 bg-white/[0.03] text-white/70")
+                                }
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {failedId === it.id ? (
+                          <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
+                            {t.notSaved}
+                          </p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ),
+          )}
+        </div>
       )}
     </section>
   );

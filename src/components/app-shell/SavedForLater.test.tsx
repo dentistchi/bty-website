@@ -26,14 +26,31 @@ const item = (over: Partial<SavedCapture> = {}): SavedCapture => ({
   sourceMetadata: { provider: "teams", sender_display: "Ana" },
   status: "captured",
   capturedAt: "2026-08-28T00:00:00Z",
+  // T2: a capture starts undecided, and the fixture default says so.
+  triageChoice: null,
+  triagedAt: null,
   ...over,
 });
 
-function stubCaptures(items: SavedCapture[] | "error") {
+function stubCaptures(items: SavedCapture[] | "error", triage?: { ok: boolean }) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
+      if (u.includes("/triage")) {
+        if (triage && !triage.ok) return new Response(JSON.stringify({ ok: false, error: "SERVER_ERROR" }), { status: 500 });
+        const choice = JSON.parse(String(init?.body ?? "{}")).choice as string;
+        const id = decodeURIComponent(u.split("/action-capture/")[1].split("/triage")[0]);
+        const base = (items === "error" ? [] : items).find((i) => i.id === id);
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            changed: true,
+            capture: { ...base, id, triageChoice: choice, triagedAt: "2026-09-01T00:00:00Z" },
+          }),
+          { status: 200 },
+        );
+      }
       if (u.includes("/api/bty/action-capture/mine")) {
         if (items === "error") return new Response("{}", { status: 500 });
         return new Response(JSON.stringify({ ok: true, items }), { status: 200 });

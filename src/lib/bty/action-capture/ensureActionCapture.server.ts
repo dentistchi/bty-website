@@ -3,6 +3,12 @@ import {
   resolveTeamsCaptureSource,
   type TeamsCaptureInput,
 } from "@/domain/action-capture/captureSource";
+import {
+  triageGroupRank,
+  triageStateOf,
+  type TriageChoice,
+  type TriageState,
+} from "@/domain/action-capture/triage";
 
 /**
  * Action Capture producer (Slice R1B-C2) — the ONLY writer of `public.bty_action_captures`.
@@ -28,7 +34,7 @@ import {
 
 /** Explicit column allow-list — never select('*'); the DTO shape is decided here, not by the table. */
 const CAPTURE_COLS =
-  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at";
+  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at, triage_choice, triaged_at";
 
 export type ActionCapture = {
   id: string;
@@ -39,6 +45,9 @@ export type ActionCapture = {
   sourceMetadata: Record<string, unknown>;
   status: string;
   capturedAt: string | null;
+  /** The user's own decision, or null when they have not made one. Never written by this producer. */
+  triageChoice: TriageState;
+  triagedAt: string | null;
 };
 
 export type EnsureActionCaptureResult =
@@ -54,6 +63,8 @@ type Row = {
   source_metadata: Record<string, unknown> | null;
   status: string | null;
   captured_at: string | null;
+  triage_choice: string | null;
+  triaged_at: string | null;
 };
 
 function project(row: Row): ActionCapture {
@@ -66,6 +77,8 @@ function project(row: Row): ActionCapture {
     sourceMetadata: (row.source_metadata ?? {}) as Record<string, unknown>,
     status: row.status ?? "",
     capturedAt: row.captured_at,
+    triageChoice: triageStateOf(row.triage_choice),
+    triagedAt: row.triaged_at,
   };
 }
 
@@ -155,5 +168,86 @@ export async function listMyActionCaptures(
     .eq("status", "captured")
     .order("captured_at", { ascending: false });
   if (error) throw new Error(`listMyActionCaptures: ${error.message}`);
-  return ((data ?? []) as Row[]).map(project);
+  return ((data ?? []) as Row[]).map(project).sort(compareForSavedLane);
+}
+
+/**
+ * The saved lane's canonical order (Slice T2): undecided first, then soon, then later.
+ *
+ * Sorted HERE rather than in SQL because the rule is a product decision, not a storage one, and
+ * PostgREST cannot express the group rank without a view. Sorted here rather than in the component
+ * because a surface renders an order, it does not decide one.
+ *
+ * Within a group: the undecided are newest-SAVED first (nothing else has happened to them), while
+ * the decided are newest-DECIDED first — what the person most recently chose is what they most
+ * recently thought about. Timing is never inferred from `captured_at` for a decided row.
+ */
+function compareForSavedLane(a: ActionCapture, b: ActionCapture): number {
+  const rank = triageGroupRank(a.triageChoice) - triageGroupRank(b.triageChoice);
+  if (rank !== 0) return rank;
+  const key = (c: ActionCapture) => (c.triageChoice === null ? c.capturedAt : c.triagedAt) ?? "";
+  const ka = key(a);
+  const kb = key(b);
+  if (ka === kb) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; // deterministic tie-break
+  return ka < kb ? 1 : -1;
+}
+
+export type SetTriageResult =
+  | { ok: true; capture: ActionCapture; changed: boolean }
+  | { ok: false; code: "not_found" | "update_failed" | "load_failed" };
+
+/**
+ * Record the user's decision about one of their own captures.
+ *
+ * OWNERSHIP AND ELIGIBILITY ARE IN THE WHERE CLAUSE, not in a prior read: the UPDATE matches
+ * `id` AND `user_id` AND `status='captured'` AND `triage_choice IS NULL`, so a row belonging to
+ * someone else is not merely rejected — it is never selected, and two concurrent taps cannot both
+ * write. The pair is written together because the DB constraint requires it.
+ *
+ * ALREADY DECIDED IS NOT AN ERROR. When the conditional update matches nothing, we re-read the
+ * caller's OWN row: if it exists and is already triaged, the decision stands and is returned with
+ * `changed: false` — mirroring the capture producer's `created: false` for a repeat save, which is
+ * this codebase's existing convention for "your intent was already satisfied". Anything else is a
+ * single opaque `not_found`, so a probe cannot tell "someone else's row" from "no such row".
+ *
+ * This function writes EXACTLY two columns. It cannot touch provenance, `status`, promotion, an
+ * Action Contract, Arena or XP — the update payload is a literal with two keys.
+ */
+export async function setActionCaptureTriage(
+  admin: SupabaseClient,
+  params: { userId: string; captureId: string; choice: TriageChoice },
+): Promise<SetTriageResult> {
+  const userId = typeof params.userId === "string" ? params.userId.trim() : "";
+  const captureId = typeof params.captureId === "string" ? params.captureId.trim() : "";
+  if (!userId || !captureId) return { ok: false, code: "not_found" };
+
+  const { data: updated, error: upErr } = await admin
+    .from("bty_action_captures")
+    .update({ triage_choice: params.choice, triaged_at: new Date().toISOString() })
+    .eq("id", captureId)
+    .eq("user_id", userId)
+    .eq("status", "captured")
+    .is("triage_choice", null)
+    .select(CAPTURE_COLS)
+    .maybeSingle();
+
+  if (upErr) {
+    console.error("[actionCapture] triage update failed", { user: userId.slice(0, 8), code: (upErr as { code?: string }).code ?? null });
+    return { ok: false, code: "update_failed" };
+  }
+  if (updated) return { ok: true, capture: project(updated as Row), changed: true };
+
+  // Nothing matched. Either it is already decided (return that, unchanged) or it is not the
+  // caller's to see. Owner-scoped so the second case stays indistinguishable from absence.
+  const { data: existing, error: exErr } = await admin
+    .from("bty_action_captures")
+    .select(CAPTURE_COLS)
+    .eq("id", captureId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (exErr) return { ok: false, code: "load_failed" };
+  if (existing && (existing as Row).triage_choice !== null) {
+    return { ok: true, capture: project(existing as Row), changed: false };
+  }
+  return { ok: false, code: "not_found" };
 }
