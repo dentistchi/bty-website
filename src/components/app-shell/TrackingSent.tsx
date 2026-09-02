@@ -62,9 +62,6 @@ const COPY = {
     closed: "Closed",
     error: "Couldn't load what you're tracking.",
     retry: "Retry",
-    /* 403 consent_required. Not an error the person can retry their way out of. */
-    consent: "Accept the BTY terms to see what you're tracking.",
-    consentCta: "Review and accept",
   },
   ko: {
     title: "추적 중",
@@ -82,8 +79,6 @@ const COPY = {
     closed: "종료됨",
     error: "추적 중인 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
-    consent: "추적 중인 항목을 보려면 BTY 약관에 동의해 주세요.",
-    consentCta: "확인하고 동의하기",
   },
 } as const;
 
@@ -178,13 +173,14 @@ export default function TrackingSent({ locale }: { locale: string }) {
    * Founder hit it on a live iPhone. MEASURED: the session was valid (`/auth/v1/user` returned
    * 200) and ZERO reads reached the announcement tables — because the route answered
    * `403 consent_required` from `requireConsentedUser`, before `listHostAnnouncements` ran.
-   * hc has no `arena_profiles` row, so `consentSatisfied(undefined)` is false.
+   * hc had no `arena_profiles` row, so `consentSatisfied(undefined)` was false.
    *
-   * A retry button was therefore the one control guaranteed not to help. Each status now gets the
-   * response it deserves: a stale token is re-read once, consent is named, and anything else is
-   * the honest generic error.
+   * That gate is gone from this route — Arena learner consent was never the right authority for a
+   * Host reading back their own run, and the route now asks for Track capability instead. What
+   * survives from that episode is the lesson, not the workaround: a stale token is re-read exactly
+   * once, and every other failure is the honest error rather than a retry that cannot help.
    */
-  const [state, setState] = useState<"loading" | "ready" | "consent" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   /** Which run is expanded. One at a time: Today is a glance, not a console. */
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -225,13 +221,9 @@ export default function TrackingSent({ locale }: { locale: string }) {
       return;
     }
 
-    if (res.status === 403) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      // Only the consent refusal gets the consent surface. Any other 403 is a real error.
-      setState(body?.error === "consent_required" ? "consent" : "error");
-      return;
-    }
-
+    // A 403 here means the person does not hold Track capability, which is not a state this lane
+    // explains — someone who has never tracked anything has nothing to be told about tracking.
+    // It falls through to the same quiet error as any other refusal.
     if (!res.ok) {
       setState("error");
       return;
@@ -249,22 +241,6 @@ export default function TrackingSent({ locale }: { locale: string }) {
   useEffect(() => {
     void load();
   }, [load]);
-
-  if (state === "consent") {
-    return (
-      <section className="flex flex-col gap-2" data-testid="tracking-sent-consent">
-        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
-        <p className="text-[0.85rem] leading-6 text-white/70">{t.consent}</p>
-        <a
-          href={`/${loc}/legal/accept`}
-          data-testid="tracking-consent-cta"
-          className="self-start text-[0.8rem] font-medium text-[#C9A66B]"
-        >
-          {t.consentCta}
-        </a>
-      </section>
-    );
-  }
 
   if (state === "error") {
     return (

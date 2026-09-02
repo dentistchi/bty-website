@@ -401,23 +401,16 @@ describe("★ each failure status gets the response it deserves", () => {
     return calls;
   };
 
-  it("★ 6. a 403 consent_required is NOT disguised as an empty list or a generic error", async () => {
-    statusStub([{ status: 403, body: { error: "consent_required" } }]);
-    render(<TrackingSent locale="en" />);
-    const c = await screen.findByTestId("tracking-sent-consent");
-    expect(c.textContent).toContain("Accept the BTY terms");
-    // The one control that could never have helped is gone from this state.
-    expect(screen.queryByTestId("tracking-sent-error")).toBeNull();
-    expect(screen.queryByText("Retry")).toBeNull();
-    // ...and it points at the surface that actually resolves it.
-    expect(screen.getByTestId("tracking-consent-cta").getAttribute("href")).toBe("/en/legal/accept");
-  });
-
-  it("a 403 that is NOT consent_required is a real error, not a consent prompt", async () => {
-    statusStub([{ status: 403, body: { error: "something_else" } }]);
+  it("★ 15. a 403 never sends a Host to the Arena consent flow", async () => {
+    // The route no longer gates on Arena consent at all; a 403 now means "no Track capability",
+    // which is not a state this lane explains — someone who has never tracked anything has
+    // nothing to be told about tracking.
+    statusStub([{ status: 403, body: { error: "track_capability_required" } }]);
     render(<TrackingSent locale="en" />);
     await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
     expect(screen.queryByTestId("tracking-sent-consent")).toBeNull();
+    expect(screen.queryByText(/Accept the BTY terms/)).toBeNull();
+    expect(document.querySelector('a[href*="legal/accept"]')).toBeNull();
   });
 
   it("★ 7. a 500 renders the existing error state", async () => {
