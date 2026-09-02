@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnouncement";
 import { funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
 
@@ -61,6 +62,9 @@ const COPY = {
     closed: "Closed",
     error: "Couldn't load what you're tracking.",
     retry: "Retry",
+    /* 403 consent_required. Not an error the person can retry their way out of. */
+    consent: "Accept the BTY terms to see what you're tracking.",
+    consentCta: "Review and accept",
   },
   ko: {
     title: "추적 중",
@@ -78,6 +82,8 @@ const COPY = {
     closed: "종료됨",
     error: "추적 중인 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
+    consent: "추적 중인 항목을 보려면 BTY 약관에 동의해 주세요.",
+    consentCta: "확인하고 동의하기",
   },
 } as const;
 
@@ -165,30 +171,102 @@ export default function TrackingSent({ locale }: { locale: string }) {
   const t = COPY[locale === "ko" ? "ko" : "en"];
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const [items, setItems] = useState<HostItem[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  /**
+   * ★ FAILURES ARE NOT ALL THE SAME THING (device FAIL, 2026-09-02T21:36Z).
+   *
+   * This shipped collapsing every non-200 into "Couldn't load what you're tracking.", and the
+   * Founder hit it on a live iPhone. MEASURED: the session was valid (`/auth/v1/user` returned
+   * 200) and ZERO reads reached the announcement tables — because the route answered
+   * `403 consent_required` from `requireConsentedUser`, before `listHostAnnouncements` ran.
+   * hc has no `arena_profiles` row, so `consentSatisfied(undefined)` is false.
+   *
+   * A retry button was therefore the one control guaranteed not to help. Each status now gets the
+   * response it deserves: a stale token is re-read once, consent is named, and anything else is
+   * the honest generic error.
+   */
+  const [state, setState] = useState<"loading" | "ready" | "consent" | "error">("loading");
   /** Which run is expanded. One at a time: Today is a glance, not a console. */
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/bty/announcements/host", { credentials: "include", cache: "no-store" });
-      const d = (await res.json().catch(() => null)) as { ok?: boolean; items?: HostItem[] } | null;
-      if (!res.ok || d?.ok !== true || !Array.isArray(d.items)) {
-        setFailed(true);
-        return;
+    /**
+     * One request, and at most ONE retry after re-reading the session.
+     *
+     * The retry exists for a token that rotated between mount and fetch, not as a loop: Supabase
+     * refreshes access tokens, and the Teams transport reads the current one through a getter, so
+     * re-reading the session is what makes a second attempt different from the first. A captured
+     * token would make the retry identical to the request that just failed.
+     */
+    const attempt = async (): Promise<Response | null> => {
+      try {
+        return await fetch("/api/bty/announcements/host", { credentials: "include", cache: "no-store" });
+      } catch {
+        return null;
       }
-      setItems(d.items);
-      setFailed(false);
-    } catch {
-      setFailed(true);
+    };
+
+    let res = await attempt();
+
+    if (res?.status === 401) {
+      // Ask the client for the CURRENT session — this is what refreshes a rotated token — then
+      // try exactly once more. No polling, no reload, and never setSession.
+      try {
+        // `supabase` is null when the browser client is not configured; the retry still runs and
+        // its own 401 becomes the honest error rather than a crash.
+        await supabase?.auth.getSession();
+      } catch {
+        /* A session we cannot read is handled by the retry's own result. */
+      }
+      res = await attempt();
     }
+
+    if (!res) {
+      setState("error");
+      return;
+    }
+
+    if (res.status === 403) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      // Only the consent refusal gets the consent surface. Any other 403 is a real error.
+      setState(body?.error === "consent_required" ? "consent" : "error");
+      return;
+    }
+
+    if (!res.ok) {
+      setState("error");
+      return;
+    }
+
+    const d = (await res.json().catch(() => null)) as { ok?: boolean; items?: HostItem[] } | null;
+    if (d?.ok !== true || !Array.isArray(d.items)) {
+      setState("error");
+      return;
+    }
+    setItems(d.items);
+    setState("ready");
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  if (failed) {
+  if (state === "consent") {
+    return (
+      <section className="flex flex-col gap-2" data-testid="tracking-sent-consent">
+        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
+        <p className="text-[0.85rem] leading-6 text-white/70">{t.consent}</p>
+        <a
+          href={`/${loc}/legal/accept`}
+          data-testid="tracking-consent-cta"
+          className="self-start text-[0.8rem] font-medium text-[#C9A66B]"
+        >
+          {t.consentCta}
+        </a>
+      </section>
+    );
+  }
+
+  if (state === "error") {
     return (
       <section className="flex flex-col gap-2" data-testid="tracking-sent-error">
         <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
@@ -205,7 +283,7 @@ export default function TrackingSent({ locale }: { locale: string }) {
   }
 
   // Nothing tracked is not a state worth a card — the lane simply is not there.
-  if (!items || items.length === 0) return null;
+  if (state === "loading" || !items || items.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-3" data-testid="tracking-sent">

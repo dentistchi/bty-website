@@ -13,6 +13,10 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+/* The browser Supabase client is null in this environment; the session re-read is mocked. */
+const H = vi.hoisted(() => ({ getSession: vi.fn(async () => ({ data: { session: null }, error: null })) }));
+vi.mock("@/lib/supabase", () => ({ supabase: { auth: { getSession: H.getSession } } }));
+
 import TrackingSent from "./TrackingSent";
 import { summariseAnnouncement, funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
 
@@ -364,5 +368,118 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
     // No "0 responses" noise, no blank identity row.
     expect(screen.queryAllByTestId("tracking-count")).toHaveLength(0);
     expect(screen.queryAllByTestId("tracking-person")).toHaveLength(0);
+  });
+});
+
+/**
+ * ★ THE LIVE DEVICE FAILURE, 2026-09-02T21:36Z.
+ *
+ * The Founder's iPhone showed "Couldn't load what you're tracking." with a Retry button that could
+ * never work. MEASURED: the session was VALID (`/auth/v1/user` returned 200) and ZERO reads
+ * reached the announcement tables — the route answered `403 consent_required` from
+ * `requireConsentedUser`, before `listHostAnnouncements` ran, because hc has no `arena_profiles`
+ * row and `consentSatisfied(undefined)` is false.
+ *
+ * So this was never a token problem, and the one control offered was the one guaranteed not to
+ * help. These tests pin each status to the response it deserves.
+ */
+describe("★ each failure status gets the response it deserves", () => {
+  const statusStub = (statuses: { status: number; body?: unknown }[]) => {
+    const calls: string[] = [];
+    let i = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(String(url));
+        const s = statuses[Math.min(i++, statuses.length - 1)];
+        return new Response(JSON.stringify(s.body ?? {}), {
+          status: s.status,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    return calls;
+  };
+
+  it("★ 6. a 403 consent_required is NOT disguised as an empty list or a generic error", async () => {
+    statusStub([{ status: 403, body: { error: "consent_required" } }]);
+    render(<TrackingSent locale="en" />);
+    const c = await screen.findByTestId("tracking-sent-consent");
+    expect(c.textContent).toContain("Accept the BTY terms");
+    // The one control that could never have helped is gone from this state.
+    expect(screen.queryByTestId("tracking-sent-error")).toBeNull();
+    expect(screen.queryByText("Retry")).toBeNull();
+    // ...and it points at the surface that actually resolves it.
+    expect(screen.getByTestId("tracking-consent-cta").getAttribute("href")).toBe("/en/legal/accept");
+  });
+
+  it("a 403 that is NOT consent_required is a real error, not a consent prompt", async () => {
+    statusStub([{ status: 403, body: { error: "something_else" } }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
+    expect(screen.queryByTestId("tracking-sent-consent")).toBeNull();
+  });
+
+  it("★ 7. a 500 renders the existing error state", async () => {
+    statusStub([{ status: 500 }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
+  });
+
+  it("★ 4+5. a 401 re-reads the session and retries EXACTLY ONCE", async () => {
+    H.getSession.mockClear();
+    const calls = statusStub([{ status: 401 }, { status: 200, body: { ok: true, items: [REAL] } }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-item")).toBeTruthy());
+    expect(calls).toHaveLength(2);                    // one retry, not a loop
+    expect(H.getSession).toHaveBeenCalledTimes(1);    // the retry re-read the session first
+  });
+
+  it("★ 4. a second 401 does NOT retry again — no loop, no polling", async () => {
+    const calls = statusStub([{ status: 401 }, { status: 401 }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
+    expect(calls).toHaveLength(2);
+    await new Promise((r) => setTimeout(r, 60));
+    expect(calls).toHaveLength(2);
+  });
+
+  it("★ 5. the visible Retry re-reads the session rather than repeating a stale request", async () => {
+    H.getSession.mockClear();
+    const calls = statusStub([{ status: 500 }, { status: 401 }, { status: 200, body: { ok: true, items: [REAL] } }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
+    fireEvent.click(screen.getByText("Retry"));
+    await waitFor(() => expect(screen.getByTestId("tracking-item")).toBeTruthy());
+    expect(H.getSession).toHaveBeenCalled(); // the retry path went through a fresh session read
+  });
+
+  it("★ 3. a network failure never renders a half-state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-sent-error")).toBeTruthy());
+    expect(screen.queryByTestId("tracking-item")).toBeNull();
+  });
+
+  it("★ 8. a successful response still renders the real announcement", async () => {
+    statusStub([{ status: 200, body: { ok: true, items: [REAL] } }]);
+    render(<TrackingSent locale="en" />);
+    const item = await screen.findByTestId("tracking-item");
+    expect(item.getAttribute("data-announcement")).toBe("6cfccb92-fac6-43d1-b6e9-deeb0d5437b5");
+  });
+
+  it("★ 9. an empty successful response renders nothing at all", async () => {
+    statusStub([{ status: 200, body: { ok: true, items: [] } }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.queryByTestId("tracking-sent")).toBeNull());
+    expect(screen.queryByTestId("tracking-sent-error")).toBeNull();
+    expect(screen.queryByTestId("tracking-sent-consent")).toBeNull();
+  });
+
+  it("★ 1+10. every attempt hits the owner-scoped route and nothing else", async () => {
+    const calls = statusStub([{ status: 401 }, { status: 200, body: { ok: true, items: [REAL] } }]);
+    render(<TrackingSent locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("tracking-item")).toBeTruthy());
+    expect(new Set(calls)).toEqual(new Set(["/api/bty/announcements/host"]));
   });
 });
