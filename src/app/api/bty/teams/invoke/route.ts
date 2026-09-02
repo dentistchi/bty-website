@@ -13,6 +13,7 @@ import {
 } from "@/domain/teams/invokeActivity";
 import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
 import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
+import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,6 +105,7 @@ const MSG = {
   trackNoPeople: "Choose at least one person.",
   trackNoSource: "BTY couldn't read the original message.",
   trackFailed: "BTY couldn't start tracking this yet.",
+  trackNotHost: "Tracking isn't available on your BTY account.",
   signIn: "Sign in to BTY with Microsoft first.",
   cannotSave: "This message couldn't be saved to BTY.",
   serverBusy: "BTY couldn't save this yet.",
@@ -171,6 +173,26 @@ export async function POST(req: NextRequest) {
     default is how a future command quietly writes the wrong object.
   */
   if (readCommandId(activity) === TEAMS_COMMAND_TRACK) {
+    /*
+      3c. TRACK IS A HOST ACTION (Microsoft Manager Authority V1).
+
+      Teams decides which people SEE a message action; the platform gives an app no way to hide one
+      per-user, so an ordinary employee will still find "Track with BTY" in the menu. The server is
+      therefore the only place authority can live, and this is that place — ahead of the dialog, so
+      a non-Host is refused before the People Picker is ever drawn, and ahead of every write, so a
+      submit forged past the dialog is refused too.
+
+      The refusal is deliberately calm and non-technical: someone who is not a lead has done nothing
+      wrong, and telling them about grants and entitlements would explain a system they are not in.
+
+      `isActiveFoundryHost` is the SAME gate the 31 Foundry routes use. Track does not get its own
+      notion of who a Host is, and the client's claims about the user are not consulted anywhere.
+    */
+    if (!(await isActiveFoundryHost(admin, resolution.userId))) {
+      console.error("[teams-invoke] track refused: not a host");
+      return say(MSG.trackNotHost, parsed.invokeName);
+    }
+
     // The dialog itself. Nothing is written for merely opening it.
     if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
       return dialog(trackDialogCard(), parsed.invokeName);

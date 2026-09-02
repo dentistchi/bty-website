@@ -89,7 +89,14 @@ describe("T13 — the participant name stays a historical snapshot", () => {
       What it exists to catch is a migration smuggled in unnoticed — so later migrations are
       listed by name. Adding one means adding it here, deliberately, which is the signal.
     */
-    const KNOWN_LATER = ["20260827000000_foundry_deferred_completion_claim_v1.sql"];
+    const KNOWN_LATER = [
+      "20260827000000_foundry_deferred_completion_claim_v1.sql",
+      "20260828000000_bty_action_capture_v1.sql",
+      "20260829000000_bty_microsoft_identity_resolver_v1.sql",
+      "20260901000000_bty_action_capture_triage_v1.sql",
+      "20260902000000_bty_tracked_announcements_v1.sql",
+      "20260903000000_foundry_host_grant_provenance_v1.sql",
+    ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
     expect(migs).toEqual([]);

@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyTeamsTabSsoToken } from "@/lib/bty/teams/tabSsoTokenVerifier.server";
 import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge.server";
 import { bindAnnouncementRecipients } from "@/lib/bty/announcement/trackAnnouncement.server";
+import { evaluateMicrosoftManagerEntitlement } from "@/lib/bty/foundry/events/microsoftManagerSync.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,6 +97,25 @@ export async function POST(req: NextRequest) {
       verified.identity.tenantId,
       verified.identity.aadObjectId,
     );
+    /*
+      Microsoft Manager Authority V1 — settle Host entitlement at ACTIVATION.
+
+      This is the answer to "a Microsoft manager who has never opened BTY". Nothing about them is
+      recorded upstream and no account is fabricated for them; the first time they genuinely sign
+      in, their canonical user id exists, and their manager entitlement is evaluated here on the
+      identity this route has just verified — tenant + oid, never an email.
+
+      Deliberately not in the failure path, and deliberately throttled (the function returns early
+      unless entitlement is stale): a person's sign-in must never fail, or visibly slow, because
+      Microsoft Graph was unreachable. A failed probe changes no authority at all.
+    */
+    await evaluateMicrosoftManagerEntitlement(
+      admin,
+      result.userId,
+      verified.identity.tenantId,
+      verified.identity.aadObjectId,
+    );
+
     return json({ session: result.session }, 200);
   }
 

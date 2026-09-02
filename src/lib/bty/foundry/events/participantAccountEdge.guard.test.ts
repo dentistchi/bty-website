@@ -60,8 +60,23 @@ describe("T10 — no projection may expose the account edge", () => {
   it("no Host / learner / public DTO carries the edge", () => {
     // The projections that reach a human: roster, observation subject, host attention,
     // follow-up rows, shared review, and the public room snapshot.
+    /*
+      SCOPED TO FILES THAT ACTUALLY TOUCH THE TABLE.
+
+      The pattern below matches any `userId: x.user_id`, and this directory now also holds services
+      about entirely different tables -- Host grants keyed by `foundry_host_grants.user_id`, and the
+      Microsoft manager sync reading BTY account ids. Those are not this table's edge, and flagging
+      them would be the same mistake the note above already records about
+      `userId: p.linked_user_id`: testing the wrong `user_id`.
+
+      Narrowing to files that name `foundry_event_participants` keeps the guard pointed at its
+      actual subject. It does not widen what is permitted in the files that do handle the table.
+    */
+    let checked = 0;
     for (const { file, src } of sources()) {
       const c = code(src);
+      if (!c.includes("foundry_event_participants")) continue;
+      checked += 1;
       /*
         A DTO FIELD, not an internal read. The containment rule legitimately reads
         `resolvedParticipant?.user_id` inside the service; what must never happen is the value
@@ -74,6 +89,8 @@ describe("T10 — no projection may expose the account edge", () => {
       */
       expect(c, `${file}`).not.toMatch(/\buser_?[Ii]d:\s*[A-Za-z]*[.?]user_id\b/);
     }
+    // The narrowing must not have emptied the guard.
+    expect(checked, "no participant-table service was scanned").toBeGreaterThan(0);
   });
 
   it("the public snapshot still builds the participant literal by hand (no spread)", () => {

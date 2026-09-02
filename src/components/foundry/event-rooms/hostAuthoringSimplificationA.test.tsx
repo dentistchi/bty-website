@@ -591,7 +591,18 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
     // The newest migration at the time this slice shipped. A later slice adding one must name
     // it here deliberately rather than have this guard quietly go vacuous.
     expect(known.has("20260827000000_foundry_deferred_completion_claim_v1.sql")).toBe(true);
-    const newer = [...known].filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql");
+    // Later slices legitimately ship SQL. Naming them keeps the guard's real job -- catching a
+    // migration smuggled in unnoticed -- while stopping it from failing on every future slice.
+    const KNOWN_LATER = [
+      "20260828000000_bty_action_capture_v1.sql",
+      "20260829000000_bty_microsoft_identity_resolver_v1.sql",
+      "20260901000000_bty_action_capture_triage_v1.sql",
+      "20260902000000_bty_tracked_announcements_v1.sql",
+      "20260903000000_foundry_host_grant_provenance_v1.sql",
+    ];
+    const newer = [...known]
+      .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")
+      .filter((f) => !KNOWN_LATER.includes(f));
     expect(newer).toEqual([]);
   });
 });

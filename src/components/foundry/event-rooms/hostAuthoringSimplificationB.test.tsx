@@ -378,7 +378,15 @@ describe("R4-R8B — publish truth is re-anchored, not relaxed", () => {
     const known = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql"));
     const newest = "20260827000000_foundry_deferred_completion_claim_v1.sql";
     expect(known).toContain(newest);
-    expect(known.filter((f) => f > newest)).toEqual([]);
+    // See slice A's guard: later migrations are named deliberately rather than silently allowed.
+    const KNOWN_LATER = [
+      "20260828000000_bty_action_capture_v1.sql",
+      "20260829000000_bty_microsoft_identity_resolver_v1.sql",
+      "20260901000000_bty_action_capture_triage_v1.sql",
+      "20260902000000_bty_tracked_announcements_v1.sql",
+      "20260903000000_foundry_host_grant_provenance_v1.sql",
+    ];
+    expect(known.filter((f) => f > newest && !KNOWN_LATER.includes(f))).toEqual([]);
   });
 });
 

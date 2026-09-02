@@ -13,11 +13,15 @@ const verifyBotFrameworkToken = vi.fn();
 const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const ensureActionCapture = vi.fn();
 const rpc = vi.fn();
+const isActiveFoundryHost = vi.fn();
 
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({ verifyBotFrameworkToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({ resolveBtyUserFromMicrosoftIdentity }));
 vi.mock("@/lib/bty/action-capture/ensureActionCapture.server", () => ({ ensureActionCapture }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ rpc }) }));
+vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
+  isActiveFoundryHost: (...a: unknown[]) => isActiveFoundryHost(...a),
+}));
 
 const TID = "11111111-1111-1111-1111-111111111111";
 const OID = "22222222-2222-2222-2222-222222222222";
@@ -60,6 +64,7 @@ beforeEach(() => {
   resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "RESOLVED", userId: HOST });
   ensureActionCapture.mockResolvedValue({ ok: true, created: true, capture: { id: "cap-1" } });
   rpc.mockResolvedValue({ data: [{ announcement_id: "ann-1", resolved_count: 2, already_existed: false }], error: null });
+  isActiveFoundryHost.mockResolvedValue(true);
 });
 
 describe("the dialog", () => {
@@ -201,5 +206,72 @@ describe("auth ordering is unchanged", () => {
     await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
     expect(rpc).not.toHaveBeenCalled();
     expect(ensureActionCapture).not.toHaveBeenCalled();
+  });
+});
+
+describe("★ Track is a HOST action", () => {
+  /*
+    Teams decides who SEES a message action and gives an app no per-user way to hide one, so an
+    ordinary employee will find "Track with BTY" in the menu. The server is the only place
+    authority can live, which is what these tests pin down: refused before the dialog is drawn,
+    refused again on a submit forged past it, and Save to BTY untouched by any of it.
+  */
+
+  it("a non-Host opening the dialog gets a calm message and NO People Picker", async () => {
+    isActiveFoundryHost.mockResolvedValue(false);
+    const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
+    const dump = JSON.stringify(await res.json());
+    expect(dump).toContain("Tracking isn't available");
+    expect(dump).not.toContain("Data.Query");
+    expect(dump).not.toContain("currentContext");
+  });
+
+  it("a non-Host opening the dialog WRITES NOTHING", async () => {
+    isActiveFoundryHost.mockResolvedValue(false);
+    await POST(req(activity({ name: "composeExtension/fetchTask" })));
+    expect(rpc).not.toHaveBeenCalled();
+    expect(ensureActionCapture).not.toHaveBeenCalled();
+  });
+
+  it("★ a non-Host SUBMIT creates no tracked announcement", async () => {
+    // The dialog is not the gate; a submit posted directly must be refused on its own.
+    isActiveFoundryHost.mockResolvedValue(false);
+    const res = await POST(req(activity({}, { data: { hostFraming: "Please confirm", recipients: A } })));
+    expect(rpc).not.toHaveBeenCalled();
+    expect(ensureActionCapture).not.toHaveBeenCalled();
+    expect(JSON.stringify(await res.json())).toContain("Tracking isn't available");
+  });
+
+  it("the gate is asked about the SERVER-resolved user, never a client-supplied one", async () => {
+    await POST(
+      req(activity({ user_id: "attacker" }, { data: { hostFraming: "x", recipients: A, userId: "attacker", isHost: true } })),
+    );
+    expect(isActiveFoundryHost).toHaveBeenCalledWith(expect.anything(), HOST);
+    expect(JSON.stringify(isActiveFoundryHost.mock.calls)).not.toContain("attacker");
+  });
+
+  it("a Host still tracks normally", async () => {
+    isActiveFoundryHost.mockResolvedValue(true);
+    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: `${A},${B}` } })));
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.anything());
+    expect(JSON.stringify(await res.json())).toContain("2 people");
+  });
+
+  it("★ Save to BTY does NOT inherit the Host gate", async () => {
+    /*
+      The whole point of the boundary: capture stays an ordinary-employee action. If the gate ever
+      moves above the command switch, this is what fails.
+    */
+    isActiveFoundryHost.mockResolvedValue(false);
+    const res = await POST(req(activity({ name: "composeExtension/fetchTask" }, { commandId: "saveToBty" })));
+    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(await res.json())).toContain("Saved to BTY.");
+  });
+
+  it("an unauthenticated caller never even reaches the Host gate", async () => {
+    verifyBotFrameworkToken.mockResolvedValue({ ok: false, reason: "invalid_token" });
+    await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
+    expect(isActiveFoundryHost).not.toHaveBeenCalled();
   });
 });
