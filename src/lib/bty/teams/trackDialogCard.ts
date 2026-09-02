@@ -95,7 +95,21 @@ export function trackConfirmationCard(count: number) {
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
         type: "AdaptiveCard",
         version: "1.4",
-        body: [{ type: "TextBlock", text: `Tracking. ${people}`, wrap: true, size: "Medium" }],
+        body: [
+          { type: "TextBlock", text: `Tracking. ${people}`, wrap: true, size: "Medium" },
+          /*
+            ★ SAY WHERE IT WENT. A confirmation that only says "done" leaves the person to guess
+            whether BTY kept anything and where to look -- measured: a real Track succeeded and the
+            Host went looking for it and found nothing. The destination is part of the receipt.
+          */
+          {
+            type: "TextBlock",
+            text: "Tracked in BTY. See it in Today \u2192 Tracking.",
+            wrap: true,
+            isSubtle: true,
+            spacing: "Small",
+          },
+        ],
       },
     },
   };

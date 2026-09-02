@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import NeedsYourResponse from "@/components/app-shell/NeedsYourResponse";
+import TrackingSent from "@/components/app-shell/TrackingSent";
 import { buildYesterdaySummary, type YesterdayCounts } from "@/domain/daily/yesterdaySummary";
 import { normalizeTodayItems, todayVisible } from "@/domain/daily/todayList";
 import {
@@ -614,6 +615,18 @@ export default function TodayHome({
         It carries no count and no badge. The obligation is to the person who asked, not to a number.
       */}
       <NeedsYourResponse locale={loc} />
+
+      {/*
+        WHAT THIS PERSON ASKED OF OTHERS — placed directly after what others asked of them.
+
+        The two are the same relationship seen from opposite ends, so they belong together: answer
+        what you were asked, then see what you are still waiting on. It renders nothing unless this
+        person has actually tracked something, so for everyone else Today is unchanged.
+
+        Closes a measured gap: a real Track wrote correctly in Teams and the Host could not find it
+        anywhere in BTY, because the owner-scoped route that serves this had no caller.
+      */}
+      <TrackingSent locale={loc} />
 
       {/*
         A DIFFERENT CATEGORY OF THING, PLACED LAST.

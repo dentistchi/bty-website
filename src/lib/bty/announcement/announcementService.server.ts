@@ -8,6 +8,7 @@ import {
   type AnnouncementResponse,
   type RecipientProjection,
 } from "@/domain/announcement/trackedAnnouncement";
+import { resolveDisplayNames } from "./recipientDisplayName.server";
 
 /**
  * Tracked Announcement read + respond. Slice A1. SERVER ONLY.
@@ -121,10 +122,34 @@ export type HostAnnouncement = {
   id: string;
   hostFraming: string;
   createdAt: string;
+  /**
+   * The captured message, shown back to the person who captured it.
+   *
+   * Safe HERE and nowhere else: this projection is owner-scoped, so the only reader is the Host
+   * who selected this message in Teams in the first place. The RECIPIENT projection above still
+   * refuses it — a person selected into an audience has not been granted the source.
+   */
+  previewText: string | null;
+  sourceUrl: string | null;
+  status: "active" | "closed";
   funnel: AnnouncementFunnel;
-  /** Only for the two buckets a Host can act on. Never anyone's private data. */
-  questions: { display: string | null; questionText: string | null; respondedAt: string | null }[];
-  needHelp: { display: string | null; respondedAt: string | null }[];
+  /**
+   * WHO is in each bucket — the thing that turns a count into a follow-up.
+   *
+   * BOUND RECIPIENTS ONLY. A person who has never opened BTY has no canonical user and therefore
+   * no name BTY is entitled to invent; they are represented solely by `funnel.notYetActivated`.
+   * The People Picker submits object ids and nothing else (measured: `parsePickedRecipients` drops
+   * every non-GUID), so there is no name to fall back on and none is guessed.
+   *
+   * `display` is null when a bound person's provider name could not be read. They still appear —
+   * a nameless recipient is still someone the Host has to follow up with.
+   */
+  responders: {
+    acknowledged: { display: string | null }[];
+    question: { display: string | null; questionText: string | null; respondedAt: string | null }[];
+    needHelp: { display: string | null; respondedAt: string | null }[];
+    noResponse: { display: string | null }[];
+  };
 };
 
 /**
@@ -139,10 +164,22 @@ export async function listHostAnnouncements(
 ): Promise<HostAnnouncement[]> {
   const { data: runs, error } = await admin
     .from("bty_tracked_announcements")
-    .select("id, host_framing, resolved_count, created_at")
+    // Note what is still absent even for the owner: tenant_id and conversation_id. A Host does not
+    // need the wire identifiers to read their own run, and not selecting them is why no future
+    // change can leak an unbound recipient's directory identity through this surface.
+    .select("id, host_framing, resolved_count, created_at, status, bty_action_captures!inner(preview_text, source_url)")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false })
-    .returns<{ id: string; host_framing: string; resolved_count: number; created_at: string }[]>();
+    .returns<
+      {
+        id: string;
+        host_framing: string;
+        resolved_count: number;
+        created_at: string;
+        status: string;
+        bty_action_captures: { preview_text: string | null; source_url: string | null } | null;
+      }[]
+    >();
 
   if (error || !runs?.length) {
     if (error) console.error("[announcement] host list failed", { code: error.code ?? "unknown" });
@@ -163,12 +200,20 @@ export async function listHostAnnouncements(
       }[]
     >();
 
-  const byRun = new Map<string, typeof recips extends (infer T)[] | null ? T[] : never>();
+  const byRun = new Map<string, NonNullable<typeof recips>>();
   for (const r of recips ?? []) {
     const list = byRun.get(r.announcement_id);
     if (list) list.push(r);
     else byRun.set(r.announcement_id, [r]);
   }
+
+  // One lookup per distinct BOUND person across every run. Unbound rows have no user id and are
+  // never asked about, so an unactivated recipient cannot be resolved to anything by accident.
+  const names = await resolveDisplayNames(
+    admin,
+    (recips ?? []).map((r) => r.user_id).filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
 
   return runs.map((run) => {
     const rows = byRun.get(run.id) ?? [];
@@ -176,17 +221,30 @@ export async function listHostAnnouncements(
       run.resolved_count,
       rows.map((r) => ({ boundUserId: r.user_id, response: isAnnouncementResponse(r.response) ? r.response : null })),
     );
+    // Every named bucket is filtered on `user_id` FIRST: an unbound row can never reach one.
+    const bound = rows.filter((r) => typeof r.user_id === "string" && r.user_id.length > 0);
     return {
       id: run.id,
       hostFraming: run.host_framing,
       createdAt: run.created_at,
+      previewText: run.bty_action_captures?.preview_text ?? null,
+      sourceUrl: run.bty_action_captures?.source_url ?? null,
+      status: run.status === "closed" ? ("closed" as const) : ("active" as const),
       funnel,
-      questions: rows
-        .filter((r) => r.response === "QUESTION")
-        .map((r) => ({ display: null, questionText: r.question_text, respondedAt: r.responded_at })),
-      needHelp: rows
-        .filter((r) => r.response === "HELP_NEEDED")
-        .map((r) => ({ display: null, respondedAt: r.responded_at })),
+      responders: {
+        acknowledged: bound
+          .filter((r) => r.response === "ACKNOWLEDGED")
+          .map((r) => ({ display: nameOf(r.user_id) })),
+        question: bound
+          .filter((r) => r.response === "QUESTION")
+          .map((r) => ({ display: nameOf(r.user_id), questionText: r.question_text, respondedAt: r.responded_at })),
+        needHelp: bound
+          .filter((r) => r.response === "HELP_NEEDED")
+          .map((r) => ({ display: nameOf(r.user_id), respondedAt: r.responded_at })),
+        noResponse: bound
+          .filter((r) => !isAnnouncementResponse(r.response))
+          .map((r) => ({ display: nameOf(r.user_id) })),
+      },
     };
   });
 }
