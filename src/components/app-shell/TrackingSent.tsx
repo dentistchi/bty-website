@@ -162,7 +162,7 @@ function Bucket({
   );
 }
 
-export default function TrackingSent({ locale }: { locale: string }) {
+export default function TrackingSent({ locale, refreshKey }: { locale: string; refreshKey?: number }) {
   const t = COPY[locale === "ko" ? "ko" : "en"];
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const [items, setItems] = useState<HostItem[] | null>(null);
@@ -238,9 +238,14 @@ export default function TrackingSent({ locale }: { locale: string }) {
     setState("ready");
   }, []);
 
+  /*
+    Re-read on mount AND whenever Today is re-entered. `refreshKey` changes only on a real tab
+    press, so this is one request per deliberate return — not an interval, not a visibility
+    listener, and not a realtime channel.
+  */
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (state === "error") {
     return (

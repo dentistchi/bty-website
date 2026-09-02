@@ -184,12 +184,19 @@ function deviceTz(): string | null {
 
 export default function TodayHome({
   locale,
+  refreshKey,
   onNavigate,
   onOpenItem,
   onOpenLeadershipFollowUp,
   onOpenSaved,
 }: {
   locale: string;
+  /**
+   * Bumped when the Today tab is selected. Only the two lanes that reflect what OTHER PEOPLE did
+   * read it: what someone asked of you, and how the people you asked have answered. Everything
+   * else on Today is derived from the viewer's own state and does not go stale behind their back.
+   */
+  refreshKey?: number;
   /** In-shell tab navigation for the deterministic fallback CTAs (no route reload). */
   onNavigate?: (tab: "learn" | "practice") => void;
   /**
@@ -614,7 +621,7 @@ export default function TodayHome({
 
         It carries no count and no badge. The obligation is to the person who asked, not to a number.
       */}
-      <NeedsYourResponse locale={loc} />
+      <NeedsYourResponse locale={loc} refreshKey={refreshKey} />
 
       {/*
         WHAT THIS PERSON ASKED OF OTHERS — placed directly after what others asked of them.
@@ -626,7 +633,7 @@ export default function TodayHome({
         Closes a measured gap: a real Track wrote correctly in Teams and the Host could not find it
         anywhere in BTY, because the owner-scoped route that serves this had no caller.
       */}
-      <TrackingSent locale={loc} />
+      <TrackingSent locale={loc} refreshKey={refreshKey} />
 
       {/*
         A DIFFERENT CATEGORY OF THING, PLACED LAST.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnouncement";
 
 /**
@@ -46,6 +47,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     answeredQuestion: "You asked a question",
     answeredHelp: "You asked for help",
     failed: "Couldn't save that.",
+    loadFailed: "Couldn't load what needs your response.",
     retry: "Retry",
   },
   ko: {
@@ -60,35 +62,67 @@ const COPY: Record<Locale, Record<string, string>> = {
     answeredQuestion: "질문을 남기셨습니다",
     answeredHelp: "도움을 요청하셨습니다",
     failed: "저장하지 못했습니다.",
+    loadFailed: "답변이 필요한 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
   },
 };
 
-export default function NeedsYourResponse({ locale }: { locale: Locale }) {
+export default function NeedsYourResponse({ locale, refreshKey }: { locale: Locale; refreshKey?: number }) {
   const t = COPY[locale];
   const [items, setItems] = useState<Item[] | null>(null);
+  /**
+   * ★ AN EMPTY LIST AND A FAILED REQUEST ARE NOT THE SAME THING (2026-09-02).
+   *
+   * This mapped EVERY failure to `setItems([])`, which renders nothing — so when the route was
+   * refusing `403 consent_required` for a Teams-first person, this lane simply was not there and
+   * the fault was invisible. Only the Host lane, which showed an error, revealed it.
+   *
+   * A question someone is waiting on must not disappear because a request failed.
+   */
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [asking, setAsking] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/bty/announcements/mine", { credentials: "include", cache: "no-store" });
-      if (!res.ok) {
-        setItems([]);
-        return;
+    /** One request, and at most ONE retry after re-reading the session for a rotated token. */
+    const attempt = async (): Promise<Response | null> => {
+      try {
+        return await fetch("/api/bty/announcements/mine", { credentials: "include", cache: "no-store" });
+      } catch {
+        return null;
       }
-      const d = (await res.json()) as { items?: Item[] };
-      setItems(Array.isArray(d.items) ? d.items : []);
-    } catch {
-      setItems([]);
+    };
+
+    let res = await attempt();
+    if (res?.status === 401) {
+      try {
+        await supabase?.auth.getSession();
+      } catch {
+        /* Handled by the retry's own result. */
+      }
+      res = await attempt();
     }
+
+    if (!res || !res.ok) {
+      setLoadState("error");
+      return;
+    }
+
+    const d = (await res.json().catch(() => null)) as { items?: Item[] } | null;
+    setItems(Array.isArray(d?.items) ? d!.items! : []);
+    setLoadState("ready");
   }, []);
 
+  /*
+    Re-read on mount AND whenever Today is re-entered. `refreshKey` changes only on a real tab
+    press, so this is one request per deliberate return — not an interval, not a visibility
+    listener, and not a realtime channel.
+  */
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const respond = useCallback(
     async (id: string, response: AnnouncementResponse, text?: string) => {
@@ -118,8 +152,24 @@ export default function NeedsYourResponse({ locale }: { locale: Locale }) {
     [load],
   );
 
+  if (loadState === "error") {
+    return (
+      <section className="flex flex-col gap-2" data-testid="needs-your-response-error">
+        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
+        <p className="text-[0.8rem] text-white/55">{t.loadFailed}</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="self-start rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-white/70"
+        >
+          {t.retry}
+        </button>
+      </section>
+    );
+  }
+
   // Nothing to answer is not a state worth a card — the lane simply is not there.
-  if (!items || items.length === 0) return null;
+  if (loadState === "loading" || !items || items.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-3" data-testid="needs-your-response">

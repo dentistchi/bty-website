@@ -22,7 +22,13 @@ describe("★ answering an announcement is NOT a Host action", () => {
   for (const route of PARTICIPANT_ROUTES) {
     it(`${route} carries no Host gate`, () => {
       const src = read(route);
-      expect(src).toContain("requireConsentedUser");
+      /*
+        Was `requireConsentedUser` until A1-VIS-R3. The Arena learner-consent gate was measured to
+        be the wrong boundary for a Teams workplace message workflow and was removed from both
+        recipient routes; what this assertion cares about is unchanged and stated directly below —
+        an authenticated caller, and NO Host gate.
+      */
+      expect(src).toContain("requireUser");
       for (const gate of [
         "requireManager",
         "isActiveFoundryHost",

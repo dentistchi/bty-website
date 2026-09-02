@@ -171,9 +171,23 @@ describe("★ 12-15. what this slice did NOT touch", () => {
     expect(host).not.toMatch(/\.insert\(|\.upsert\(|\.update\(|\.delete\(/);
   });
 
-  it("★ 14. /mine and /respond keep their consent contract", () => {
-    expect(code("src/app/api/bty/announcements/mine/route.ts")).toContain("requireConsentedUser");
-    expect(code("src/app/api/bty/announcements/[id]/respond/route.ts")).toContain("requireConsentedUser");
+  it("★ 14. /mine and /respond keep their OWNERSHIP contract", () => {
+    /*
+      Written in the previous slice as "keep their consent contract", when only the HOST route had
+      moved. A1-VIS-R3 then measured the same boundary error on the recipient side and moved both:
+      Teams Tracking is a workplace message workflow, and a person asked one question by their
+      manager should not accept a learner document to answer it.
+
+      The boundary that never moved, and is the real one, is what this now protects: a recipient
+      may only see or answer a row bound to their OWN canonical user id.
+    */
+    for (const p of [
+      "src/app/api/bty/announcements/mine/route.ts",
+      "src/app/api/bty/announcements/[id]/respond/route.ts",
+    ]) {
+      expect(code(p), p).toContain("requireUser");
+      expect(code(p), p).not.toContain("requireConsentedUser");
+    }
   });
 
   it("★ 15. TrackingSent no longer renders or links to the Arena consent flow", () => {

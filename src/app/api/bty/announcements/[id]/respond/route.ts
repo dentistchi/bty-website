@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { respondToAnnouncement } from "@/lib/bty/announcement/announcementService.server";
 
 export const runtime = "nodejs";
@@ -15,10 +15,26 @@ export const dynamic = "force-dynamic";
  * A non-recipient and an unknown announcement return the SAME 404, so membership of someone else's
  * audience cannot be probed.
  */
+/*
+  ★ TEAMS TRACKING IS A WORKPLACE MESSAGE WORKFLOW, NOT ARENA LEARNER PRACTICE (2026-09-02).
+
+  This route gated on `requireConsentedUser`, and the same boundary error already locked a Host out
+  of his own tracking: MEASURED, hc's session was valid and ZERO reads reached the tables, because
+  `isConsentCurrent` found no `arena_profiles` row and the request was refused `403
+  consent_required` before any query ran. Only 2 of 13 Microsoft-linked accounts carry a consent
+  version -- a Teams-first person never passes through the Arena flow at all.
+
+  A recipient here was picked out of a Teams message by their manager and asked one question. Making
+  them accept the Arena learner document before they can answer it is not a safeguard; it is a
+  different product's gate on this product's path. Arena practice, training, observation and
+  learning data keep their consent requirement untouched -- this is the only boundary that moves.
+
+  What remains is the part that was always load-bearing: the row must be BOUND to the caller's own
+  canonical user id. That is unchanged, and it is what makes an unbound row invisible to everyone.
+*/
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const { user, base, consentDenied } = await requireConsentedUser(req);
+  const { user, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
-  if (consentDenied) return consentDenied;
 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as { response?: unknown; questionText?: unknown };

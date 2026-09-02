@@ -1285,6 +1285,17 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
+  /**
+   * Today re-entry (Slice A1-VIS-R3). Selecting Today re-reads the two lanes that reflect what
+   * OTHER PEOPLE did since the tab was last open: what someone asked of you, and how the people
+   * you asked have answered. Both change without any action of yours, so a stale Today is the
+   * normal case rather than the exception.
+   *
+   * Deliberately the same `refreshKey` shape the Me tab already uses: one bump on reselect, no
+   * interval, no visibility listener, no realtime channel. A tab press is a real intent signal and
+   * costs one request; polling would cost many and answer the same question.
+   */
+  const [todayRefreshKey, setTodayRefreshKey] = useState(0);
   // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -1298,6 +1309,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setMeView("home");
       setWeeklyRefreshKey((k) => k + 1);
     }
+    if (key === "today") setTodayRefreshKey((k) => k + 1);
     setTab(key);
     // Scroll after the (possibly root-reset) view paints. rAF avoids scrolling stale nested content.
     if (typeof window !== "undefined") {
@@ -1846,6 +1858,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
                 <TodayHome
                   locale={locale}
+                  refreshKey={todayRefreshKey}
                   onOpenSaved={() => setSavedOpen(true)}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
