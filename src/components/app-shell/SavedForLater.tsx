@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
-import SwipeReveal from "@/components/app-shell/SwipeReveal";
+import SwipeAction from "@/components/app-shell/SwipeAction";
 
 /**
  * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
@@ -135,16 +135,12 @@ it,
 t,
 pendingId,
 failedId,
-openRow,
-setOpenRow,
 choose,
 }: {
 it: SavedCapture;
 t: (typeof COPY)[Locale];
 pendingId: string | null;
 failedId: string | null;
-openRow: string | null;
-setOpenRow: (next: string | null | ((cur: string | null) => string | null)) => void;
 choose: (id: string, choice: TriageChoice) => void;
 }) {
   const undecided = it.triageChoice === null;
@@ -156,36 +152,16 @@ choose: (id: string, choice: TriageChoice) => void;
       ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
       : "border-white/8 bg-white/[0.02]");
 
-  /* Swipe reveals the SAME two actions the card already shows, and only on a row that still has
-     a decision open. It calls the identical `choose`, so there is one mutation path, one
-     optimistic update and one rollback — the tray is a shortcut, never a second implementation. */
-  const tray = (
-    <>
-      {(
-        [
-          ["soon", t.soon] as const,
-          ["later", t.later] as const,
-        ] satisfies readonly (readonly [TriageChoice, string])[]
-      ).map(([choice, label]) => (
-        <button
-          key={choice}
-          type="button"
-          data-testid={`swipe-triage-${choice}`}
-          disabled={pendingId !== null}
-          onClick={() => {
-            setOpenRow(null);
-            void choose(it.id, choice);
-          }}
-          className={
-            "w-[88px] px-3 text-[0.85rem] font-medium disabled:opacity-50 " +
-            (choice === "soon" ? "bg-[#C9A66B]/20 text-[#E5B769]" : "bg-white/[0.06] text-white/75")
-          }
-        >
-          {label}
-        </button>
-      ))}
-    </>
-  );
+  /* Swipe IS the decision now — it calls the identical `choose` the visible buttons below call,
+     so there is one mutation path, one optimistic update and one rollback. What used to sit here
+     was a tray holding a second copy of those same two buttons; the gesture reached the same
+     place by a longer road, and parked the card open on the way. */
+  const swipeOutcome = (choice: TriageChoice, label: string) => ({
+    label,
+    onCommit: () => void choose(it.id, choice),
+    // Reuses the tone the card already gives this choice. No new colour is introduced.
+    className: choice === "soon" ? "bg-[#C9A66B]/20 text-[#E5B769]" : "bg-white/[0.06] text-white/75",
+  });
 
   const body = (
     <div className={surface}>
@@ -245,15 +221,13 @@ choose: (id: string, choice: TriageChoice) => void;
 
   return (
     <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
-      <SwipeReveal
+      <SwipeAction
         enabled={undecided}
-        isOpen={openRow === it.id}
-        onOpen={() => setOpenRow(it.id)}
-        onClose={() => setOpenRow((cur) => (cur === it.id ? null : cur))}
-        actions={tray}
+        left={swipeOutcome("soon", t.soon)}
+        right={swipeOutcome("later", t.later)}
       >
         {body}
-      </SwipeReveal>
+      </SwipeAction>
     </li>
   );
 }
@@ -279,8 +253,6 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   const [pendingId, setPendingId] = useState<string | null>(null);
   /** Which conversations are open. Local only — a reading position is not worth persisting. */
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  /** Only ONE row may sit revealed. Opening another closes the previous one by construction. */
-  const [openRow, setOpenRow] = useState<string | null>(null);
   const toggle = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -420,8 +392,6 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                         t={t}
                         pendingId={pendingId}
                         failedId={failedId}
-                        openRow={openRow}
-                        setOpenRow={setOpenRow}
                         choose={choose}
                       />
                     ) : (
@@ -462,8 +432,6 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                                 t={t}
                                 pendingId={pendingId}
                                 failedId={failedId}
-                                openRow={openRow}
-                                setOpenRow={setOpenRow}
                                 choose={choose}
                               />
                             ))}
