@@ -150,7 +150,7 @@ choose: (id: string, choice: TriageChoice) => void;
     // ever red — nothing here is late, because nothing is owed.
     (it.triageChoice === "soon"
       ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
-      : "border-white/8 bg-white/[0.02]");
+      : "border-white/[0.08] bg-white/[0.02]");
 
   /* Swipe IS the decision now — it calls the identical `choose` the visible buttons below call,
      so there is one mutation path, one optimistic update and one rollback. What used to sit here
@@ -202,7 +202,7 @@ choose: (id: string, choice: TriageChoice) => void;
                 "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
                 (choice === "soon"
                   ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
-                  : "border-white/12 bg-white/[0.03] text-white/70")
+                  : "border-white/[0.12] bg-white/[0.03] text-white/70")
               }
             >
               {label}
@@ -365,7 +365,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
               setState("loading");
               void load().then((ok) => setState(ok ? "ready" : "error"));
             }}
-            className="rounded-lg border border-white/12 px-3 py-1.5 text-xs text-white/70"
+            className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-white/70"
           >
             {t.retry}
           </button>
@@ -401,7 +401,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                           data-testid="saved-conversation-header"
                           aria-expanded={expanded.has(conv.key)}
                           onClick={() => toggle(conv.key)}
-                          className="flex w-full flex-col gap-1 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+                          className="flex w-full flex-col gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
                         >
                           <span className="flex items-center justify-between gap-3">
                             <span className="text-[0.78rem] text-white/45">
