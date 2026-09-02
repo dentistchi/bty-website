@@ -9,7 +9,7 @@ const DESCRIPTION_MAX = 2000;
 const CONTEXT_JSON_MAX = 5000;
 const CONTEXT_KEYS_MAX = 20;
 
-/** GET: list MVP debug reports (admin only when BTY_ADMIN_EMAILS set) */
+/** GET: list MVP debug reports (platform admin only — an active bty_platform_admin_grants row). */
 export async function GET(req: NextRequest) {
   const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ reports: data ?? [] });
 }
 
-/** POST: MVP 에러 제보 올리기 (admin only when BTY_ADMIN_EMAILS set, 입력 검증 적용) */
+/** POST: MVP 에러 제보 올리기 (platform admin only — an active bty_platform_admin_grants row, 입력 검증 적용) */
 export async function POST(req: NextRequest) {
   const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

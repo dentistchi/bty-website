@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 const RESOLUTION_NOTE_MAX = 2000;
 
-/** PATCH: 교정 완료 (admin only when BTY_ADMIN_EMAILS set) */
+/** PATCH: 교정 완료 (platform admin only — an active bty_platform_admin_grants row). */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

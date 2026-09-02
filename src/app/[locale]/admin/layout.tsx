@@ -1,26 +1,21 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSupabaseServerReadonly } from "@/lib/supabase-server-readonly";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { isActivePlatformAdmin } from "@/lib/bty/authority/platformAdmin.server";
 import AdminNav from "./AdminNav";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ADMIN_EMAILS = (process.env.BTY_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-const ADMIN_EMAIL_SET = new Set(ADMIN_EMAILS);
+/*
+  ★ THE ADMIN SURFACE IS GATED BY A GRANT, NOT BY AN EMAIL (2026-09-02).
 
-function logAdminAllowlistDebug(email: string, matched: boolean) {
-  if (process.env.NODE_ENV !== "development") return;
-  console.info("[admin-auth][AdminLayout] allowlist check", {
-    userEmail: email,
-    parsedAdminEmails: ADMIN_EMAILS,
-    allowlistMatched: matched,
-  });
-}
-
+  This page previously carried its own copy of the `BTY_ADMIN_EMAILS` allowlist, with the same
+  fail-OPEN branch the API layer had: an empty or unset variable admitted EVERY authenticated user
+  to the entire admin console. Both halves are gone. Authority is now the canonical
+  `bty_platform_admin_grants` row, resolved from the session's canonical user id.
+*/
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
 
 export default async function AdminLayout({ children, params }: Props) {
@@ -41,17 +36,13 @@ export default async function AdminLayout({ children, params }: Props) {
     redirect(`/${locale}/bty/login?next=${encodeURIComponent(base)}`);
   }
 
-  const email = (data.user.email ?? "").toLowerCase();
-  if (ADMIN_EMAIL_SET.size > 0) {
-    const matched = Boolean(email) && ADMIN_EMAIL_SET.has(email);
-    logAdminAllowlistDebug(email, matched);
-    if (!matched) {
-      // Authenticated but not an admin → access denied page (not /admin/login,
-      // which would re-loop this gate). Same #19 loop class.
-      redirect(`/${locale}/forbidden`);
-    }
-  } else {
-    logAdminAllowlistDebug(email, true);
+  // Fail closed on every uncertainty, including a missing admin client: an admin console that
+  // cannot check authority has not established that anyone is an admin.
+  const admin = getSupabaseAdmin();
+  if (!admin || !(await isActivePlatformAdmin(admin, data.user.id))) {
+    // Authenticated but not an admin → access denied page (not /admin/login,
+    // which would re-loop this gate). Same #19 loop class.
+    redirect(`/${locale}/forbidden`);
   }
 
   return (

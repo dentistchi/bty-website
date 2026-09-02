@@ -13,7 +13,7 @@ import {
 } from "@/domain/teams/invokeActivity";
 import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
 import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
-import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
+import { canTrackWithBty } from "@/lib/bty/authority/platformAdmin.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -185,11 +185,13 @@ export async function POST(req: NextRequest) {
       The refusal is deliberately calm and non-technical: someone who is not a lead has done nothing
       wrong, and telling them about grants and entitlements would explain a system they are not in.
 
-      `isActiveFoundryHost` is the SAME gate the 31 Foundry routes use. Track does not get its own
-      notion of who a Host is, and the client's claims about the user are not consulted anywhere.
+      `canTrackWithBty` is the SHARED capability rule -- an active platform admin OR an active
+      Foundry Host grant. Track does not get its own notion of who may host, an admin is not a
+      special case written into this route, and the client's claims about the user are not
+      consulted anywhere: the id comes from the verified Teams identity resolver.
     */
-    if (!(await isActiveFoundryHost(admin, resolution.userId))) {
-      console.error("[teams-invoke] track refused: not a host");
+    if (!(await canTrackWithBty(admin, resolution.userId))) {
+      console.error("[teams-invoke] track refused: no track capability");
       return say(MSG.trackNotHost, parsed.invokeName);
     }
 

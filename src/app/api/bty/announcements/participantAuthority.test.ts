@@ -23,16 +23,29 @@ describe("★ answering an announcement is NOT a Host action", () => {
     it(`${route} carries no Host gate`, () => {
       const src = read(route);
       expect(src).toContain("requireConsentedUser");
-      for (const gate of ["requireManager", "isActiveFoundryHost", "foundry_host_grants", "LEADER_TRACK"]) {
+      for (const gate of [
+        "requireManager",
+        "isActiveFoundryHost",
+        "canTrackWithBty",
+        "isActivePlatformAdmin",
+        "foundry_host_grants",
+        "bty_platform_admin_grants",
+        "LEADER_TRACK",
+      ]) {
         expect(src.includes(gate), `${route} must not use ${gate}`).toBe(false);
       }
     });
   }
 
-  it("the Track invoke, by contrast, DOES carry the Host gate", () => {
+  it("the Track invoke, by contrast, DOES carry the Host-capability gate", () => {
     // The mirror assertion: if this ever stops being true the gate has been lost, and the two
     // halves of the boundary are checked in the same place so they cannot drift apart unnoticed.
+    //
+    // The gate widened on 2026-09-02 from `isActiveFoundryHost` to `canTrackWithBty`, which is
+    // "active platform admin OR active Foundry Host" -- strictly MORE authority-aware, not less.
+    // This asserts the shared capability rule by name so a future narrowing to a bare table read,
+    // or a quiet removal, both fail here.
     const src = read("src/app/api/bty/teams/invoke/route.ts");
-    expect(src).toContain("isActiveFoundryHost");
+    expect(src).toContain("canTrackWithBty");
   });
 });

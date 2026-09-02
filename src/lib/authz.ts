@@ -34,38 +34,58 @@ export async function requireUser(req: NextRequest) {
   return { ok: true as const, user: data.user };
 }
 
-const ADMIN_EMAILS_RAW = process.env.BTY_ADMIN_EMAILS ?? "";
-const ADMIN_EMAIL_SET = new Set(
-  ADMIN_EMAILS_RAW.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
-);
-
-function logAdminAllowlistDebug(email: string, matched: boolean) {
-  if (process.env.NODE_ENV !== "development") return;
-  console.info("[admin-auth][requireAdminEmail] allowlist check", {
-    userEmail: email,
-    parsedAdminEmails: Array.from(ADMIN_EMAIL_SET),
-    allowlistMatched: matched,
-  });
-}
+/**
+ * ★ ADMIN AUTHORITY IS A ROW, NOT AN ENVIRONMENT STRING (2026-09-02).
+ *
+ * This was `BTY_ADMIN_EMAILS`: a comma-separated env var compared against `user.email` on every
+ * request, guarding ~30 API routes. It is gone from authorization entirely, for three measured
+ * reasons.
+ *
+ *   1. IT FAILED OPEN. The old branch read "if the allowlist is empty, allow any authenticated
+ *      user" — dev-friendly, and the single worst default available to the thing guarding the
+ *      admin surface. One unset variable in one environment was full admin for everyone with a
+ *      login.
+ *   2. EMAIL IS NOT IDENTITY. Every other authority in this schema keys on the canonical
+ *      `auth.users` id, and the Microsoft-first resolver exists precisely because email does not
+ *      identify a person. Measured while replacing this: the allowlisted address resolved to a
+ *      canonical user that was NOT the account actually operating BTY.
+ *   3. IT COULD NOT BE AUDITED. No granter, no grant time, no revocation — nowhere in the system
+ *      could answer "who made this person an admin, and when".
+ *
+ * Authority now comes from `bty_platform_admin_grants` via the canonical resolver, which fails
+ * closed. There is deliberately NO email fallback: a transitional one would be the permanent one.
+ */
+export { isActivePlatformAdmin } from "@/lib/bty/authority/platformAdmin.server";
 
 /**
- * Admin-only by email allowlist (BTY_ADMIN_EMAILS).
- * If BTY_ADMIN_EMAILS is not set, any authenticated user is allowed (dev-friendly).
+ * Admin-only, by canonical platform-admin grant.
+ *
+ * Fails closed on every uncertainty: no session, no admin client, no grant, or a lookup that
+ * errors — all 403 (401 for no session). Nothing about the request body, headers or email is
+ * consulted.
  */
-export async function requireAdminEmail(req: NextRequest) {
+export async function requirePlatformAdmin(req: NextRequest) {
   const u = await requireUser(req);
   if (!u.ok) return u;
 
-  const email = (u.user.email ?? "").toLowerCase();
-  if (ADMIN_EMAIL_SET.size === 0) {
-    logAdminAllowlistDebug(email, true);
-    return u;
-  }
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false as const, status: 503, error: "Server not configured" };
 
-  const matched = Boolean(email) && ADMIN_EMAIL_SET.has(email);
-  logAdminAllowlistDebug(email, matched);
-  if (matched) return u;
+  const { isActivePlatformAdmin } = await import("@/lib/bty/authority/platformAdmin.server");
+  if (await isActivePlatformAdmin(admin, u.user.id)) return u;
   return { ok: false as const, status: 403, error: "Forbidden: Admin access required" };
+}
+
+/**
+ * DEPRECATED NAME, CANONICAL BEHAVIOUR.
+ *
+ * ~30 route handlers import this. Rather than edit all of them in the same change that alters what
+ * "admin" MEANS — which would make a security cutover indistinguishable from a rename in review —
+ * the name is kept and now delegates. It no longer reads an email anywhere. Renaming the call
+ * sites is a separate, mechanical change.
+ */
+export async function requireAdminEmail(req: NextRequest) {
+  return requirePlatformAdmin(req);
 }
 
 function parseScope(request: NextRequest) {

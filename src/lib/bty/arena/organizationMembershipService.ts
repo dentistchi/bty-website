@@ -340,7 +340,7 @@ export function validateProfessionalIdentity(input: {
 // Admin CURATION write surface (Slice 3.1A-3).
 //
 // The one place manageable-organization scope is resolved. Today every
-// BTY_ADMIN_EMAILS admin manages every active organization (the app is
+// every platform admin manages every active organization (the app is
 // effectively single-tenant: one active BTY_LEGACY org). This is the seam where
 // a future per-admin org scope slots in — every caller (selector options AND the
 // write authorization) funnels through it, so tightening it later is a one-place

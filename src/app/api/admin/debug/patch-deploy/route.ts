@@ -7,7 +7,7 @@ const BTY_AI_URL = process.env.NEXT_PUBLIC_BTY_AI_URL || "";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 const DEPLOY_WEBHOOK_URL = process.env.DEPLOY_WEBHOOK_URL || ""; // Cloudflare Pages deploy hook or similar
 
-/** POST: 패치 생성 + 배포 웹훅 (admin only when BTY_ADMIN_EMAILS set) */
+/** POST: 패치 생성 + 배포 웹훅 (platform admin only — an active bty_platform_admin_grants row). */
 export async function POST(req: NextRequest) {
   const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });

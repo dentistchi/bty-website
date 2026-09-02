@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { isActivePlatformAdmin } from "@/lib/bty/authority/platformAdmin.server";
 import { getUnlockedDayFromCompletions } from "@/lib/trainProgress";
 import TrainDayPage from "./page.client";
 
@@ -23,17 +24,18 @@ export default async function Page({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // A-1 QA preview (admin-only, fail-closed). `?preview=1` lets a BTY_ADMIN_EMAILS
-  // allowlisted user open a locked Day for content review without the completion-chain
-  // dance. The allowlist is read inline here because getAdminEmails() in rbac.ts is
-  // module-private (not exported) and this gate is scoped to page.tsx only — same env
-  // var + same normalization. `length > 0` = an empty/unset allowlist never grants.
-  const adminEmails = (process.env.BTY_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const userEmail = user?.email?.toLowerCase() ?? null;
-  const isAdmin = !!userEmail && adminEmails.length > 0 && adminEmails.includes(userEmail);
+  /*
+    A-1 QA preview (admin-only, fail-closed). `?preview=1` lets a BTY platform admin open a locked
+    Day for content review without the completion-chain dance.
+
+    This read an inline copy of the `BTY_ADMIN_EMAILS` allowlist until 2026-09-02. Authority is now
+    the canonical `bty_platform_admin_grants` row, keyed by the session's canonical user id — the
+    same single source the API layer and the admin console use, so a revoked admin loses the
+    preview at the same instant they lose everything else.
+  */
+  const previewAdminClient = getSupabaseAdmin();
+  const isAdmin =
+    !!user?.id && !!previewAdminClient && (await isActivePlatformAdmin(previewAdminClient, user.id));
   const allowPreview = sp?.preview === "1" && isAdmin;
 
   if (user?.id && Number.isFinite(day)) {

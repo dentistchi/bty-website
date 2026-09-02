@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { isActiveFoundryHost } from "./foundryHostService";
+import { hasHostCapability } from "@/lib/bty/authority/platformAdmin.server";
 
 /**
  * Shared manager-route gate for Foundry Training Rooms.
@@ -34,8 +34,15 @@ export async function requireManager(
     return { ok: false, response: res };
   }
 
-  // Foundry Host capability — required for every manager operation.
-  const isHost = await isActiveFoundryHost(admin, user.id);
+  /*
+    Foundry Host CAPABILITY — required for every manager operation.
+
+    `hasHostCapability` is the shared rule: an active platform admin OR an active Foundry Host
+    grant. An admin inherits the capability without holding a grant, which is the whole point of
+    the inheritance contract — but inherits ONLY the capability. Every operation behind this gate
+    is still scoped to the caller's own rows, so an admin who owns no events still sees none.
+  */
+  const isHost = await hasHostCapability(admin, user.id);
   if (!isHost) {
     const res = NextResponse.json({ error: "foundry_host_required" }, { status: 403 });
     copyCookiesAndDebug(base, res, req, true);
