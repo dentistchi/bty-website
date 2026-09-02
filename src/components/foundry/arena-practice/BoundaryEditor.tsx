@@ -151,7 +151,7 @@ export function BoundaryEditor({
   if (isConfirmed && !editing) {
     return (
       <section
-        className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4"
+        className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4"
         aria-labelledby="practice-boundary-heading"
       >
         <h2 id="practice-boundary-heading" className="text-sm font-medium text-white/80">
@@ -164,7 +164,7 @@ export function BoundaryEditor({
             {stored.map((c) => (
               <li
                 key={c.id}
-                className="rounded-lg border border-white/12 bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/85"
+                className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/85"
               >
                 {c.statement}
               </li>
@@ -177,7 +177,7 @@ export function BoundaryEditor({
             setRules(fromStored());
             setEditing(true);
           }}
-          className="self-start rounded-lg border border-white/12 px-3 py-2 text-sm font-medium text-white/80"
+          className="self-start rounded-lg border border-white/[0.12] px-3 py-2 text-sm font-medium text-white/80"
         >
           {copy.boundaryChangeCta}
         </button>
@@ -188,7 +188,7 @@ export function BoundaryEditor({
   // ------------------------------------------------------------------ editing ----
   return (
     <section
-      className="flex flex-col gap-4 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4"
+      className="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4"
       aria-labelledby="practice-boundary-heading"
     >
       <header className="flex flex-col gap-1">
@@ -214,7 +214,7 @@ export function BoundaryEditor({
           <ul className="flex flex-col gap-2">
             {unusedSuggestions.map((s) => (
               <li key={s.id} className="flex items-start gap-2">
-                <span className="flex-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-sm leading-6 text-white/70">
+                <span className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm leading-6 text-white/70">
                   {s.statement}
                 </span>
                 <button
@@ -250,7 +250,7 @@ export function BoundaryEditor({
                     value={editText}
                     rows={2}
                     onChange={setEditText}
-                    className="w-full rounded-lg border border-white/12 bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
+                    className="w-full rounded-lg border border-white/[0.12] bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
                   />
                   <div className="flex gap-2">
                     <button
@@ -292,7 +292,7 @@ export function BoundaryEditor({
                       setEditText(r.statement);
                       setLocalError(null);
                     }}
-                    className="shrink-0 rounded-lg border border-white/12 px-2.5 py-2 text-xs text-white/70"
+                    className="shrink-0 rounded-lg border border-white/[0.12] px-2.5 py-2 text-xs text-white/70"
                   >
                     {copy.boundaryEditCta}
                   </button>
@@ -302,7 +302,7 @@ export function BoundaryEditor({
                       setRules((prev) => prev.filter((x) => x.key !== r.key));
                       setLocalError(null);
                     }}
-                    className="shrink-0 rounded-lg border border-white/12 px-2.5 py-2 text-xs text-white/70"
+                    className="shrink-0 rounded-lg border border-white/[0.12] px-2.5 py-2 text-xs text-white/70"
                   >
                     {copy.boundaryRemoveCta}
                   </button>
@@ -318,7 +318,7 @@ export function BoundaryEditor({
           rows={2}
           placeholder={copy.boundaryNewPlaceholder}
           onChange={setNewText}
-          className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
+          className="w-full rounded-xl border border-white/[0.12] bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
         />
         <button
           type="button"

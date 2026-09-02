@@ -356,7 +356,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
     : s === "overdue" ? "text-red-300/80 border-red-400/30"
       : s === "needs_revision" ? "text-[#E5B769] border-[#C9A66B]/45"
         : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35"
-          : "text-white/50 border-white/12";
+          : "text-white/50 border-white/[0.12]";
 
   const hostTagTone = (c: HostAttentionCategory) =>
     c === "FOLLOW_UP_OVERDUE" ? "text-red-300/80 border-red-400/30"
@@ -373,7 +373,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   const reviewsVisible = showAllReviews ? hostActionReviews : hostActionReviews.slice(0, ACTION_REVIEW_PREVIEW);
 
   return (
-    <section data-testid="today-personal-brief" className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
+    <section data-testid="today-personal-brief" className="flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
       {brief ? (
         <div className="flex flex-col gap-2" data-testid="brief-ai">
           <div>
@@ -403,7 +403,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                   : null;
               return (
                 <li key={r.stableId} data-testid="brief-reminder" data-category={r.category} data-state={r.state}>
-                  <a href={r.canonicalDeepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                  <a href={r.canonicalDeepLink} className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm text-white/80">
                         {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
@@ -441,7 +441,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               const deadline = fmtDate(a.originalDeadline, loc);
               return (
                 <li key={a.stableId} data-testid="action-status-row" data-status={a.status}>
-                  <a href={a.deepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                  <a href={a.deepLink} className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm text-white/80">{a.title}</span>
                       <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + actionStatusTone(a.status)}>{t.actionStatusBadge[a.status]}</span>
@@ -476,7 +476,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
           <ul className="flex flex-col gap-1.5">
             {hostVisible.map((h) => (
               <li key={h.stableId} data-testid="host-attention-row" data-category={h.category}>
-                <a href={h.deepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                <a href={h.deepLink} className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{h.participantDisplayName}</span>
                     <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + hostTagTone(h.category)}>{t.hostTags[h.category]}</span>
@@ -516,7 +516,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                 key={key}
                 data-testid={`stage-count-${key}`}
                 data-count={n}
-                className="flex items-center justify-between gap-2 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
               >
                 <span className="min-w-0 truncate text-[0.72rem] text-white/55">{label}</span>
                 <span className="shrink-0 text-sm font-semibold text-white/85">{n}</span>
@@ -540,7 +540,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                 <li key={r.actionContractId} data-testid="action-review-row" data-mode={r.verificationMode}>
                   <a
                     href={`/${locale}/app?tab=today&actionReview=${r.actionContractId}`}
-                    className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2"
+                    className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{r.learnerLabel}</span>

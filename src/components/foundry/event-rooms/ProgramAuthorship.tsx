@@ -1201,7 +1201,7 @@ export function ProgramAuthorship({
              overriding the panel here wins cleanly and changes no other Modal consumer.
              Also bounded in height with internal scroll, so a long focus can never push the
              actions off-screen. */
-          className="max-h-[85dvh] overflow-y-auto overscroll-contain border-white/12 bg-[#0B1F3A] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          className="max-h-[85dvh] overflow-y-auto overscroll-contain border-white/[0.12] bg-[#0B1F3A] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5 border-l-2 border-[#C9A66B]/50 pl-3">

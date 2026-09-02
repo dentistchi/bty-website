@@ -69,7 +69,7 @@ export function PracticeGovernancePanel({
       aria-live="polite"
       data-testid="practice-governance-panel"
       data-governance-state={view.state}
-      className="flex w-full max-w-full flex-col gap-3 rounded-2xl border border-white/12 bg-white/[0.04] p-4"
+      className="flex w-full max-w-full flex-col gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4"
     >
       <div className="flex items-start gap-2.5">
         {/* Never colour alone: the icon and the heading both carry the meaning. */}
@@ -102,7 +102,7 @@ export function PracticeGovernancePanel({
             ref={tryOnceMoreRef}
             onClick={onTryOnceMore}
             data-testid="governance-try-once-more"
-            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 sm:w-auto"
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 sm:w-auto"
           >
             {copy.tryOnceMoreCta}
           </button>

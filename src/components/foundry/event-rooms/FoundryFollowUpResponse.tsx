@@ -253,7 +253,7 @@ export default function FoundryFollowUpResponse({
       ? "border-red-400/30 text-red-300/80"
       : followup.dueState === "due_today"
         ? "border-[#C9A66B]/35 text-[#E5B769]"
-        : "border-white/12 text-white/50";
+        : "border-white/[0.12] text-white/50";
   const responded = followup.status === "RESPONDED";
   /*
     Server authority, read and not derived. `=== true` rather than a truthy test so an older
@@ -276,7 +276,7 @@ export default function FoundryFollowUpResponse({
           disabled={submitting}
           data-testid={`followup-choice-${o}`}
           onClick={() => submit(o)}
-          className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-left text-[0.95rem] text-white/85 transition hover:border-[#C9A66B]/35 hover:bg-white/[0.06] disabled:opacity-60"
+          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-left text-[0.95rem] text-white/85 transition hover:border-[#C9A66B]/35 hover:bg-white/[0.06] disabled:opacity-60"
         >
           {t.choices[o]}
         </button>
@@ -314,7 +314,7 @@ export default function FoundryFollowUpResponse({
         greyed, struck through, or presented as something to fix.
       */}
       {responded ? (
-        <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5" data-testid="followup-settled">
+        <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-5" data-testid="followup-settled">
           <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/40">
             {canCheckIn ? t.earlierLabel : t.respondedLabel}
           </span>

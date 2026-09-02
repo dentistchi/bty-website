@@ -236,7 +236,7 @@ export default function FoundryRequiredLearning({
           </div>
         ) : (
           <div
-            className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-6 text-center"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-center"
             data-testid="required-empty"
           >
             <p className="text-[0.95rem] font-medium text-white/80">{t.emptyTitle}</p>
@@ -255,7 +255,7 @@ export default function FoundryRequiredLearning({
             aria-expanded={showCompleted}
             aria-controls="foundry-completed-list"
             onClick={() => setShowCompleted((v) => !v)}
-            className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+            className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
           >
             <span className="text-sm font-medium text-white/75">
               {t.completedHeader} ({completed.length}) · {t.reviewCta}
@@ -338,7 +338,7 @@ function CompletedCard({
 }) {
   const date = fmtDate(a.completedAt, loc);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5">
       <div className="flex min-w-0 flex-col">
         <span className="min-w-0 truncate text-[0.98rem] font-medium text-white/80">{a.title}</span>
         <span className="text-xs text-emerald-300/70">

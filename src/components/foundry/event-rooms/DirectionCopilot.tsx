@@ -291,7 +291,7 @@ export function DirectionCopilot({
         type="button"
         onClick={describeAnother}
         data-testid="direction-copilot-describe-another"
-        className="mt-1 rounded-xl border border-white/12 bg-white/[0.02] px-4 py-3 text-sm text-white/70 hover:bg-white/[0.05]"
+        className="mt-1 rounded-xl border border-white/[0.12] bg-white/[0.02] px-4 py-3 text-sm text-white/70 hover:bg-white/[0.05]"
       >
         {t.describeAnother}
       </button>

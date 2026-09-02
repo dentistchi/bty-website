@@ -160,7 +160,7 @@ export function FoundryEventControlRoom({
 
           {/* Quiet training identity — the video this room is built around. */}
           {training ? (
-            <div className="overflow-hidden rounded-xl border border-white/8 bg-black/30">
+            <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/30">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={training.youtube_thumbnail_url}
@@ -170,7 +170,7 @@ export function FoundryEventControlRoom({
               />
             </div>
           ) : document ? (
-            <div className="rounded-xl border border-white/8 bg-black/20 px-4 py-3">
+            <div className="rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3">
               <p className="truncate text-sm text-white/85">{document.file_name ?? "PDF"}</p>
               <p className="mt-0.5 text-xs text-white/45">
                 {document.page_count} {document.page_count === 1 ? "page" : "pages"}
@@ -224,7 +224,7 @@ export function FoundryEventControlRoom({
               </button>
             </>
           ) : (
-            <p className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-white/55">
+            <p className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/55">
               {t.closedNotice}
             </p>
           )}

@@ -118,7 +118,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
     <section
       data-testid="account-block"
       aria-label={t.signedInAs}
-      className="relative flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4"
+      className="relative flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
@@ -176,7 +176,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
           data-testid="account-signout"
           onClick={onSignOut}
           disabled={busy !== null}
-          className="rounded-lg border border-white/12 bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-white/70 disabled:opacity-60"
+          className="rounded-lg border border-white/[0.12] bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-white/70 disabled:opacity-60"
         >
           {busy === "signout" ? t.working : t.signOut}
         </button>

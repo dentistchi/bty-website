@@ -132,7 +132,7 @@ export default function NeedsYourResponse({ locale }: { locale: Locale }) {
             key={it.announcementId}
             data-testid="announcement-item"
             data-answered={answered ? "1" : "0"}
-            className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4"
+            className="flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
           >
             <p className="text-[0.95rem] leading-6 text-white/85">{it.hostFraming}</p>
 
@@ -166,7 +166,7 @@ export default function NeedsYourResponse({ locale }: { locale: Locale }) {
                   value={questionText}
                   maxLength={1000}
                   onChange={(e) => setQuestionText(e.target.value)}
-                  className="min-h-[4.5rem] rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white/90"
+                  className="min-h-[4.5rem] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-sm text-white/90"
                 />
                 <button
                   type="button"

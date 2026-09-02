@@ -272,7 +272,7 @@ export default function FieldActionForm({
   }
 
   return (
-    <section data-testid="field-action-form" className="flex flex-col gap-4 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-4">
+    <section data-testid="field-action-form" className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
       <button type="button" data-testid="field-action-back" onClick={onBack} className="self-start text-xs text-white/55 hover:text-white/85">
         ← {t.back}
       </button>
@@ -432,7 +432,7 @@ function Field({
         rows={2}
         onChange={(e) => onChange(e.target.value)}
         // text-base (16px) prevents iOS form-control auto-zoom on focus (Slice 3.1B-3N-5C.4).
-        className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
+        className="w-full resize-none rounded-md border border-white/[0.12] bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
       />
     </label>
   );

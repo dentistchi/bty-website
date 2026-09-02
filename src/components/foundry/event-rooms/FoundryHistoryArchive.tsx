@@ -167,7 +167,7 @@ function HistoryList({ t, onOpen }: { t: HistoryCopy; onOpen: (id: string) => vo
       {state === "loading" ? (
         <div className="flex flex-col gap-2.5" aria-hidden>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-[4.5rem] rounded-xl border border-white/8 bg-white/[0.03]" />
+            <div key={i} className="h-[4.5rem] rounded-xl border border-white/[0.08] bg-white/[0.03]" />
           ))}
         </div>
       ) : state === "error" ? (
@@ -184,7 +184,7 @@ function HistoryList({ t, onOpen }: { t: HistoryCopy; onOpen: (id: string) => vo
               <button
                 type="button"
                 onClick={() => onOpen(it.eventId)}
-                className="flex w-full flex-col gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-left transition-colors hover:bg-white/[0.06]"
+                className="flex w-full flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-left transition-colors hover:bg-white/[0.06]"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="min-w-0 truncate text-[0.98rem] font-medium text-white/90">
@@ -261,8 +261,8 @@ function HistoryDetailView({
     return (
       <div className="flex flex-col gap-4" aria-hidden>
         <div className="h-8 w-2/3 rounded-lg bg-white/[0.05]" />
-        <div className="h-24 rounded-xl border border-white/8 bg-white/[0.03]" />
-        <div className="h-24 rounded-xl border border-white/8 bg-white/[0.03]" />
+        <div className="h-24 rounded-xl border border-white/[0.08] bg-white/[0.03]" />
+        <div className="h-24 rounded-xl border border-white/[0.08] bg-white/[0.03]" />
       </div>
     );
   }
@@ -406,7 +406,7 @@ function Section({
   return (
     <section className="flex flex-col gap-2.5">
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{title}</h2>
-      <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+      <div className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5">
         {children}
       </div>
     </section>

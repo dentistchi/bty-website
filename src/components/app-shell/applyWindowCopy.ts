@@ -55,5 +55,5 @@ export function applyTimingChip(state: ReminderState | string, locale: string): 
 export function applyStateTone(state: ReminderState | string): string {
   return state === "due_today"
     ? "text-[#E5B769] border-[#C9A66B]/35"
-    : "text-white/50 border-white/12";
+    : "text-white/50 border-white/[0.12]";
 }

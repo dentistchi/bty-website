@@ -40,7 +40,7 @@ export function ArenaScenarioPreview({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <p className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
+      <p className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
         {t.previewNotPlayable}
       </p>
 
@@ -67,7 +67,7 @@ export function ArenaScenarioPreview({
           const branch = draft.branches[pc.id];
           if (!branch) return null;
           return (
-            <section key={pc.id} className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4">
+            <section key={pc.id} className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
               <p className="text-xs uppercase tracking-[0.12em] text-[#C9A66B]/90">
                 {t.previewBranchFor}: <span className="text-white/85">{pc.label}</span>
               </p>

@@ -213,7 +213,7 @@ export function FoundryShareControls({
             type="button"
             onClick={onCopyLink}
             aria-label={t.copyInvitation}
-            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
           >
             {copyState === "copied" ? t.linkCopied : t.copyInvitation}
           </button>
@@ -225,7 +225,7 @@ export function FoundryShareControls({
             type="button"
             onClick={onCopyLink}
             aria-label={t.copyInvitation}
-            className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
+            className="flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
           >
             {copyState === "copied" ? t.linkCopied : t.copyInvitation}
           </button>
@@ -233,7 +233,7 @@ export function FoundryShareControls({
             type="button"
             onClick={onShareTeams}
             aria-label={t.shareToTeams}
-            className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
+            className="flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
           >
             {teamsState === "opening" ? t.openingTeams : t.shareToTeams}
           </button>
@@ -261,7 +261,7 @@ export function FoundryShareControls({
             <button
               type="button"
               onClick={onCopyManual}
-              className="rounded-lg border border-white/12 px-3 py-2 text-xs text-white/80 hover:bg-white/[0.06]"
+              className="rounded-lg border border-white/[0.12] px-3 py-2 text-xs text-white/80 hover:bg-white/[0.06]"
             >
               {t.copyInvitation}
             </button>
@@ -269,7 +269,7 @@ export function FoundryShareControls({
               href={teamsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-white/12 px-3 py-2 text-xs text-white/70 hover:bg-white/[0.06]"
+              className="rounded-lg border border-white/[0.12] px-3 py-2 text-xs text-white/70 hover:bg-white/[0.06]"
             >
               {t.openTeams}
             </a>

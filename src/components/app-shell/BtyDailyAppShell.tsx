@@ -2096,7 +2096,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                     type="button"
                     data-testid={r.id}
                     onClick={r.go}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
                   >
                     <span className="text-sm font-medium text-white/75">{r.label}</span>
                     <span aria-hidden="true" className="text-white/40">›</span>

@@ -56,7 +56,7 @@ export function RetryConfirmation({
         aria-modal="true"
         aria-labelledby="retry-confirm-title"
         data-testid="retry-confirmation"
-        className="flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-2xl border border-white/12 bg-[#141414] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl"
+        className="flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-2xl border border-white/[0.12] bg-[#141414] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl"
       >
         <h2 id="retry-confirm-title" ref={headingRef} tabIndex={-1} className="text-[1.05rem] font-medium leading-7 text-white/90 outline-none">
           {copy.title}
@@ -83,7 +83,7 @@ export function RetryConfirmation({
             onClick={onConfirm}
             disabled={submitting}
             data-testid="retry-confirm-submit"
-            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 disabled:opacity-50"
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 disabled:opacity-50"
           >
             {copy.confirmCta}
           </button>

@@ -105,7 +105,7 @@ export function LearnDoors({
         type="button"
         onClick={onOpenLearning}
         data-testid="door-my-learning"
-        className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
+        className="flex flex-col items-start gap-1 rounded-2xl border border-white/[0.12] bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
       >
         {/*
           SECONDARY BY WEIGHT, NOT BY A NEW SYSTEM (R4-R5C6 §8). Measured: the assigned training
@@ -141,7 +141,7 @@ export function LearnDoors({
           type="button"
           onClick={onOpenEvent}
           data-testid="door-open-event"
-          className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
+          className="flex flex-col items-start gap-1 rounded-2xl border border-white/[0.12] bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
         >
           <span className="text-lg font-semibold text-white">{t.eventTitle}</span>
           <span className="text-sm leading-6 text-white/60">{t.eventBody}</span>
@@ -154,7 +154,7 @@ export function LearnDoors({
           type="button"
           onClick={onOpenMyEvents}
           data-testid="door-my-events"
-          className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
+          className="flex flex-col items-start gap-1 rounded-2xl border border-white/[0.12] bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
         >
           <span className="text-lg font-semibold text-white">{t.myEventsTitle}</span>
           <span className="text-sm leading-6 text-white/60">{t.myEventsBody}</span>

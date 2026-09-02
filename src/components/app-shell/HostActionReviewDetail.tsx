@@ -205,7 +205,7 @@ export default function HostActionReviewDetail({
   const controlsDisabled = pending;
 
   return (
-    <section data-testid="host-action-review-detail" className="flex flex-col gap-4 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-4">
+    <section data-testid="host-action-review-detail" className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
       <button
         type="button"
         data-testid="host-action-review-back"
@@ -252,11 +252,11 @@ export default function HostActionReviewDetail({
 
           {/* ---- Decision section (Phase 5C) ---- */}
           {stale ? (
-            <p data-testid="host-action-review-stale" className="mt-1 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/60">
+            <p data-testid="host-action-review-stale" className="mt-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white/60">
               {t.staleResolved}
             </p>
           ) : (
-            <div className="mt-2 flex flex-col gap-2 border-t border-white/8 pt-3">
+            <div className="mt-2 flex flex-col gap-2 border-t border-white/[0.08] pt-3">
               {error ? (
                 <p data-testid="host-action-review-error" className="text-xs text-rose-300/80">
                   {error}
@@ -314,7 +314,7 @@ export default function HostActionReviewDetail({
               ) : null}
 
               {mode === "revision-sheet" ? (
-                <div data-testid="host-action-review-revision-sheet" className="flex flex-col gap-2 rounded-lg border border-white/12 bg-white/[0.03] px-3 py-3">
+                <div data-testid="host-action-review-revision-sheet" className="flex flex-col gap-2 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-3">
                   <label className="text-sm font-medium text-white/85" htmlFor="host-action-review-revision-note">
                     {t.revisionPrompt}
                   </label>
@@ -327,7 +327,7 @@ export default function HostActionReviewDetail({
                     onChange={(e) => { setNote(e.target.value); if (noteInvalid) setNoteInvalid(false); }}
                     rows={3}
                     // text-base (16px) prevents iOS form-control auto-zoom on focus (Slice 3.1B-3N-5C.4).
-                    className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
+                    className="w-full resize-none rounded-md border border-white/[0.12] bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
                   />
                   {noteInvalid ? (
                     <span data-testid="host-action-review-note-validation" className="text-xs text-amber-300/80">

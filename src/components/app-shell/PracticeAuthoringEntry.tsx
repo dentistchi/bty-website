@@ -166,7 +166,7 @@ export function PracticeAuthoringEntry({
               type="button"
               disabled={opening}
               onClick={() => open(e.id)}
-              className="min-h-[3rem] w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-left text-sm leading-6 text-white/85 disabled:opacity-60"
+              className="min-h-[3rem] w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2.5 text-left text-sm leading-6 text-white/85 disabled:opacity-60"
             >
               {e.title}
             </button>

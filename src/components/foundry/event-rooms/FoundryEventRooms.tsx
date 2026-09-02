@@ -517,7 +517,7 @@ function EventRow({
     <button
       type="button"
       onClick={() => onOpen(summary.id)}
-      className="flex w-full items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-4 py-4 text-left transition-colors hover:bg-white/[0.06]"
+      className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-left transition-colors hover:bg-white/[0.06]"
     >
       <span className="min-w-0 truncate text-[0.98rem] font-medium text-white/90">
         {summary.title}
@@ -693,7 +693,7 @@ function BuilderEntry({
   return (
     <section className="flex flex-col gap-3">
       {/* Quick-event path (create-new lives in the top door now, B3A.1). */}
-      <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
+      <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
         <span className="min-w-0 text-sm text-white/50">{bt.quickLead}</span>
         <button
           type="button"

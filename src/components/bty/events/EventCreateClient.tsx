@@ -195,23 +195,23 @@ export default function EventCreateClient({ locale, onBack, onViewEvents }: { lo
       <label className="flex flex-col gap-1 text-sm text-white/70">
         {t.title}
         <input data-testid="event-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t.titlePh}
-          className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
+          className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
       </label>
       <label className="flex flex-col gap-1 text-sm text-white/70">
         {t.type}
         <input data-testid="event-type" value={eventType} onChange={(e) => setEventType(e.target.value)} placeholder={t.typePh}
-          className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
+          className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
       </label>
       <label className="flex flex-col gap-1 text-sm text-white/70">
         {t.xp}
         <input data-testid="event-xp" type="number" min={10} max={100} value={xpValue}
           onChange={(e) => setXpValue(parseInt(e.target.value, 10))}
-          className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
+          className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
       </label>
       <label className="flex flex-col gap-1 text-sm text-white/70">
         {t.until}
         <input data-testid="event-until" type="datetime-local" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
-          className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
+          className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-[#C9A66B]/50" />
       </label>
 
       {errorReason ? (

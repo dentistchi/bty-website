@@ -201,7 +201,7 @@ export default function FoundryCompletionReview({
       </div>
 
       {r ? (
-        <div className="flex flex-col gap-4 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-5">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
             {t.livingReflection}
           </span>

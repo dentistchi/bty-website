@@ -324,7 +324,7 @@ export default function FieldActionsFocus({
   const showHost = hostState === "ready" && (hostTotal > 0 || opportunities.length > 0);
 
   const eyebrow = "text-[0.7rem] font-semibold uppercase tracking-[0.16em]";
-  const rowCls = "flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-left w-full";
+  const rowCls = "flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left w-full";
   const groupTone: Record<Exclude<FieldActionLearnerGroup, "other">, string> = {
     needs_revision: "text-[#E5B769]/85",
     awaiting_review: "text-white/40",
@@ -375,7 +375,7 @@ export default function FieldActionsFocus({
                 if (g === "reviewed") {
                   const on = fmtDate(a.reviewedAt, loc);
                   return (
-                    <div key={a.contractId} data-testid="fa-item" data-group={g} data-contract={a.contractId} className="flex flex-col gap-0.5 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                    <div key={a.contractId} data-testid="fa-item" data-group={g} data-contract={a.contractId} className="flex flex-col gap-0.5 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                       <span className="truncate text-xs text-white/45">{label(a)}</span>
                       <span className="text-sm text-white/80">{t.reviewedAccepted}</span>
                       {on ? <span className="text-[0.7rem] text-white/35">{t.reviewedOn} · {on}</span> : null}
@@ -431,7 +431,7 @@ export default function FieldActionsFocus({
               ["awaitingResolution", t.hostAwaitingResolution, stageCounts.awaitingResolution],
             ] as const).map(([key, lab, n]) => (
               <div key={key} data-testid={`fa-host-count-${key}`} data-count={n}
-                className="flex items-center justify-between gap-2 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                 <span className="min-w-0 truncate text-[0.72rem] text-white/55">{lab}</span>
                 <span className="shrink-0 text-sm font-semibold text-white/85">{n}</span>
               </div>

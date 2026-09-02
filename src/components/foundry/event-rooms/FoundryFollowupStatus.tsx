@@ -222,7 +222,7 @@ export default function FoundryFollowupStatus({
         ? "border-[#C9A66B]/35 text-[#E5B769]"
         : s === "responded"
           ? "border-emerald-400/30 text-emerald-200/85"
-          : "border-white/12 text-white/50";
+          : "border-white/[0.12] text-white/50";
 
   return (
     <div className="flex flex-col gap-3" data-testid="foundry-followup-status">
@@ -239,7 +239,7 @@ export default function FoundryFollowupStatus({
             data-focused={isFocused ? "true" : undefined}
             className={
               "flex flex-col gap-1 rounded-xl border bg-white/[0.02] px-3 py-2 " +
-              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/8")
+              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/[0.08]")
             }
           >
             <div className="flex items-center justify-between gap-2">

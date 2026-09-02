@@ -193,7 +193,7 @@ export default function FoundrySharedReview({
             data-focused={isFocused ? "true" : undefined}
             className={
               "rounded-xl border bg-white/[0.02] p-3 " +
-              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/8")
+              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/[0.08]")
             }
           >
             <div className="flex items-center justify-between">
@@ -266,7 +266,7 @@ export default function FoundrySharedReview({
                     "rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 " +
                     (r.reviewStatus === s
                       ? "border-[#C9A66B]/60 bg-[#C9A66B]/15 text-[#C9A66B]"
-                      : "border-white/12 bg-white/[0.03] text-white/70")
+                      : "border-white/[0.12] bg-white/[0.03] text-white/70")
                   }
                 >
                   {t.statuses[s]}

@@ -126,7 +126,7 @@ function EntryCard({ it, t, loc, focused, refCb }: { it: Entry; t: (typeof COPY)
       data-testid="center-reflection-item"
       data-entry-id={it.entryId}
       data-focused={focused ? "1" : undefined}
-      className={"flex flex-col gap-2 rounded-2xl border bg-white/[0.03] px-4 py-3 " + (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/8")}
+      className={"flex flex-col gap-2 rounded-2xl border bg-white/[0.03] px-4 py-3 " + (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/[0.08]")}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
@@ -301,7 +301,7 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
           <label>-wraps-<button> double-fire. Fixed-PX track + thumb pinned with left/top: the thumb
           can never leave the track — no rem-scaling drift (px is immune to iOS Dynamic Type), no
           missing left anchor, and `shrink-0` stops the control compressing in the flex row. */}
-      <div className="flex flex-col gap-1.5 border-t border-white/8 pt-4">
+      <div className="flex flex-col gap-1.5 border-t border-white/[0.08] pt-4">
         <button
           type="button"
           role="switch"
@@ -355,7 +355,7 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
       {items === null ? (
         <p className="text-sm text-white/40" role="status">{t.loading}</p>
       ) : items.length === 0 ? (
-        <div data-testid="center-feed-empty" className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-6 text-center">
+        <div data-testid="center-feed-empty" className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-6 text-center">
           <p className="text-sm text-white/70">{t.empty}</p>
           <p className="mt-1 text-xs text-white/45">{t.emptyHint}</p>
         </div>

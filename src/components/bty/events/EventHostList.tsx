@@ -140,7 +140,7 @@ export default function EventHostList({
             data-testid="event-host-refresh"
             onClick={() => load(true)}
             disabled={refreshing}
-            className="shrink-0 rounded-lg border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70 disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70 disabled:opacity-50"
           >
             {refreshing ? t.refreshing : t.refresh}
           </button>
@@ -157,7 +157,7 @@ export default function EventHostList({
           </button>
         </div>
       ) : events && events.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-6" data-testid="event-host-empty">
+        <div className="flex flex-col items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-6" data-testid="event-host-empty">
           <p className="text-sm text-white/70">{t.emptyTitle}</p>
           <button type="button" onClick={onOpenCreate} data-testid="event-host-empty-create" className="rounded-full bg-[#C9A66B] px-5 py-2 text-sm font-semibold text-[#0B1F3A]">
             {t.emptyCta}
@@ -173,7 +173,7 @@ export default function EventHostList({
                 data-testid="event-host-row"
                 onClick={() => onOpenDetail(e.eventId)}
                 aria-label={`${e.title} — ${t.state[e.state]}, ${t.count(e.participationCount)}`}
-                className="flex w-full flex-col gap-1 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                className="flex w-full flex-col gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="min-w-0 truncate text-sm font-medium text-white/85">{e.title}</span>

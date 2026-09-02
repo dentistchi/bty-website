@@ -70,13 +70,13 @@ export function BoundaryScopePanel({
   // --- 1-3 available: every one governs this situation. No decision is asked. -
   if (!selectionRequired) {
     return (
-      <section className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
+      <section className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
         <h2 id="practice-boundaries-heading" className="text-sm font-medium text-white/80">
           {copy.boundaryScopeAllActive}
         </h2>
         <ul className="flex flex-col gap-2">
           {available.map((c) => (
-            <li key={c.id} className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/80">
+            <li key={c.id} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/80">
               {c.statement}
             </li>
           ))}
@@ -95,13 +95,13 @@ export function BoundaryScopePanel({
 
   if (!editing) {
     return (
-      <section className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
+      <section className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
         <h2 id="practice-boundaries-heading" className="text-sm font-medium text-white/80">
           {copy.boundaryScopeConfirmed}
         </h2>
         <ul className="flex flex-col gap-2">
           {active.map((c) => (
-            <li key={c.id} className="rounded-lg border border-white/12 bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/85">
+            <li key={c.id} className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-2 text-sm leading-6 text-white/85">
               {c.statement}
             </li>
           ))}
@@ -123,7 +123,7 @@ export function BoundaryScopePanel({
             setSelected(active.map((c) => c.id));
             setEditing(true);
           }}
-          className="self-start rounded-lg border border-white/12 px-3 py-2 text-sm font-medium text-white/80"
+          className="self-start rounded-lg border border-white/[0.12] px-3 py-2 text-sm font-medium text-white/80"
         >
           {copy.boundaryScopeChange}
         </button>
@@ -132,7 +132,7 @@ export function BoundaryScopePanel({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
+    <section className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4" aria-labelledby="practice-boundaries-heading">
       <header className="flex flex-col gap-1">
         <h2 id="practice-boundaries-heading" className="text-base font-semibold leading-snug text-white">
           {copy.boundaryScopeTitle}
@@ -165,7 +165,7 @@ export function BoundaryScopePanel({
                 aria-describedby={!isSelected && atMax ? "practice-boundaries-max" : undefined}
                 onClick={() => toggle(c.id)}
                 className={`w-full rounded-lg border px-3 py-3 text-left text-sm leading-6 ${
-                  isSelected ? "border-white/25 bg-white/[0.07] text-white" : "border-white/8 bg-white/[0.02] text-white/70"
+                  isSelected ? "border-white/25 bg-white/[0.07] text-white" : "border-white/[0.08] bg-white/[0.02] text-white/70"
                 }`}
               >
                 {c.statement}

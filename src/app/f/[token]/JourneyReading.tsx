@@ -99,7 +99,7 @@ export function JourneyReading({
                 disabled={reflection.disabled}
                 rows={3}
                 maxLength={1000}
-                className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-base leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50 disabled:opacity-50"
+                className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-base leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50 disabled:opacity-50"
               />
               {reflection.error ? (
                 <span className="text-xs text-red-300/90" data-testid="journey-reflection-error">

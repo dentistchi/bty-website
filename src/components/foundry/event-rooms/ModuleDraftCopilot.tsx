@@ -341,7 +341,7 @@ export function ModuleDraftCopilot({
       />
 
       {/* Advisory-only — never applied to a canonical field. */}
-      <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-white/[0.01] px-4 py-3" data-testid="module-draft-material">
+      <div className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.01] px-4 py-3" data-testid="module-draft-material">
         <span className="text-xs uppercase tracking-[0.12em] text-white/40">{t.secMaterial}</span>
         <span className="text-xs text-white/40">
           {t.materialTypesLabel}: {v.material_guidance.recommended_types.map((m) => t.materialTypes[m as keyof typeof t.materialTypes] ?? m).join(", ")}
@@ -416,14 +416,14 @@ function DecisionSection({
       aria-pressed={decision === d}
       data-testid={`module-draft-${testid}-${d}`}
       className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-        decision === d ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-[#C9A66B]" : "border-white/12 bg-white/[0.02] text-white/60 hover:bg-white/[0.05]"
+        decision === d ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-[#C9A66B]" : "border-white/[0.12] bg-white/[0.02] text-white/60 hover:bg-white/[0.05]"
       }`}
     >
       {label}
     </button>
   );
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-white/8 bg-white/[0.01] px-4 py-3" data-testid={`module-draft-section-${testid}`}>
+    <div className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.01] px-4 py-3" data-testid={`module-draft-section-${testid}`}>
       <span className="text-xs uppercase tracking-[0.12em] text-white/40">{name}</span>
       {hasCurrent && currentDisplay ? (
         <div className="flex flex-col gap-0.5">
@@ -484,7 +484,7 @@ function ClarificationStep({
                 type="button"
                 data-testid={`module-draft-clarify-choice-${key}`}
                 onClick={() => onAnswer({ dimension: question.dimension, choiceKey: key, text: label })}
-                className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm text-white/80 transition-colors hover:border-[#C9A66B]/60 hover:bg-[#C9A66B]/10"
+                className="rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-sm text-white/80 transition-colors hover:border-[#C9A66B]/60 hover:bg-[#C9A66B]/10"
               >
                 {label}
               </button>

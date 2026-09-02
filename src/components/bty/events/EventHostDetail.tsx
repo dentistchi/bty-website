@@ -132,7 +132,7 @@ export default function EventHostDetail({ locale, eventId, onBack }: { locale: s
             data-testid="event-detail-refresh"
             onClick={() => load(true)}
             disabled={refreshing}
-            className="shrink-0 rounded-lg border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70 disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70 disabled:opacity-50"
           >
             {refreshing ? t.refreshing : t.refresh}
           </button>
@@ -157,7 +157,7 @@ export default function EventHostDetail({ locale, eventId, onBack }: { locale: s
           </div>
 
           {/* Event QR — reopened while active; no raw token text (encoded in the QR only). */}
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-4" data-testid="event-detail-qr">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4" data-testid="event-detail-qr">
             <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.qrHeading}</span>
             {ev.qr.available && ev.qr.payload ? (
               <>
@@ -174,7 +174,7 @@ export default function EventHostDetail({ locale, eventId, onBack }: { locale: s
           </div>
 
           {/* Participation roster (owner-only). Human-readable name + time; never raw ids. */}
-          <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3" data-testid="event-detail-roster">
+          <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3" data-testid="event-detail-roster">
             <div className="flex items-baseline justify-between">
               <span className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/45">{t.rosterHeading}</span>
               <span className="text-[0.82rem] font-semibold text-[#E5B769]" data-testid="event-detail-count">{t.count(ev.participationCount)}</span>

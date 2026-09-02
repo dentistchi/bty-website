@@ -121,7 +121,7 @@ export function ReviewSetupPanel({
               onChange={setCustom}
               placeholder={copy.otherPlaceholder}
               rows={2}
-              className="w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30"
+              className="w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30"
             />
           </label>
         ) : null}
@@ -133,7 +133,7 @@ export function ReviewSetupPanel({
             onChange={setPressure}
             placeholder={copy.pressurePlaceholder}
             rows={3}
-            className="w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30"
+            className="w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30"
           />
         </label>
 
@@ -160,7 +160,7 @@ export function ReviewSetupPanel({
             type="button"
             onClick={onCancel}
             data-testid="review-setup-cancel"
-            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 sm:w-auto"
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-[0.95rem] text-white/75 sm:w-auto"
           >
             {copy.cancelCta}
           </button>

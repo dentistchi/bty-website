@@ -823,7 +823,7 @@ export function ArenaPracticeFlow({
           <h1 className="text-2xl font-semibold leading-snug text-white">{t.setupTitle}</h1>
           <p className="text-sm leading-6 text-white/60">{t.setupLead}</p>
         </header>
-        <dl className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4">
+        <dl className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
           <SummaryRow label={t.labelSourceTraining} value={source.event_title} />
           {source.expected_behavior ? <SummaryRow label={t.labelExpected} value={source.expected_behavior} /> : null}
         </dl>
@@ -861,7 +861,7 @@ export function ArenaPracticeFlow({
           />
         ) : null}
 
-        <p className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
+        <p className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
           {statusLine}
         </p>
 
@@ -950,7 +950,7 @@ export function ArenaPracticeFlow({
           <h1 className="text-2xl font-semibold leading-snug text-white">{t.summaryTitle}</h1>
           <p className="text-sm leading-6 text-white/60">{t.summaryLead}</p>
         </header>
-        <dl className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4">
+        <dl className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
           <SummaryRow label={t.labelSourceTraining} value={source.event_title} />
           {source.capability ? <SummaryRow label={t.labelCapability} value={source.capability} /> : null}
           {source.audience_type ? (
@@ -993,7 +993,7 @@ export function ArenaPracticeFlow({
               onChange={setQ1Custom}
               placeholder={t.otherPlaceholder}
               rows={2}
-              className="mt-1 w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
+              className="mt-1 w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
             />
           ) : null}
         </div>
@@ -1014,7 +1014,7 @@ export function ArenaPracticeFlow({
                 key={seed}
                 type="button"
                 onClick={() => setQ2(t.seed[seed])}
-                className="rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 hover:border-[#C9A66B]/50 hover:text-white/90"
+                className="rounded-full border border-white/[0.12] bg-white/[0.03] px-3 py-1.5 text-xs text-white/70 hover:border-[#C9A66B]/50 hover:text-white/90"
               >
                 {t.seed[seed]}
               </button>
@@ -1025,7 +1025,7 @@ export function ArenaPracticeFlow({
             onChange={setQ2}
             placeholder={t.q2Placeholder}
             rows={3}
-            className="mt-1 w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
+            className="mt-1 w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
           />
         </div>
         {genError ? <p className="text-sm text-red-300/90">{t.genericError}</p> : null}
@@ -1245,7 +1245,7 @@ export function ArenaPracticeFlow({
           {/* Replacement actions: they throw away the current draft, so they never sit at primary
               weight and never sit beside the action that saves it. */}
           {actions.showRegenerate || actions.showStartOver ? (
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-white/8 pt-3">
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-white/[0.08] pt-3">
               {actions.showRegenerate ? (
                 <button
                   type="button"
@@ -1410,7 +1410,7 @@ function Field({
         value={value}
         rows={rows}
         onChange={onChange}
-        className="w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
+        className="w-full rounded-xl border border-white/[0.12] bg-black/30 px-4 py-3 text-[0.95rem] leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
       />
     </label>
   );

@@ -1194,7 +1194,7 @@ function OptionButton({ active, label, onClick }: { active: boolean; label: stri
       className={`w-full rounded-xl border px-4 py-3.5 text-left text-[0.98rem] transition-colors ${
         active
           ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-white"
-          : "border-white/12 bg-white/[0.03] text-white/80 hover:bg-white/[0.06]"
+          : "border-white/[0.12] bg-white/[0.03] text-white/80 hover:bg-white/[0.06]"
       }`}
     >
       {label}
@@ -1222,7 +1222,7 @@ function DescOption({
       className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
         active
           ? "border-[#C9A66B]/70 bg-[#C9A66B]/15"
-          : "border-white/12 bg-white/[0.03] hover:bg-white/[0.06]"
+          : "border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.06]"
       }`}
     >
       <span
@@ -1518,7 +1518,7 @@ function renderStep(
             authority on every surface that reads them, and stay editable here.
           */}
           {a.materialIntent && a.completionPrompt !== undefined ? (
-            <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-completion-question">
+            <div className="flex flex-col gap-2 border-t border-white/[0.08] pt-4" data-testid="builder-completion-question">
               <h3 className="text-sm font-medium text-white/70">{t.s6CompletionQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6CompletionHelp}</p>
               {textArea(a.completionPrompt, (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
@@ -1528,7 +1528,7 @@ function renderStep(
             /* Shared Understanding question (Slice 3.1B-3G) — distinct from the private completion
                question above; the learner is told this answer is shared with the Host. Same
                legacy-only rule: never proposed into a fresh draft, always kept for one that has it. */
-            <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-shared-question">
+            <div className="flex flex-col gap-2 border-t border-white/[0.08] pt-4" data-testid="builder-shared-question">
               <h3 className="text-sm font-medium text-white/70">{t.s6SharedQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6SharedHelp}</p>
               {textArea(a.sharedQuestion, (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
@@ -2392,7 +2392,7 @@ function ReviewBody({
               className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${
                 isMissing
                   ? "border-[#C9A66B]/60 border-l-4 border-l-[#C9A66B] bg-[#C9A66B]/[0.08]"
-                  : "border-white/8 bg-white/[0.02]"
+                  : "border-white/[0.08] bg-white/[0.02]"
               }`}
             >
               <div className="flex min-w-0 flex-col gap-1">
@@ -2632,7 +2632,7 @@ function PublishConfirmation({
 }) {
   const assigned = result.mode === "assigned_overlay";
   return (
-    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-white/12 bg-white/[0.03] p-5" data-testid="publish-confirmation">
+    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] p-5" data-testid="publish-confirmation">
       <h3 className="text-base font-semibold text-white/90">
         {assigned ? t.pmDoneAssignedTitle : t.pmDoneOpenTitle}
       </h3>
@@ -2678,7 +2678,7 @@ function ModeOption({
       data-testid={testid}
       aria-pressed={active}
       className={`rounded-xl border px-3 py-2.5 text-left transition ${
-        active ? "border-[#C9A66B]/60 bg-[#C9A66B]/[0.08]" : "border-white/12 bg-white/[0.03] hover:border-white/25"
+        active ? "border-[#C9A66B]/60 bg-[#C9A66B]/[0.08]" : "border-white/[0.12] bg-white/[0.03] hover:border-white/25"
       }`}
     >
       <span className="block text-sm font-medium text-white/85">{label}</span>

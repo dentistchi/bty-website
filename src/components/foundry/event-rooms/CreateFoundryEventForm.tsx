@@ -229,7 +229,7 @@ export function CreateFoundryEventForm({
         "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors " +
         (mode === m
           ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-white"
-          : "border-white/12 bg-white/[0.03] text-white/60 hover:text-white/90")
+          : "border-white/[0.12] bg-white/[0.03] text-white/60 hover:text-white/90")
       }
     >
       {label}
@@ -307,7 +307,7 @@ export function CreateFoundryEventForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-white/12 px-4 py-3.5 text-sm font-medium text-white/60 transition-colors hover:text-white/90"
+            className="rounded-xl border border-white/[0.12] px-4 py-3.5 text-sm font-medium text-white/60 transition-colors hover:text-white/90"
           >
             {t.cancel}
           </button>

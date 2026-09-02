@@ -174,7 +174,7 @@ export function FilesAndDocuments({
       {(assets.length > 0 || uploads.length > 0) && (
         <div className="flex flex-col gap-2">
           {assets.map((a) => (
-            <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3">
+            <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3">
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-[0.95rem] font-medium text-white/90">{a.filename}</span>
                 <span className="text-xs text-white/45">

@@ -130,7 +130,7 @@ export function TrainingOutcomeBody({
   return (
     <section className="flex flex-col gap-3" data-testid="training-outcome">
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.outcomeHeading}</h2>
-      <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4">
         <p className="text-[0.95rem] font-medium leading-6 text-white/90">{t.outcomeQuestion}</p>
 
         <div className="mt-4">
@@ -153,7 +153,7 @@ export function TrainingOutcomeBody({
         </div>
 
         {endsAtCompletion ? (
-          <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-ends-at-completion">
+          <p className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-5 text-white/50" data-testid="outcome-ends-at-completion">
             {t.outcomeEndsAtCompletion}
           </p>
         ) : !hasFollowUpEvidence ? (
@@ -161,7 +161,7 @@ export function TrainingOutcomeBody({
             The checkpoint IS set and produced no obligation. Either nobody who finished signed in
             — which is the identity gap, named as such — or nobody has finished yet.
           */
-          <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-reading">
+          <p className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-5 text-white/50" data-testid="outcome-reading">
             {outcome.reading === "awaiting_connection" && f.days !== null
               ? t.outcomeAwaitingConnection(f.days, p.followUpNotConnected)
               : t.outcomeReadingNothingYet}
@@ -181,7 +181,7 @@ export function TrainingOutcomeBody({
               finishing a training is not doing the thing — and putting three columns in a row
               would read as three parts of one number.
             */}
-            <div className="mt-4 grid grid-cols-1 gap-0 border-t border-white/8 pt-4 lg:grid-cols-2 lg:gap-6" data-testid="outcome-evidence-grid">
+            <div className="mt-4 grid grid-cols-1 gap-0 border-t border-white/[0.08] pt-4 lg:grid-cols-2 lg:gap-6" data-testid="outcome-evidence-grid">
             <div data-testid="outcome-after">
               <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{t.outcomeAfterHeading}</h3>
               <div className="mt-2">
@@ -194,7 +194,7 @@ export function TrainingOutcomeBody({
               </div>
             </div>
 
-            <div className="mt-4 border-t border-white/8 pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-testid="outcome-observed">
+            <div className="mt-4 border-t border-white/[0.08] pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-testid="outcome-observed">
               <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{t.outcomeObservedHeading}</h3>
               <div className="mt-2">
                 <Row label={t.outcomeConfirmed} value={o.confirmed} />
@@ -224,7 +224,7 @@ export function TrainingOutcomeBody({
           was told not to widen identity exposure, so the decisions arrive without names.
         */}
         {outcome.decisionCount > 0 && (
-          <div className="mt-4 border-t border-white/8 pt-3">
+          <div className="mt-4 border-t border-white/[0.08] pt-3">
             <button
               type="button"
               onClick={() => setOpenDecisions((v) => !v)}

@@ -451,7 +451,7 @@ export default function FoundryMyLearning({
           type="button"
           onClick={onBack}
           data-testid="my-learning-back"
-          className="shrink-0 rounded-lg border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70"
+          className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70"
         >
           {backText}
         </button>
@@ -463,7 +463,7 @@ export default function FoundryMyLearning({
         a second entry would be a second thing to keep consistent. Secondary by weight — it sits
         under the heading and above the list, and never competes with the learning itself.
       */}
-      <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3" data-testid="my-learning-claim">
+      <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3" data-testid="my-learning-claim">
         <p className="text-sm font-medium text-white/80">{t.claimTitle}</p>
         <p className="text-xs leading-5 text-white/50">{t.claimHint}</p>
         <div className="mt-1 flex items-center gap-2">
@@ -490,7 +490,7 @@ export default function FoundryMyLearning({
               costs nothing and leaves that alone. `min-w-0 flex-1` absorbs the wider text so the
               row still shrinks instead of overflowing.
             */
-            className="min-w-0 flex-1 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 font-mono text-base tracking-[0.1em] text-white placeholder-white/25 outline-none"
+            className="min-w-0 flex-1 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 font-mono text-base tracking-[0.1em] text-white placeholder-white/25 outline-none"
           />
           <button
             type="button"
@@ -512,7 +512,7 @@ export default function FoundryMyLearning({
       {items === null ? (
         <p className="text-sm text-white/40" role="status">{t.loading}</p>
       ) : items.length === 0 ? (
-        <div data-testid="my-learning-empty" className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-6 text-center">
+        <div data-testid="my-learning-empty" className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-6 text-center">
           <p className="text-sm text-white/70">{t.empty}</p>
           <p className="mt-1 text-xs text-white/45">{t.emptyHint}</p>
         </div>
@@ -529,7 +529,7 @@ export default function FoundryMyLearning({
               data-focused={focused ? "1" : undefined}
               className={
                 "flex flex-col gap-2 rounded-2xl border bg-white/[0.03] px-4 py-3 " +
-                (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/8")
+                (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/[0.08]")
               }
             >
               <div className="flex items-center justify-between gap-2">
@@ -542,7 +542,7 @@ export default function FoundryMyLearning({
                 {t.completedOn} · {formatDate(it.completedAt, loc)}
               </span>
               {/* PRIMARY artifact: the learner's own Shared Understanding (Host-reviewable). */}
-              <div className="mt-1 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+              <div className="mt-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
                 <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
                   {t.sharedLabel}
                 </span>
@@ -566,7 +566,7 @@ export default function FoundryMyLearning({
                 only one, only one renders.
               */}
               {it.decisionResponse ? (
-                <div data-testid="my-learning-decision" className="mt-1 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                <div data-testid="my-learning-decision" className="mt-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
                   <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
                     {t.decisionLabel}
                   </span>

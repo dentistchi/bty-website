@@ -907,7 +907,7 @@ export default function FoundryGuidanceClient({
                 )}
                 {claimCode ? (
                   <div
-                    className="mt-4 flex flex-col gap-1 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3"
+                    className="mt-4 flex flex-col gap-1 rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3"
                     data-testid="terminal-claim-code"
                   >
                     <p className="text-sm leading-6 text-white/75">{claimCodeCopy(locale).lead}</p>

@@ -149,7 +149,7 @@ export default function MeThisWeek({
       {/* R4: This Week is a STATIC semantic summary — NOT a button, not keyboard-focusable, no
           aria-expanded/controls, no popup/disclosure. It shows the canonical weekly values (incl.
           "N event(s) joined"); the summary is sufficient, so there is no second surface to open. */}
-      <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3" data-testid="me-week-summary">
+      <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3" data-testid="me-week-summary">
         <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.thisWeek}</span>
         {dots.length > 0 ? (
           <div className="flex items-center gap-1.5" data-testid="me-week-dots" aria-hidden>
