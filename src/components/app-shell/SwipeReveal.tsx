@@ -127,6 +127,31 @@ export default function SwipeReveal({
 
   const translate = dx !== null ? dx : isOpen ? -reveal : 0;
 
+  /*
+    ★ THE TRAY IS ONLY REAL WHILE THE ROW IS ACTUALLY DISPLACED (device defect, 2026-09-02).
+
+    MEASURED ON A REAL iPhone Teams TAB. The tray sits `absolute inset-y-0 right-0` INSIDE this
+    wrapper -- it is never moved off-screen, and `overflow-hidden` never clips it, because it is
+    already within the box. The only thing that has ever hidden it is the row painting on top.
+
+    That works when the row is opaque. These rows are not: a Saved card is `bg-white/[0.02]` --
+    two percent -- so the tray read straight through every resting card as a translucent strip of
+    "Soon"/"Later" down the centre-right, directly over the card's own text, on every undecided
+    card at once. Nothing was double-rendered, no z-index was inverted, no transform was stranded
+    and the wrapper's `overflow-hidden` was present the whole time. The concealing layer was
+    simply see-through.
+
+    The fix is NOT to make the card opaque. These cards deliberately composite over the shell's
+    gradient wash, so painting a solid backdrop under one would stamp a flat rectangle into that
+    gradient -- trading a bleed for a patch. Instead the tray is not rendered visible at all until
+    the row has actually moved, which is also what "reveal" is supposed to mean.
+
+    `invisible` (visibility:hidden), NOT `hidden`/`display:none`: the reveal width is measured from
+    this element's `offsetWidth`, and a display:none tray measures zero, which would collapse the
+    open position to nothing.
+  */
+  const displaced = translate !== 0;
+
   if (!enabled) return <>{children}</>;
 
   return (
@@ -136,8 +161,11 @@ export default function SwipeReveal({
       <div
         ref={trayRef}
         aria-hidden={!isOpen}
-        className="absolute inset-y-0 right-0 flex items-stretch"
+        className={`absolute inset-y-0 right-0 z-0 flex items-stretch ${
+          displaced ? "" : "invisible pointer-events-none"
+        }`}
         data-testid="swipe-actions"
+        data-revealed={displaced ? "true" : "false"}
       >
         {actions}
       </div>
@@ -154,7 +182,7 @@ export default function SwipeReveal({
         style={{ transform: `translateX(${translate}px)` }}
         // Short and quiet, and only while settling — a transition during the drag would lag the
         // finger. `motion-reduce` drops it entirely, matching the app's existing handling.
-        className={`relative ${dx === null ? "transition-transform duration-150 ease-out motion-reduce:transition-none" : ""}`}
+        className={`relative z-10 ${dx === null ? "transition-transform duration-150 ease-out motion-reduce:transition-none" : ""}`}
       >
         {children}
       </div>
