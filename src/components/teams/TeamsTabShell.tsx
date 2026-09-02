@@ -223,11 +223,29 @@ export default function TeamsTabShell() {
         width: 600,
         height: 620,
       });
-      attemptRef.current = 0;
-      await run();
     } catch {
-      setPhase({ k: "needs_first_sign_in" });
+      /*
+        ★ A REJECTED POPUP IS NOT PROOF THAT NOTHING HAPPENED (Slice A0-FIRST-TIME-ACTIVATION).
+
+        MEASURED ON A REAL FIRST USE, 2026-09-01. The activation genuinely SUCCEEDED — Supabase
+        created the canonical `auth.users` row and its azure identity at 22:12:13, on the first
+        attempt — and yet this tab sat unable to open until the person force-quit Teams and came
+        back at 01:58. Nearly four hours, with a working account the whole time.
+
+        The reason was here: `run()` used to live inside the `try`, so a popup that rejected sent
+        the person straight back to the button without ever asking the server again. And
+        `authenticate()` rejects for several reasons that say nothing about whether activation
+        happened — the host dismissing the window, a cancel, or the callback page reporting a
+        failure for a step that runs AFTER the identity already exists.
+
+        So the popup's verdict is no longer the authority on whether the person has an account.
+        The SERVER is, and it is asked below on every outcome. If activation really did not
+        happen, the bootstrap simply answers `needsFirstSignIn` again and the button comes back —
+        no reload, no polling, no sleep, and no second identity.
+      */
     }
+    attemptRef.current = 0;
+    await run();
   }, [run]);
 
   if (phase.k === "ready") return <BtyDailyAppShell locale={phase.locale} />;

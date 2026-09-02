@@ -50,8 +50,30 @@ export default function TeamsLinkDone() {
       const code = params.get("code");
       if (!code) return fail("UnexpectedFailure");
 
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error || !data?.session) return fail("UnexpectedFailure");
+      /*
+        ★ REACHING THIS LINE IS THE SUCCESS CONDITION (Slice A0-FIRST-TIME-ACTIVATION).
+
+        A `code` on this URL with no provider error means Supabase has ALREADY handled Microsoft's
+        callback, and creating `auth.users` + `auth.identities(provider='azure')` is what it does
+        there — before this page runs at all. That is this popup's entire job, and it is done.
+
+        The exchange below mints a session FOR THIS WINDOW, which the window then throws away when
+        it closes (see the note above: the parent never reads it). Gating the success signal on it
+        made the parent's recovery depend on a value nothing uses — so a failed exchange reported
+        "sign-in didn't complete" for an activation that had completed, and the parent went back to
+        the button. Measured: one real employee's identity existed from 22:12 while the app stayed
+        shut until 01:58.
+
+        The exchange is still attempted, because a popup that holds a coherent session is the
+        better state and its failure is worth seeing in the log. It is simply no longer allowed to
+        turn a successful activation into a reported failure.
+      */
+      try {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) console.error("[teams-link] code exchange failed after a completed activation");
+      } catch {
+        console.error("[teams-link] code exchange threw after a completed activation");
+      }
 
       setState("done");
       try {

@@ -279,3 +279,77 @@ describe("TeamsTabShell — throttling and failure fail closed", () => {
     expect(setSession).not.toHaveBeenCalled();
   });
 });
+
+describe("★ TeamsTabShell — first activation RETURNS to the app (A0-FIRST-TIME-ACTIVATION)", () => {
+  /*
+    THE REAL DEVICE FAILURE, 2026-09-01. A brand-new employee's activation succeeded — the azure
+    identity was written at 22:12:13 — and the tab still could not open until Teams was force-quit
+    and reopened at 01:58. The popup had rejected, and a rejected popup used to mean the shell
+    never asked the server again.
+  */
+
+  const needsFirst = () =>
+    new Response(JSON.stringify({ needsFirstSignIn: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  it("★ a REJECTED popup still re-bootstraps, and the now-activated user gets in", async () => {
+    let call = 0;
+    stubFetch(() => (++call === 1 ? needsFirst() : ok()));
+    // Exactly what Teams does when the host dismisses the window, or the callback page reports a
+    // failure for a step that runs after the identity already exists.
+    authenticate.mockRejectedValueOnce(new Error("CancelledByUser"));
+
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("teams-first-sign-in")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("teams-first-sign-in"));
+
+    // Without the fix this hangs on the button forever — which is precisely the 3h46m outage.
+    await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
+    expect(bootstrapCalls).toBe(2);
+  });
+
+  it("a rejected popup for someone who really is NOT activated returns the button, without looping", async () => {
+    stubFetch(needsFirst);
+    authenticate.mockRejectedValueOnce(new Error("CancelledByUser"));
+
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("teams-first-sign-in")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("teams-first-sign-in"));
+
+    await waitFor(() => expect(bootstrapCalls).toBe(2));
+    expect(screen.getByTestId("teams-first-sign-in")).toBeTruthy();
+    // One tap, one re-check. No polling, no reload loop, no timer.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(bootstrapCalls).toBe(2);
+  });
+
+  it("the recovery re-checks with the SERVER — it never fabricates a session locally", async () => {
+    stubFetch(needsFirst);
+    authenticate.mockRejectedValueOnce(new Error("CancelledByUser"));
+
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("teams-first-sign-in")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("teams-first-sign-in"));
+
+    await waitFor(() => expect(bootstrapCalls).toBe(2));
+    expect(setSession).not.toHaveBeenCalled();
+    const bootstraps = fetchSpy.mock.calls.filter((c) => String(c[0]).includes("/api/auth/teams-bootstrap"));
+    // Every attempt carries Teams' own Entra token as its only authority.
+    for (const call of bootstraps) {
+      const headers = (call[1] as { headers?: Record<string, string> })?.headers ?? {};
+      expect(headers.Authorization).toBe("Bearer teams-entra-token");
+    }
+  });
+
+  it("a successful popup behaves exactly as before", async () => {
+    let call = 0;
+    stubFetch(() => (++call === 1 ? needsFirst() : ok()));
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("teams-first-sign-in")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("teams-first-sign-in"));
+    await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
+    expect(bootstrapCalls).toBe(2);
+  });
+});
