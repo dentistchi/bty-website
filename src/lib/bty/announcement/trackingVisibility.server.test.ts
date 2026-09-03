@@ -58,7 +58,23 @@ describe("★ the Host projection never selects a directory identity", () => {
   });
 
   it("★ the recipient rows the Host reads carry no oid, tenant or email", () => {
-    expect(SERVICE).toMatch(/\.select\("announcement_id, user_id, response, responded_at, question_text"\)/);
+    /*
+      A1-CLOSURE added `id` (the handle the Handled control needs) and `handled_at` to this SELECT.
+      Neither is an identity: `id` is an internal row id that says nothing about who the person is,
+      and ownership is re-verified in the database on every write, so holding one grants nothing.
+
+      Asserted as a WHITELIST rather than a fixed string, so the next column added has to pass this
+      list deliberately instead of slipping in behind a literal that was already stale.
+    */
+    const m = SERVICE.match(/\.select\("(id, announcement_id[^"]*)"\)/);
+    expect(m, "the Host recipient select changed shape").toBeTruthy();
+    const cols = m![1].split(",").map((c) => c.trim());
+    expect(cols).toEqual([
+      "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at",
+    ]);
+    for (const forbidden of ["tenant_id", "aad_object_id", "email", "preferred_username"]) {
+      expect(cols, forbidden).not.toContain(forbidden);
+    }
   });
 
   it("the recipient's OWN projection still refuses preview and metadata", () => {
@@ -128,9 +144,19 @@ describe("★ 10+11+12. the response contract is unchanged and still canonical",
     expect(out).toEqual({ ok: false, reason: "not_a_recipient" });
   });
 
-  it("★ ownership is the RPC's pairing — there is no recipient id to guess", () => {
-    expect(SERVICE).toMatch(/p_user_id: params\.userId/);
-    expect(SERVICE).not.toMatch(/recipient_id/);
+  it("★ ownership is the RPC's pairing — a RESPONSE has no recipient id to guess", () => {
+    /*
+      Still true of responding, which is what this test is about: the recipient row is found by
+      (announcement_id, caller's own user_id), so there is no row id a participant could supply.
+
+      A1-CLOSURE's Handled call does take a `p_recipient_id` — a HOST action on someone else's row,
+      where the row must be named. That one is safe for the opposite reason: the RPC joins to
+      `owner_user_id` and answers a non-owner `not_found`, so the id names a row it cannot reach.
+    */
+    const respond = SERVICE.slice(SERVICE.indexOf("export async function respondToAnnouncement"),
+                                 SERVICE.indexOf("export type HostAnnouncement"));
+    expect(respond).toMatch(/p_user_id: params\.userId/);
+    expect(respond).not.toMatch(/recipient_id/);
   });
 });
 

@@ -33,11 +33,21 @@ type HostItem = {
   status: "active" | "closed";
   funnel: AnnouncementFunnel;
   responders: {
-    acknowledged: { display: string | null }[];
-    question: { display: string | null; questionText: string | null; respondedAt: string | null }[];
-    needHelp: { display: string | null; respondedAt: string | null }[];
-    noResponse: { display: string | null }[];
+    acknowledged: Responder[];
+    question: Responder[];
+    needHelp: Responder[];
+    noResponse: Responder[];
   };
+};
+
+type Copy = (typeof COPY)[Locale];
+
+type Responder = {
+  recipientId: string;
+  display: string | null;
+  questionText: string | null;
+  respondedAt: string | null;
+  handledAt: string | null;
 };
 
 type Locale = "en" | "ko";
@@ -58,6 +68,13 @@ const COPY = {
     viewResponses: "View responses",
     hideResponses: "Hide",
     someone: "Someone",
+    markHandled: "Mark handled",
+    handled: "Handled",
+    reopen: "Reopen",
+    /* What the Host must do next, said as the thing to do rather than a status name. */
+    needsReply: "Needs a reply",
+    needsHelp: "Needs help from you",
+    nothingToDo: "Nothing to do",
     openInTeams: "Open in Teams",
     closed: "Closed",
     error: "Couldn't load what you're tracking.",
@@ -75,12 +92,23 @@ const COPY = {
     viewResponses: "응답 보기",
     hideResponses: "접기",
     someone: "이름 없음",
+    markHandled: "처리 완료",
+    handled: "처리됨",
+    reopen: "다시 열기",
+    needsReply: "답변이 필요합니다",
+    needsHelp: "도움이 필요합니다",
+    nothingToDo: "할 일 없음",
     openInTeams: "Teams에서 열기",
     closed: "종료됨",
     error: "추적 중인 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
   },
 } as const;
+
+/** Still-open people first: a Host must not read past settled rows to find their next action. */
+function openFirst(people: Responder[]): Responder[] {
+  return [...people].sort((a, b) => Number(a.handledAt !== null) - Number(b.handledAt !== null));
+}
 
 /** Relative day, because a Host reads "today" and "yesterday" faster than a date. */
 function whenLabel(iso: string, locale: Locale): string {
@@ -116,48 +144,98 @@ function Count({ n, label, tone }: { n: number; label: string; tone: "gold" | "q
 }
 
 /**
- * One named bucket, shown only inside the expanded view.
+ * One named bucket inside the expanded view.
  *
- * The status is the heading and the people are under it, because a Host is scanning for a STATE
- * first ("who needs help?") and only then for a person. A name with no status beside it would be
- * a list; a status with names under it is a next action.
+ * ★ THE HEADING IS THE ACTION, NOT THE STATUS NAME. A Host scanning this is asking "what do I have
+ * to do?", and "Needs a reply" answers that where "Question" only names a category. The buckets
+ * are ordered by how much they demand — help, then questions, then people who have not answered,
+ * then the ones that are already finished — so the top of the list is always the next thing to do.
+ *
+ * A settled person stays visible rather than disappearing, because a Host needs to see that they
+ * dealt with someone, and because vanishing on tap reads as data loss.
  */
 function Bucket({
   label,
   people,
   tone,
   fallback,
+  t,
+  busyId,
+  onHandle,
 }: {
   label: string;
-  people: { display: string | null; questionText?: string | null }[];
-  tone: "gold" | "quiet";
+  people: Responder[];
+  tone: "urgent" | "quiet";
   fallback: string;
+  t: Copy;
+  busyId: string | null;
+  onHandle: ((r: Responder, handled: boolean) => void) | null;
 }) {
   if (people.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1" data-testid="tracking-bucket" data-bucket={label}>
+    <div className="flex flex-col gap-2" data-testid="tracking-bucket" data-bucket={label}>
       <p
         className={
           "text-[0.72rem] font-medium uppercase tracking-[0.1em] " +
-          (tone === "gold" ? "text-[#E5B769]" : "text-white/40")
+          (tone === "urgent" ? "text-[#E5B769]" : "text-white/40")
         }
       >
         {label}
       </p>
-      {people.map((p, i) => (
-        <div key={i} className="flex flex-col gap-0.5" data-testid="tracking-person">
-          {/* A bound person whose provider name could not be read is still shown, never dropped. */}
-          <span className="text-[0.88rem] leading-6 text-white/80">{p.display ?? fallback}</span>
-          {p.questionText ? (
-            <span
-              className="rounded-lg bg-white/[0.04] px-3 py-2 text-[0.82rem] leading-6 text-white/70"
-              data-testid="tracking-person-question"
-            >
-              {p.questionText}
-            </span>
-          ) : null}
-        </div>
-      ))}
+      {people.map((p) => {
+        const settled = p.handledAt !== null;
+        return (
+          <div
+            key={p.recipientId}
+            className="flex flex-col gap-1"
+            data-testid="tracking-person"
+            data-recipient={p.recipientId}
+            data-handled={settled ? "1" : "0"}
+          >
+            <div className="flex items-center justify-between gap-3">
+              {/* A bound person whose provider name could not be read is still shown, never dropped. */}
+              <span className={"text-[0.88rem] leading-6 " + (settled ? "text-white/45" : "text-white/85")}>
+                {p.display ?? fallback}
+              </span>
+              {onHandle ? (
+                <button
+                  type="button"
+                  data-testid={settled ? "tracking-reopen" : "tracking-handle"}
+                  disabled={busyId === p.recipientId}
+                  onClick={() => onHandle(p, !settled)}
+                  className={
+                    "min-h-[2.25rem] shrink-0 rounded-lg px-3 text-[0.78rem] font-medium disabled:opacity-50 " +
+                    (settled
+                      ? "text-white/45 hover:text-white/70"
+                      : "border border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]")
+                  }
+                >
+                  {settled ? t.reopen : t.markHandled}
+                </button>
+              ) : null}
+            </div>
+
+            {/* The question survives being handled: acting on it is not permission to erase it. */}
+            {p.questionText ? (
+              <span
+                className={
+                  "rounded-lg bg-white/[0.04] px-3 py-2 text-[0.82rem] leading-6 " +
+                  (settled ? "text-white/45" : "text-white/70")
+                }
+                data-testid="tracking-person-question"
+              >
+                {p.questionText}
+              </span>
+            ) : null}
+
+            {settled ? (
+              <span className="text-[0.72rem] text-white/35" data-testid="tracking-person-handled">
+                {t.handled}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -183,7 +261,6 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   /** Which run is expanded. One at a time: Today is a glance, not a console. */
   const [openId, setOpenId] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     /**
      * One request, and at most ONE retry after re-reading the session.
@@ -237,6 +314,40 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
     setItems(d.items);
     setState("ready");
   }, []);
+
+  /** The person whose Handled write is in flight. Scoped to one row, never a screen-level spinner. */
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  /**
+   * Settle (or re-open) one person's follow-up.
+   *
+   * Nothing is shown as done before the server says so — the row is re-read from the owner-scoped
+   * route afterwards, so what the Host sees is what is stored. Ownership is re-verified in the
+   * database on every call; this component's possession of a recipient id grants nothing.
+   */
+  const handle = useCallback(
+    async (r: Responder, handled: boolean) => {
+      setBusyId(r.recipientId);
+      try {
+        const res = await fetch(
+          `/api/bty/announcements/recipients/${encodeURIComponent(r.recipientId)}/handle`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ handled }),
+          },
+        );
+        if (res.ok) await load();
+      } catch {
+        /* Left visibly unhandled: a follow-up wrongly shown as settled is worse than a retry. */
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load],
+  );
+
 
   /*
     Re-read on mount AND whenever Today is re-entered. `refreshKey` changes only on a real tab
@@ -354,10 +465,20 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
 
             {expanded ? (
               <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-3" data-testid="tracking-responses">
-                <Bucket label={t.needHelp} people={r.needHelp} tone="gold" fallback={t.someone} />
-                <Bucket label={t.question} people={r.question} tone="gold" fallback={t.someone} />
-                <Bucket label={t.gotIt} people={r.acknowledged} tone="quiet" fallback={t.someone} />
-                <Bucket label={t.noResponse} people={r.noResponse} tone="quiet" fallback={t.someone} />
+                {/*
+                  ORDERED BY WHAT THEY DEMAND: help, then questions, then silence, then the
+                  finished. Within the two actionable buckets the still-open people come first,
+                  so a Host never has to read past settled rows to find the next thing to do.
+                */}
+                <Bucket label={t.needsHelp} people={openFirst(r.needHelp)} tone="urgent" fallback={t.someone}
+                  t={t} busyId={busyId} onHandle={handle} />
+                <Bucket label={t.needsReply} people={openFirst(r.question)} tone="urgent" fallback={t.someone}
+                  t={t} busyId={busyId} onHandle={handle} />
+                <Bucket label={t.noResponse} people={r.noResponse} tone="quiet" fallback={t.someone}
+                  t={t} busyId={busyId} onHandle={null} />
+                {/* "Got it" is already an ending; there is nothing for a Host to settle. */}
+                <Bucket label={t.gotIt} people={r.acknowledged} tone="quiet" fallback={t.someone}
+                  t={t} busyId={busyId} onHandle={null} />
               </div>
             ) : null}
 

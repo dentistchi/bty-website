@@ -26,6 +26,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** One responder in the shape the owner-scoped route now returns. */
+const R = (
+  recipientId: string,
+  display: string | null,
+  over: { questionText?: string | null; respondedAt?: string | null; handledAt?: string | null } = {},
+) => ({ recipientId, display, questionText: null, respondedAt: null, handledAt: null, ...over });
+
 /** The production announcement, used READ-ONLY as a fixture. No second real one was created. */
 const REAL = {
   id: "6cfccb92-fac6-43d1-b6e9-deeb0d5437b5",
@@ -145,10 +152,10 @@ describe("★ 13. the Host sees updated response status", () => {
       { boundUserId: null, response: null },
     ]),
     responders: {
-      acknowledged: [{ display: "Hanna Kim" }],
-      question: [{ display: "John Park", questionText: "Which invoice?", respondedAt: "2026-09-02T20:00:00.000Z" }],
+      acknowledged: [R("r1", "Hanna Kim")],
+      question: [R("r2", "John Park", { questionText: "Which invoice?", respondedAt: "2026-09-02T20:00:00.000Z" })],
       needHelp: [],
-      noResponse: [{ display: "Sam Lee" }],
+      noResponse: [R("r3", "Sam Lee")],
     },
   };
 
@@ -165,7 +172,7 @@ describe("★ 13. the Host sees updated response status", () => {
     await renderSent([mixed]);
     fireEvent.click(await screen.findByTestId("tracking-toggle"));
     const buckets = screen.getAllByTestId("tracking-bucket");
-    const q = buckets.find((b) => b.getAttribute("data-bucket") === "Question")!;
+    const q = buckets.find((b) => b.getAttribute("data-bucket") === "Needs a reply")!;
     expect(q.textContent).toContain("John Park");
     expect(within(q).getByTestId("tracking-person-question").textContent).toBe("Which invoice?");
   });
@@ -261,10 +268,10 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
       { boundUserId: null, response: null },
     ]),
     responders: {
-      acknowledged: [{ display: "Hanna Kim" }],
-      question: [{ display: "John Park", questionText: "Which account should I use?", respondedAt: null }],
-      needHelp: [{ display: "Mia Cho", respondedAt: null }],
-      noResponse: [{ display: "Sam Lee" }],
+      acknowledged: [R("r1", "Hanna Kim")],
+      question: [R("r2", "John Park", { questionText: "Which account should I use?" })],
+      needHelp: [R("r3", "Mia Cho")],
+      noResponse: [R("r4", "Sam Lee")],
     },
   };
 
@@ -279,8 +286,8 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
   it("★ 1. every bound recipient is named under their own status", async () => {
     const b = await expand();
     expect(b["Acknowledged"]).toContain("Hanna Kim");
-    expect(b["Question"]).toContain("John Park");
-    expect(b["Help needed"]).toContain("Mia Cho");
+    expect(b["Needs a reply"]).toContain("John Park");
+    expect(b["Needs help from you"]).toContain("Mia Cho");
     expect(b["No response yet"]).toContain("Sam Lee");
   });
 
@@ -288,8 +295,8 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
     await renderSent([run]);
     fireEvent.click(await screen.findByTestId("tracking-toggle"));
     const order = screen.getAllByTestId("tracking-bucket").map((b) => b.getAttribute("data-bucket"));
-    expect(order[0]).toBe("Help needed"); // the one a Host must act on soonest
-    expect(order).toEqual(["Help needed", "Question", "Acknowledged", "No response yet"]);
+    expect(order[0]).toBe("Needs help from you"); // the one a Host must act on soonest
+    expect(order).toEqual(["Needs help from you", "Needs a reply", "No response yet", "Acknowledged"]);
   });
 
   it("★ 4. the person who has not responded is identifiable, not just counted", async () => {
@@ -318,7 +325,7 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
   it("a bound person with no resolvable provider name is still shown, not dropped", async () => {
     await renderSent([{ ...run, responders: { ...run.responders, needHelp: [{ display: null, respondedAt: null }] } }]);
     fireEvent.click(await screen.findByTestId("tracking-toggle"));
-    const help = screen.getAllByTestId("tracking-bucket").find((b) => b.getAttribute("data-bucket") === "Help needed")!;
+    const help = screen.getAllByTestId("tracking-bucket").find((b) => b.getAttribute("data-bucket") === "Needs help from you")!;
     expect(help.textContent).toContain("Someone");
   });
 

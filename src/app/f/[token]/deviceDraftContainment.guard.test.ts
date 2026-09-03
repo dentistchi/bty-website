@@ -37,6 +37,7 @@ describe("T14 — no server draft was built", () => {
       "20260903000000_foundry_host_grant_provenance_v1.sql",
       "20260904000000_bty_platform_admin_grants_v1.sql",
       "20260905000000_bty_action_capture_saved_at_v1.sql",
+      "20260906000000_bty_announcement_recipient_handled_v1.sql",
     ];
     const newer = migs.filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
     expect(newer, "R4-R5C4A must add no migration").toEqual([]);

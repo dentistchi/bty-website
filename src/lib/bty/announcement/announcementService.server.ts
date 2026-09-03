@@ -145,11 +145,27 @@ export type HostAnnouncement = {
    * a nameless recipient is still someone the Host has to follow up with.
    */
   responders: {
-    acknowledged: { display: string | null }[];
-    question: { display: string | null; questionText: string | null; respondedAt: string | null }[];
-    needHelp: { display: string | null; respondedAt: string | null }[];
-    noResponse: { display: string | null }[];
+    acknowledged: HostResponder[];
+    question: HostResponder[];
+    needHelp: HostResponder[];
+    noResponse: HostResponder[];
   };
+};
+
+/**
+ * One named person in one bucket, plus what the Host can still do about them.
+ *
+ * `recipientId` is the handle the Handled control needs. It is an internal row id, not an
+ * identity: it says nothing about who the person is, and ownership is re-verified in the database
+ * on every write, so possessing one grants nothing.
+ */
+export type HostResponder = {
+  recipientId: string;
+  display: string | null;
+  questionText: string | null;
+  respondedAt: string | null;
+  /** Set only when the OWNING Host settled it. ACKNOWLEDGED is already an ending and never sets it. */
+  handledAt: string | null;
 };
 
 /**
@@ -188,15 +204,17 @@ export async function listHostAnnouncements(
 
   const { data: recips } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("announcement_id, user_id, response, responded_at, question_text")
+    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at")
     .in("announcement_id", runs.map((r) => r.id))
     .returns<
       {
+        id: string;
         announcement_id: string;
         user_id: string | null;
         response: string | null;
         responded_at: string | null;
         question_text: string | null;
+        handled_at: string | null;
       }[]
     >();
 
@@ -214,6 +232,19 @@ export async function listHostAnnouncements(
     (recips ?? []).map((r) => r.user_id).filter((id): id is string => typeof id === "string" && id.length > 0),
   );
   const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
+  const toResponder = (r: {
+    id: string;
+    user_id: string | null;
+    question_text: string | null;
+    responded_at: string | null;
+    handled_at: string | null;
+  }): HostResponder => ({
+    recipientId: r.id,
+    display: nameOf(r.user_id),
+    questionText: r.question_text,
+    respondedAt: r.responded_at,
+    handledAt: r.handled_at,
+  });
 
   return runs.map((run) => {
     const rows = byRun.get(run.id) ?? [];
@@ -232,19 +263,47 @@ export async function listHostAnnouncements(
       status: run.status === "closed" ? ("closed" as const) : ("active" as const),
       funnel,
       responders: {
-        acknowledged: bound
-          .filter((r) => r.response === "ACKNOWLEDGED")
-          .map((r) => ({ display: nameOf(r.user_id) })),
-        question: bound
-          .filter((r) => r.response === "QUESTION")
-          .map((r) => ({ display: nameOf(r.user_id), questionText: r.question_text, respondedAt: r.responded_at })),
-        needHelp: bound
-          .filter((r) => r.response === "HELP_NEEDED")
-          .map((r) => ({ display: nameOf(r.user_id), respondedAt: r.responded_at })),
-        noResponse: bound
-          .filter((r) => !isAnnouncementResponse(r.response))
-          .map((r) => ({ display: nameOf(r.user_id) })),
+        acknowledged: bound.filter((r) => r.response === "ACKNOWLEDGED").map(toResponder),
+        question: bound.filter((r) => r.response === "QUESTION").map(toResponder),
+        needHelp: bound.filter((r) => r.response === "HELP_NEEDED").map(toResponder),
+        noResponse: bound.filter((r) => !isAnnouncementResponse(r.response)).map(toResponder),
       },
     };
   });
+}
+
+export type HandleResult =
+  | { ok: true; handled: boolean }
+  | { ok: false; reason: "not_found" | "not_handleable" | "failed" };
+
+/**
+ * Mark one person's follow-up handled, or re-open it.
+ *
+ * ★ OWNERSHIP IS NOT CHECKED HERE. It is checked inside
+ * `bty_handle_announcement_recipient`, which joins the recipient to its announcement and requires
+ * the actor to be `owner_user_id`. Doing it in SQL is what makes a direct client call, another
+ * Host, and the recipient themselves all fail identically — and `not_found` is returned for a
+ * wrong owner deliberately, so nobody can probe for a run they do not own.
+ *
+ * The actor id is the caller's own session user. There is no recipient owner to supply and no
+ * announcement id to pass, so a crafted body has nothing to aim at.
+ */
+export async function handleRecipientFollowUp(
+  admin: SupabaseClient,
+  params: { recipientId: string; actorUserId: string; handled: boolean },
+): Promise<HandleResult> {
+  const { data, error } = await admin.rpc("bty_handle_announcement_recipient", {
+    p_recipient_id: params.recipientId,
+    p_actor_user_id: params.actorUserId,
+    p_handled: params.handled,
+  });
+  if (error) {
+    console.error("[announcement] handle failed", { code: error.code ?? "unknown" });
+    return { ok: false, reason: "failed" };
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as { result?: string } | null;
+  if (row?.result === "handled") return { ok: true, handled: true };
+  if (row?.result === "reopened") return { ok: true, handled: false };
+  if (row?.result === "not_handleable") return { ok: false, reason: "not_handleable" };
+  return { ok: false, reason: "not_found" };
 }
