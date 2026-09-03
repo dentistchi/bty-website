@@ -53,6 +53,17 @@ export async function trackAnnouncement(
     hostFramingRaw: unknown;
     /** The People Picker's submitted value, still raw. */
     pickedRaw: unknown;
+    /**
+     * Bot Framework routing base for this invoke, or null when it was not
+     * observed. Slice A0.1. ALREADY RESOLVED by the caller from the VERIFIED
+     * activity — this layer does not re-read the body, so there is no second
+     * place where an unverified value could enter.
+     *
+     * Null is ordinary, not an error: a Track whose coordinate was never
+     * observed is still a completely valid Track, and refusing it would trade a
+     * working product loop for one that does not exist yet.
+     */
+    serviceUrl?: string | null;
   },
 ): Promise<TrackResult> {
   const hostFraming = normalizeHostFraming(params.hostFramingRaw);
@@ -88,6 +99,10 @@ export async function trackAnnouncement(
     p_tenant_id: params.capture.tenant_id,
     p_conversation_id: params.capture.conversation_id,
     p_recipient_oids: oids,
+    // Stored on creation only. The function deliberately does NOT re-point an
+    // existing run, so a repeat Track cannot move a coordinate that may already
+    // have been used.
+    p_service_url: params.serviceUrl ?? null,
   });
 
   if (error) {

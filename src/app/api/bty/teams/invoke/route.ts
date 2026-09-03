@@ -7,6 +7,7 @@ import {
   parseTeamsMessageAction,
   parseTeamsTrackSubmission,
   readCommandId,
+  resolveServiceUrl,
   TEAMS_COMMAND_TRACK,
   TEAMS_INVOKE_FETCH_TASK,
   type TeamsInvokeName,
@@ -205,11 +206,35 @@ export async function POST(req: NextRequest) {
       return say(submission.code === "missing_framing" ? MSG.trackNoFraming : MSG.trackNoPeople, parsed.invokeName);
     }
 
+    /*
+      3d. THE ROUTING COORDINATE (Slice A0.1). Read here and nowhere else,
+      because here is the one place that holds BOTH the verified token and the
+      body it authenticated — and it is reached only after `verified.ok`, so an
+      unverified request never gets this far.
+
+      Nothing is sent. This records where a message to a recipient WOULD have to
+      go, which BTY has never kept: a recipient who has not opened BTY is
+      currently never told anything was sent to them, and that cannot be fixed
+      without this value.
+
+      A refusal is logged with its REASON and no URL. The distinction matters:
+      `absent` is the open question — whether Teams sends `serviceUrl` on this
+      invoke was never measurable before, because nothing ever looked — while
+      `mismatch` would mean the token and the body disagree, which is a security
+      event. Either way Track proceeds: routing metadata must never be able to
+      stop a Host from tracking a message.
+    */
+    const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
+    if (routing.reason !== "ok") {
+      console.error("[teams-invoke] no routing coordinate stored", { reason: routing.reason });
+    }
+
     const tracked = await trackAnnouncement(admin, {
       ownerUserId: resolution.userId,
       capture: parsed.capture,
       hostFramingRaw: submission.hostFraming,
       pickedRaw: submission.pickedRaw,
+      serviceUrl: routing.url,
     });
 
     if (!tracked.ok) {

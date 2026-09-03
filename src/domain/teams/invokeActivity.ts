@@ -232,3 +232,85 @@ export function parseTeamsTrackSubmission(activity: unknown): TeamsTrackSubmissi
   if (!pickedRaw) return { ok: false, code: "missing_recipients" };
   return { ok: true, hostFraming, pickedRaw };
 }
+
+// ===========================================================================
+// SLICE A0.1 — the ROUTING COORDINATE.
+//
+// ADDITIVE and read-only: nothing above changes, no existing parse reads this,
+// and NOTHING here sends a message. This slice captures where a Teams message
+// to a recipient would have to be posted, so that a later slice can post one.
+//
+// WHY IT IS NEEDED AT ALL. A recipient who has never opened BTY is currently
+// never told that anything was sent to them. Reaching them means a Bot
+// Framework call to a per-tenant, per-region base URL that arrives on the
+// invoke as `serviceUrl` -- and BTY has always thrown it away.
+//
+// WHY IT IS NOT HARDCODED. Every Bot Framework sample shows one particular
+// regional base URL, and writing that literal down anywhere -- a constant, a
+// fallback, even a comment -- is how it gets copied into a fallback later. It
+// is regional, it is not promised to be stable, and a wrong routing base is not
+// a silent no-op: it is a real request to a real Microsoft endpoint about a
+// real person. Observed or NULL; never assumed.
+// ===========================================================================
+
+/** Long enough for any real Bot Framework endpoint, short enough to bound the column. */
+const SERVICE_URL_MAX = 400;
+
+/**
+ * An absolute https origin, optionally with a path. Deliberately strict:
+ *
+ *   * `https` only -- a routing base is where a bot token is presented, and
+ *     presenting one over plaintext would leak it.
+ *   * no credentials, no query, no fragment: those are not part of a base URL,
+ *     and accepting them would let a crafted value smuggle state into every
+ *     future request built from it.
+ *   * host characters only, so `javascript:`, a relative path, a bare host and
+ *     `https://evil@host/` all fail rather than being coerced into something.
+ */
+const SERVICE_URL_SHAPE = /^https:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?(\/[a-z0-9\-._~/%]*)?$/i;
+
+/** Trailing slashes carry no meaning for a base URL, and the two sources spell them differently. */
+const forCompare = (s: string): string => s.trim().toLowerCase().replace(/\/+$/, "");
+
+export type ServiceUrlReason = "ok" | "absent" | "invalid" | "mismatch";
+export type ServiceUrlResolution = { url: string | null; reason: ServiceUrlReason };
+
+/**
+ * The routing coordinate for a VERIFIED invoke, or null with a reason.
+ *
+ * AUTHORITY IS THE ACTIVITY, AND THE TOKEN IS A CONSTRAINT ON IT. `serviceUrl`
+ * is read from the activity body -- which is only trustworthy because the route
+ * verifies the Bot Framework JWT BEFORE it reads the body at all, so a browser,
+ * a curl, or the Track dialog's own form data can never reach this function.
+ *
+ * A Bot Framework token may also carry a `serviceUrl` claim. Where it does, the
+ * two must agree, and a disagreement yields NOTHING: that combination means
+ * either a replayed token or a body edited in flight, and neither is a value
+ * worth keeping. The claim is used ONLY to refuse -- never as a substitute
+ * source -- because whether our production tokens carry it is not yet measured,
+ * and a silent fallback would make the authority depend on which unmeasured
+ * branch happened to fire.
+ *
+ * `reason` exists so the caller can say WHICH of "Teams did not send one" and
+ * "we refused the one it sent" happened. Those need different responses from a
+ * human, and one of them is the open question this slice was built to answer.
+ *
+ * NEVER THROWS AND NEVER BLOCKS. Every refusal is a null, because routing
+ * metadata must not be able to stop a Host from tracking a message.
+ */
+export function resolveServiceUrl(activity: unknown, tokenClaim?: unknown): ServiceUrlResolution {
+  const raw = str(obj(activity).serviceUrl);
+  if (raw === "") return { url: null, reason: "absent" };
+  if (raw.length > SERVICE_URL_MAX || !SERVICE_URL_SHAPE.test(raw)) {
+    return { url: null, reason: "invalid" };
+  }
+
+  const claim = str(tokenClaim);
+  if (claim !== "" && forCompare(claim) !== forCompare(raw)) {
+    return { url: null, reason: "mismatch" };
+  }
+
+  // The EXACT field as Teams sent it, only trimmed. Normalisation is for
+  // comparison; what gets stored is what was observed.
+  return { url: raw, reason: "ok" };
+}

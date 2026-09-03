@@ -99,6 +99,7 @@ describe("T13 — the participant name stays a historical snapshot", () => {
       "20260904000000_bty_platform_admin_grants_v1.sql",
       "20260905000000_bty_action_capture_saved_at_v1.sql",
       "20260906000000_bty_announcement_recipient_handled_v1.sql",
+      "20260907000000_bty_announcement_service_url_v1.sql",
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
