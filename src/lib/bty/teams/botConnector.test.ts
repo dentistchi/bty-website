@@ -16,6 +16,8 @@ import {
  */
 
 const SECRET = "super-secret-value-do-not-log";
+const BOT_TENANT = "10110d5c-bd30-467e-9912-e44e67777647";
+const AUTHORITY = `https://login.microsoftonline.com/${BOT_TENANT}/oauth2/v2.0/token`;
 const URL_ = "https://smba.example.net/amer/tenant/";
 let fetchMock: ReturnType<typeof vi.fn>;
 let errSpy: ReturnType<typeof vi.spyOn>;
@@ -37,20 +39,20 @@ afterEach(() => {
 describe("B/C — the bot token", () => {
   it("an absent secret is credential_missing, and makes NO network call", async () => {
     // The state of production today. It must be a typed answer, not a throw and not a request.
-    expect(await getBotFrameworkToken({ appId: "app", appPassword: undefined })).toEqual({
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: undefined, tenantId: BOT_TENANT })).toEqual({
       ok: false, reason: "credential_missing",
     });
-    expect(await getBotFrameworkToken({ appId: undefined, appPassword: SECRET })).toEqual({
+    expect(await getBotFrameworkToken({ appId: undefined, appPassword: SECRET, tenantId: BOT_TENANT })).toEqual({
       ok: false, reason: "credential_missing",
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("asks Microsoft's bot audience with client_credentials", async () => {
+  it("asks the BOT REGISTRATION's tenant with client_credentials", async () => {
     fetchMock.mockResolvedValue(res(200, { access_token: "tok", expires_in: 3600 }));
-    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET })).toEqual({ ok: true, token: "tok" });
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT })).toEqual({ ok: true, token: "tok" });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token");
+    expect(url).toBe(AUTHORITY);
     const body = String(init.body);
     expect(body).toContain("grant_type=client_credentials");
     expect(body).toContain("scope=https%3A%2F%2Fapi.botframework.com%2F.default");
@@ -58,14 +60,14 @@ describe("B/C — the bot token", () => {
 
   it("caches until shortly before expiry, so one Track does not re-authenticate", async () => {
     fetchMock.mockResolvedValue(res(200, { access_token: "tok", expires_in: 3600 }));
-    await getBotFrameworkToken({ appId: "app", appPassword: SECRET });
-    await getBotFrameworkToken({ appId: "app", appPassword: SECRET });
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("NEVER logs the secret, the token, or the response body", async () => {
     fetchMock.mockResolvedValue(res(401, { error: "invalid_client", error_description: `bad ${SECRET}` }));
-    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET })).toEqual({ ok: false, reason: "auth_failed" });
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT })).toEqual({ ok: false, reason: "auth_failed" });
     const logged = JSON.stringify(errSpy.mock.calls);
     expect(logged).not.toContain(SECRET);
     expect(logged).not.toContain("invalid_client");
@@ -74,7 +76,7 @@ describe("B/C — the bot token", () => {
 
   it("a network failure is unreachable, not auth_failed", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNRESET"));
-    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET })).toEqual({ ok: false, reason: "unreachable" });
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT })).toEqual({ ok: false, reason: "unreachable" });
   });
 });
 
@@ -285,5 +287,87 @@ describe("1A — no behaviour changed", () => {
     fetchMock.mockResolvedValue(res(201, { id: "19:c" }));
     expect(await createOneOnOneConversation({ token: "t", appId: "a", serviceUrl: URL_, tenantId: "t", aadObjectId: "o" }))
       .toEqual({ ok: true, conversationId: "19:c" });
+  });
+});
+
+
+/**
+ * SLICE 1B — the token authority.
+ *
+ * The first real attempt obtained a token from `botframework.com` and was refused by the
+ * Connector with a bare 401. `bty-arena-teams` is a TEAMS-MANAGED registration, which is
+ * single-tenant even though its Entra app is `AzureADMultipleOrgs` — so the multi-tenant
+ * authority happily ISSUES a token that the Connector will not accept. A successfully issued
+ * token is not evidence of the right authority, which is what made this expensive to find.
+ */
+describe("1B — the token comes from the bot registration's own tenant", () => {
+  it("mints at the configured BOT tenant, never at botframework.com", async () => {
+    fetchMock.mockResolvedValue(res(200, { access_token: "tok", expires_in: 3600 }));
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT }))
+      .toEqual({ ok: true, token: "tok" });
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe(AUTHORITY);
+    expect(String(url)).not.toContain("botframework.com");
+  });
+
+  it("keeps client id, secret and scope exactly as they were", async () => {
+    fetchMock.mockResolvedValue(res(200, { access_token: "tok", expires_in: 3600 }));
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
+    const body = String(fetchMock.mock.calls[0][1].body);
+    expect(body).toContain("grant_type=client_credentials");
+    expect(body).toContain("client_id=app");
+    // The audience is unchanged — only the directory the token is minted in moved.
+    expect(body).toContain("scope=https%3A%2F%2Fapi.botframework.com%2F.default");
+  });
+
+  it("FAILS CLOSED with no tenant, before any network call", async () => {
+    // A fallback to botframework.com would recreate the exact ambiguity this slice removes:
+    // it issues a token, so the failure would resurface later as an opaque Connector 401.
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: "" }))
+      .toEqual({ ok: false, reason: "tenant_not_configured" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("FAILS CLOSED on a malformed tenant, before any network call", async () => {
+    for (const bad of ["botframework.com", "common", "not-a-guid", "10110d5c", "  ", "10110d5c-bd30-467e-9912-e44e6777764"]) {
+      __resetBotTokenCache();
+      expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: bad }), bad)
+        .toEqual({ ok: false, reason: "tenant_not_configured" });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a missing tenant WITHOUT echoing whatever was configured", async () => {
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: "secret-looking-garbage" });
+    const logged = JSON.stringify(errSpy.mock.calls);
+    expect(logged).toContain("bot tenant not configured");
+    expect(logged).not.toContain("secret-looking-garbage");
+  });
+
+  it("caches per authority, so a token minted for one directory is never reused for another", async () => {
+    fetchMock.mockResolvedValue(res(200, { access_token: "tok-a", expires_in: 3600 }));
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const OTHER = "22222222-2222-2222-2222-222222222222";
+    fetchMock.mockResolvedValue(res(200, { access_token: "tok-b", expires_in: 3600 }));
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: OTHER }))
+      .toEqual({ ok: true, token: "tok-b" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain(OTHER);
+  });
+
+  it("a credential problem still outranks a tenant problem, so the report names the right thing", async () => {
+    expect(await getBotFrameworkToken({ appId: "app", appPassword: undefined, tenantId: "" }))
+      .toEqual({ ok: false, reason: "credential_missing" });
+  });
+
+  it("introduces no Graph dependency", async () => {
+    fetchMock.mockResolvedValue(res(200, { access_token: "tok", expires_in: 3600 }));
+    await getBotFrameworkToken({ appId: "app", appPassword: SECRET, tenantId: BOT_TENANT });
+    for (const [url] of fetchMock.mock.calls) {
+      expect(String(url)).not.toContain("graph.microsoft.com");
+    }
   });
 });

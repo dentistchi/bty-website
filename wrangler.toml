@@ -20,6 +20,11 @@ BTY_DEPLOY_VERSION = "2026-04-27-api-version-endpoint-v1"
 BTY_BUILD_TIME = "2026-04-27T18:21:00Z"
 BTY_APP_VERSION = "0.1.0"
 BTY_ADMIN_EMAILS = "ywamer2022@gmail.com"
+# The tenant the BOT REGISTRATION lives in — not a secret, and NOT the tenant of whoever a
+# message is being sent to. `bty-arena-teams` is a Teams-managed bot, which is single-tenant even
+# though its Entra app is multi-tenant, so the outbound Connector token must be minted here rather
+# than at botframework.com.
+TEAMS_BOT_TENANT_ID = "10110d5c-bd30-467e-9912-e44e67777647"
 SELF_REPORT_AUTO_APPROVE = "true"
 
 [[kv_namespaces]]

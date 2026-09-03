@@ -56,6 +56,7 @@ export type NotifyReason =
   | "conversation_creation_unknown"
   | "no_service_url"
   | "credential_missing"
+  | "tenant_not_configured"
   | "auth_failed"
   | "unreachable"
   | ConnectorFailure

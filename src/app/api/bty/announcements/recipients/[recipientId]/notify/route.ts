@@ -49,6 +49,9 @@ const STATUS: Record<string, number> = {
   conversation_creation_unknown: 409,
   no_service_url: 409,
   credential_missing: 503,
+  // The bot registration's tenant is not configured. Same family: the service is not set up,
+  // the request was fine.
+  tenant_not_configured: 503,
   not_installed: 409,
   throttled: 429,
 };

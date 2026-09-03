@@ -228,6 +228,18 @@ describe("J — identity, and the account that must not be created", () => {
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("p_user_id");
   });
 
+  it("the RECIPIENT's tenant can never influence where the bot token is minted", async () => {
+    // The token authority is the tenant the BOT REGISTRATION lives in — fixed infrastructure.
+    // `announcement.tenant_id` is the tenant of the person being MESSAGED, and a multi-tenant
+    // bot can serve tenants that are not its own. Deriving the authority from it would let a
+    // recipient-side value redirect where BTY authenticates.
+    await notify();
+    expect(getBotFrameworkToken).toHaveBeenCalledTimes(1);
+    const arg = getBotFrameworkToken.mock.calls[0][0] ?? {};
+    expect(Object.keys(arg)).toEqual(["appId"]);
+    expect(JSON.stringify(arg)).not.toContain(TENANT);
+  });
+
   it("the Host's name comes from the provider-written source, never user_metadata", async () => {
     await notify();
     expect(resolveDisplayNames).toHaveBeenCalledWith(admin, [OWNER]);
