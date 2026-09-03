@@ -4,6 +4,7 @@ import {
   createOneOnOneConversation,
   sendProactiveMessage,
   CONNECTOR_TIMEOUT_MS,
+  sanitizeAuthChallenge,
 } from "@/lib/bty/teams/proactiveConversation.server";
 
 /**
@@ -100,11 +101,13 @@ describe("E — createConversation", () => {
   it("separates an INSTALLATION 403 from a permission 403", async () => {
     // These need different human actions: install the app for that person, versus fix the bot
     // registration. Reporting both as "forbidden" sends the investigation to the wrong place.
+    // `toMatchObject`, not `toEqual`: slice 1A also retains Microsoft's error.code on a 403.
+    // The CLASSIFICATION is what must not move, and it does not.
     fetchMock.mockResolvedValue(res(403, { error: { code: "BotNotInConversationRoster" } }));
-    expect(await call()).toEqual({ ok: false, failure: "not_installed", ambiguous: false });
+    expect(await call()).toMatchObject({ ok: false, failure: "not_installed", ambiguous: false });
 
     fetchMock.mockResolvedValue(res(403, { error: { code: "MissingProperty" } }));
-    expect(await call()).toEqual({ ok: false, failure: "forbidden", ambiguous: false });
+    expect(await call()).toMatchObject({ ok: false, failure: "forbidden", ambiguous: false });
 
     // A 403 whose body cannot be read stays the generic one rather than being upgraded.
     fetchMock.mockResolvedValue(new Response("not json", { status: 403 }));
@@ -120,14 +123,14 @@ describe("E — createConversation", () => {
       [502, "upstream_error", true], [400, "invalid_request", false],
     ] as const) {
       fetchMock.mockResolvedValue(res(status, { error: { message: "SENSITIVE" } }));
-      expect(await call(), String(status)).toEqual({ ok: false, failure, ambiguous });
+      expect(await call(), String(status)).toMatchObject({ ok: false, failure, ambiguous });
     }
     expect(JSON.stringify(errSpy.mock.calls)).not.toContain("SENSITIVE");
   });
 
   it("a 200 with no conversation id is a failure, not a silent success", async () => {
     fetchMock.mockResolvedValue(res(200, {}));
-    expect(await call()).toEqual({ ok: false, failure: "invalid_request", ambiguous: false });
+    expect(await call()).toMatchObject({ ok: false, failure: "invalid_request", ambiguous: false });
   });
 });
 
@@ -167,5 +170,120 @@ describe("F — sending one message", () => {
     expect(await sendProactiveMessage({ token: "t", serviceUrl: URL_, conversationId: "c", text: "x" })).toEqual({
       ok: false, failure: "throttled", ambiguous: false,
     });
+  });
+});
+
+
+/**
+ * SLICE 1A — the 401 must name itself.
+ *
+ * The first real Stage 1 attempt returned 401 from createConversation, and the classifier
+ * returned immediately on 401 while reading `error.code` for 403. Microsoft named the cause and
+ * we discarded it, so the failure could only be narrowed by reasoning about which database rows
+ * existed. These pin the diagnosis WITHOUT changing a single classification.
+ */
+describe("1A — the 401 diagnostic contract", () => {
+  const TOKEN = "eyJ0-this-is-the-access-token-and-must-never-be-logged";
+  const create = () =>
+    createOneOnOneConversation({ token: TOKEN, appId: "app-id", serviceUrl: URL_, tenantId: "tid", aadObjectId: "oid" });
+  const send = () => sendProactiveMessage({ token: TOKEN, serviceUrl: URL_, conversationId: "19:c", text: "hello" });
+  const logged = () => JSON.stringify(errSpy.mock.calls);
+  const failureLine = () =>
+    errSpy.mock.calls.find((c) => String(c[0]).includes("connector failure"))?.[1] as Record<string, unknown>;
+
+  it("keeps Microsoft's error.code from a createConversation 401", async () => {
+    fetchMock.mockResolvedValue(res(401, { error: { code: "InvalidBotSignature", message: "prose we do not keep" } }));
+    const r = await create();
+    expect(r).toMatchObject({ ok: false, failure: "unauthorized", ambiguous: false, microsoftCode: "InvalidBotSignature" });
+    expect(failureLine()).toMatchObject({ operation: "create_conversation", status: 401, microsoft_code: "InvalidBotSignature" });
+    // The prose is not diagnosis and is not kept.
+    expect(logged()).not.toContain("prose we do not keep");
+  });
+
+  it("attributes a 401 on the message send to send_activity, not to the conversation", async () => {
+    // The whole point: the next failure must not require deduction from which rows exist.
+    fetchMock.mockResolvedValue(res(401, { error: { code: "Unauthorized" } }));
+    await send();
+    expect(failureLine()).toMatchObject({ operation: "send_activity", status: 401 });
+  });
+
+  it("classifies safely when the 401 body is not JSON at all", async () => {
+    fetchMock.mockResolvedValue(new Response("<html>gateway</html>", { status: 401 }));
+    const r = await create();
+    expect(r).toMatchObject({ ok: false, failure: "unauthorized", ambiguous: false });
+    expect((r as { microsoftCode?: string }).microsoftCode).toBeUndefined();
+    expect(failureLine()).toMatchObject({ microsoft_code: "none" });
+  });
+
+  it("keeps a sanitized WWW-Authenticate, including the directory Microsoft expected", async () => {
+    // `authorization_uri` is the field that would answer the open question about this bot's app
+    // type. It is a public URL and carries no credential.
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({}), {
+      status: 401,
+      headers: {
+        "content-type": "application/json",
+        "www-authenticate":
+          'Bearer realm="botframework.com", authorization_uri="https://login.windows.net/common/oauth2/authorize", error="invalid_token", error_description="signature validation failed", claims="eyJhY2Nlc3MifQ"',
+      },
+    }));
+    const r = await create() as { authChallenge?: string };
+    expect(r.authChallenge).toContain("scheme=Bearer");
+    expect(r.authChallenge).toContain("error=invalid_token");
+    expect(r.authChallenge).toContain("authorization_uri=https://login.windows.net/common/oauth2/authorize");
+    // A claims challenge is reduced to a flag: it can be large and is not needed to diagnose.
+    expect(r.authChallenge).toContain("claims=present");
+    expect(r.authChallenge).not.toContain("eyJhY2Nlc3MifQ");
+  });
+
+  it("reports an unparsable challenge as present rather than echoing it", async () => {
+    expect(sanitizeAuthChallenge("!!! something unexpected !!!")).toBe("present, unparsed");
+    expect(sanitizeAuthChallenge(null)).toBeUndefined();
+    expect(sanitizeAuthChallenge("   ")).toBeUndefined();
+  });
+
+  it("never lets a header value grow without bound", () => {
+    const out = sanitizeAuthChallenge(`Bearer error_description="${"x".repeat(5000)}"`) ?? "";
+    expect(out.length).toBeLessThanOrEqual(300);
+  });
+
+  it("NEVER puts the access token, the Authorization header or a secret into a log or a result", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: { code: "X" }, access_token: TOKEN }), {
+      status: 401,
+      headers: { "content-type": "application/json", "www-authenticate": `Bearer error="bad", token="${TOKEN}"` },
+    }));
+    const r = await create();
+    const everything = logged() + JSON.stringify(r);
+    expect(everything).not.toContain(TOKEN);
+    expect(everything).not.toContain("Bearer eyJ0");
+    // `token=` is not on the allow-list, so it cannot reach the challenge string at all.
+    expect((r as { authChallenge?: string }).authChallenge).not.toContain("token=");
+    // The request's own Authorization header is never echoed anywhere.
+    expect(everything).not.toContain("authorization");
+  });
+});
+
+describe("1A — no behaviour changed", () => {
+  it("every classification still returns exactly the failure and ambiguity it did before", async () => {
+    const call = () =>
+      createOneOnOneConversation({ token: "t", appId: "a", serviceUrl: URL_, tenantId: "t", aadObjectId: "o" });
+    const cases: Array<[number, unknown, string, boolean]> = [
+      [401, { error: { code: "C" } }, "unauthorized", false],
+      [403, { error: { code: "BotNotInConversationRoster" } }, "not_installed", false],
+      [403, { error: { code: "MissingProperty" } }, "forbidden", false],
+      [429, {}, "throttled", false],
+      [502, {}, "upstream_error", true],
+      [400, {}, "invalid_request", false],
+    ];
+    for (const [status, body, failure, ambiguous] of cases) {
+      fetchMock.mockResolvedValue(res(status, body));
+      const r = await call();
+      expect(r, String(status)).toMatchObject({ ok: false, failure, ambiguous });
+    }
+  });
+
+  it("a success is still a plain success, with no diagnostic fields", async () => {
+    fetchMock.mockResolvedValue(res(201, { id: "19:c" }));
+    expect(await createOneOnOneConversation({ token: "t", appId: "a", serviceUrl: URL_, tenantId: "t", aadObjectId: "o" }))
+      .toEqual({ ok: true, conversationId: "19:c" });
   });
 });

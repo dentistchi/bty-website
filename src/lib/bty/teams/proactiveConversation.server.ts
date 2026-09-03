@@ -43,11 +43,65 @@ export type ConnectorFailure =
 /** Substantially shorter than the lease, so a live attempt never races its own claim. */
 export const CONNECTOR_TIMEOUT_MS = 20_000;
 
+/** Which call was refused. Present so the next failure needs no deduction from database state. */
+export type ConnectorOperation = "create_conversation" | "send_activity";
+
 export type ConnectorError = {
   failure: ConnectorFailure;
   /** true when successful delivery cannot be ruled out. NEVER auto-retry these. */
   ambiguous: boolean;
+  /** Microsoft's machine-readable `error.code`, when the body carries one. Never prose. */
+  microsoftCode?: string;
+  /** Sanitized WWW-Authenticate parameters — allow-listed keys only, never a credential. */
+  authChallenge?: string;
 };
+
+/**
+ * The diagnostic half of a 401, and ONLY the parts that are safe to keep.
+ *
+ * WHY THIS EXISTS. The first real Stage 1 attempt returned 401 from createConversation and this
+ * function's earlier form returned immediately on 401 — reading `error.code` for 403 but not for
+ * 401. Microsoft named the cause and we discarded it, so a production failure could only be
+ * narrowed by reasoning rather than read. Two adjacent statuses handled asymmetrically is how a
+ * diagnosis becomes unavailable exactly when it is needed.
+ *
+ * ALLOW-LIST, NOT DENY-LIST. Only these four keys are ever kept. `error` and `error_description`
+ * say what was wrong; `realm` and `authorization_uri` say which directory Microsoft expected,
+ * which is the open question about this bot's app type. A challenge never carries a bearer token,
+ * but the allow-list means a future parameter cannot smuggle one into a log either. `claims` is
+ * reduced to a presence flag because it can be large and is not needed to diagnose.
+ */
+const CHALLENGE_KEYS = ["error", "error_description", "realm", "authorization_uri"] as const;
+const CHALLENGE_MAX = 300;
+
+export function sanitizeAuthChallenge(header: string | null): string | undefined {
+  const raw = (header ?? "").trim();
+  if (!raw) return undefined;
+  const scheme = raw.split(/[\s,]/)[0] ?? "";
+  const parts: string[] = [];
+  if (/^[A-Za-z]+$/.test(scheme)) parts.push(`scheme=${scheme}`);
+  for (const key of CHALLENGE_KEYS) {
+    const m = new RegExp(`\\b${key}="([^"]*)"`, "i").exec(raw);
+    if (m?.[1]) parts.push(`${key}=${m[1].replace(/[\r\n]/g, " ").slice(0, 160)}`);
+  }
+  if (/\bclaims="/i.test(raw)) parts.push("claims=present");
+  // A challenge we could not parse at all is reported as present rather than echoed verbatim:
+  // echoing an unknown shape is exactly how something unexpected reaches a log.
+  const out = parts.length ? parts.join("; ") : "present, unparsed";
+  return out.slice(0, CHALLENGE_MAX);
+}
+
+/** Microsoft's `error.code` only. The rest of the body — including any prose — is dropped. */
+async function microsoftCode(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.json()) as { error?: { code?: unknown } };
+    const code = body?.error?.code;
+    return typeof code === "string" && code ? code.slice(0, 80) : undefined;
+  } catch {
+    // An unreadable body simply yields no code. It never changes the classification.
+    return undefined;
+  }
+}
 
 export type ConversationResult =
   | { ok: true; conversationId: string }
@@ -67,22 +121,45 @@ export type SendResult = { ok: true } | ({ ok: false } & ConnectorError);
 async function classify(res: Response): Promise<ConnectorError> {
   // A 5xx is the only status that cannot rule out acceptance: the request reached Microsoft and
   // the failure may have happened after it was taken. Every 4xx below is a refusal to act.
-  if (res.status === 401) return { failure: "unauthorized", ambiguous: false };
+  //
+  // ★ `failure` and `ambiguous` are unchanged for every status. The diagnostic fields added here
+  // are read by nobody who decides anything: release, retry and delivery_unknown all still turn
+  // on `ambiguous` alone.
+  if (res.status === 401) {
+    return {
+      failure: "unauthorized",
+      ambiguous: false,
+      microsoftCode: await microsoftCode(res),
+      authChallenge: sanitizeAuthChallenge(res.headers.get("www-authenticate")),
+    };
+  }
   if (res.status === 429) return { failure: "throttled", ambiguous: false };
   if (res.status >= 500) return { failure: "upstream_error", ambiguous: true };
   if (res.status === 403) {
-    let code = "";
-    try {
-      const body = (await res.json()) as { error?: { code?: unknown } };
-      code = typeof body?.error?.code === "string" ? body.error.code : "";
-    } catch {
-      // A 403 with an unreadable body stays the generic one rather than being upgraded.
-    }
+    const code = (await microsoftCode(res)) ?? "";
     return /notinconversation|conversationnotfound|botnotin|notfound/i.test(code)
-      ? { failure: "not_installed", ambiguous: false }
-      : { failure: "forbidden", ambiguous: false };
+      ? { failure: "not_installed", ambiguous: false, microsoftCode: code || undefined }
+      : { failure: "forbidden", ambiguous: false, microsoftCode: code || undefined };
   }
-  return { failure: "invalid_request", ambiguous: false };
+  return { failure: "invalid_request", ambiguous: false, microsoftCode: await microsoftCode(res) };
+}
+
+/**
+ * One structured line per refused Connector call.
+ *
+ * Carries the OPERATION, so the next real failure states which call was rejected instead of
+ * being deduced from which database rows happen to exist. Nothing here is a URL, a body, a header
+ * we sent, or anything derived from the message.
+ */
+function logConnectorFailure(operation: ConnectorOperation, status: number, err: ConnectorError) {
+  console.error("[teams-proactive] connector failure", {
+    operation,
+    status,
+    failure: err.failure,
+    ambiguous: err.ambiguous,
+    microsoft_code: err.microsoftCode ?? "none",
+    auth_challenge: err.authChallenge ?? "none",
+  });
 }
 
 const base = (serviceUrl: string) => serviceUrl.replace(/\/+$/, "");
@@ -115,7 +192,7 @@ export async function createOneOnOneConversation(params: {
     });
     if (!res.ok) {
       const err = await classify(res);
-      console.error("[teams-proactive] createConversation refused", { status: res.status, ...err });
+      logConnectorFailure("create_conversation", res.status, err);
       return { ok: false, ...err };
     }
     const body = (await res.json()) as { id?: unknown };
@@ -126,7 +203,10 @@ export async function createOneOnOneConversation(params: {
     return { ok: true, conversationId: body.id.trim() };
   } catch {
     // A conversation may exist in Teams that we will never learn the id of. Ambiguous.
-    console.error("[teams-proactive] createConversation unreachable");
+    console.error("[teams-proactive] connector failure", {
+      operation: "create_conversation", status: 0, failure: "unreachable", ambiguous: true,
+      microsoft_code: "none", auth_challenge: "none",
+    });
     return { ok: false, failure: "unreachable", ambiguous: true };
   }
 }
@@ -155,14 +235,17 @@ export async function sendProactiveMessage(params: {
     );
     if (!res.ok) {
       const err = await classify(res);
-      console.error("[teams-proactive] send refused", { status: res.status, ...err });
+      logConnectorFailure("send_activity", res.status, err);
       return { ok: false, ...err };
     }
     return { ok: true };
   } catch {
     // The POST had already begun. Teams may well have accepted the message and the response was
     // lost -- which is precisely the case that must NOT free the lease.
-    console.error("[teams-proactive] send outcome unknown");
+    console.error("[teams-proactive] connector failure", {
+      operation: "send_activity", status: 0, failure: "unreachable", ambiguous: true,
+      microsoft_code: "none", auth_challenge: "none",
+    });
     return { ok: false, failure: "unreachable", ambiguous: true };
   }
 }
