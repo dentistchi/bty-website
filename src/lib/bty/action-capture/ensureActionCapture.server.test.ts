@@ -39,14 +39,40 @@ function makeAdmin(store: Store) {
       throw new Error(`FORBIDDEN TABLE ACCESS: ${table}`);
     }
     const filters: Record<string, unknown> = {};
+    let pendingPatch: Record<string, unknown> | null = null;
     const api: Record<string, unknown> = {
       select: () => api,
       eq: (col: string, val: unknown) => {
         filters[col] = val;
         return api;
       },
+      /*
+        `not(col, "is", null)` — the Saved lane's explicit-intent filter (A1-INTENT). Track's
+        source-evidence rows carry `saved_at = null` and must not be listed, so the double has to
+        apply the same predicate the service does or every row would come back regardless.
+      */
+      not: (col: string, _op: string, val: unknown) => {
+        if (val === null) filters[`__notnull:${col}`] = true;
+        return api;
+      },
+      /** `is(col, null)` — the guard that stops a save re-stamping an already-stamped row. */
+      is: (col: string, val: unknown) => {
+        if (val === null) filters[`__isnull:${col}`] = true;
+        return api;
+      },
+      /**
+       * Save-after-Track stamps `saved_at` on the row Track created.
+       *
+       * Chainable, because the service writes `.update().eq().is().select().maybeSingle()` — the
+       * filters that decide WHICH row is patched arrive after this call, so the patch is held and
+       * applied when the chain terminates.
+       */
+      update: (patch: Record<string, unknown>) => {
+        pendingPatch = patch;
+        return api;
+      },
       order: () => Promise.resolve({ data: matching(), error: null }),
-      maybeSingle: () => Promise.resolve({ data: matching()[0] ?? null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: settle(), error: null }),
       insert: (row: Record<string, unknown>) => {
         inserts.push(row);
         const clash = store.rows.some(
@@ -63,8 +89,25 @@ function makeAdmin(store: Store) {
         return { select: () => ({ single: () => Promise.resolve({ data: saved, error: null }) }) };
       },
     };
+    /** Terminal read: applies a held update to the row the filters selected, then returns it. */
+    function settle() {
+      const hit = (matching()[0] ?? null) as Record<string, unknown> | null;
+      if (hit && pendingPatch) {
+        Object.assign(hit, pendingPatch);
+        pendingPatch = null;
+      }
+      return hit;
+    }
     function matching() {
-      return store.rows.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+      return store.rows.filter((r) =>
+        Object.entries(filters).every(([k, v]) => {
+          // The two null predicates the service uses, kept faithful so a row without `saved_at`
+          // is treated the way Postgres would treat NULL rather than the way `undefined` compares.
+          if (k.startsWith("__notnull:")) return r[k.slice(10)] != null;
+          if (k.startsWith("__isnull:")) return r[k.slice(9)] == null;
+          return r[k] === v;
+        }),
+      );
     }
     return api;
   });
@@ -81,11 +124,11 @@ beforeEach(() => {
 describe("ensureActionCapture — idempotency", () => {
   it("1+2+3. first save creates exactly one row; the identical save returns the SAME id and adds nothing", async () => {
     const { admin } = makeAdmin(store);
-    const first = await ensureActionCapture(admin, { userId: USER_A, input });
+    const first = await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect(first.ok && first.created).toBe(true);
     expect(store.rows).toHaveLength(1);
 
-    const second = await ensureActionCapture(admin, { userId: USER_A, input });
+    const second = await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect(second.ok && second.created).toBe(false);
     expect(first.ok && second.ok && first.capture.id === second.capture.id).toBe(true);
     expect(store.rows, "no second row").toHaveLength(1);
@@ -93,8 +136,8 @@ describe("ensureActionCapture — idempotency", () => {
 
   it("4. the same message saved by ANOTHER user is an independent capture", async () => {
     const { admin } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
-    const b = await ensureActionCapture(admin, { userId: USER_B, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
+    const b = await ensureActionCapture(admin, { userId: USER_B, input, intent: "save" });
     expect(b.ok && b.created).toBe(true);
     expect(store.rows).toHaveLength(2);
     expect(store.rows.map((r) => r.user_id).sort()).toEqual([USER_A, USER_B]);
@@ -102,20 +145,21 @@ describe("ensureActionCapture — idempotency", () => {
 
   it("5. the same user saving a DIFFERENT message creates a second capture", async () => {
     const { admin } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
-    const second = await ensureActionCapture(admin, { userId: USER_A, input: { ...input, message_id: "M2" } });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
+    const second = await ensureActionCapture(admin, { userId: USER_A, input: { ...input, message_id: "M2" }, intent: "save" });
     expect(second.ok && second.created).toBe(true);
     expect(store.rows).toHaveLength(2);
   });
 
   it("6+7. re-saving with a CHANGED preview neither adds a row nor rewrites the original provenance", async () => {
     const { admin } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     const before = JSON.parse(JSON.stringify(store.rows[0]));
 
     const again = await ensureActionCapture(admin, {
       userId: USER_A,
       input: { ...input, preview_text: "REWRITTEN", sender_display: "Someone Else", source_url: "https://evil.example" },
+      intent: "save",
     });
 
     expect(again.ok && again.created).toBe(false);
@@ -146,7 +190,7 @@ describe("ensureActionCapture — idempotency", () => {
       return api;
     }) as never;
 
-    const r = await ensureActionCapture(admin, { userId: USER_A, input });
+    const r = await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect(r.ok && r.created).toBe(false);
     expect(r.ok && r.capture.id).toBe("cap-race");
     expect(store.rows).toHaveLength(1);
@@ -159,6 +203,7 @@ describe("ensureActionCapture — server-owned fields", () => {
     await ensureActionCapture(admin, {
       userId: USER_A,
       input: { ...input, user_id: USER_B, external_key: "teams:HACK", source_type: "spoofed" } as never,
+      intent: "save",
     });
     expect(inserts[0].user_id).toBe(USER_A);
     expect(inserts[0].external_key).toBe("teams:T1:C1:M1");
@@ -167,7 +212,7 @@ describe("ensureActionCapture — server-owned fields", () => {
 
   it("always writes status='captured' and NEVER the promotion columns", async () => {
     const { admin, inserts } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect(inserts[0].status).toBe("captured");
     expect(inserts[0]).not.toHaveProperty("promoted_at");
     expect(inserts[0]).not.toHaveProperty("promoted_action_contract_id");
@@ -175,14 +220,14 @@ describe("ensureActionCapture — server-owned fields", () => {
 
   it("a blank user id is refused before any write", async () => {
     const { admin, inserts } = makeAdmin(store);
-    const r = await ensureActionCapture(admin, { userId: "   ", input });
+    const r = await ensureActionCapture(admin, { userId: "   ", input, intent: "save" });
     expect(r.ok).toBe(false);
     expect(inserts).toHaveLength(0);
   });
 
   it("an unopenable source_url is dropped, not stored", async () => {
     const { admin, inserts } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input: { ...input, source_url: "javascript:alert(1)" } });
+    await ensureActionCapture(admin, { userId: USER_A, input: { ...input, source_url: "javascript:alert(1)" }, intent: "save" });
     expect(inserts[0].source_url).toBe(null);
   });
 });
@@ -190,7 +235,7 @@ describe("ensureActionCapture — server-owned fields", () => {
 describe("CAPTURE != COMMITMENT — structural isolation", () => {
   it("the capture path touches bty_action_captures and NOTHING else", async () => {
     const { admin, touched } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect([...new Set(touched)]).toEqual(["bty_action_captures"]);
   });
 
@@ -206,13 +251,13 @@ describe("CAPTURE != COMMITMENT — structural isolation", () => {
     "bty_action_review_decision_audit",
   ])("never writes %s", async (forbidden) => {
     const { admin, touched } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     expect(touched).not.toContain(forbidden);
   });
 
   it("the stored row carries no commitment field of any kind", async () => {
     const { admin, inserts } = makeAdmin(store);
-    await ensureActionCapture(admin, { userId: USER_A, input });
+    await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
     for (const f of [
       "deadline_at", "expires_at", "due_at", "priority", "category", "tags", "weight", "mode",
       "le_activation_type", "verification_type", "verification_mode", "verification_tier",
@@ -224,12 +269,15 @@ describe("CAPTURE != COMMITMENT — structural isolation", () => {
 });
 
 describe("listMyActionCaptures — owner-scoped active list", () => {
-  it("returns only this user's status='captured' rows", async () => {
+  it("returns only this user's status='captured', EXPLICITLY SAVED rows", async () => {
+    const SAVED = "2026-09-02T12:00:00.000Z";
     store.rows = [
-      { id: "1", user_id: USER_A, status: "captured", source_type: "teams_message" },
-      { id: "2", user_id: USER_A, status: "promoted", source_type: "teams_message" },
-      { id: "3", user_id: USER_A, status: "dismissed", source_type: "teams_message" },
-      { id: "4", user_id: USER_B, status: "captured", source_type: "teams_message" },
+      { id: "1", user_id: USER_A, status: "captured", source_type: "teams_message", saved_at: SAVED },
+      { id: "2", user_id: USER_A, status: "promoted", source_type: "teams_message", saved_at: SAVED },
+      { id: "3", user_id: USER_A, status: "dismissed", source_type: "teams_message", saved_at: SAVED },
+      { id: "4", user_id: USER_B, status: "captured", source_type: "teams_message", saved_at: SAVED },
+      // A1-INTENT: source evidence for an announcement. Nobody put this on their list.
+      { id: "5", user_id: USER_A, status: "captured", source_type: "teams_message", saved_at: null },
     ];
     const { admin } = makeAdmin(store);
     const out = await listMyActionCaptures(admin, USER_A);

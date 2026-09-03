@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
   const result = await ensureActionCapture(admin, {
     userId: user.id,
     input: body as unknown as TeamsCaptureInput,
+    // Explicit: this row exists because the person asked for it to be on their list.
+    intent: "save",
   });
 
   let out: NextResponse;

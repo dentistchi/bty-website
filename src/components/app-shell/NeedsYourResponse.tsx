@@ -229,13 +229,29 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              /*
+                ★ ONE STACK, FULL-WIDTH, 44px TARGETS (production defect, 2026-09-02).
+
+                MEASURED at 390px with real touch events: these three wrapped onto two lines, and
+                "I have a question" ended up 8px above "I need help applying this". A tap SIX
+                pixels below the intended button landed on the one under it and committed
+                HELP_NEEDED instantly, with no question text — which is exactly what production
+                shows for a person who reports choosing "I have a question": HELP_NEEDED stored,
+                question_text NULL. Write-once then made that permanent.
+
+                The mapping was never wrong. The geometry was: a 38px irreversible target sitting
+                8px under a benign one, in a wrap order the label lengths decide. Stacking removes
+                the wrap (so no label edit can rearrange them), full width removes the horizontal
+                near-miss, and 2.75rem is the thumb target this app already uses on the Saved for
+                later controls. gap-3 keeps a slip inside the button it started in.
+              */
+              <div className="flex flex-col gap-3">
                 <button
                   type="button"
                   data-testid="announcement-got-it"
                   disabled={busy === it.announcementId}
                   onClick={() => void respond(it.announcementId, "ACKNOWLEDGED")}
-                  className="rounded-lg bg-[#C9A66B] px-3.5 py-2 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
+                  className="min-h-[2.75rem] w-full rounded-lg bg-[#C9A66B] px-3.5 py-2 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
                 >
                   {t.gotIt}
                 </button>
@@ -244,7 +260,7 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                   data-testid="announcement-question"
                   disabled={busy === it.announcementId}
                   onClick={() => setAsking(it.announcementId)}
-                  className="rounded-lg border border-white/15 px-3.5 py-2 text-sm font-medium text-white/80 disabled:opacity-60"
+                  className="min-h-[2.75rem] w-full rounded-lg border border-white/15 px-3.5 py-2 text-sm font-medium text-white/80 disabled:opacity-60"
                 >
                   {t.question}
                 </button>
@@ -253,7 +269,7 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                   data-testid="announcement-help"
                   disabled={busy === it.announcementId}
                   onClick={() => void respond(it.announcementId, "HELP_NEEDED")}
-                  className="rounded-lg border border-white/15 px-3.5 py-2 text-sm font-medium text-white/80 disabled:opacity-60"
+                  className="min-h-[2.75rem] w-full rounded-lg border border-white/15 px-3.5 py-2 text-sm font-medium text-white/80 disabled:opacity-60"
                 >
                   {t.help}
                 </button>

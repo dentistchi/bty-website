@@ -232,6 +232,8 @@ export async function POST(req: NextRequest) {
   const result = await ensureActionCapture(admin, {
     userId: resolution.userId,
     input: parsed.capture,
+    // Explicit: this row exists because the person asked for it to be on their list.
+    intent: "save",
   });
   if (!result.ok) {
     console.error("[teams-invoke] capture failed", { code: result.code });

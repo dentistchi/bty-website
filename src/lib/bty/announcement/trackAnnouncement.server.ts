@@ -62,11 +62,19 @@ export async function trackAnnouncement(
   const oids = parsePickedRecipients(params.pickedRaw);
   if (oids.length < 1) return { ok: false, reason: "zero_recipients" };
 
-  // The capture is ensured BEFORE the announcement, because the announcement FKs to it. Idempotent
-  // by construction — a message already saved returns its existing row untouched.
+  /*
+    The capture is ensured BEFORE the announcement, because the announcement FKs to it. Idempotent
+    by construction — a message already saved returns its existing row untouched.
+
+    ★ `intent: "track_source"` is what stops Track from meaning "and save it too". The row is
+    source evidence; it carries no `saved_at`, so the Saved for later lane does not list it. A
+    message the person ALREADY saved keeps the `saved_at` it has — this never clears one — and if
+    they save it later, that Save stamps this same row rather than creating a second.
+  */
   const captured = await ensureActionCapture(admin, {
     userId: params.ownerUserId,
     input: params.capture,
+    intent: "track_source",
   });
   if (!captured.ok) {
     console.error("[track-announcement] capture failed", { code: captured.code });

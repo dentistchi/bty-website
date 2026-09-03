@@ -34,7 +34,9 @@ import {
 
 /** Explicit column allow-list — never select('*'); the DTO shape is decided here, not by the table. */
 const CAPTURE_COLS =
-  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at, triage_choice, triaged_at";
+  // `saved_at` is selected but NOT projected: the service needs it to decide whether a Save must
+  // stamp an existing row, and no client has any use for it.
+  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at, triage_choice, triaged_at, saved_at";
 
 export type ActionCapture = {
   id: string;
@@ -85,13 +87,32 @@ function project(row: Row): ActionCapture {
 /**
  * Create (or return the already-existing) capture for this user + external item.
  *
+ * ★ TWO CALLERS, TWO INTENTS, ONE ROW.
+ *
+ * "Save to BTY" is a person putting a message on their own list. "Track with BTY" needs the same
+ * message as SOURCE EVIDENCE, because the announcement has a foreign key to a capture — and it
+ * must reuse the existing row rather than create a second, which the UNIQUE
+ * (user_id, source_type, external_key) enforces.
+ *
+ * Until 2026-09-02 those were indistinguishable, so tracking a message silently added it to the
+ * person's Saved for later list. `saved_at` records which of the two happened, at the moment it is
+ * actually known:
+ *
+ *   save         stamps `saved_at` — on insert, and on an existing row that Track created first
+ *   track_source never sets it, and NEVER clears one that Save already set
+ *
  * @param userId server-derived `auth.users.id`. NEVER from the request body.
  * @param input  the synthetic source payload; only its SOURCE fields are read.
+ * @param intent why this row is being ensured. REQUIRED, with no default: the two callers mean
+ *               opposite things by the same row, and a default would silently pick one of them for
+ *               whoever forgot. A new call site that omits it fails to compile, which is the only
+ *               moment the author is still thinking about which it is.
  */
 export async function ensureActionCapture(
   admin: SupabaseClient,
-  params: { userId: string; input: TeamsCaptureInput },
+  params: { userId: string; input: TeamsCaptureInput; intent: "save" | "track_source" },
 ): Promise<EnsureActionCaptureResult> {
+  const intent = params.intent;
   const userId = typeof params.userId === "string" ? params.userId.trim() : "";
   if (!userId) return { ok: false, code: "not_owner" };
 
@@ -109,7 +130,25 @@ export async function ensureActionCapture(
     .eq("external_key", externalKey)
     .maybeSingle();
   if (exErr) return { ok: false, code: "load_failed" };
-  if (existing) return { ok: true, capture: project(existing as Row), created: false };
+  if (existing) {
+    /*
+      SAVE AFTER TRACK promotes the row's intent; TRACK AFTER SAVE leaves it alone.
+      The `is("saved_at", null)` guard is what makes the second true: a row already stamped is not
+      re-stamped, so a later Track can never move a save's timestamp, and neither can a second Save.
+    */
+    const row = existing as Row & { saved_at?: string | null };
+    if (intent === "save" && !row.saved_at) {
+      const { data: stamped } = await admin
+        .from("bty_action_captures")
+        .update({ saved_at: new Date().toISOString() })
+        .eq("id", row.id)
+        .is("saved_at", null)
+        .select(CAPTURE_COLS)
+        .maybeSingle();
+      if (stamped) return { ok: true, capture: project(stamped as Row), created: false };
+    }
+    return { ok: true, capture: project(existing as Row), created: false };
+  }
 
   // 2. Insert. status='captured' always; promotion columns deliberately absent.
   const { data: inserted, error: insErr } = await admin
@@ -122,6 +161,8 @@ export async function ensureActionCapture(
       source_url: resolved.sourceUrl,
       source_metadata: resolved.sourceMetadata,
       status: "captured",
+      // NULL for track_source: the row exists, but nobody asked for it to be on their list.
+      saved_at: intent === "save" ? new Date().toISOString() : null,
     })
     .select(CAPTURE_COLS)
     .single();
@@ -166,6 +207,9 @@ export async function listMyActionCaptures(
     .select(CAPTURE_COLS)
     .eq("user_id", uid)
     .eq("status", "captured")
+    // ★ EXPLICIT SAVES ONLY. A capture that exists solely as an announcement's source evidence was
+    // never put here by anybody, and showing it made "Track with BTY" quietly mean "and save it".
+    .not("saved_at", "is", null)
     .order("captured_at", { ascending: false });
   if (error) throw new Error(`listMyActionCaptures: ${error.message}`);
   return ((data ?? []) as Row[]).map(project).sort(compareForSavedLane);

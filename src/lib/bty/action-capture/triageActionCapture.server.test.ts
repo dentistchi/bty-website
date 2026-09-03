@@ -43,6 +43,9 @@ function makeAdmin(store: Store) {
     if (table !== "bty_action_captures") throw new Error(`FORBIDDEN TABLE ACCESS: ${table}`);
 
     const eqs: Row = {};
+
+
+    const notNull: Record<string, boolean> = {};
     const isNull: string[] = [];
     let patch: Row | null = null;
 
@@ -50,7 +53,8 @@ function makeAdmin(store: Store) {
       store.rows.filter(
         (r) =>
           Object.entries(eqs).every(([k, v]) => r[k] === v) &&
-          isNull.every((k) => r[k] === null || r[k] === undefined),
+          isNull.every((k) => r[k] === null || r[k] === undefined) &&
+          Object.keys(notNull).every((k) => r[k] !== null && r[k] !== undefined),
       );
 
     const applyUpdate = () => {
@@ -70,6 +74,13 @@ function makeAdmin(store: Store) {
     const api: Row = {
       select: () => api,
       eq: (c: string, v: unknown) => ((eqs[c] = v), api),
+      /*
+        `not(col, "is", null)` — the Saved lane's explicit-intent filter (A1-INTENT). A capture
+        that exists only as an announcement's source evidence carries `saved_at = null` and is not
+        listed; the double applies the same predicate so the ordering assertions below still
+        describe what a person actually sees.
+      */
+      not: (c: string, _op: string, v: unknown) => (v === null ? ((notNull[c] = true), api) : api),
       is: (c: string, v: unknown) => (v === null ? isNull.push(c) : null, api),
       order: () => Promise.resolve({ data: matching(), error: null }),
       maybeSingle: () =>
@@ -102,7 +113,8 @@ beforeEach(() => {
 });
 
 async function seed(admin: never, userId = USER_A, over: Partial<TeamsCaptureInput> = {}) {
-  const r = await ensureActionCapture(admin, { userId, input: { ...input, ...over } });
+  // These suites exercise the SAVE path; intent is required and stated rather than assumed.
+  const r = await ensureActionCapture(admin, { userId, input: { ...input, ...over }, intent: "save" });
   if (!r.ok) throw new Error("seed failed");
   return r.capture;
 }
@@ -181,7 +193,7 @@ describe("14-18. a repeat Teams save never disturbs a decision", () => {
     await setActionCaptureTriage(admin, { userId: USER_A, captureId: cap.id, choice: "later" });
     const before = { ...(store.rows[0] as Row) };
 
-    const again = await ensureActionCapture(admin, { userId: USER_A, input });
+    const again = await ensureActionCapture(admin, { userId: USER_A, input, intent: "save" });
 
     expect(again.ok && again.created).toBe(false);
     expect(again.ok && again.capture.id).toBe(cap.id);

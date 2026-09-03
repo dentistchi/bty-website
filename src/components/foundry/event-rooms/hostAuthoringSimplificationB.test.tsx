@@ -386,6 +386,7 @@ describe("R4-R8B — publish truth is re-anchored, not relaxed", () => {
       "20260902000000_bty_tracked_announcements_v1.sql",
       "20260903000000_foundry_host_grant_provenance_v1.sql",
       "20260904000000_bty_platform_admin_grants_v1.sql",
+      "20260905000000_bty_action_capture_saved_at_v1.sql",
     ];
     expect(known.filter((f) => f > newest && !KNOWN_LATER.includes(f))).toEqual([]);
   });
