@@ -20,9 +20,13 @@ const code = sql
   .join("\n");
 
 describe("H — ordering and scope", () => {
-  it("is the next version after the reconciled ledger, and the only new one", () => {
+  it("sorts after the migrations the ledger was reconciled through", () => {
     const mine = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
-    expect(mine.at(-1)).toBe(FILE);
+    // NOT "is the newest file". That was true the day this slice shipped and false the moment
+    // the next one landed — a guard that fails on unrelated later work teaches people to edit
+    // guards instead of reading them. The durable claim is the ORDER.
+    expect(mine).toContain(FILE);
+    expect(mine.filter((f) => f < FILE).at(-1)).toBe("20260906000000_bty_announcement_recipient_handled_v1.sql");
     // The four the ledger was reconciled through must still be present and untouched by name.
     for (const v of ["20260903000000", "20260904000000", "20260905000000", "20260906000000"]) {
       expect(mine.some((f) => f.startsWith(v))).toBe(true);
