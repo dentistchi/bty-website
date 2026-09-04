@@ -21,6 +21,7 @@ const requireUser = vi.fn();
 const unauthenticated = vi.fn(() => new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 }));
 const listMyAnnouncements = vi.fn();
 const respondToAnnouncement = vi.fn();
+const bindAnnouncementRecipientsForUser = vi.fn(async (_admin: unknown, _userId: unknown) => 0);
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (req: unknown) => requireUser(req),
@@ -31,6 +32,15 @@ vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ __admin: tru
 vi.mock("@/lib/bty/announcement/announcementService.server", () => ({
   listMyAnnouncements: (admin: unknown, id: unknown) => listMyAnnouncements(admin, id),
   respondToAnnouncement: (admin: unknown, p: unknown) => respondToAnnouncement(admin, p),
+}));
+/*
+  Stage 2 — /mine now settles the caller's binding before it answers. Stubbed here so these tests
+  keep asserting what they were written to assert (scope, consent, projection); the binding itself
+  is proven in `bindOnCanonicalEntry.test.ts`.
+*/
+vi.mock("@/lib/bty/announcement/trackAnnouncement.server", () => ({
+  bindAnnouncementRecipientsForUser: (admin: unknown, id: unknown) =>
+    bindAnnouncementRecipientsForUser(admin, id),
 }));
 
 const RECIPIENT = "cccccccc-0000-0000-0000-000000000001";

@@ -157,3 +157,30 @@ export async function bindAnnouncementRecipients(
   const row = (Array.isArray(data) ? data[0] : data) as { bound?: number } | null;
   return typeof row?.bound === "number" ? row.bound : 0;
 }
+
+/**
+ * Bind this canonical user's frozen recipient rows, deriving their Microsoft identity server-side.
+ *
+ * THE SAME RULE AS `bindAnnouncementRecipients`, ON THE OTHER ROAD IN. That function is called by
+ * the Teams tab bootstrap, which already holds a verified Entra token and can pass the tuple. The
+ * ordinary Microsoft sign-in on the web — which is where the Teams notification's "Open BTY" link
+ * actually sends people — has no such token by the time a Supabase session exists, only a user id.
+ * So the tuple is read from `auth.identities` inside the database instead.
+ *
+ * It creates nothing, re-points nothing, and returns only a count. Best-effort by construction: a
+ * failed binding must never be able to hide the list it was about to make visible.
+ */
+export async function bindAnnouncementRecipientsForUser(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { data, error } = await admin.rpc("bty_bind_announcement_recipients_for_user", {
+    p_user_id: userId,
+  });
+  if (error) {
+    console.error("[track-announcement] bind for user failed", { code: error.code ?? "unknown" });
+    return 0;
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as { bound?: number } | null;
+  return typeof row?.bound === "number" ? row.bound : 0;
+}

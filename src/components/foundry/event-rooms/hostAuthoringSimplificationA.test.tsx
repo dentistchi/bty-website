@@ -606,6 +606,7 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
       "20260908000000_bty_teams_proactive_notification_v1.sql",
       "20260909000000_bty_notification_delivery_claim_v1.sql",
       "20260910000000_bty_teams_conversation_creation_claim_v1.sql",
+      "20260911000000_bty_bind_recipients_on_canonical_entry_v1.sql",
     ];
     const newer = [...known]
       .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")

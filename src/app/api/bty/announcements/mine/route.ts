@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { listMyAnnouncements } from "@/lib/bty/announcement/announcementService.server";
+import { bindAnnouncementRecipientsForUser } from "@/lib/bty/announcement/trackAnnouncement.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,29 @@ export async function GET(req: NextRequest) {
 
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ ok: false, items: [] }, { status: 503 });
+
+  /*
+    ★ SETTLE THE BINDING BEFORE ANSWERING "WHAT IS MINE" (Stage 2).
+
+    `listMyAnnouncements` scopes on `user_id`, so a recipient row frozen for a Microsoft identity
+    that has not yet been attached to a canonical account is invisible — which is correct, and is
+    exactly why the attaching has to have happened by the time this question is asked.
+
+    Until now it only ever happened on ONE road in: the Teams tab bootstrap, which holds a verified
+    Entra token. Someone who activates through the ordinary Microsoft sign-in on the web — which is
+    where the Teams notification's "Open BTY" link sends people — was never bound at all, so they
+    opened BTY, saw nothing, and the person waiting on them never learned why. Measured in
+    production on 2026-09-03: recipient 7e979fc3 notified at 19:57, still unbound.
+
+    This is not a write bolted onto a read. Resolving WHICH rows belong to the caller is part of
+    answering the caller's own scope, and it is the same single UPDATE the bootstrap already
+    performs — idempotent, never re-pointing an already-bound row, creating nothing, and one
+    indexed lookup for the overwhelming majority of requests that bind zero rows.
+
+    NOT in the failure path, deliberately. A binding that fails must never be able to hide the list
+    it was about to make visible; the function swallows its own errors and returns 0.
+  */
+  await bindAnnouncementRecipientsForUser(admin, user.id);
 
   const items = await listMyAnnouncements(admin, user.id);
   const res = NextResponse.json({ ok: true, items }, { status: 200 });
