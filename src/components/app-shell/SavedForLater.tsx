@@ -103,10 +103,10 @@ const COPY: Record<Locale, {
     notSaved: "That didn't save.",
   },
   ko: {
-    title: "나중을 위해",
+    title: "나중에 보기",
     back: "오늘",
     loading: "불러오는 중…",
-    empty: "나중을 위해 저장한 것이 없습니다.",
+    empty: "아직 저장한 항목이 없습니다.",
     errorText: "저장한 항목을 불러오지 못했습니다.",
     retry: "다시 불러오기",
     noPreview: "저장한 Teams 메시지",

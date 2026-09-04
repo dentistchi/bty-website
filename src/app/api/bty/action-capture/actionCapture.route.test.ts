@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 const mockRequireConsentedUser = vi.fn();
+const mockRequireUser = vi.fn();
 const mockGetSupabaseAdmin = vi.fn();
 const mockEnsure = vi.fn();
 const mockList = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/lib/supabase/route-client", async (importOriginal) => {
   return {
     ...actual,
     requireConsentedUser: (...a: unknown[]) => mockRequireConsentedUser(...a),
+    requireUser: (...a: unknown[]) => mockRequireUser(...a),
   };
 });
 vi.mock("@/lib/supabase-admin", () => ({
@@ -52,11 +54,18 @@ const get = () => new NextRequest("https://x.test/api/bty/action-capture/mine");
 /** The default happy-path world: consented user A, admin available. */
 function consented(user: { id: string } | null = USER_A) {
   const base = new Response(null) as never;
-  mockRequireConsentedUser.mockResolvedValue({
+  const gate = {
     user,
     base: { cookies: { getAll: () => [] }, headers: new Headers() },
     consentDenied: null,
-  });
+  };
+  mockRequireConsentedUser.mockResolvedValue(gate);
+  /*
+    The Saved-for-later READ and its one DECISION moved off Arena consent on 2026-09-04, so they
+    authenticate with `requireUser`. Both primitives are stubbed with the same session, which keeps
+    every ownership assertion below identical and lets the POST route keep its consent contract.
+  */
+  mockRequireUser.mockResolvedValue(gate);
   mockGetSupabaseAdmin.mockReturnValue({ from: vi.fn() });
   void base;
 }
@@ -155,6 +164,28 @@ describe("POST — create vs duplicate semantics", () => {
 });
 
 describe("GET /api/bty/action-capture/mine — owner-scoped read", () => {
+  /*
+    ★ ARENA CONSENT IS NOT THE AUTHORITY HERE (device FAIL, 2026-09-04).
+
+    A real participant saved a Teams message successfully and their Saved for later screen said
+    "Saved items could not be loaded." The route asked `requireConsentedUser`, which reads
+    `arena_profiles` — a table holding 3 rows in all of production, against 15 Microsoft-linked
+    users — so it answered 403 `consent_required` before the query ran. Ownership is what protects
+    these rows, and it is asserted immediately below, unchanged.
+  */
+  it("★ does NOT ask for Arena learner consent to read a person's own saved items", async () => {
+    await GET(get());
+    expect(mockRequireConsentedUser).not.toHaveBeenCalled();
+    expect(mockRequireUser).toHaveBeenCalled();
+  });
+
+  it("★ an empty list is a SUCCESSFUL empty state, never the failure state", async () => {
+    mockList.mockResolvedValue([]);
+    const res = await GET(get());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, items: [] });
+  });
+
   it("401s an unauthenticated read and never queries", async () => {
     consented(null);
     const res = await GET(get());

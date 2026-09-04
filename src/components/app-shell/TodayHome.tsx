@@ -146,7 +146,7 @@ const COPY: Record<Locale, {
     showLess: "접기",
     todayHeader: "오늘",
     showMore: "더 보기",
-    savedForLater: "나중을 위해",
+    savedForLater: "나중에 보기",
     savedForLaterSub: "잃어버리고 싶지 않아 담아둔 것들.",
     todayEmpty: "오늘 할 일을 모두 마쳤습니다.",
     catEyebrow: {

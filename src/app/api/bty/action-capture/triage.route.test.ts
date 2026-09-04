@@ -9,11 +9,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const mockRequireConsentedUser = vi.fn();
+const mockRequireUser = vi.fn();
 const mockSetTriage = vi.fn();
 const mockGetSupabaseAdmin = vi.fn(() => ({}) as never);
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireConsentedUser: (...a: unknown[]) => mockRequireConsentedUser(...a),
+  requireUser: (...a: unknown[]) => mockRequireUser(...a),
   copyCookiesAndDebug: vi.fn(),
   unauthenticated: vi.fn(() => new Response(JSON.stringify({ ok: false, error: "UNAUTHENTICATED" }), { status: 401 })),
 }));
@@ -50,7 +52,14 @@ const capture = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRequireConsentedUser.mockResolvedValue({ user: { id: "user-a" }, base: new Response(), consentDenied: null });
+  /*
+    The saved lane's ONE decision moved off Arena consent with its read (2026-09-04): a person who
+    can see their saved item must be able to decide on it, or the list ships with controls that all
+    refuse. Both primitives carry the same session so every ownership assertion is unchanged.
+  */
+  const gate = { user: { id: "user-a" }, base: new Response(), consentDenied: null };
+  mockRequireConsentedUser.mockResolvedValue(gate);
+  mockRequireUser.mockResolvedValue(gate);
   mockGetSupabaseAdmin.mockReturnValue({} as never);
   mockSetTriage.mockResolvedValue({ ok: true, capture, changed: true });
 });
@@ -81,8 +90,14 @@ describe("7. the owner records a decision", () => {
 });
 
 describe("6+8+13. refusals", () => {
+  it("★ does NOT require Arena learner consent to decide on your own saved item", async () => {
+    await POST(req({ choice: "soon" }), ctx());
+    expect(mockRequireConsentedUser).not.toHaveBeenCalled();
+    expect(mockRequireUser).toHaveBeenCalled();
+  });
+
   it("refuses an unauthenticated caller before reaching the service", async () => {
-    mockRequireConsentedUser.mockResolvedValue({ user: null, base: new Response(), consentDenied: null });
+    mockRequireUser.mockResolvedValue({ user: null, base: new Response(), consentDenied: null });
     const res = await POST(req({ choice: "soon" }), ctx());
     expect(res.status).toBe(401);
     expect(mockSetTriage).not.toHaveBeenCalled();
