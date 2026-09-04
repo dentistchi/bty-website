@@ -147,10 +147,17 @@ describe("Saved for later — the item", () => {
   it("shows Open in Teams ONLY when a URL was stored", async () => {
     stubCaptures([item()]);
     const { unmount } = render(<SavedForLater locale="en" />);
+    /*
+      ★ A COMMAND, NOT AN ANCHOR (2026-09-04). It was `<a target="_blank" href={sourceUrl}>`, and
+      inside the Teams tab that anchor is the defect: the frame containment skips `_blank` links,
+      so `app.openLink` never ran and the tab was bounced to its own contentUrl. The destination is
+      unchanged — proven against the opener in `openSourceLink.test.ts` — but the element is now a
+      button, so there is no href to assert and no `_blank` for the containment to skip.
+    */
     const link = await screen.findByTestId("saved-open");
-    expect(link.getAttribute("href")).toBe("https://teams.microsoft.com/l/message/1");
-    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.tagName).toBe("BUTTON");
+    expect(link.getAttribute("href")).toBeNull();
+    expect(link.getAttribute("target")).toBeNull();
     unmount();
 
     cleanup();

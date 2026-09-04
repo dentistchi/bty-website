@@ -277,7 +277,10 @@ describe("11. the visible buttons are still the whole job", () => {
     await renderReady([item("a", CONV_A)]);
     const row = only();
     const names = within(row).getAllByRole("button").map((b) => b.textContent);
-    expect(names).toEqual(["Soon", "Later"]);
+    // "Open in Teams" became a button on 2026-09-04 (it was an anchor the Teams frame containment
+    // skipped). The point of this test is unchanged: exactly ONE Soon and ONE Later, no duplicate
+    // pair from a tray.
+    expect(names).toEqual(["Open in Teams", "Soon", "Later"]);
     // The old tray held a duplicate pair. Nothing renders one now.
     expect(within(row).queryByTestId("swipe-triage-soon")).toBeNull();
     expect(within(row).queryByTestId("swipe-triage-later")).toBeNull();
@@ -285,9 +288,9 @@ describe("11. the visible buttons are still the whole job", () => {
 
   it("Open in Teams is still reachable and correct", async () => {
     await renderReady([item("a", CONV_A)]);
-    const link = screen.getByTestId("saved-open") as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe("https://teams.microsoft.com/l/message/a");
-    expect(link.getAttribute("rel")).toContain("noopener");
+    const link = screen.getByTestId("saved-open");
+    expect(link.tagName).toBe("BUTTON");
+    expect(link.getAttribute("data-source-url")).toBe("https://teams.microsoft.com/l/message/a");
   });
 });
 

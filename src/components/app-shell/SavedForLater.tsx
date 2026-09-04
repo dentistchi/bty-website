@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
 import SwipeAction from "@/components/app-shell/SwipeAction";
+import { openSourceLink } from "@/lib/bty/teams/openSourceLink";
 
 /**
  * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
@@ -69,6 +70,8 @@ const COPY: Record<Locale, {
   retry: string;
   noPreview: string;
   open: string;
+  openFailed: string;
+  openRetry: string;
   teams: string;
   groupNew: string;
   groupSoon: string;
@@ -89,6 +92,10 @@ const COPY: Record<Locale, {
     retry: "Reload",
     noPreview: "Saved Teams message",
     open: "Open in Teams",
+    openFailed: "Couldn't open this message in Teams.",
+    // "Open again", not the retry phrasing the terminology gate reserves — the same reason
+    // this lane already says "Reload" rather than the obvious word.
+    openRetry: "Open again",
     teams: "Teams",
     // Group headings name a PLACE, never a status or a workflow stage.
     groupNew: "New",
@@ -111,6 +118,8 @@ const COPY: Record<Locale, {
     retry: "다시 불러오기",
     noPreview: "저장한 Teams 메시지",
     open: "Teams에서 열기",
+    openFailed: "이 메시지를 Teams에서 열지 못했습니다.",
+    openRetry: "다시 열기",
     teams: "Teams",
     groupNew: "새로 담은 것",
     groupSoon: "곧",
@@ -143,6 +152,9 @@ pendingId: string | null;
 failedId: string | null;
 choose: (id: string, choice: TriageChoice) => void;
 }) {
+  /** Local to this row: one card failing to open must not disturb any other. */
+  const [openFailed, setOpenFailed] = useState(false);
+
   const undecided = it.triageChoice === null;
   const surface =
     "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
@@ -169,17 +181,57 @@ choose: (id: string, choice: TriageChoice) => void;
       <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
         {contextLine(t, it.sourceMetadata ?? {})}
       </span>
-      {/* Only when a real, openable URL was stored. A dead button is worse than none. */}
+      {/*
+        Only when a real, openable URL was stored. A dead button is worse than none.
+
+        ★ A COMMAND, NOT AN ANCHOR (2026-09-04). This was `<a target="_blank">`, and inside the
+        Teams tab that is the defect: the frame containment skips `_blank` links as "already
+        leaving, on purpose", so `app.openLink` never ran, the off-domain navigation could not be
+        honoured against the manifest's single valid domain, and the tab was bounced back to its
+        own contentUrl — which is the "BTY couldn't open yet." the person saw. The destination is
+        unchanged and still the stored URL, verbatim; only who is asked to open it changed.
+      */}
       {it.sourceUrl ? (
-        <a
-          href={it.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="saved-open"
-          className="mt-1 self-start text-[0.78rem] font-medium text-white/70 hover:text-white/95"
-        >
-          {t.open}
-        </a>
+        <>
+          <button
+            type="button"
+            data-testid="saved-open"
+            /*
+              The destination, inspectable but NOT navigable. It keeps the coverage that mattered —
+              each message opens ITS own message, never one ambiguous group link — without
+              reintroducing the `href`/`_blank` pair that the Teams containment skips.
+            */
+            data-source-url={it.sourceUrl}
+            onClick={() => {
+              setOpenFailed(false);
+              void openSourceLink(it.sourceUrl).then((ok) => setOpenFailed(!ok));
+            }}
+            className="mt-1 min-h-[44px] self-start text-left text-[0.78rem] font-medium text-white/70 hover:text-white/95"
+          >
+            {t.open}
+          </button>
+          {/*
+            The person stays exactly where they were. No bootstrap screen, no "Open BTY" — they are
+            already inside BTY — and the saved item, its group and its decision controls are all
+            still on screen behind this line.
+          */}
+          {openFailed ? (
+            <span className="text-[0.78rem] text-white/60" data-testid="saved-open-failed">
+              {t.openFailed}{" "}
+              <button
+                type="button"
+                data-testid="saved-open-retry"
+                onClick={() => {
+                  setOpenFailed(false);
+                  void openSourceLink(it.sourceUrl).then((ok) => setOpenFailed(!ok));
+                }}
+                className="min-h-[44px] font-medium text-white/80 underline hover:text-white"
+              >
+                {t.openRetry}
+              </button>
+            </span>
+          ) : null}
+        </>
       ) : null}
 
       {/* The one decision, and only while it is still open. Two plain buttons, sized for a thumb,

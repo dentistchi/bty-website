@@ -91,8 +91,11 @@ describe("1. a resting card renders no action surface at all", () => {
   it("★ the duplicate Soon/Later pair from the screenshot no longer exists anywhere", async () => {
     await renderReady([item("a", CONV_A)]);
     const row = screen.getByTestId("swipe-row");
-    // The card's own two buttons, and only those two, in the whole row.
+    // The card's own controls, and only those, in the whole row. "Open in Teams" became a button
+    // on 2026-09-04 (it was an anchor the Teams frame containment skipped); the assertion this test
+    // exists for is unchanged — exactly ONE Soon and ONE Later, no duplicate pair from a tray.
     expect(within(row).getAllByRole("button", { hidden: true }).map((b) => b.textContent)).toEqual([
+      "Open in Teams",
       "Soon",
       "Later",
     ]);

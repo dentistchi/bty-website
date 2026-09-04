@@ -117,7 +117,12 @@ describe("14+15+16. expanding reaches the individual messages", () => {
       expect(within(row).getByTestId("saved-triage-later")).toBeTruthy();
     }
     // 16. message-specific links, never one ambiguous group link.
-    const hrefs = within(screen.getByTestId("saved-conversation-messages")).getAllByTestId("saved-open").map((a) => a.getAttribute("href"));
+    // The open control is a button now (see SavedForLater.test.tsx), so the destination is read
+    // from `data-source-url` instead of `href`. The assertion is unchanged in substance: three
+    // message-specific destinations, never one ambiguous group link.
+    const hrefs = within(screen.getByTestId("saved-conversation-messages"))
+      .getAllByTestId("saved-open")
+      .map((a) => a.getAttribute("data-source-url"));
     expect(new Set(hrefs).size).toBe(3);
     expect(hrefs).toContain("https://teams.microsoft.com/l/message/a");
   });
@@ -144,7 +149,7 @@ describe("17+18. what must never be merged", () => {
     // The channel post is its own plain card, still visible and still individually actionable.
     const solo = within(lane("new")).getAllByTestId("saved-item");
     expect(solo).toHaveLength(1);
-    expect(within(solo[0]).getByTestId("saved-open").getAttribute("href")).toContain("/channel");
+    expect(within(solo[0]).getByTestId("saved-open").getAttribute("data-source-url")).toContain("/channel");
   });
 
   it("17. two different conversations never merge, even in the same lane", async () => {

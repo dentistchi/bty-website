@@ -130,8 +130,8 @@ describe("25+26. everything that already worked still works", () => {
   it("keeps Open in Teams on a decided card", async () => {
     await renderReady([item({ triageChoice: "later", triagedAt: "2026-09-01T00:00:00Z" })]);
     const link = screen.getByTestId("saved-open");
-    expect(link.getAttribute("href")).toBe("https://teams.microsoft.com/l/message/1");
-    expect(link.getAttribute("rel")).toContain("noopener");
+    expect(link.tagName).toBe("BUTTON");
+    expect(link.getAttribute("data-source-url")).toBe("https://teams.microsoft.com/l/message/1");
   });
 
   it("keeps loading, empty and error as distinct states", async () => {
