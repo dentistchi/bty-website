@@ -83,7 +83,9 @@ describe("★ 1-3. capability, not Arena consent, decides", () => {
     expect(SRC).not.toContain("requireConsentedUser");
     expect(SRC).not.toContain("consentDenied");
     expect(SRC).not.toContain("arena_profiles");
-    expect(SRC).toContain("canTrackWithBty");
+    // 2026-09-04: and it does not consult ANY capability either — see the block below.
+    expect(SRC).not.toContain("canTrackWithBty");
+    expect(SRC).not.toContain("hasHostCapability");
   });
 });
 
@@ -92,38 +94,43 @@ describe("★ 4-7. the refusals", () => {
     requireUser.mockResolvedValue({ user: null, base: new Response("{}") });
     const res = await GET();
     expect(res.status).toBe(401);
-    expect(canTrackWithBty).not.toHaveBeenCalled();
     expect(listHostAnnouncements).not.toHaveBeenCalled();
   });
 
-  it("★ 4. an authenticated participant with no capability gets 403, not an empty list", async () => {
+  /*
+    ★ THESE THREE ASSERTED A 403 AND NOW ASSERT THE OPPOSITE (2026-09-04).
+
+    They were correct for a world where Track was organizational authority. It is collaboration
+    now, so the person who creates a run must be able to read it back — and 12 of 15
+    Microsoft-linked people held no grant. Nothing that protects these rows was removed: owner
+    scoping lives in the QUERY, and is asserted immediately below.
+  */
+  it("★ 4. an ordinary participant gets their OWN runs, not a 403", async () => {
     signedIn(PLAIN);
-    canTrackWithBty.mockResolvedValue(false);
     const res = await GET();
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "track_capability_required" });
-    // The tell that this is a refusal and not "you have nothing": no query was issued.
-    expect(listHostAnnouncements).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(listHostAnnouncements).toHaveBeenCalledWith({ __admin: true }, PLAIN);
   });
 
-  it("★ 5. a REVOKED Platform Admin with no Host grant gets 403", async () => {
-    canTrackWithBty.mockResolvedValue(false);
+  it("★ 5. a REVOKED Platform Admin still reads back the runs they own", async () => {
     const res = await GET();
-    expect(res.status).toBe(403);
-    expect(listHostAnnouncements).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
   });
 
-  it("★ 6. a REVOKED Host with no Admin grant gets 403", async () => {
-    canTrackWithBty.mockResolvedValue(false);
-    expect((await GET()).status).toBe(403);
+  it("★ 6. a REVOKED Host still reads back the runs they own", async () => {
+    expect((await GET()).status).toBe(200);
   });
 
+  it("★ 6b. no capability table is consulted at all", async () => {
+    await GET();
+    expect(canTrackWithBty).not.toHaveBeenCalled();
+  });
 });
 
 describe("★ 8-11. the authority source and the scope", () => {
-  it("★ 8. capability is asked about the SERVER-resolved user id", async () => {
+  it("★ 8. the OWNER SCOPE is the server-resolved session user, never a supplied one", async () => {
     await GET();
-    expect(canTrackWithBty).toHaveBeenCalledWith({ __admin: true }, HC);
+    expect(listHostAnnouncements).toHaveBeenCalledWith({ __admin: true }, HC);
   });
 
   it("★ 8. inheritance comes from the server-owned grant table", () => {

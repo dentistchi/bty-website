@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 /**
@@ -19,6 +19,21 @@ vi.mock("@/lib/bty/action-capture/ensureActionCapture.server", () => ({ ensureAc
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
 
 const TID = "11111111-1111-1111-1111-111111111111";
+
+/*
+  ★ THE TENANT BOUNDARY IS NOW PART OF THE CONTRACT (2026-09-04).
+
+  Save and Track share one floor — `isCollaborationParticipant` — which requires the activity's
+  tenant to be BTY's own. The Entra app is multi-tenant, so without this a foreign-tenant person who
+  completed Microsoft sign-in would be a participant. These fixtures therefore have to say which
+  tenant BTY is, exactly as production does through `TEAMS_BOT_TENANT_ID`.
+*/
+beforeEach(() => {
+  vi.stubEnv("TEAMS_BOT_TENANT_ID", TID);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 const OID = "22222222-2222-2222-2222-222222222222";
 const RESOLVED_USER = "81f08aa1-0000-0000-0000-000000000000";
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
-import { canTrackWithBty } from "@/lib/bty/authority/platformAdmin.server";
 import { listHostAnnouncements } from "@/lib/bty/announcement/announcementService.server";
 
 export const runtime = "nodejs";
@@ -27,11 +26,11 @@ export const dynamic = "force-dynamic";
  * do with Arena. Asking a Host to accept a learner document to read back their own action is a
  * boundary error, not a safeguard.
  *
- * What replaces it is STRICTER about the thing that matters here: the caller must not only be
- * authenticated, they must hold Track capability — the same `canTrackWithBty` (active Platform
- * Admin OR active Foundry Host) that guards the Teams Track gates. Before this change any
- * authenticated, consented person could call this route and receive an empty list; now a
- * non-Host is refused outright.
+ * It was then briefly replaced by `canTrackWithBty` (active Platform Admin OR active Foundry
+ * Host). That went too far in the other direction once Track became a participant capability: the
+ * person who creates a run must be able to read it back, and 12 of 15 Microsoft-linked people held
+ * no grant. Owner scoping in the query — never a capability — is what keeps one Host's audit out
+ * of another's hands, and it is unchanged.
  *
  * The recipient side (`/mine`, `/respond`) keeps its consent contract untouched: that IS learner
  * data, answered by a learner, and this slice does not reason about it.
@@ -43,13 +42,20 @@ export async function GET(req: NextRequest) {
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ ok: false, items: [] }, { status: 503 });
 
-  // Capability, not consent. Same predicate as the Track gates, so the person who could create a
-  // run is exactly the person who can read one back.
-  if (!(await canTrackWithBty(admin, user.id))) {
-    const denied = NextResponse.json({ error: "track_capability_required" }, { status: 403 });
-    copyCookiesAndDebug(base, denied, req, false);
-    return denied;
-  }
+  /*
+    OWNERSHIP IS THE BOUNDARY HERE, NOT A CAPABILITY (2026-09-04).
+
+    This route used `canTrackWithBty` — active Platform Admin OR active Foundry Host. Track is now
+    a participant capability, so requiring a Host grant to read back or act on a run you yourself
+    created would lock the ordinary person out of their own action the moment they took it.
+
+    Nothing is loosened that was ever load-bearing. The thing that actually protects these rows is
+    OWNER SCOPING, and it has always lived where no caller can reach it: in the query for the read,
+    and inside the SECURITY DEFINER function for the write, which joins the recipient to its
+    announcement owner and answers a non-owner exactly like a missing row. A person who owns
+    nothing therefore sees nothing and can change nothing — the capability check was never what
+    made that true.
+  */
 
   // Owner scoping stays in the QUERY, where no later renderer can forget it.
   const items = await listHostAnnouncements(admin, user.id);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
-import { canTrackWithBty } from "@/lib/bty/authority/platformAdmin.server";
 import { handleRecipientFollowUp } from "@/lib/bty/announcement/announcementService.server";
 
 export const runtime = "nodejs";
@@ -35,11 +34,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ recipientI
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ ok: false }, { status: 503 });
 
-  if (!(await canTrackWithBty(admin, user.id))) {
-    const denied = NextResponse.json({ error: "track_capability_required" }, { status: 403 });
-    copyCookiesAndDebug(base, denied, req, false);
-    return denied;
-  }
+  /*
+    OWNERSHIP IS THE BOUNDARY HERE, NOT A CAPABILITY (2026-09-04).
+
+    This route used `canTrackWithBty` — active Platform Admin OR active Foundry Host. Track is now
+    a participant capability, so requiring a Host grant to read back or act on a run you yourself
+    created would lock the ordinary person out of their own action the moment they took it.
+
+    Nothing is loosened that was ever load-bearing. The thing that actually protects these rows is
+    OWNER SCOPING, and it has always lived where no caller can reach it: in the query for the read,
+    and inside the SECURITY DEFINER function for the write, which joins the recipient to its
+    announcement owner and answers a non-owner exactly like a missing row. A person who owns
+    nothing therefore sees nothing and can change nothing — the capability check was never what
+    made that true.
+  */
 
   const { recipientId } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as { handled?: unknown };

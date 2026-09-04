@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 /**
@@ -24,6 +24,21 @@ vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
 }));
 
 const TID = "11111111-1111-1111-1111-111111111111";
+
+/*
+  ★ THE TENANT BOUNDARY IS NOW PART OF THE CONTRACT (2026-09-04).
+
+  Save and Track share one floor — `isCollaborationParticipant` — which requires the activity's
+  tenant to be BTY's own. The Entra app is multi-tenant, so without this a foreign-tenant person who
+  completed Microsoft sign-in would be a participant. These fixtures therefore have to say which
+  tenant BTY is, exactly as production does through `TEAMS_BOT_TENANT_ID`.
+*/
+beforeEach(() => {
+  vi.stubEnv("TEAMS_BOT_TENANT_ID", TID);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 const OID = "22222222-2222-2222-2222-222222222222";
 const HOST = "81f08aa1-0000-0000-0000-000000000000";
 const A = "33333333-3333-3333-3333-333333333333";
@@ -209,48 +224,66 @@ describe("auth ordering is unchanged", () => {
   });
 });
 
-describe("★ Track is a HOST action", () => {
+describe("★ Track is a COLLABORATION action", () => {
   /*
+    ★ THIS BLOCK WAS "Track is a HOST action" AND IS DELIBERATELY REVERSED (2026-09-04).
+
     Teams decides who SEES a message action and gives an app no per-user way to hide one, so an
-    ordinary employee will find "Track with BTY" in the menu. The server is the only place
-    authority can live, which is what these tests pin down: refused before the dialog is drawn,
-    refused again on a submit forged past it, and Save to BTY untouched by any of it.
+    ordinary employee finds "Track with BTY" in the menu either way. The old contract answered them
+    with "Tracking isn't available on your BTY account." — and a real DSO employee met that sentence
+    during a demonstration. Measured: 3 of 15 Microsoft-linked people held admin or a Host grant.
+
+    The server is still the only place a boundary can live. It is just a different boundary: a
+    resolved Microsoft identity inside BTY's own tenant, applied above the command switch so Save
+    and Track cannot drift apart.
   */
 
-  it("a non-Host opening the dialog gets a calm message and NO People Picker", async () => {
+  it("an ordinary participant opening the dialog GETS the People Picker", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
     const dump = JSON.stringify(await res.json());
-    expect(dump).toContain("Tracking isn't available");
-    expect(dump).not.toContain("Data.Query");
-    expect(dump).not.toContain("currentContext");
+    expect(dump).not.toContain("Tracking isn't available");
+    expect(dump).toContain("Data.Query");
+    expect(dump).toContain("currentContext");
   });
 
-  it("a non-Host opening the dialog WRITES NOTHING", async () => {
+  it("an ordinary participant opening the dialog still WRITES NOTHING", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
     await POST(req(activity({ name: "composeExtension/fetchTask" })));
     expect(rpc).not.toHaveBeenCalled();
     expect(ensureActionCapture).not.toHaveBeenCalled();
   });
 
-  it("★ a non-Host SUBMIT creates no tracked announcement", async () => {
-    // The dialog is not the gate; a submit posted directly must be refused on its own.
+  it("★ an ordinary participant's SUBMIT creates the tracked announcement", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
     const res = await POST(req(activity({}, { data: { hostFraming: "Please confirm", recipients: A } })));
-    expect(rpc).not.toHaveBeenCalled();
-    expect(ensureActionCapture).not.toHaveBeenCalled();
-    expect(JSON.stringify(await res.json())).toContain("Tracking isn't available");
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.anything());
+    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(await res.json())).not.toContain("Tracking isn't available");
   });
 
-  it("the gate is asked about the SERVER-resolved user, never a client-supplied one", async () => {
+  it("★ the boundary is the SERVER-resolved identity, never a client-supplied one", async () => {
+    /*
+      The client may claim a user id, a host flag, anything. None of it is read: the identity comes
+      from the resolver, and the tenant from the activity the Bot Framework token authenticated.
+    */
     await POST(
       req(activity({ user_id: "attacker" }, { data: { hostFraming: "x", recipients: A, userId: "attacker", isHost: true } })),
     );
-    expect(isActiveFoundryHost).toHaveBeenCalledWith(expect.anything(), HOST);
-    expect(JSON.stringify(isActiveFoundryHost.mock.calls)).not.toContain("attacker");
+    const trackCall = rpc.mock.calls.find((c) => c[0] === "bty_track_announcement");
+    expect(trackCall?.[1].p_owner_user_id).toBe(HOST);
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain("attacker");
   });
 
-  it("a Host still tracks normally", async () => {
+  it("★ a FOREIGN-TENANT identity is refused, and writes nothing", async () => {
+    const foreign = { ...activity({}, { data: { hostFraming: "x", recipients: A } }) } as Record<string, unknown>;
+    foreign.channelData = { tenant: { id: "99999999-9999-9999-9999-999999999999" } };
+    await POST(req(foreign));
+    expect(rpc).not.toHaveBeenCalled();
+    expect(ensureActionCapture).not.toHaveBeenCalled();
+  });
+
+  it("a Host tracks exactly as anyone else does — no special case", async () => {
     isActiveFoundryHost.mockResolvedValue(true);
     const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: `${A},${B}` } })));
     expect(res.status).toBe(200);
@@ -258,10 +291,10 @@ describe("★ Track is a HOST action", () => {
     expect(JSON.stringify(await res.json())).toContain("2 people");
   });
 
-  it("★ Save to BTY does NOT inherit the Host gate", async () => {
+  it("★ Save to BTY needs no grant either", async () => {
     /*
-      The whole point of the boundary: capture stays an ordinary-employee action. If the gate ever
-      moves above the command switch, this is what fails.
+      Save was ALWAYS an ordinary-employee action and stays one. What changed is that Track joined
+      it, so both now sit above the command switch under one rule.
     */
     isActiveFoundryHost.mockResolvedValue(false);
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" }, { commandId: "saveToBty" })));

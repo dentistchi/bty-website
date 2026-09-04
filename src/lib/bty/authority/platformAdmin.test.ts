@@ -18,7 +18,7 @@ vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
   isActiveFoundryHost: (...a: unknown[]) => isActiveFoundryHost(...a),
 }));
 
-import { isActivePlatformAdmin, canTrackWithBty } from "./platformAdmin.server";
+import { isActivePlatformAdmin, hasHostCapability } from "./platformAdmin.server";
 
 const ADMIN = "18b1ee80-0000-0000-0000-000000000001";
 const HOST = "81f08aa1-0000-0000-0000-000000000002";
@@ -97,15 +97,23 @@ describe("isActivePlatformAdmin — the source of truth is one row", () => {
   });
 });
 
-describe("★ canTrackWithBty — admin inherits Host capability", () => {
+/*
+  ★ RENAMED, NOT WEAKENED (2026-09-04). These tests were written against `canTrackWithBty`, which
+  aliased `hasHostCapability`. Track is no longer an organizational-authority action — its floor is
+  `isCollaborationParticipant` — so the alias is gone and these assertions now name the rule they
+  were always exercising. Every expected value below is unchanged: this is the ORGANIZATIONAL
+  AUTHORING authority (Event creation, 31 Foundry manager routes), and it must keep behaving
+  exactly as it did.
+*/
+describe("★ hasHostCapability — admin inherits Host capability (organizational authoring)", () => {
   it("★ 1+2. an active admin can track, with NO Foundry Host grant at all", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
   });
 
   it("★ 3. the admin path never consults the Host table — so it cannot be blocked by it", async () => {
     isActiveFoundryHost.mockRejectedValue(new Error("foundry_host_grants unavailable"));
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
     expect(isActiveFoundryHost).not.toHaveBeenCalled();
   });
 
@@ -115,34 +123,34 @@ describe("★ canTrackWithBty — admin inherits Host capability", () => {
     delete process.env.MS_GRAPH_CLIENT_ID;
     delete process.env.AZURE_AD_CLIENT_ID;
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "active" } }), ADMIN)).toBe(true);
   });
 
   it("★ 6. a manual Host with no admin grant still tracks", async () => {
     isActiveFoundryHost.mockResolvedValue(true);
-    expect(await canTrackWithBty(db({}), HOST)).toBe(true);
+    expect(await hasHostCapability(db({}), HOST)).toBe(true);
   });
 
   it("★ 7. an ordinary participant — neither admin nor host — cannot track", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({}), PLAIN)).toBe(false);
+    expect(await hasHostCapability(db({}), PLAIN)).toBe(false);
   });
 
   it("★ 8. a REVOKED admin loses the inherited capability unless independently a Host", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "revoked" } }), ADMIN)).toBe(false);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "revoked" } }), ADMIN)).toBe(false);
     isActiveFoundryHost.mockResolvedValue(true);
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "revoked" } }), ADMIN)).toBe(true);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "revoked" } }), ADMIN)).toBe(true);
   });
 
   it("a database failure on the admin lookup still lets a genuine Host through", async () => {
     isActiveFoundryHost.mockResolvedValue(true);
-    expect(await canTrackWithBty(db({}, { throws: true }), HOST)).toBe(true);
+    expect(await hasHostCapability(db({}, { throws: true }), HOST)).toBe(true);
   });
 
   it("★ a total failure of BOTH sources denies", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({}, { throws: true }), PLAIN)).toBe(false);
+    expect(await hasHostCapability(db({}, { throws: true }), PLAIN)).toBe(false);
   });
 });
 
@@ -170,13 +178,13 @@ describe("★ what must NEVER grant authority", () => {
     // The only way to express "this user" is the canonical id. There is no object to forge.
     const forged = { id: PLAIN, email: "hc@bty-dso.com", user_metadata: { is_admin: true, roles: ["bty_admin"] } };
     isActiveFoundryHost.mockResolvedValue(false);
-    expect(await canTrackWithBty(db({}), forged.id)).toBe(false);
+    expect(await hasHostCapability(db({}), forged.id)).toBe(false);
   });
 
   it("★ 13. a different canonical id — a wrong tenant/AAD binding — gets nothing", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
     // The admin grant exists, but this is not that user.
-    expect(await canTrackWithBty(db({ [ADMIN]: { status: "active" } }), PLAIN)).toBe(false);
+    expect(await hasHostCapability(db({ [ADMIN]: { status: "active" } }), PLAIN)).toBe(false);
   });
 });
 

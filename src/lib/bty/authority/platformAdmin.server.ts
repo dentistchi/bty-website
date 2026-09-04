@@ -82,16 +82,20 @@ export async function hasHostCapability(
   return isActiveFoundryHost(admin, userId);
 }
 
-/**
- * Track with BTY is a Host action, so it is the Host capability and nothing separate.
+/*
+ * `canTrackWithBty` USED TO LIVE HERE, AND IS DELIBERATELY GONE (2026-09-04).
  *
- * Named for the capability rather than aliased silently, because the Track gate is the one a
- * reader arrives at from the product side — and because a second rule for "who may track" is
- * exactly the duplication this function exists to prevent.
+ * It aliased `hasHostCapability`, on the premise that Track with BTY is an act of organizational
+ * authority. Measured against production, that premise cost the product a real demonstration:
+ * 3 of 15 Microsoft-linked people held admin or Host, and a DSO employee found "Track with BTY"
+ * in their Teams menu and was told it was not available on their account.
+ *
+ * Track, Save, receiving a Track and answering one are COLLABORATION, and their floor is now
+ * `isCollaborationParticipant` in `src/domain/authority/collaborationParticipant.ts` — a resolved
+ * Microsoft identity inside BTY's own tenant. The function is removed rather than left as a
+ * deprecated alias, because an alias that still compiles is an invitation to re-gate collaboration
+ * on organizational authority by accident.
+ *
+ * `hasHostCapability` above is unchanged and remains the ORGANIZATIONAL AUTHORING authority:
+ * 31 Foundry manager routes, and Event creation.
  */
-export async function canTrackWithBty(
-  admin: SupabaseClient,
-  userId: string | null | undefined,
-): Promise<boolean> {
-  return hasHostCapability(admin, userId);
-}

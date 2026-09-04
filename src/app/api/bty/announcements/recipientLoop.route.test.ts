@@ -245,7 +245,7 @@ describe("★ 6-8. first activation binds, once", () => {
 describe("★ 25. Save to BTY and Saved for later are untouched", () => {
   it("neither route nor service was changed by this slice", () => {
     const INVOKE = code("src/app/api/bty/teams/invoke/route.ts");
-    expect(INVOKE).toContain("canTrackWithBty");        // the Track gate, unchanged
+    expect(INVOKE).toContain("isCollaborationParticipant"); // the participant floor (2026-09-04)
     expect(INVOKE).toContain("ensureActionCapture");    // Save, unchanged
     const SAVED = code("src/components/app-shell/SavedForLater.tsx");
     expect(SAVED).toContain("action-capture/mine");

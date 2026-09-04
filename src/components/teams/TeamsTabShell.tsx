@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
+import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
 import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
 import {
@@ -248,7 +249,25 @@ export default function TeamsTabShell() {
     await run();
   }, [run]);
 
-  if (phase.k === "ready") return <BtyDailyAppShell locale={phase.locale} />;
+  /*
+    Slice TQ-1 — the runtime probe, and ONLY when the URL asks for it.
+
+    Read straight from `window.location` rather than `useSearchParams`, because this tab is
+    deliberately outside the app's routing conventions and a Suspense boundary here would be a new
+    way for the surface we are diagnosing to fail. A missing or absent flag renders nothing at all,
+    so the ordinary tab is byte-identical to what it was.
+  */
+  const diag =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("diag") === "1";
+
+  if (phase.k === "ready") {
+    return (
+      <>
+        <BtyDailyAppShell locale={phase.locale} />
+        {diag ? <TeamsRuntimeProbe /> : null}
+      </>
+    );
+  }
 
   const line =
     phase.k === "starting"

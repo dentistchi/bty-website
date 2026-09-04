@@ -59,12 +59,16 @@ describe("the two gates", () => {
     expect(notifyRecipient).not.toHaveBeenCalled();
   });
 
-  it("a signed-in user without Track capability is refused, and sends nothing", async () => {
-    canTrackWithBty.mockResolvedValue(false);
+  /*
+    ★ REVERSED (2026-09-04). Track is a participant capability now, so a Host grant can no longer
+    be the price of acting on a run you created. Ownership — verified inside the SECURITY DEFINER
+    function, which answers a non-owner exactly like a missing row — is what protects these rows,
+    and it is unchanged.
+  */
+  it("a signed-in participant may notify a recipient of the run THEY own", async () => {
     const res = await POST();
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "track_capability_required" });
-    expect(notifyRecipient).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(canTrackWithBty).not.toHaveBeenCalled();
   });
 
   it("the actor is the SESSION user — never anything in the body", async () => {

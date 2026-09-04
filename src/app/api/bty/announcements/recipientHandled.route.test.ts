@@ -99,12 +99,16 @@ describe("★ everyone else is refused", () => {
     expect(handleRecipientFollowUp).not.toHaveBeenCalled();
   });
 
-  it("★ a participant with no Track capability is 403 and writes nothing", async () => {
-    canTrackWithBty.mockResolvedValue(false);
+  /*
+    ★ REVERSED (2026-09-04). Track is a participant capability now, so a Host grant can no longer
+    be the price of acting on a run you created. Ownership — verified inside the SECURITY DEFINER
+    function, which answers a non-owner exactly like a missing row — is what protects these rows,
+    and it is unchanged.
+  */
+  it("★ an ordinary participant acts on the run THEY own", async () => {
     const res = await POST({ handled: true });
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "track_capability_required" });
-    expect(handleRecipientFollowUp).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(canTrackWithBty).not.toHaveBeenCalled();
   });
 
   it("★ ANOTHER Host holds capability but is answered not_found — ownership is decided in SQL", async () => {
@@ -180,12 +184,13 @@ describe("★ what the database enforces, not the route", () => {
 });
 
 describe("★ Arena consent is not consulted, and Track capability is", () => {
-  it("the route uses requireUser + canTrackWithBty", () => {
+  it("the route uses requireUser and NO capability helper", () => {
     const SRC = readFileSync("src/app/api/bty/announcements/recipients/[recipientId]/handle/route.ts", "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
     expect(SRC).toContain("requireUser");
-    expect(SRC).toContain("canTrackWithBty");
+    expect(SRC).not.toContain("canTrackWithBty");
+    expect(SRC).not.toContain("hasHostCapability");
     expect(SRC).not.toContain("requireConsentedUser");
     expect(SRC).not.toMatch(/@[a-z0-9.-]+\.[a-z]{2,}/i);
     expect(SRC).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);

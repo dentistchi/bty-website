@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
-import { canTrackWithBty } from "@/lib/bty/authority/platformAdmin.server";
 import { notifyRecipient } from "@/lib/bty/announcement/notifyRecipient.server";
 
 export const runtime = "nodejs";
@@ -10,8 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/bty/announcements/recipients/[recipientId]/notify — tell ONE person, in Teams.
  *
- * The same two gates as the sibling `handle` route, for the same reasons: `canTrackWithBty`
- * decides whether this endpoint exists for you, and ownership is then verified inside
+ * The same boundary as the sibling `handle` route, for the same reason: ownership, verified inside
  * `bty_begin_recipient_notification` by joining the recipient to its announcement owner. A
  * non-owner is answered `not_found`, identically to a missing row, so nobody can use this to
  * discover that someone else's run exists.
@@ -63,11 +61,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ recipientI
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ ok: false }, { status: 503 });
 
-  if (!(await canTrackWithBty(admin, user.id))) {
-    const denied = NextResponse.json({ error: "track_capability_required" }, { status: 403 });
-    copyCookiesAndDebug(base, denied, req, false);
-    return denied;
-  }
+  /*
+    OWNERSHIP IS THE BOUNDARY HERE, NOT A CAPABILITY (2026-09-04).
+
+    Track is a participant capability now, so a Host grant can no longer be the price of telling
+    someone about a run you created. `bty_begin_recipient_notification` already joins the recipient
+    to its announcement owner and answers a non-owner exactly like a missing row, so a person who
+    owns nothing can reach nobody through this route — and could not before either. What the
+    capability check actually decided was whether the endpoint existed for you at all, which is not
+    a boundary this endpoint needs.
+  */
 
   const { recipientId } = await ctx.params;
   const result = await notifyRecipient(admin, { recipientId, ownerUserId: user.id });

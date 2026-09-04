@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { isLeaderTrack } from "@/lib/bty/event-qr/isLeaderTrack";
+import { hasHostCapability } from "@/lib/bty/authority/platformAdmin.server";
 import { signEventQrToken } from "@/lib/bty/event-qr/event-qr-token";
 
 export const runtime = "nodejs";
@@ -14,7 +13,7 @@ export const runtime = "nodejs";
  * receives a signed Event QR token (second QR family, `btyev1`). NO scan / NO
  * participation / NO XP / NO activity_xp_events write — those are later slices.
  *
- * Auth/gate order: requireUser (401) → approved member (403) → leader-track (403)
+ * Auth/gate order: requireUser (401) → Host capability (403 foundry_host_required)
  * → input validation (400) → service-role insert → sign token.
  *
  * Insert uses the service-role client: `bty_events` RLS exposes only a SELECT
@@ -31,18 +30,44 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  // Approved-member gate (RLS self-read of arena_membership_requests).
-  const gate = await requireApprovedMembership(supabase, user.id);
-  if (!gate.approved) return NextResponse.json({ error: gate.error }, { status: gate.status });
-
-  // Service-role client — required for the leader-track read (admin-managed state)
-  // and the bty_events insert (no RLS insert policy).
+  // Service-role client — required for the authority read and the bty_events insert
+  // (the table has no RLS insert policy).
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 });
 
-  // Leader-track gate — Event creation is restricted to leader-track-approved users.
-  const leaderTrack = await isLeaderTrack(admin, user.id);
-  if (!leaderTrack) return NextResponse.json({ error: "LEADER_TRACK_REQUIRED" }, { status: 403 });
+  /*
+    ★ ORGANIZATIONAL AUTHORING AUTHORITY — ONE RULE, THE ONE THE DOOR ALREADY USES (2026-09-04).
+
+    This route asked for TWO things nobody in production could satisfy:
+
+      requireApprovedMembership  → `arena_membership_requests`   MEASURED: 0 rows
+      isLeaderTrack              → `leadership_engine_state`     MEASURED: 0 rows
+
+    So Event creation was refused for EVERY user, including both platform admins — and `bty_events`
+    has 0 rows, meaning an event has never once been created. Meanwhile the DOOR that opens this
+    form (`LearnDoors`, `canCreate`) is gated on a THIRD authority: `hasHostCapability`. A
+    host-capable person was therefore shown a complete Event form and, on submit, a flat
+    "You're not authorized to open events." — which is what a real DSO demonstration hit.
+
+    Worse, the two refusals rendered the SAME sentence, so the screen could not even say which
+    authority had refused.
+
+    The room now uses the door's authority: `hasHostCapability` — active Platform Admin OR active
+    Foundry Host grant — the same rule that already governs Training/Module authoring across 31
+    manager routes. One organizational-authoring authority instead of three.
+
+    ★ ARENA MEMBERSHIP WAS NOT A SAFEGUARD HERE. It gates Arena PRACTICE entry (5 other routes keep
+    it, untouched). A Reality Event is a leader opening a real moment for their team; requiring the
+    learner-practice membership for it is the same borrowed-authority error that put Arena consent
+    in front of a Host's own tracking audit.
+
+    ★ THIS DOES NOT WIDEN XP. `xp_value` is validated below exactly as before, and awarding still
+    happens only through the scan route's signed token. A participant gains nothing here: they
+    cannot see the door and, if they forge the call, they are refused by this line.
+  */
+  if (!(await hasHostCapability(admin, user.id))) {
+    return NextResponse.json({ error: "foundry_host_required" }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
 

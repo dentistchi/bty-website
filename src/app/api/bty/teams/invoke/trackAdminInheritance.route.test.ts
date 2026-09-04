@@ -1,15 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 /**
  * Track with BTY at the ROUTE, for a platform admin who holds no Foundry Host grant.
  *
- * ★ THE PRODUCTION FAILURE THIS CLOSES (2026-09-02, hc@bty-dso.com):
- *   "Tracking isn't available on your BTY account."
+ * ★ TWO PRODUCTION FAILURES, AND THE SECOND SUPERSEDED THE FIRST\'S FIX.
  *
- * The gate asked exactly one question — `isActiveFoundryHost` — and hc had no grant row, so an
- * account the Founder considers a platform admin was refused before the People Picker was drawn
- * and before the message or its attachment was ever inspected.
+ * 2026-09-02: the gate asked exactly one question — `isActiveFoundryHost` — so a platform admin
+ * with no grant row was refused before the People Picker was drawn. Admin inheritance fixed that.
+ *
+ * 2026-09-04: the same sentence, "Tracking isn\'t available on your BTY account.", reached a real
+ * DSO employee during a demonstration. Inheritance was not the problem; the CLASS of authority
+ * was. Measured: 3 of 15 Microsoft-linked people held admin or a Host grant, and all 9 tracked
+ * announcements belonged to 2 of them. Track is collaboration, so it no longer consults either
+ * table — see the inverted block below.
  *
  * These tests drive the real route with a mocked database, so they prove the DEPLOYED predicate,
  * not just the pure function. Both gates are covered: the dialog (`fetchTask`, which exposes the
@@ -40,6 +44,21 @@ vi.mock("@/lib/supabase-admin", () => ({
 }));
 
 const TID = "11111111-1111-1111-1111-111111111111";
+
+/*
+  ★ THE TENANT BOUNDARY IS NOW PART OF THE CONTRACT (2026-09-04).
+
+  Save and Track share one floor — `isCollaborationParticipant` — which requires the activity's
+  tenant to be BTY's own. The Entra app is multi-tenant, so without this a foreign-tenant person who
+  completed Microsoft sign-in would be a participant. These fixtures therefore have to say which
+  tenant BTY is, exactly as production does through `TEAMS_BOT_TENANT_ID`.
+*/
+beforeEach(() => {
+  vi.stubEnv("TEAMS_BOT_TENANT_ID", TID);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 const OID = "22222222-2222-2222-2222-222222222222";
 /** hc — a platform admin with NO foundry_host_grants row. */
 const ADMIN = "18b1ee80-0000-0000-0000-000000000001";
@@ -124,9 +143,10 @@ describe("★ an active platform admin with NO Host grant", () => {
     expect(await text(res)).not.toContain(REFUSAL);
   });
 
-  it("★ 3. the admin lookup asks ONLY the platform-admin table", async () => {
+  it("★ 3. Track asks NO authority table at all — admin or otherwise", async () => {
     await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect(adminGrantRow).toHaveBeenCalledWith("bty_platform_admin_grants", ADMIN);
+    expect(adminGrantRow).not.toHaveBeenCalled();
+    expect(isActiveFoundryHost).not.toHaveBeenCalled();
   });
 
   it("★ 4. opening the dialog still writes nothing", async () => {
@@ -190,54 +210,80 @@ describe("★ the file-containing message the Founder actually tracked", () => {
   });
 });
 
-describe("★ everyone else is still refused, at BOTH gates", () => {
-  it("★ 10. an ordinary participant is refused BEFORE the picker is drawn", async () => {
+/*
+  ★ THE REFUSAL BLOCK IS INVERTED, DELIBERATELY (2026-09-04).
+
+  These tests used to assert that everyone without admin or a Host grant was refused at both gates.
+  That WAS the contract, and measured against production it meant 3 of 15 Microsoft-linked people
+  could track — which is how a real DSO employee, shown BTY, found "Track with BTY" in their menu
+  and was told it was not available on their account.
+
+  Track is collaboration, not organizational authority. So the same scenarios are kept — an
+  ordinary participant, a revoked admin, a database failure on the authority table — and every
+  expectation is now that they TRACK, because none of those facts is consulted any more. What
+  replaces them is the boundary that IS load-bearing: a resolved identity, inside BTY's tenant.
+*/
+describe("★ Track is COLLABORATION — organizational authority is no longer consulted", () => {
+  it("★ 10. an ordinary participant — no admin grant, no Host grant — receives the People Picker", async () => {
     adminGrantRow.mockResolvedValue({ data: null, error: null });
     isActiveFoundryHost.mockResolvedValue(false);
-    const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    const body = await text(res);
-    expect(body).toContain(REFUSAL);
-    expect(body).not.toContain("Data.Query"); // no People Picker dataset reached them
+    const body = await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))));
+    expect(body).not.toContain(REFUSAL);
+    expect(body).toContain("Data.Query"); // the picker they were previously denied
   });
 
-  it("★ 11. an ordinary participant's forged SUBMIT writes nothing", async () => {
+  it("★ 11. an ordinary participant's SUBMIT creates the run", async () => {
     adminGrantRow.mockResolvedValue({ data: null, error: null });
     isActiveFoundryHost.mockResolvedValue(false);
-    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
-    expect(await text(res)).toContain(REFUSAL);
+    await POST(req(activity({}, { data: { hostFraming: "please read", recipients: A } })));
+    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls.map((c) => c[0])).toEqual(["bty_track_announcement"]);
+  });
+
+  it("★ 12. a REVOKED admin still tracks — revocation governs authoring, not collaboration", async () => {
+    adminGrantRow.mockResolvedValue({ data: { status: "revoked" }, error: null });
+    isActiveFoundryHost.mockResolvedValue(false);
+    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).not.toContain(REFUSAL);
+  });
+
+  it("★ 13+14. an admin and a manual Host are not special-cased — they track as participants", async () => {
+    adminGrantRow.mockResolvedValue({ data: { status: "active" }, error: null });
+    isActiveFoundryHost.mockResolvedValue(true);
+    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).not.toContain(REFUSAL);
+  });
+
+  it("★ 15. a database failure on the authority table cannot break Track — it is never asked", async () => {
+    adminGrantRow.mockRejectedValue(new Error("connection reset"));
+    isActiveFoundryHost.mockRejectedValue(new Error("connection reset"));
+    const body = await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))));
+    expect(body).toContain("Data.Query");
+    expect(adminGrantRow).not.toHaveBeenCalled();
+    expect(isActiveFoundryHost).not.toHaveBeenCalled();
+  });
+
+  it("★ 16. an UNRESOLVED Teams identity is still refused, and writes nothing", async () => {
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "NOT_LINKED", userId: null });
+    const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
+    expect(await text(res)).not.toContain("Data.Query");
     expect(ensureActionCapture).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("★ 12. a REVOKED admin is refused", async () => {
-    adminGrantRow.mockResolvedValue({ data: { status: "revoked" }, error: null });
-    isActiveFoundryHost.mockResolvedValue(false);
-    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).toContain(REFUSAL);
+  it("★ 17. a FOREIGN-TENANT resolved identity is refused — the boundary that replaced the grant", async () => {
+    const foreign = { ...activity({ name: "composeExtension/fetchTask" }) } as Record<string, unknown>;
+    foreign.channelData = { tenant: { id: "99999999-9999-9999-9999-999999999999" } };
+    const res = await POST(req(foreign));
+    const body = await text(res);
+    expect(body).not.toContain("Data.Query");
+    expect(ensureActionCapture).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("★ 13. a revoked admin who IS independently a Host still tracks", async () => {
-    adminGrantRow.mockResolvedValue({ data: { status: "revoked" }, error: null });
-    isActiveFoundryHost.mockResolvedValue(true);
-    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).not.toContain(REFUSAL);
-  });
-
-  it("★ 14. a manual Host with no admin grant still tracks", async () => {
-    adminGrantRow.mockResolvedValue({ data: null, error: null });
-    isActiveFoundryHost.mockResolvedValue(true);
-    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).not.toContain(REFUSAL);
-  });
-
-  it("★ 15. a database failure on the admin lookup FAILS CLOSED for a non-host", async () => {
-    adminGrantRow.mockRejectedValue(new Error("connection reset"));
-    isActiveFoundryHost.mockResolvedValue(false);
-    expect(await text(await POST(req(activity({ name: "composeExtension/fetchTask" }))))).toContain(REFUSAL);
-  });
-
-  it("★ 16. an UNRESOLVED Teams identity never reaches the capability gate at all", async () => {
-    resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "NOT_LINKED", userId: null });
+  it("★ 18. an unset BTY tenant FAILS CLOSED rather than accepting everyone", async () => {
+    vi.stubEnv("TEAMS_BOT_TENANT_ID", "");
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect(adminGrantRow).not.toHaveBeenCalled();
     expect(await text(res)).not.toContain("Data.Query");
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

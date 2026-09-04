@@ -14,7 +14,7 @@ import {
 } from "@/domain/teams/invokeActivity";
 import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
 import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
-import { canTrackWithBty } from "@/lib/bty/authority/platformAdmin.server";
+import { isCollaborationParticipant } from "@/domain/authority/collaborationParticipant";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,7 +106,7 @@ const MSG = {
   trackNoPeople: "Choose at least one person.",
   trackNoSource: "BTY couldn't read the original message.",
   trackFailed: "BTY couldn't start tracking this yet.",
-  trackNotHost: "Tracking isn't available on your BTY account.",
+  notInOrg: "BTY isn't available for this account.",
   signIn: "Sign in to BTY with Microsoft first.",
   cannotSave: "This message couldn't be saved to BTY.",
   serverBusy: "BTY couldn't save this yet.",
@@ -168,6 +168,39 @@ export async function POST(req: NextRequest) {
   }
 
   /*
+    3a. COLLABORATION PARTICIPANT — ONE RULE, BOTH COMMANDS (2026-09-04).
+
+    Save and Track are collaboration, not organizational authoring, so they share one floor and it
+    is applied HERE — once, above the command branch — rather than as a per-command gate that can
+    drift. `isCollaborationParticipant` is pure and takes only what has already been verified: the
+    resolver's status, and the tenant from the activity the Bot Framework token authenticated.
+
+    ★ WHAT THIS TIGHTENED. The Entra app is multi-tenant, so a person in a FOREIGN tenant could
+    resolve to a canonical BTY user. Save had no tenant check at all; Track was incidentally
+    shielded by `hasHostCapability` — an accident of grants, not a decided boundary. Both now state
+    the boundary explicitly, and measured against production it refuses nobody: all 15
+    Microsoft-linked users are in BTY's tenant.
+
+    ★ WHAT THIS OPENED, DELIBERATELY. Track no longer asks for `canTrackWithBty` (active Platform
+    Admin OR active Foundry Host). Measured before changing it: exactly 3 of 15 Microsoft-linked
+    people qualified, and every announcement ever created belongs to 2 of them. Asking a colleague
+    to acknowledge a message is not an act of organizational authority, and requiring a Host grant
+    for it was the reason a real DSO user could not use the product they were being shown.
+
+    ★ WHAT THIS DID NOT TOUCH. Event creation, Training authoring, publishing, assignment and every
+    XP-affecting route keep their Manager+ authority; none of them can reach this function.
+  */
+  const participant = isCollaborationParticipant({
+    resolutionStatus: resolution.status,
+    tenantId: parsed.tenantId,
+    btyTenantId: process.env.TEAMS_BOT_TENANT_ID,
+  });
+  if (!participant.participant) {
+    console.error("[teams-invoke] not a collaboration participant", { reason: participant.reason });
+    return say(participant.reason === "tenant_not_configured" ? MSG.serverBusy : MSG.notInOrg, parsed.invokeName);
+  }
+
+  /*
     3b. WHICH COMMAND (Slice A1). `value.commandId` was already on the real wire before A1 —
     measured on the Founder's iPhone, 2026-08-31 — so telling the two message actions apart needs
     no new platform dependency. An unknown id is refused rather than defaulted to Save: a silent
@@ -175,27 +208,22 @@ export async function POST(req: NextRequest) {
   */
   if (readCommandId(activity) === TEAMS_COMMAND_TRACK) {
     /*
-      3c. TRACK IS A HOST ACTION (Microsoft Manager Authority V1).
+      3c. TRACK IS A COLLABORATION ACTION (2026-09-04 — supersedes "Track is a Host action").
 
-      Teams decides which people SEE a message action; the platform gives an app no way to hide one
-      per-user, so an ordinary employee will still find "Track with BTY" in the menu. The server is
-      therefore the only place authority can live, and this is that place — ahead of the dialog, so
-      a non-Host is refused before the People Picker is ever drawn, and ahead of every write, so a
-      submit forged past the dialog is refused too.
+      It used to require `canTrackWithBty` (active Platform Admin OR active Foundry Host), on the
+      reasoning that Track is an act of authority. Measured, that reasoning cost the product a real
+      demonstration: 3 of 15 Microsoft-linked people qualified, and a DSO employee shown BTY found
+      the action in the menu and was told it was not available on their account.
 
-      The refusal is deliberately calm and non-technical: someone who is not a lead has done nothing
-      wrong, and telling them about grants and entitlements would explain a system they are not in.
+      Asking a colleague to acknowledge a message is not organizational authority. The floor is now
+      the participant rule in step 3a — the SAME floor Save passes — and it sits above this branch
+      so there is no per-command authorization left in this file to drift.
 
-      `canTrackWithBty` is the SHARED capability rule -- an active platform admin OR an active
-      Foundry Host grant. Track does not get its own notion of who may host, an admin is not a
-      special case written into this route, and the client's claims about the user are not
-      consulted anywhere: the id comes from the verified Teams identity resolver.
+      Teams still decides who SEES a message action and gives an app no way to hide one per-user,
+      so the server remains the only place any boundary can live. That boundary is 3a, and it is
+      ahead of the dialog and ahead of every write: a submit forged past the People Picker meets
+      exactly the same check.
     */
-    if (!(await canTrackWithBty(admin, resolution.userId))) {
-      console.error("[teams-invoke] track refused: no track capability");
-      return say(MSG.trackNotHost, parsed.invokeName);
-    }
-
     // The dialog itself. Nothing is written for merely opening it.
     if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
       return dialog(trackDialogCard(), parsed.invokeName);

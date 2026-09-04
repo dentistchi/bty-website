@@ -32,7 +32,7 @@ describe("★ answering an announcement is NOT a Host action", () => {
       for (const gate of [
         "requireManager",
         "isActiveFoundryHost",
-        "canTrackWithBty",
+        "hasHostCapability",
         "isActivePlatformAdmin",
         "foundry_host_grants",
         "bty_platform_admin_grants",
@@ -43,15 +43,15 @@ describe("★ answering an announcement is NOT a Host action", () => {
     });
   }
 
-  it("the Track invoke, by contrast, DOES carry the Host-capability gate", () => {
-    // The mirror assertion: if this ever stops being true the gate has been lost, and the two
-    // halves of the boundary are checked in the same place so they cannot drift apart unnoticed.
-    //
-    // The gate widened on 2026-09-02 from `isActiveFoundryHost` to `canTrackWithBty`, which is
-    // "active platform admin OR active Foundry Host" -- strictly MORE authority-aware, not less.
-    // This asserts the shared capability rule by name so a future narrowing to a bare table read,
-    // or a quiet removal, both fail here.
+  it("the Track invoke carries the SAME participant floor — not a Host gate (2026-09-04)", () => {
+    /*
+      This asserted the opposite: that Track was gated on `canTrackWithBty` while answering was not.
+      Both are collaboration now, and the invoke's floor sits ABOVE the command switch so Save and
+      Track cannot drift apart.
+    */
     const src = read("src/app/api/bty/teams/invoke/route.ts");
-    expect(src).toContain("canTrackWithBty");
+    expect(src).toContain("isCollaborationParticipant");
+    expect(src).not.toMatch(/await canTrackWithBty\(/);
+    expect(src).not.toMatch(/await hasHostCapability\(/);
   });
 });
