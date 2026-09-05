@@ -177,7 +177,7 @@ function Bucket({
       <p
         className={
           "text-[0.72rem] font-medium uppercase tracking-[0.1em] " +
-          (tone === "urgent" ? "text-[#E5B769]" : "text-white/40")
+          (tone === "urgent" ? "text-[#E5B769]" : "text-white/55")
         }
       >
         {label}
@@ -194,7 +194,7 @@ function Bucket({
           >
             <div className="flex items-center justify-between gap-3">
               {/* A bound person whose provider name could not be read is still shown, never dropped. */}
-              <span className={"text-[0.88rem] leading-6 " + (settled ? "text-white/45" : "text-white/85")}>
+              <span className={"text-[0.88rem] leading-6 " + (settled ? "text-white/55" : "text-white/85")}>
                 {p.display ?? fallback}
               </span>
               {onHandle ? (
@@ -206,7 +206,7 @@ function Bucket({
                   className={
                     "min-h-[2.25rem] shrink-0 rounded-lg px-3 text-[0.78rem] font-medium disabled:opacity-50 " +
                     (settled
-                      ? "text-white/45 hover:text-white/70"
+                      ? "text-white/55 hover:text-white/70"
                       : "border border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]")
                   }
                 >
@@ -220,7 +220,7 @@ function Bucket({
               <span
                 className={
                   "rounded-lg bg-white/[0.04] px-3 py-2 text-[0.82rem] leading-6 " +
-                  (settled ? "text-white/45" : "text-white/70")
+                  (settled ? "text-white/55" : "text-white/70")
                 }
                 data-testid="tracking-person-question"
               >
@@ -229,7 +229,7 @@ function Bucket({
             ) : null}
 
             {settled ? (
-              <span className="text-[0.72rem] text-white/35" data-testid="tracking-person-handled">
+              <span className="text-[0.72rem] text-white/50" data-testid="tracking-person-handled">
                 {t.handled}
               </span>
             ) : null}
@@ -361,8 +361,8 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
   if (state === "error") {
     return (
       <section className="flex flex-col gap-2" data-testid="tracking-sent-error">
-        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
-        <p className="text-[0.8rem] text-white/55">{t.error}</p>
+        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{t.title}</h2>
+        <p className="text-[0.8rem] text-white/60">{t.error}</p>
         <button
           type="button"
           onClick={() => void load()}
@@ -379,7 +379,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
 
   return (
     <section className="flex flex-col gap-3" data-testid="tracking-sent">
-      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
+      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{t.title}</h2>
 
       {items.map((it) => {
         const f = it.funnel;
@@ -404,14 +404,14 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
             {/* The captured message, quieter — context, not the headline. */}
             {it.previewText ? (
               <p
-                className="border-l-2 border-white/15 pl-3 text-[0.82rem] leading-6 text-white/50"
+                className="border-l-2 border-white/15 pl-3 text-[0.82rem] leading-6 text-white/60"
                 data-testid="tracking-preview"
               >
                 {it.previewText}
               </p>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-white/45">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-white/55">
               <span data-testid="tracking-when">{whenLabel(it.createdAt, loc)}</span>
               <span aria-hidden>·</span>
               <span data-testid="tracking-sent-to">{t.sentTo(f.announcedTo)}</span>
@@ -438,7 +438,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
               the honest thing to say.
             */}
             {f.notYetActivated > 0 ? (
-              <p className="text-[0.8rem] leading-5 text-white/55" data-testid="tracking-waiting">
+              <p className="text-[0.8rem] leading-5 text-white/60" data-testid="tracking-waiting">
                 {t.notOpened(f.notYetActivated)}
               </p>
             ) : null}
@@ -457,7 +457,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
                 data-testid="tracking-toggle"
                 aria-expanded={expanded}
                 onClick={() => setOpenId(expanded ? null : it.id)}
-                className="self-start text-[0.8rem] font-medium text-white/55 hover:text-white/80"
+                className="self-start text-[0.8rem] font-medium text-white/60 hover:text-white/80"
               >
                 {expanded ? t.hideResponses : t.viewResponses}
               </button>

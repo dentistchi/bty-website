@@ -104,20 +104,58 @@ function filterChain(start: Element | null): string {
   return found.length ? found.join(" | ") : "none";
 }
 
+/** The overlay's own root, so nothing inside it can ever be mistaken for product geometry. */
+export const OVERLAY_ATTR = "data-bty-diagnostic-overlay";
+
+/**
+ * Find a product element, NEVER one of the probe's own.
+ *
+ * The overlay renders `<button>`s, a `<dl>` and a hidden sampler into the same document it
+ * measures. None of them carries a product attribute today, so this is belt-and-braces rather than
+ * a live bug — and it stays, because the failure it prevents is silent: a probe that measured its
+ * own chrome would report plausible numbers that describe nothing the user can see. The measuring
+ * instrument must not appear in its own measurement.
+ */
+function pick(selector: string): Element | null {
+  for (const el of Array.from(document.querySelectorAll(selector))) {
+    if (!el.closest(`[${OVERLAY_ATTR}]`)) return el;
+  }
+  return null;
+}
+
 function collect(): Row[] {
   const doc = document.documentElement;
   const body = document.body;
   const vv = window.visualViewport;
   const probe = document.getElementById("bty-safe-area-probe");
   const cs = probe ? getComputedStyle(probe) : null;
-  const appRoot = document.querySelector("[data-bty-teams-floor='1']")?.firstElementChild ?? null;
-  const main = document.querySelector("main");
-  /* The reserved status-bar strip sits immediately BEFORE main in the shell; it is the element
-     that decides whether the top is clipped, so it is measured by position, not by a class. */
-  const topInsetSpacer = main?.previousElementSibling ?? null;
-  const header = main?.querySelector("header") ?? document.querySelector("header");
-  const nav = main?.parentElement?.querySelector("nav") ?? document.querySelector("nav");
-  const h1 = main?.querySelector("h1, h2") ?? document.querySelector("h1, h2");
+  /*
+    ★ THE FIRST READING MEASURED THE WRONG ELEMENTS (Slice TQ-3).
+
+    The Founder's real device run returned `main` padding-top 32px with a first heading at y=20 and
+    a "bottom nav" 224px tall. Those three cannot describe one screen, and they did not: the
+    generic selectors below USED to be `main.parentElement.querySelector("nav")` and
+    `main.querySelector("h1, h2")`.
+
+      · `nav`  — document order finds the FIRST nav under the shell root, and on the Me tab that is
+                 the "My records" ROW LIST, which lives INSIDE main. 224px is four rows and their
+                 gaps. The real bottom dock was never measured.
+      · `h1`   — whichever heading a tab happens to render first, so the number meant something
+                 different on every tab.
+      · header — the Me tab renders none, which is why it came back "absent" and read like a
+                 missing element rather than a tab that has no header.
+
+    Every anchor below is now an EXPLICIT product attribute. A selector that can drift onto a
+    different element produces numbers that look like a layout bug and are a measurement bug, and
+    an hour was spent on exactly that. The product layout was NOT changed to suit the probe — these
+    are attributes on elements that already existed.
+  */
+  const appRoot = pick("[data-bty-app-root]");
+  const main = pick("main");
+  const topInsetSpacer = pick("[data-bty-top-inset]");
+  const header = pick("[data-bty-app-header]");
+  const nav = pick("[data-bty-bottom-nav]");
+  const h1 = pick("[data-bty-main-heading]");
   const docCs = getComputedStyle(doc);
   const bodyCs = getComputedStyle(body);
   const overflowX = Math.max(0, Math.round(body.scrollWidth - doc.clientWidth));
@@ -138,7 +176,8 @@ function collect(): Row[] {
 
     { k: "safe-area top / right", v: cs ? `${cs.paddingTop} / ${cs.paddingRight}` : "probe missing" },
     { k: "safe-area bottom / left", v: cs ? `${cs.paddingBottom} / ${cs.paddingLeft}` : "probe missing" },
-    { k: "reserved top-inset spacer rect", v: rect(topInsetSpacer) },
+    { k: "reserved top-inset rect", v: rect(topInsetSpacer) },
+    { k: "reserved top-inset computed height", v: topInsetSpacer ? getComputedStyle(topInsetSpacer).height : "absent" },
 
     { k: "html rect", v: rect(doc) },
     { k: "html box", v: box(doc) },
@@ -193,6 +232,7 @@ export default function TeamsRuntimeProbe({ onClose }: { onClose?: () => void } 
   return (
     <div
       data-testid="teams-runtime-probe"
+      {...{ [OVERLAY_ATTR]: "" }}
       className="fixed inset-x-0 bottom-0 z-[9999] max-h-[60dvh] overflow-y-auto border-t border-white/20 bg-black/90 px-4 py-3 text-[11px] leading-relaxed text-white"
     >
       <div id="bty-safe-area-probe" style={SAFE_AREA_PROBE_STYLE} aria-hidden />

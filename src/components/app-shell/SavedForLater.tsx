@@ -178,7 +178,7 @@ choose: (id: string, choice: TriageChoice) => void;
   const body = (
     <div className={surface}>
       <span className="text-[0.95rem] text-white/85">{previewOf(it, t)}</span>
-      <span className="text-[0.78rem] text-white/45" data-testid="saved-context">
+      <span className="text-[0.78rem] text-white/55" data-testid="saved-context">
         {contextLine(t, it.sourceMetadata ?? {})}
       </span>
       {/*
@@ -264,7 +264,7 @@ choose: (id: string, choice: TriageChoice) => void;
       ) : null}
 
       {failedId === it.id ? (
-        <p className="mt-1 text-[0.75rem] text-white/55" role="status" data-testid="saved-triage-error">
+        <p className="mt-1 text-[0.75rem] text-white/60" role="status" data-testid="saved-triage-error">
           {t.notSaved}
         </p>
       ) : null}
@@ -397,7 +397,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
           type="button"
           data-testid="saved-back"
           onClick={onBack}
-          className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+          className="self-start text-xs font-medium text-white/60 hover:text-white/85"
         >
           ← {t.back}
         </button>
@@ -405,7 +405,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
       <h2 className="text-sm font-medium text-white/75">{t.title}</h2>
 
       {state === "loading" ? (
-        <p className="text-sm text-white/40" role="status" data-testid="saved-loading">{t.loading}</p>
+        <p className="text-sm text-white/55" role="status" data-testid="saved-loading">{t.loading}</p>
       ) : state === "error" ? (
         <div className="flex flex-col items-start gap-2" data-testid="saved-error">
           {/* Calm, and scoped: something did not load. No promise was broken, because none was made. */}
@@ -423,14 +423,14 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
           </button>
         </div>
       ) : items.length === 0 ? (
-        <p className="text-sm text-white/40" role="status" data-testid="saved-empty">{t.empty}</p>
+        <p className="text-sm text-white/55" role="status" data-testid="saved-empty">{t.empty}</p>
       ) : (
         <div className="flex flex-col gap-5" data-testid="saved-list">
           {lanes.map((lane) =>
             // An empty lane is not a place yet, so it is not drawn. No zero, no badge, no count.
             lane.rows.length === 0 ? null : (
               <div key={lane.key} className="flex flex-col gap-2" data-testid={`saved-group-${lane.key}`}>
-                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/35">
+                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/50">
                   {lane.heading}
                 </span>
                 <ul className="flex flex-col gap-2">
@@ -456,18 +456,18 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                           className="flex w-full flex-col gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
                         >
                           <span className="flex items-center justify-between gap-3">
-                            <span className="text-[0.78rem] text-white/45">
+                            <span className="text-[0.78rem] text-white/55">
                               {contextLine(t, conv.latestCapture.sourceMetadata ?? {})}
                             </span>
                             {/* Quiet, and a statement of fact — how much is here, never how much
                                 is left to do. Never rendered on Today. */}
-                            <span className="shrink-0 text-[0.72rem] text-white/35" data-testid="saved-conversation-count">
+                            <span className="shrink-0 text-[0.72rem] text-white/50" data-testid="saved-conversation-count">
                               {t.savedCount(conv.count)}
                             </span>
                           </span>
                           <span className="flex items-start justify-between gap-3">
                             <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture, t)}</span>
-                            <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/35">
+                            <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/50">
                               {expanded.has(conv.key) ? "▾" : "▸"}
                             </span>
                           </span>

@@ -600,7 +600,7 @@ export default function FoundryMyLearning({
                         <li
                           key={level}
                           data-testid={`evidence-rung-${level}`}
-                          className="flex items-center gap-1.5 rounded-full bg-[#C9A66B]/12 px-2 py-0.5 text-[0.72rem] text-[#C9A66B]/95"
+                          className="flex items-center gap-1.5 rounded-full bg-[#C9A66B]/[0.12] px-2 py-0.5 text-[0.72rem] text-[#C9A66B]/95"
                         >
                           <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A66B]/80" />
                           {LEARNER_RUNG_LABEL[loc][level]}

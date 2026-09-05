@@ -72,12 +72,12 @@ function Row({
     >
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-[0.95rem] font-medium text-white/90">{title}</span>
-        <span className="truncate text-[0.78rem] text-white/50">{sub}</span>
+        <span className="truncate text-[0.78rem] text-white/60">{sub}</span>
       </div>
       {badge ? (
-        <span className="shrink-0 rounded-md border border-white/[0.12] px-2 py-0.5 text-[0.66rem] text-white/45">{badge}</span>
+        <span className="shrink-0 rounded-md border border-white/[0.12] px-2 py-0.5 text-[0.66rem] text-white/55">{badge}</span>
       ) : (
-        <span aria-hidden className="shrink-0 text-white/30">›</span>
+        <span aria-hidden className="shrink-0 text-white/50">›</span>
       )}
     </button>
   );

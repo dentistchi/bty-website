@@ -327,16 +327,16 @@ export default function FieldActionsFocus({
   const rowCls = "flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left w-full";
   const groupTone: Record<Exclude<FieldActionLearnerGroup, "other">, string> = {
     needs_revision: "text-[#E5B769]/85",
-    awaiting_review: "text-white/40",
+    awaiting_review: "text-white/55",
     awaiting_resolution: "text-violet-200/70",
-    upcoming: "text-white/40",
+    upcoming: "text-white/55",
     reviewed: "text-[#C9A66B]/70",
   };
 
   return (
     <div className="flex flex-col gap-4" data-testid="field-actions-focus">
       <div className="flex items-center justify-between">
-        <button type="button" data-testid="field-actions-back" onClick={onBack} className="text-xs font-medium text-white/55 hover:text-white/85">
+        <button type="button" data-testid="field-actions-back" onClick={onBack} className="text-xs font-medium text-white/60 hover:text-white/85">
           ‹ {t.back}
         </button>
         <h1 className="text-[1.1rem] font-semibold tracking-tight text-white">{t.title}</h1>
@@ -345,7 +345,7 @@ export default function FieldActionsFocus({
 
       {/* ── LEARNER: explicit loading / error / empty / list (never a blank screen) ── */}
       {learnerState === "loading" ? (
-        <p className="text-sm text-white/50" role="status" data-testid="fa-loading">{t.loading}</p>
+        <p className="text-sm text-white/60" role="status" data-testid="fa-loading">{t.loading}</p>
       ) : learnerState === "error" ? (
         <div className="flex flex-col items-start gap-2" data-testid="fa-error">
           <p className="text-sm text-white/70">{t.errorText}</p>
@@ -362,7 +362,7 @@ export default function FieldActionsFocus({
           </button>
         </div>
       ) : items.length === 0 ? (
-        <p className="text-sm text-white/40" role="status" data-testid="fa-empty">{t.empty}</p>
+        <p className="text-sm text-white/55" role="status" data-testid="fa-empty">{t.empty}</p>
       ) : (
         FIELD_ACTION_GROUP_ORDER.map((g) => {
           if (g === "other") return null;
@@ -376,9 +376,9 @@ export default function FieldActionsFocus({
                   const on = fmtDate(a.reviewedAt, loc);
                   return (
                     <div key={a.contractId} data-testid="fa-item" data-group={g} data-contract={a.contractId} className="flex flex-col gap-0.5 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                      <span className="truncate text-xs text-white/45">{label(a)}</span>
+                      <span className="truncate text-xs text-white/55">{label(a)}</span>
                       <span className="text-sm text-white/80">{t.reviewedAccepted}</span>
-                      {on ? <span className="text-[0.7rem] text-white/35">{t.reviewedOn} · {on}</span> : null}
+                      {on ? <span className="text-[0.7rem] text-white/50">{t.reviewedOn} · {on}</span> : null}
                     </div>
                   );
                 }
@@ -396,7 +396,7 @@ export default function FieldActionsFocus({
                       ) : null}
                     </div>
                     {g === "awaiting_resolution" ? (
-                      <span className="text-xs leading-5 text-white/55">{t.awaitingResolutionBody}</span>
+                      <span className="text-xs leading-5 text-white/60">{t.awaitingResolutionBody}</span>
                     ) : null}
                     {g === "needs_revision" && a.revisionNote ? (
                       <span className="rounded-md border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-2.5 py-1.5 text-xs leading-5 text-white/75">
@@ -414,13 +414,13 @@ export default function FieldActionsFocus({
 
       {/* ── HOST (reviewer-authority scoped; explicit loading; non-reviewer → no section) ── */}
       {hostState === "loading" ? (
-        <p className="text-sm text-white/45" role="status" data-testid="fa-host-loading">{t.hostLoading}</p>
+        <p className="text-sm text-white/55" role="status" data-testid="fa-host-loading">{t.hostLoading}</p>
       ) : showHost ? (
         <section className="flex flex-col gap-3" data-testid="fa-host">
           <span className={eyebrow + " text-[#C9A66B]/70"}>{t.hostTitle}</span>
           {stageCounts ? (
         <div className="flex flex-col gap-2">
-          <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/35" data-testid="fa-kind-field-action">
+          <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/50" data-testid="fa-kind-field-action">
             {t.kindFieldAction}
           </span>
           <div className="grid grid-cols-2 gap-1.5">
@@ -432,14 +432,14 @@ export default function FieldActionsFocus({
             ] as const).map(([key, lab, n]) => (
               <div key={key} data-testid={`fa-host-count-${key}`} data-count={n}
                 className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-                <span className="min-w-0 truncate text-[0.72rem] text-white/55">{lab}</span>
+                <span className="min-w-0 truncate text-[0.72rem] text-white/60">{lab}</span>
                 <span className="shrink-0 text-sm font-semibold text-white/85">{n}</span>
               </div>
             ))}
           </div>
           {hostQueue.length > 0 ? (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[0.72rem] text-white/45">{t.hostQueueSub}</span>
+              <span className="text-[0.72rem] text-white/55">{t.hostQueueSub}</span>
               {hostQueue.map((q) => {
                 const on = fmtDate(q.submittedAt, loc);
                 return (
@@ -450,7 +450,7 @@ export default function FieldActionsFocus({
                       <span className="shrink-0 rounded-md border border-sky-400/25 px-2 py-0.5 text-[0.66rem] text-sky-200/75">{q.statusLabel}</span>
                     </div>
                     {q.actionSummary ? <span className="truncate text-xs text-white/60">{q.actionSummary}</span> : null}
-                    {on ? <span className="text-[0.7rem] text-white/35">{t.submittedOn} · {on}</span> : null}
+                    {on ? <span className="text-[0.7rem] text-white/50">{t.submittedOn} · {on}</span> : null}
                   </button>
                 );
               })}
@@ -470,7 +470,7 @@ export default function FieldActionsFocus({
           */}
           {opportunities.length > 0 ? (
             <div className="flex flex-col gap-2" data-testid="fa-observations">
-              <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/35" data-testid="fa-kind-observation">
+              <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/50" data-testid="fa-kind-observation">
                 {t.kindObservation}
               </span>
               {opportunities.map((o) => {
@@ -512,7 +512,7 @@ export default function FieldActionsFocus({
                       standard — it is the same sentence, shown further.
                     */}
                     <span className="line-clamp-4 text-xs leading-5 text-[#C9A66B]/80">{o.behavior}</span>
-                    <span className="text-[0.7rem] text-white/40">
+                    <span className="text-[0.7rem] text-white/55">
                       {t.obsState[o.state]}
                       {seen && o.positiveDates > 1 ? ` · ${t.obsDays(o.positiveDates)}` : ""}
                       {span ? ` · ${span}` : ""}

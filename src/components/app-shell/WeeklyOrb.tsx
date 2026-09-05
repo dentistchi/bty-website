@@ -495,11 +495,11 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
           />
         ) : null}
       </div>
-      <p className="text-xs tracking-[0.16em] text-white/45">{CAPTION[locale]}</p>
+      <p className="text-xs tracking-[0.16em] text-white/55">{CAPTION[locale]}</p>
       {hintShown ? (
         // A quiet product whisper — small, soft, no box/icon/colour; fades in then out.
         <p
-          className="mt-1.5 text-[11px] leading-relaxed text-white/35 transition-opacity duration-700 ease-out"
+          className="mt-1.5 text-[11px] leading-relaxed text-white/50 transition-opacity duration-700 ease-out"
           style={{ opacity: hintIn ? 1 : 0 }}
         >
           {HINT[locale]}

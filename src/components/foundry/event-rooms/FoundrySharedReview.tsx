@@ -241,7 +241,7 @@ export default function FoundrySharedReview({
                       <li
                         key={level}
                         data-testid={`host-evidence-rung-${level}`}
-                        className="rounded-full bg-[#C9A66B]/12 px-2 py-0.5 text-[11px] text-[#C9A66B]/95"
+                        className="rounded-full bg-[#C9A66B]/[0.12] px-2 py-0.5 text-[11px] text-[#C9A66B]/95"
                       >
                         {HOST_RUNG_LABEL[loc][level]}
                       </li>

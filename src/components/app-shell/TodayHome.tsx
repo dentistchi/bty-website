@@ -423,10 +423,10 @@ export default function TodayHome({
           with the sentence, because a heading over nothing reads as a surface that failed. */}
       {yesterdayKnown ? (
         <div className="flex flex-col gap-0.5" data-testid="today-yesterday">
-          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.yesterday}</span>
+          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.yesterday}</span>
           <p className="text-sm leading-6 text-white/80" data-testid="today-yesterday-sentence">{yesterdaySummary.sentence}</p>
           {yesterdaySummary.compact ? (
-            <span className="text-[0.72rem] text-white/45" data-testid="today-yesterday-compact">{yesterdaySummary.compact}</span>
+            <span className="text-[0.72rem] text-white/55" data-testid="today-yesterday-compact">{yesterdaySummary.compact}</span>
           ) : null}
         </div>
       ) : null}
@@ -437,7 +437,7 @@ export default function TodayHome({
           no placeholder — the greeting already owns the first paint, and this fills in beneath it. */}
       {remindersResolved ? (
       <div className="flex flex-col gap-2" data-testid="today-list">
-        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.todayHeader}</span>
+        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.todayHeader}</span>
         {todayItems.length === 0 ? (
           <button
             type="button"
@@ -447,7 +447,7 @@ export default function TodayHome({
             className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
           >
             <span className="text-[0.9rem] leading-6 text-white/80">{t.todayEmpty}</span>
-            <span className="text-[0.85rem] leading-6 text-white/55">{fallback.body}</span>
+            <span className="text-[0.85rem] leading-6 text-white/60">{fallback.body}</span>
             <span data-testid="today-empty-cta" className="mt-1 self-start rounded-lg border border-[#C9A66B]/45 bg-[#C9A66B]/10 px-3 py-1.5 text-[0.8rem] font-medium text-[#E5B769]">
               {fallback.cta}
             </span>
@@ -499,12 +499,12 @@ export default function TodayHome({
                   }}
                   className="flex flex-col gap-0.5 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-4 py-3"
                 >
-                  <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+                  <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/55">
                     {t.catEyebrow[it.category as PrimaryActionCandidate["category"]] ?? it.category}
                   </span>
                   <span className="text-[0.95rem] font-medium leading-6 text-white/90">{it.title}</span>
                   {context ? (
-                    <span data-testid="today-item-context" className="text-[0.72rem] leading-5 text-white/45">
+                    <span data-testid="today-item-context" className="text-[0.72rem] leading-5 text-white/55">
                       {context}
                     </span>
                   ) : null}
@@ -524,7 +524,7 @@ export default function TodayHome({
                 type="button"
                 data-testid="today-show-more"
                 onClick={() => setExpanded((v) => !v)}
-                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+                className="self-start text-xs font-medium text-white/60 hover:text-white/85"
               >
                 {expanded ? t.showLess : t.showMore}
               </button>
@@ -543,7 +543,7 @@ export default function TodayHome({
           <div className="flex flex-col gap-0.5">
             <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.attention}</span>
             {followUpItems.length > 0 ? (
-              <span className="text-[0.72rem] text-white/45">{t.leadershipSub}</span>
+              <span className="text-[0.72rem] text-white/55">{t.leadershipSub}</span>
             ) : null}
           </div>
 
@@ -579,7 +579,7 @@ export default function TodayHome({
                         {t.hostTags[h.category]}
                       </span>
                     </div>
-                    {h.trainingTitle ? <span className="truncate text-xs text-white/45">{h.trainingTitle}</span> : null}
+                    {h.trainingTitle ? <span className="truncate text-xs text-white/55">{h.trainingTitle}</span> : null}
                     {h.reason ? <span className="text-xs text-white/60">{h.reason}</span> : null}
                   </button>
                 </li>
@@ -592,7 +592,7 @@ export default function TodayHome({
               type="button"
               data-testid="today-followups-toggle"
               onClick={() => setShowAllHost((v) => !v)}
-              className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+              className="self-start text-xs font-medium text-white/60 hover:text-white/85"
             >
               {showAllHost ? t.showLess : t.showMore}
             </button>
@@ -655,7 +655,7 @@ export default function TodayHome({
           className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
         >
           <span className="text-[0.8rem] text-white/70">{t.savedForLater}</span>
-          <span className="text-[0.72rem] leading-5 text-white/40">{t.savedForLaterSub}</span>
+          <span className="text-[0.72rem] leading-5 text-white/55">{t.savedForLaterSub}</span>
         </button>
       ) : null}
     </div>

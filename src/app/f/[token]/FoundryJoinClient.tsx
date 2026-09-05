@@ -1308,7 +1308,7 @@ export default function FoundryJoinClient({
         </div>
 
         {checkpoint ? (
-          <div className="btyFadeIn fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F3A]/92 px-6 backdrop-blur-sm">
+          <div className="btyFadeIn fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F3A]/[0.92] px-6 backdrop-blur-sm">
             <div className="flex w-full max-w-sm flex-col gap-5 text-center">
               <Eyebrow>{t.checkpointEyebrow}</Eyebrow>
               <p className="text-lg font-medium leading-relaxed text-white">

@@ -155,8 +155,8 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
   if (loadState === "error") {
     return (
       <section className="flex flex-col gap-2" data-testid="needs-your-response-error">
-        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
-        <p className="text-[0.8rem] text-white/55">{t.loadFailed}</p>
+        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{t.title}</h2>
+        <p className="text-[0.8rem] text-white/60">{t.loadFailed}</p>
         <button
           type="button"
           onClick={() => void load()}
@@ -173,7 +173,7 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
 
   return (
     <section className="flex flex-col gap-3" data-testid="needs-your-response">
-      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.title}</h2>
+      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{t.title}</h2>
 
       {items.map((it) => {
         const answered = it.response !== null;
@@ -199,7 +199,7 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
             ) : null}
 
             {answered ? (
-              <p className="text-[0.8rem] text-white/45" data-testid="announcement-answered">
+              <p className="text-[0.8rem] text-white/55" data-testid="announcement-answered">
                 {it.response === "ACKNOWLEDGED"
                   ? t.answeredGotIt
                   : it.response === "QUESTION"
@@ -277,7 +277,7 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
             )}
 
             {failed === it.announcementId ? (
-              <p className="flex items-center gap-2 text-[0.78rem] text-white/55" data-testid="announcement-error">
+              <p className="flex items-center gap-2 text-[0.78rem] text-white/60" data-testid="announcement-error">
                 <span>{t.failed}</span>
                 <button
                   type="button"

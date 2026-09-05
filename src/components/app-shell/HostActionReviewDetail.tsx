@@ -94,7 +94,7 @@ function Field({ label, value }: { label: string; value: string | null }) {
   if (!value || !value.trim()) return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/40">{label}</span>
+      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/55">{label}</span>
       <span className="text-sm leading-6 text-white/80">{value}</span>
     </div>
   );
@@ -210,7 +210,7 @@ export default function HostActionReviewDetail({
         type="button"
         data-testid="host-action-review-back"
         onClick={onBack}
-        className="self-start text-xs text-white/55 hover:text-white/85"
+        className="self-start text-xs text-white/60 hover:text-white/85"
       >
         ← {t.back}
       </button>
@@ -229,7 +229,7 @@ export default function HostActionReviewDetail({
               {detail.statusLabel}
             </span>
           </div>
-          <p className="text-xs text-white/50">{t.intro}</p>
+          <p className="text-xs text-white/60">{t.intro}</p>
           {detail.sourceLabel ? (
             <span data-testid="host-action-review-source" className="self-start rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] px-2 py-0.5 text-[0.66rem] text-emerald-200/80">
               {detail.sourceLabel}
@@ -245,9 +245,9 @@ export default function HostActionReviewDetail({
             <Field label={t.when} value={detail.stepWhen} />
           </div>
           <div className="flex flex-col gap-0.5 pt-1">
-            <span className="text-[0.7rem] text-white/40">{t.remoteReview}</span>
-            {submitted ? <span className="text-[0.7rem] text-white/35">{t.submittedOn} · {submitted}</span> : null}
-            {deadline ? <span className="text-[0.7rem] text-white/35">{t.originalDeadline} · {deadline}</span> : null}
+            <span className="text-[0.7rem] text-white/55">{t.remoteReview}</span>
+            {submitted ? <span className="text-[0.7rem] text-white/50">{t.submittedOn} · {submitted}</span> : null}
+            {deadline ? <span className="text-[0.7rem] text-white/50">{t.originalDeadline} · {deadline}</span> : null}
           </div>
 
           {/* ---- Decision section (Phase 5C) ---- */}
@@ -289,7 +289,7 @@ export default function HostActionReviewDetail({
               {mode === "approve-confirm" ? (
                 <div data-testid="host-action-review-approve-confirm" className="flex flex-col gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.04] px-3 py-3">
                   <span className="text-sm font-medium text-white/90">{t.approveConfirmTitle}</span>
-                  <span className="text-xs text-white/55">{t.approveConfirmBody}</span>
+                  <span className="text-xs text-white/60">{t.approveConfirmBody}</span>
                   <div className="mt-1 flex items-center gap-2">
                     <button
                       type="button"

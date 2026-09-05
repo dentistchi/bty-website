@@ -596,7 +596,7 @@ function SurfaceHeader({ title, sub }: { title: string; sub?: string }) {
     // Copy unchanged.
     <header className="btyRise mb-5 space-y-1.5" style={{ animationDelay: "40ms" }}>
       <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{title}</h1>
-      {sub ? <p className="text-sm leading-5 text-white/45">{sub}</p> : null}
+      {sub ? <p className="text-sm leading-5 text-white/55">{sub}</p> : null}
     </header>
   );
 }
@@ -1047,7 +1047,7 @@ export function TodaySurface({
                         QUIET eyebrow; the lived ACTION is the primary, visually strongest decision
                         label — the daily choice must be understood as an action, the BTY noun is
                         learned through repetition. */}
-                    <span className="relative text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/45">
+                    <span className="relative text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/55">
                       {c.noun}
                     </span>
                     <span
@@ -1113,7 +1113,7 @@ export function TodaySurface({
                         <div className={justOpened ? "btySettle" : ""} style={justOpened ? { animationDelay: "70ms" } : undefined}>
                           <span
                             data-promise-label
-                            className="relative mt-4 block text-[11px] font-normal tracking-normal text-white/40"
+                            className="relative mt-4 block text-[11px] font-normal tracking-normal text-white/55"
                           >
                             {copy.promiseLabel}
                           </span>
@@ -1209,7 +1209,7 @@ export function TodaySurface({
           // leftover copy. Variant B keeps its own terminal line, so no extra bottom space.
           className={`btyFadeIn mt-14${heldVariant === "anchor-only" ? " pb-6" : ""}`}
         >
-          <span className="block text-xs font-medium uppercase tracking-[0.18em] text-white/40">
+          <span className="block text-xs font-medium uppercase tracking-[0.18em] text-white/55">
             {copy.centerKeep.label}
           </span>
           <p data-center-keep-line className="mt-3 text-[0.95rem] leading-7 text-white/80">
@@ -1218,7 +1218,7 @@ export function TodaySurface({
           {/* Variant B (comparison baseline) only — the release line is absent from the DOM in
               anchor-only, not hidden with reserved height. Flip HELD_IN_CENTER_VARIANT to restore. */}
           {heldVariant === "anchor-with-release" ? (
-            <p className="mt-1.5 text-sm leading-6 text-white/45">{copy.centerKeep.support}</p>
+            <p className="mt-1.5 text-sm leading-6 text-white/55">{copy.centerKeep.support}</p>
           ) : null}
         </section>
       ) : null}
@@ -1239,8 +1239,8 @@ function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greeti
     setGreeting(pickGreeting(greetings, new Date().getHours()));
   }, [greetings]);
   return (
-    <header data-today-greeting className="btyRise mb-6" style={{ animationDelay: "40ms" }}>
-      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{greeting}</h1>
+    <header data-today-greeting data-bty-app-header="" className="btyRise mb-6" style={{ animationDelay: "40ms" }}>
+      <h1 data-bty-main-heading="" className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{greeting}</h1>
     </header>
   );
 }
@@ -1685,7 +1685,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // direct-/en/app-era OrbThreshold gate was removed to fix the B2 double-door defect.
 
   return (
-    <div className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased">
+    <div
+      data-bty-app-root=""
+      className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased"
+    >
       {/* Entry fade only (mount). The sole Orb now lives at /start.
           prefers-reduced-motion stills the fade. */}
       <style>{`
@@ -1832,8 +1835,33 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           style={{ background: "radial-gradient(circle, rgba(201,166,107,0.55), rgba(201,166,107,0.14) 38%, transparent 70%)" }}
         />
       </div>
-      {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
-      <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden className="relative z-10" />
+      {/*
+        iOS status-bar safe area — reserved so app content never underlaps the notch/clock.
+
+        ★ THE TEAMS FLOOR IS NOT A FAKE SAFE AREA (Slice TQ-3).
+
+        MEASURED on the Founder's iPhone inside the real Teams tab: `env(safe-area-inset-*)` all
+        resolve to **0**, `visualViewport` is 440 × 773 of a 956pt screen, scale 1, no transform.
+        Teams hands BTY a viewport that ALREADY excludes the notch and its own chrome, so there is
+        no inset to honour and none is invented here — this max() adds nothing on any host whose
+        inset is real.
+
+        What it does add is CONTENT RHYTHM. Native launches with `viewportFit: "cover"`, so the
+        inset above resolves to ~59px and the first heading lands ~91px down. In Teams the same
+        expression resolves to 0, leaving `main`'s `pt-8` (32px) as the ONLY gap between BTY's navy
+        and the host's white header bar — which is why the top read as clipped when nothing is
+        clipped. The floor restores a comparable breath, and only where the inset is absent.
+
+        Deliberately NOT keyed on `useTeamsHost()`: a value that depends on where the insets
+        actually are is honest on every host, including a future one nobody has measured. A device
+        whose inset already exceeds the floor is byte-identical to before.
+      */}
+      <div
+        data-bty-top-inset=""
+        style={{ height: "max(env(safe-area-inset-top), var(--bty-host-top-floor, 0px))" }}
+        aria-hidden
+        className="relative z-10"
+      />
 
       <main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
@@ -2020,7 +2048,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                   setMeView("home");
                   setCenterFocusEntry(null);
                 }}
-                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+                className="self-start text-xs font-medium text-white/60 hover:text-white/85"
               >
                 ← {locale === "ko" ? "나" : "Me"}
               </button>
@@ -2051,7 +2079,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 type="button"
                 data-testid="me-account-back"
                 onClick={() => setMeView("home")}
-                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+                className="self-start text-xs font-medium text-white/60 hover:text-white/85"
               >
                 ← {locale === "ko" ? "나" : "Me"}
               </button>
@@ -2081,7 +2109,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 the reader on Today in the other language.
               */}
               <div className="flex justify-end" data-testid="me-language">
-                <Suspense fallback={<span className="px-2 py-1 text-xs text-white/30">…</span>}>
+                <Suspense fallback={<span className="px-2 py-1 text-xs text-white/50">…</span>}>
                   <LangSwitch ensureParams={{ tab: "me" }} />
                 </Suspense>
               </div>
@@ -2134,7 +2162,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                     className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
                   >
                     <span className="text-sm font-medium text-white/75">{r.label}</span>
-                    <span aria-hidden="true" className="text-white/40">›</span>
+                    <span aria-hidden="true" className="text-white/55">›</span>
                   </button>
                 ))}
               </nav>

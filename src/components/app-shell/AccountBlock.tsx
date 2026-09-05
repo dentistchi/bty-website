@@ -121,7 +121,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
       className="relative flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
     >
       <div className="flex flex-col gap-0.5">
-        <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
+        <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">
           {t.signedInAs}
         </span>
         {inTeams ? (
@@ -135,7 +135,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
             <span data-testid="account-identity" className="min-w-0 truncate text-[0.95rem] text-white/90">
               {teamsAccountLabel(nameSource).who}
             </span>
-            <span data-testid="account-connection" className="text-xs text-white/45">
+            <span data-testid="account-connection" className="text-xs text-white/55">
               {t.connectedWithTeams}
             </span>
           </>

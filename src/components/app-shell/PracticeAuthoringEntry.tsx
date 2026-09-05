@@ -128,7 +128,7 @@ export function PracticeAuthoringEntry({
         className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3"
       >
         <span className="text-[0.95rem] font-medium text-white/85">{t.none}</span>
-        <span className="text-[0.78rem] leading-5 text-white/50">{t.noneHint}</span>
+        <span className="text-[0.78rem] leading-5 text-white/60">{t.noneHint}</span>
       </section>
     );
   }
@@ -176,7 +176,7 @@ export function PracticeAuthoringEntry({
       <button
         type="button"
         onClick={() => setPicking(false)}
-        className="self-start px-1 py-1.5 text-xs text-white/50 hover:text-white/80"
+        className="self-start px-1 py-1.5 text-xs text-white/60 hover:text-white/80"
       >
         {t.cancel}
       </button>

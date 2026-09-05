@@ -58,6 +58,7 @@ export default function AppTabBar({
   const labels = TAB_LABELS[loc];
   return (
     <nav
+      data-bty-bottom-nav=""
       aria-label="App navigation"
       className="shrink-0 border-t border-white/10 bg-[#0B1F3AF2] backdrop-blur-md pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >

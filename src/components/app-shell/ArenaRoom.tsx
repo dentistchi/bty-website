@@ -205,7 +205,7 @@ export function ArenaRoom({
               >
                 {t.retry}
               </button>
-              <button type="button" onClick={toList} className="text-sm text-white/50 hover:text-white/80">
+              <button type="button" onClick={toList} className="text-sm text-white/60 hover:text-white/80">
                 {t.back}
               </button>
             </div>
@@ -234,13 +234,13 @@ export function ArenaRoom({
               >
                 {t.retry}
               </button>
-              <button type="button" onClick={toList} className="text-xs text-white/50 hover:text-white/80">
+              <button type="button" onClick={toList} className="text-xs text-white/60 hover:text-white/80">
                 {t.back}
               </button>
             </div>
           </div>
         ) : completeStatus === "saving" ? (
-          <p className="mb-3 text-center text-xs text-white/40">{t.completeSaving}</p>
+          <p className="mb-3 text-center text-xs text-white/55">{t.completeSaving}</p>
         ) : null}
         {/*
           THE PLAYER BRINGS ITS OWN PAGE (Slice R4-R5A).
@@ -338,7 +338,7 @@ export function ArenaRoom({
               <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.12em] text-[#C9A66B]/80">{t.done}</span>
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-xs text-white/45">
+          <p className="mt-0.5 truncate text-xs text-white/55">
             {t.from}: {p.source_training_title}
           </p>
           <button

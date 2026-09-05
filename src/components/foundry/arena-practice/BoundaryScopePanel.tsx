@@ -109,7 +109,7 @@ export function BoundaryScopePanel({
         {inactive.length > 0 ? (
           <ul className="flex flex-col gap-2" aria-label={copy.boundaryScopeInactive}>
             {inactive.map((c) => (
-              <li key={c.id} className="rounded-lg border border-white/6 px-3 py-2 text-sm leading-6 text-white/45">
+              <li key={c.id} className="rounded-lg border border-white/[0.06] px-3 py-2 text-sm leading-6 text-white/45">
                 {c.statement}
                 <span className="sr-only"> — {copy.boundaryScopeInactive}</span>
               </li>

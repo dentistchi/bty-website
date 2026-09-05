@@ -273,7 +273,7 @@ export default function FieldActionForm({
 
   return (
     <section data-testid="field-action-form" className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
-      <button type="button" data-testid="field-action-back" onClick={onBack} className="self-start text-xs text-white/55 hover:text-white/85">
+      <button type="button" data-testid="field-action-back" onClick={onBack} className="self-start text-xs text-white/60 hover:text-white/85">
         ← {t.back}
       </button>
 
@@ -301,7 +301,7 @@ export default function FieldActionForm({
             <span data-testid="field-action-approved-state" className="text-sm font-medium text-white/90">{t.approvedState}</span>
           </div>
           {contract.moduleTitle ? (
-            <p className="text-xs text-white/45"><span className="text-white/35">{t.context} </span>{contract.moduleTitle}</p>
+            <p className="text-xs text-white/55"><span className="text-white/50">{t.context} </span>{contract.moduleTitle}</p>
           ) : null}
           <p className="text-sm leading-6 text-white/70">{t.approvedBody}</p>
           <ReadOnlyRow label={t.who} value={who} testid="field-action-ro-who" />
@@ -309,7 +309,7 @@ export default function FieldActionForm({
           <ReadOnlyRow label={t.how} value={how} testid="field-action-ro-how" />
           <ReadOnlyRow label={t.when} value={when} testid="field-action-ro-when" />
           {contract.reviewedAt && formatDate(contract.reviewedAt, loc) ? (
-            <span className="text-[0.7rem] text-white/40">{t.reviewedOn} · {formatDate(contract.reviewedAt, loc)}</span>
+            <span className="text-[0.7rem] text-white/55">{t.reviewedOn} · {formatDate(contract.reviewedAt, loc)}</span>
           ) : null}
           <a
             href={`/${loc}/app?tab=foundry&view=my-learning`}
@@ -327,7 +327,7 @@ export default function FieldActionForm({
             <span data-testid="field-action-submitted-state" className="text-sm font-medium text-white/90">{t.submittedState}</span>
           </div>
           {contract.moduleTitle ? (
-            <p className="text-xs text-white/45"><span className="text-white/35">{t.context} </span>{contract.moduleTitle}</p>
+            <p className="text-xs text-white/55"><span className="text-white/50">{t.context} </span>{contract.moduleTitle}</p>
           ) : null}
           <p className="text-sm leading-6 text-white/70">{t.submittedBody}</p>
           <ReadOnlyRow label={t.who} value={who} testid="field-action-ro-who" />
@@ -339,8 +339,8 @@ export default function FieldActionForm({
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-white/90">{t.heading}</h2>
           {contract.moduleTitle ? (
-            <p className="text-xs text-white/45">
-              <span className="text-white/35">{t.context} </span>
+            <p className="text-xs text-white/55">
+              <span className="text-white/50">{t.context} </span>
               {contract.moduleTitle}
             </p>
           ) : null}
@@ -397,7 +397,7 @@ function ReadOnlyRow({ label, value, testid }: { label: string; value: string; t
   if (!value || !value.trim()) return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/40">{label}</span>
+      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/55">{label}</span>
       <span data-testid={testid} className="whitespace-pre-wrap break-words text-base leading-6 text-white/85">{value}</span>
     </div>
   );
@@ -422,7 +422,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/40">{label}</span>
+      <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/55">{label}</span>
       <textarea
         ref={inputRef}
         data-testid={testid}

@@ -138,7 +138,7 @@ export default function MeThisWeek({
   return (
     <section className="flex flex-col gap-2" data-testid="me-this-week">
       <div className="flex items-baseline gap-2">
-        <h1 className="text-lg font-semibold tracking-tight text-white">{t.me}</h1>
+        <h1 data-bty-main-heading="" className="text-lg font-semibold tracking-tight text-white">{t.me}</h1>
         {stage != null ? (
           <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#C9A66B]/85" data-testid="me-forge-stage">
             · {t.stage(stage)}
@@ -150,11 +150,11 @@ export default function MeThisWeek({
           aria-expanded/controls, no popup/disclosure. It shows the canonical weekly values (incl.
           "N event(s) joined"); the summary is sufficient, so there is no second surface to open. */}
       <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3" data-testid="me-week-summary">
-        <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.thisWeek}</span>
+        <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.thisWeek}</span>
         {dots.length > 0 ? (
           <div className="flex items-center gap-1.5" data-testid="me-week-dots" aria-hidden>
             {dots.map((d, i) => (
-              <span key={i} className={`h-2 w-2 rounded-full ${d > 0 ? "bg-[#E5B769]" : "bg-white/12"}`} />
+              <span key={i} className={`h-2 w-2 rounded-full ${d > 0 ? "bg-[#E5B769]" : "bg-white/[0.12]"}`} />
             ))}
           </div>
         ) : null}
@@ -162,7 +162,7 @@ export default function MeThisWeek({
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.82rem] text-white/70" data-testid="me-week-counts">
             {chips.map((c, i) => (
               <span key={i}>
-                {i > 0 ? <span className="mr-2.5 text-white/25">·</span> : null}
+                {i > 0 ? <span className="mr-2.5 text-white/50">·</span> : null}
                 {c}
               </span>
             ))}
@@ -170,11 +170,11 @@ export default function MeThisWeek({
         ) : loaded ? (
           // Proven-empty week (a completed load with no canonical values) — never shown merely
           // because a refresh is pending (that path retains the last values above).
-          <p className="text-[0.82rem] text-white/50">{t.quiet}</p>
+          <p className="text-[0.82rem] text-white/60">{t.quiet}</p>
         ) : failed ? (
           // The load ended and did not succeed. Compact, truthful, and recoverable — never a
           // spinner that outlives its request.
-          <p className="flex items-center gap-2 text-[0.82rem] text-white/50" data-testid="me-week-error">
+          <p className="flex items-center gap-2 text-[0.82rem] text-white/60" data-testid="me-week-error">
             <span>{t.unavailable}</span>
             <button
               type="button"
@@ -190,7 +190,7 @@ export default function MeThisWeek({
           </p>
         ) : (
           // Initial no-data mount only — a quiet loading state, not a proven-zero claim.
-          <p className="text-[0.82rem] text-white/30" role="status" data-testid="me-week-loading">{t.loading}</p>
+          <p className="text-[0.82rem] text-white/50" role="status" data-testid="me-week-loading">{t.loading}</p>
         )}
       </div>
     </section>

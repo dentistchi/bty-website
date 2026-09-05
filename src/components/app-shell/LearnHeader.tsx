@@ -50,7 +50,7 @@ export default function LearnHeader({
           the single LearnDoors entry below (no duplicate pill); the internal
           "Powered by BTY Foundry" line is removed from first-user vocabulary. */}
       <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#C9A66B]/80">{t.eyebrow}</span>
-      <h1 className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
+      <h1 data-bty-main-heading="" className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
     </header>
   );
 }

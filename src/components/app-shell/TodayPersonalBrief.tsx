@@ -356,12 +356,12 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
     : s === "overdue" ? "text-red-300/80 border-red-400/30"
       : s === "needs_revision" ? "text-[#E5B769] border-[#C9A66B]/45"
         : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35"
-          : "text-white/50 border-white/[0.12]";
+          : "text-white/60 border-white/[0.12]";
 
   const hostTagTone = (c: HostAttentionCategory) =>
     c === "FOLLOW_UP_OVERDUE" ? "text-red-300/80 border-red-400/30"
       : c === "FOLLOW_UP_NEEDED" ? "text-[#E5B769] border-[#C9A66B]/35"
-        : "text-white/55 border-white/14";
+        : "text-white/60 border-white/[0.14]";
 
   // Action-status badges are calm — NEVER red. Escalated is visually distinct (violet) from submitted (slate).
   const actionStatusTone = (s: ActionStatusState) =>
@@ -389,7 +389,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
 
       {reminders.length > 0 ? (
         <div className="flex flex-col gap-2" data-testid="brief-reminders">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.dontMiss}</span>
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.dontMiss}</span>
           <ul className="flex flex-col gap-1.5">
             {reminders.map((r) => {
               const revisionNote =
@@ -406,13 +406,13 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                   <a href={r.canonicalDeepLink} className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm text-white/80">
-                        {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
+                        {catLabel(r.category) ? <span className="text-white/55">{catLabel(r.category)} · </span> : null}
                         {r.title}
                       </span>
                       <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state, r.category)}>{stateLabel(r.state, r.category)}</span>
                     </div>
                     {applySource ? (
-                      <span data-testid="brief-apply-source" className="text-[0.66rem] text-white/35">
+                      <span data-testid="brief-apply-source" className="text-[0.66rem] text-white/50">
                         {applySource}
                       </span>
                     ) : null}
@@ -433,8 +433,8 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
       {actionStatus.length > 0 ? (
         <div className="flex flex-col gap-2" data-testid="brief-action-status">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.actionStatusEyebrow(actionStates)}</span>
-            <span className="text-[0.72rem] text-white/45">{t.actionStatusSub(actionStatus.length, actionStates)}</span>
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.actionStatusEyebrow(actionStates)}</span>
+            <span className="text-[0.72rem] text-white/55">{t.actionStatusSub(actionStatus.length, actionStates)}</span>
           </div>
           <ul className="flex flex-col gap-1.5">
             {actionVisible.map((a) => {
@@ -446,9 +446,9 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                       <span className="min-w-0 flex-1 truncate text-sm text-white/80">{a.title}</span>
                       <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + actionStatusTone(a.status)}>{t.actionStatusBadge[a.status]}</span>
                     </div>
-                    <span className="text-xs text-white/50">{t.actionStatusCopy[a.status]}</span>
-                    {a.sourceTitle ? <span className="truncate text-xs text-white/40">{a.sourceTitle}</span> : null}
-                    {deadline ? <span className="text-[0.7rem] text-white/35">{t.originalDeadline} · {deadline}</span> : null}
+                    <span className="text-xs text-white/60">{t.actionStatusCopy[a.status]}</span>
+                    {a.sourceTitle ? <span className="truncate text-xs text-white/55">{a.sourceTitle}</span> : null}
+                    {deadline ? <span className="text-[0.7rem] text-white/50">{t.originalDeadline} · {deadline}</span> : null}
                   </a>
                 </li>
               );
@@ -459,7 +459,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               type="button"
               data-testid="action-status-toggle"
               onClick={() => setShowAllAction((v) => !v)}
-              className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
+              className="self-start pt-0.5 text-xs text-white/60 hover:text-white/80"
             >
               {showAllAction ? t.showLess : t.showAll(actionStatus.length)}
             </button>
@@ -471,7 +471,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
         <div className="flex flex-col gap-2" data-testid="brief-host-attention">
           <div className="flex flex-col gap-0.5">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.leadershipTitle}</span>
-            <span className="text-[0.72rem] text-white/45">{t.leadershipSub}</span>
+            <span className="text-[0.72rem] text-white/55">{t.leadershipSub}</span>
           </div>
           <ul className="flex flex-col gap-1.5">
             {hostVisible.map((h) => (
@@ -481,7 +481,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{h.participantDisplayName}</span>
                     <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + hostTagTone(h.category)}>{t.hostTags[h.category]}</span>
                   </div>
-                  <span className="truncate text-xs text-white/45">{h.trainingTitle}</span>
+                  <span className="truncate text-xs text-white/55">{h.trainingTitle}</span>
                   <span className="text-xs text-white/60">{h.reason}</span>
                 </a>
               </li>
@@ -492,7 +492,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               type="button"
               data-testid="host-attention-toggle"
               onClick={() => setShowAllHost((v) => !v)}
-              className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
+              className="self-start pt-0.5 text-xs text-white/60 hover:text-white/80"
             >
               {showAllHost ? t.showLess : t.showAll(hostAttention.length)}
             </button>
@@ -518,7 +518,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                 data-count={n}
                 className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
               >
-                <span className="min-w-0 truncate text-[0.72rem] text-white/55">{label}</span>
+                <span className="min-w-0 truncate text-[0.72rem] text-white/60">{label}</span>
                 <span className="shrink-0 text-sm font-semibold text-white/85">{n}</span>
               </div>
             ))}
@@ -530,7 +530,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
         <div className="flex flex-col gap-2" data-testid="brief-action-reviews">
           <div className="flex flex-col gap-0.5">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.actionReviewsTitle}</span>
-            <span className="text-[0.72rem] text-white/45">{t.actionReviewsSub(hostActionReviews.length)}</span>
+            <span className="text-[0.72rem] text-white/55">{t.actionReviewsSub(hostActionReviews.length)}</span>
           </div>
           <ul className="flex flex-col gap-1.5">
             {reviewsVisible.map((r) => {
@@ -547,9 +547,9 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                       <span className="shrink-0 rounded-md border border-sky-400/25 px-2 py-0.5 text-[0.66rem] text-sky-200/75">{r.statusLabel}</span>
                     </div>
                     {r.actionSummary ? <span className="truncate text-xs text-white/60">{r.actionSummary}</span> : null}
-                    <span className="text-[0.7rem] text-white/40">{t.remoteReview}</span>
-                    {submitted ? <span className="text-[0.7rem] text-white/35">{t.submittedOn} · {submitted}</span> : null}
-                    {deadline ? <span className="text-[0.7rem] text-white/35">{t.originalDeadline} · {deadline}</span> : null}
+                    <span className="text-[0.7rem] text-white/55">{t.remoteReview}</span>
+                    {submitted ? <span className="text-[0.7rem] text-white/50">{t.submittedOn} · {submitted}</span> : null}
+                    {deadline ? <span className="text-[0.7rem] text-white/50">{t.originalDeadline} · {deadline}</span> : null}
                   </a>
                 </li>
               );
@@ -560,7 +560,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               type="button"
               data-testid="action-review-toggle"
               onClick={() => setShowAllReviews((v) => !v)}
-              className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
+              className="self-start pt-0.5 text-xs text-white/60 hover:text-white/80"
             >
               {showAllReviews ? t.showLess : t.showAll(hostActionReviews.length)}
             </button>

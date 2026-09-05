@@ -90,12 +90,12 @@ function DoorRow({
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-[0.95rem] font-medium text-white/90">{title}</span>
-        <span className="truncate text-[0.78rem] text-white/50">{sub}</span>
+        <span className="truncate text-[0.78rem] text-white/60">{sub}</span>
       </div>
       {badge ? (
-        <span className="shrink-0 rounded-md border border-white/[0.12] px-2 py-0.5 text-[0.66rem] text-white/45">{badge}</span>
+        <span className="shrink-0 rounded-md border border-white/[0.12] px-2 py-0.5 text-[0.66rem] text-white/55">{badge}</span>
       ) : (
-        <span aria-hidden className="shrink-0 text-white/30">›</span>
+        <span aria-hidden className="shrink-0 text-white/50">›</span>
       )}
     </div>
   );
@@ -174,7 +174,7 @@ export default function PracticeLanding({
           type="button"
           data-testid="practice-arena-back"
           onClick={() => setView("landing")}
-          className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+          className="self-start text-xs font-medium text-white/60 hover:text-white/85"
         >
           ‹ {t.back}
         </button>
@@ -211,7 +211,7 @@ export default function PracticeLanding({
     <div className="flex flex-col gap-4" data-testid="practice-landing">
       <header className="flex flex-col gap-1">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#C9A66B]/80">{t.eyebrow}</span>
-        <h1 className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
+        <h1 data-bty-main-heading="" className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
       </header>
       <div className="flex flex-col gap-2">
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />

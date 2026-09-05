@@ -174,15 +174,15 @@ export default function MeWeeklyTrace({
           className={`absolute left-1/2 z-20 w-[min(19rem,86vw)] max-h-[min(70dvh,32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.12] bg-[#12161f]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-xl backdrop-blur-sm ${placement === "above" ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span id={titleId} className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/50">{t.title}</span>
+            <span id={titleId} className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/60">{t.title}</span>
             <div className="flex items-center gap-2">
-              {range ? <span className="text-[0.72rem] text-white/45" data-testid="me-attendance-range">{range}</span> : null}
+              {range ? <span className="text-[0.72rem] text-white/55" data-testid="me-attendance-range">{range}</span> : null}
               <button
                 type="button"
                 data-testid="me-attendance-close"
                 aria-label={t.close}
                 onClick={closePopup}
-                className="-mr-1 shrink-0 rounded-full px-1.5 text-white/45 outline-none hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/40"
+                className="-mr-1 shrink-0 rounded-full px-1.5 text-white/55 outline-none hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/40"
               >
                 ✕
               </button>
@@ -200,7 +200,7 @@ export default function MeWeeklyTrace({
                     data-active={d.active ? "1" : "0"}
                     aria-label={`${fmtDate(d.date, loc)} — ${d.active ? t.present : t.absent}`}
                   >
-                    <span className="text-[0.58rem] text-white/35" aria-hidden>{fmtWeekday(d.date, loc)}</span>
+                    <span className="text-[0.58rem] text-white/50" aria-hidden>{fmtWeekday(d.date, loc)}</span>
                     {/* R2: a quiet BTY living LIGHT of presence — NOT a ring/donut. Restores the proven
                         filled-gold marker (R3 me-week-days / MeThisWeek me-week-dots use bg-[#E5B769]
                         solid, no glyph, no center cutout). Active = a solid warm-gold core with a soft
@@ -221,10 +221,10 @@ export default function MeWeeklyTrace({
                   </div>
                 ))}
               </div>
-              <p className="mt-2.5 text-[0.72rem] text-white/45" data-testid="me-attendance-count">{t.activeDays(activeCount)}</p>
+              <p className="mt-2.5 text-[0.72rem] text-white/55" data-testid="me-attendance-count">{t.activeDays(activeCount)}</p>
             </>
           ) : (
-            <p className="mt-2.5 text-[0.78rem] text-white/40" role="status" data-testid="me-attendance-loading">{t.loading}</p>
+            <p className="mt-2.5 text-[0.78rem] text-white/55" role="status" data-testid="me-attendance-loading">{t.loading}</p>
           )}
         </div>
       ) : null}

@@ -238,12 +238,24 @@ describe("★ NOTHING ELSE MOVED", () => {
     expect(code("src/components/teams/TeamsRuntimeProbe.tsx")).toContain("fixed inset-x-0 bottom-0");
   });
 
-  it("8c — NO visual repair shipped in this slice: the shell root and Teams floor are untouched", () => {
+  it("8c — the diagnostic still ships no layout of its own (TQ-3 owns the visual repair)", () => {
+    /*
+      TQ-2 asserted here that NOTHING visual had shipped, which was true of TQ-2 and is
+      deliberately no longer true: TQ-3 made the contrast and top-rhythm repair the Founder's real
+      device numbers justified, and holds its own bounds in `teamsVisualQuality.test.tsx`.
+
+      What survives is the part that was never TQ-3's to change and is still this slice's promise:
+      the DIAGNOSTIC adds no layout. The shell is still a dynamic-viewport column, the real
+      safe-area inset is still the first term of the top reservation (never replaced by an invented
+      one), `main`'s own box is untouched, and the Teams floor is still the navy 100dvh floor.
+    */
     const shell = read("src/components/app-shell/BtyDailyAppShell.tsx");
     expect(shell).toContain("h-[100dvh]");
-    expect(shell).toContain('style={{ height: "env(safe-area-inset-top)" }}');
+    expect(shell).toContain("max(env(safe-area-inset-top), var(--bty-host-top-floor, 0px))");
     expect(shell).toContain('<main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8"');
+    expect(shell).not.toMatch(/className="[^"]*\bscale-\d/);
     expect(code("src/app/teams/layout.tsx")).toContain('minHeight: "100dvh"');
+    expect(code("src/app/teams/layout.tsx")).toContain("#0B1F3A");
   });
 
   it("8d — the ordinary Me rows keep their order and destinations", async () => {
