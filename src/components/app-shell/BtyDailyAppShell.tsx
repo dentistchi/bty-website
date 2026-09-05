@@ -24,6 +24,8 @@ import EventCreateClient from "@/components/bty/events/EventCreateClient";
 import EventHostList from "@/components/bty/events/EventHostList";
 import EventHostDetail from "@/components/bty/events/EventHostDetail";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
+import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
+import { useTeamsDiagnosticsEntry } from "@/lib/bty/teams/useTeamsDiagnosticsEntry";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 import {
   focusFromRelationship,
@@ -1282,6 +1284,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
   const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account">("home");
+  /*
+    TEAMS DISPLAY DIAGNOSTICS — TEMPORARY (Slice TQ-2). Remove with the visual repair it exists to
+    inform; see `useTeamsDiagnosticsEntry` for why the URL-flag entry could not measure anything.
+
+    This is an OVERLAY flag, deliberately not a `meView`. A sub-view would unmount the Me root and
+    replace the very layout being measured; this leaves every pixel of the current screen mounted
+    underneath and puts it back untouched on Close.
+  */
+  const teamsDiagnosticsAvailable = useTeamsDiagnosticsEntry();
+  const [teamsDiagnosticsOpen, setTeamsDiagnosticsOpen] = useState(false);
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
@@ -2103,6 +2115,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
                   { id: "me-row-center", label: locale === "ko" ? "센터" : "Center", go: () => setMeView("center") },
                   { id: "me-account-row", label: locale === "ko" ? "계정" : "Account", go: () => setMeView("account") },
+                  /*
+                    TEMPORARY, TEAMS-HOSTED, PLATFORM-ADMIN ONLY (Slice TQ-2). Last in the list, so
+                    no ordinary row moves. Both conditions are resolved by `useTeamsDiagnosticsEntry`
+                    — outside the Teams tab it never even asks the server, and an unanswered
+                    authority leaves the row absent. Deleted in the same closure cycle as the
+                    display repair it measures.
+                  */
+                  ...(teamsDiagnosticsAvailable
+                    ? [{ id: "me-row-teams-diagnostics", label: "Teams display diagnostics", go: () => setTeamsDiagnosticsOpen(true) }]
+                    : []),
                 ].map((r) => (
                   <button
                     key={r.id}
@@ -2124,6 +2146,21 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <div className="relative z-10 flex shrink-0 flex-col">
         <AppTabBar active={tab} onSelect={handleTabSelect} locale={locale} />
       </div>
+
+      {/*
+        TEAMS DISPLAY DIAGNOSTICS OVERLAY (Slice TQ-2) — TEMPORARY.
+
+        Rendered here, as a sibling of the dock rather than inside `main`, for one reason: it must
+        not become part of what it measures. It is `position: fixed`, so it takes no space and
+        shifts nothing, and the screen underneath stays mounted with its scroll position, its
+        in-flight loads and its sub-view state intact. Closing is a state flip, not a navigation.
+
+        The guard is `available && open`: if authority is somehow lost while it is showing, it
+        disappears rather than lingering on a screen that may no longer belong to an admin.
+      */}
+      {teamsDiagnosticsAvailable && teamsDiagnosticsOpen ? (
+        <TeamsRuntimeProbe onClose={() => setTeamsDiagnosticsOpen(false)} />
+      ) : null}
     </div>
   );
 }
