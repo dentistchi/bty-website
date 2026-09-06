@@ -17,7 +17,7 @@
  * of the things the measurement forbade — no invented safe-area, no scaling, no viewport hack.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
@@ -244,13 +244,19 @@ describe("★ authority, Save / Track and Open in Teams are untouched by a visua
     expect(ids).toContain("TEAMS_COMMAND_TRACK");
   });
 
-  it("the platform-admin authority route is unchanged and still read-only", () => {
-    const r = code("src/app/api/bty/authority/platform-admin/route.ts");
-    expect(r).toContain("export async function GET");
-    expect(r).toContain("isActivePlatformAdmin");
-    for (const w of ["export async function POST", ".insert(", ".update(", ".upsert(", ".delete("]) {
-      expect(r, w).not.toContain(w);
-    }
+  it("the temporary platform-admin authority route is GONE, and admin authority is not", () => {
+    /*
+      TQ-2 added GET /api/bty/authority/platform-admin for ONE reason: the in-tab diagnostic row
+      had to ask the server whether the person looking was an admin. That row is removed with this
+      slice, the endpoint had no other consumer, and an endpoint nobody calls is a surface with no
+      reason to exist.
+
+      Removing a read-only "am I an admin" answer is not a change to admin AUTHORITY: the canonical
+      resolver still reads the grant table, and every route that actually gates on it is untouched.
+      Held in full by `teamsDiagnosticsRemoved.test.tsx`.
+    */
+    expect(existsSync(join(process.cwd(), "src/app/api/bty/authority/platform-admin/route.ts"))).toBe(false);
+    expect(code("src/lib/bty/authority/platformAdmin.server.ts")).toContain("bty_platform_admin_grants");
   });
 
   it("the Teams tab bootstrap and its ?diag=1 test entry still stand", () => {

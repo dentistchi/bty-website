@@ -190,8 +190,13 @@ describe("★ 8+9+10. nothing else moved", () => {
     const migrations = fs
       .readdirSync(path.join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f));
-    // Compare the 14-digit PREFIX. Comparing whole filenames makes 20260911000000_x.sql "greater
-    // than" 20260911000000 and the guard reports the newest applied migration as a new one.
-    expect(migrations.filter((f) => f.slice(0, 14) > "20260911000000")).toEqual([]);
+    // Compare the 14-digit PREFIX. Comparing whole filenames makes 20260912000000_x.sql "greater
+    // than" 20260912000000 and the guard reports the newest applied migration as a new one.
+    //
+    // Re-anchored to 20260912 (Track conversation V1). Bumping it is the DELIBERATE act this guard
+    // asks for: it still fails the moment SQL appears that nobody moved this line for, which is
+    // the smuggled migration it exists to catch. What it never claimed is that the repository
+    // would stop growing.
+    expect(migrations.filter((f) => f.slice(0, 14) > "20260912000000")).toEqual([]);
   });
 });

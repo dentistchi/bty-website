@@ -18,6 +18,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: { auth: { getSession: vi.fn(async (
 
 import TrackingSent from "./TrackingSent";
 import { summariseAnnouncement } from "@/domain/announcement/trackedAnnouncement";
+import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
 
 afterEach(() => {
   cleanup();
@@ -25,11 +26,48 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * One responder, in the shape the owner-scoped route actually returns.
+ *
+ * ★ `needsAttention` IS DERIVED HERE THE WAY THE SERVER DERIVES IT (Track conversation V1).
+ *
+ * The Host list now carries it, computed by `recipientNeedsHostAttention`, and the surface sorts on
+ * it. A fixture that hard-coded the flag — or omitted it — would let this suite pass while the real
+ * projection disagreed, so it calls the SAME domain function the service calls.
+ */
+const withAttention = <T extends { response?: string | null; handledAt: string | null; unreadCount: number }>(p: T) => ({
+  ...p,
+  needsAttention: recipientNeedsHostAttention({
+    response: p.response ?? null,
+    handledAt: p.handledAt,
+    unreadForHost: p.unreadCount,
+  }),
+});
+
 const R = (
   recipientId: string,
   display: string | null,
-  over: { questionText?: string | null; handledAt?: string | null } = {},
-) => ({ recipientId, display, questionText: null, respondedAt: null, handledAt: null, ...over });
+  over: {
+    questionText?: string | null;
+    handledAt?: string | null;
+    response?: string | null;
+    unreadCount?: number;
+    messageCount?: number;
+  } = {},
+) =>
+  withAttention({
+    recipientId,
+    display,
+    questionText: null,
+    respondedAt: null,
+    handledAt: null,
+    // These fixtures populate the two ACTIONABLE buckets, whose members answered QUESTION or
+    // HELP_NEEDED; either satisfies the open-request half of the rule identically.
+    response: "QUESTION" as string | null,
+    unreadCount: 0,
+    messageCount: 0,
+    ...over,
+  });
 
 const RUN = {
   id: "0e11d0bf-0000-0000-0000-000000000001",
@@ -62,8 +100,12 @@ function stub(run = RUN) {
       // The server is the authority: reflect the write back through the owner-scoped read.
       const handled = (JSON.parse(String(init?.body)) as { handled: boolean }).handled;
       const id = u.split("/recipients/")[1].split("/")[0];
+      // The server RE-DERIVES needsAttention on every owner-scoped read, so the stub must too —
+      // otherwise the flag and the timestamp could drift apart in a way production cannot.
       const patch = (list: typeof run.responders.needHelp) =>
-        list.map((p) => (p.recipientId === id ? { ...p, handledAt: handled ? "2026-09-03T00:00:00Z" : null } : p));
+        list.map((p) =>
+          p.recipientId === id ? withAttention({ ...p, handledAt: handled ? "2026-09-03T00:00:00Z" : null }) : p,
+        );
       current = { ...current, responders: {
         needHelp: patch(current.responders.needHelp), question: patch(current.responders.question),
         acknowledged: current.responders.acknowledged, noResponse: current.responders.noResponse } };

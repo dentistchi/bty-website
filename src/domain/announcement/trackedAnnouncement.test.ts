@@ -128,19 +128,36 @@ describe("what a recipient may see — the privacy whitelist", () => {
   it("carries the Host's framing and NOTHING from the captured message", () => {
     const p = projectForRecipient({
       announcementId: "a1",
+      recipientId: "r1",
       hostFraming: "Please confirm you've read the new intake steps.",
       hostDisplay: "Dr. Chi",
       sourceUrl: "https://teams.microsoft.com/l/message/19:x/1",
       response: "QUESTION",
       respondedAt: "2026-09-01T00:00:00Z",
+      unreadCount: 2,
+      messageCount: 3,
     });
+    /*
+      THE WHITELIST GREW BY THREE, AND ONLY BY THREE (Track conversation V1).
+
+      `recipientId` is the caller's OWN row and the address of their OWN conversation — this list is
+      scoped by `user_id` = the session user, so it is the only one they can receive here, it
+      identifies nobody, and possessing it grants nothing because authority is re-derived in the
+      database on every read and write.
+
+      `unreadCount` and `messageCount` are COUNTS. A number cannot carry a body, a name or an
+      identifier, and neither can say anything about another recipient of the same announcement.
+    */
     expect(Object.keys(p).sort()).toEqual([
       "announcementId",
       "hostDisplay",
       "hostFraming",
+      "messageCount",
+      "recipientId",
       "respondedAt",
       "response",
       "sourceUrl",
+      "unreadCount",
     ]);
     const dump = JSON.stringify(p);
     // The shapes that must never reach a recipient — the source may be a private channel.
@@ -159,5 +176,20 @@ describe("what a recipient may see — the privacy whitelist", () => {
 
   it("an unrecognised response never leaks through as a claim", () => {
     expect(projectForRecipient({ announcementId: "a", hostFraming: "f", response: "READ" }).response).toBeNull();
+  });
+
+  it("counts are floored at zero and never carry a negative or a fraction from a bad read", () => {
+    const p = projectForRecipient({
+      announcementId: "a",
+      hostFraming: "f",
+      unreadCount: -3,
+      messageCount: 2.7,
+    });
+    expect(p.unreadCount).toBe(0);
+    expect(p.messageCount).toBe(2);
+  });
+
+  it("a missing recipient id is an empty string, not `undefined` leaking into a URL", () => {
+    expect(projectForRecipient({ announcementId: "a", hostFraming: "f" }).recipientId).toBe("");
   });
 });

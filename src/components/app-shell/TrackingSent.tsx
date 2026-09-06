@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnouncement";
 import { funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
+import TrackConversation, { NewMessageBadge } from "./TrackConversation";
 
 /**
  * "Tracking" — what the Host asked for, and what came back. Today lane.
@@ -48,6 +49,14 @@ type Responder = {
   questionText: string | null;
   respondedAt: string | null;
   handledAt: string | null;
+  /** Messages from THIS person the Host has not opened. The Host's own replies never count. */
+  unreadCount: number;
+  messageCount: number;
+  /**
+   * The open-request rule OR an unread message from them — computed in the domain, carried here.
+   * A stale "handled" no longer suppresses somebody who has since said something new.
+   */
+  needsAttention: boolean;
 };
 
 type Locale = "en" | "ko";
@@ -69,6 +78,8 @@ const COPY = {
     hideResponses: "Hide",
     someone: "Someone",
     markHandled: "Mark handled",
+    openConversation: "Open conversation",
+    hideConversation: "Hide conversation",
     handled: "Handled",
     reopen: "Reopen",
     /* What the Host must do next, said as the thing to do rather than a status name. */
@@ -93,6 +104,8 @@ const COPY = {
     hideResponses: "접기",
     someone: "이름 없음",
     markHandled: "처리 완료",
+    openConversation: "대화 열기",
+    hideConversation: "대화 접기",
     handled: "처리됨",
     reopen: "다시 열기",
     needsReply: "답변이 필요합니다",
@@ -105,9 +118,21 @@ const COPY = {
   },
 } as const;
 
-/** Still-open people first: a Host must not read past settled rows to find their next action. */
+/**
+ * Still-open people first: a Host must not read past settled rows to find their next action.
+ *
+ * ★ THE SORT KEY IS ATTENTION, NOT `handledAt` (this slice changed it, and this is the whole point).
+ *
+ * It used to be "handled sinks". That was right when a conversation could not continue: once the
+ * Host had settled somebody's question, there was nothing more that person could say. Now there is
+ * — and a recipient who replies AFTER being marked handled is asking for something nobody has
+ * answered. Sorting on `handledAt` would bury them under a flag the Host set before they spoke.
+ *
+ * `needsAttention` is the server's own rule: the original request is open, OR they have said
+ * something new. With no messages it is exactly the old ordering.
+ */
 function openFirst(people: Responder[]): Responder[] {
-  return [...people].sort((a, b) => Number(a.handledAt !== null) - Number(b.handledAt !== null));
+  return [...people].sort((a, b) => Number(!a.needsAttention) - Number(!b.needsAttention));
 }
 
 /** Relative day, because a Host reads "today" and "yesterday" faster than a date. */
@@ -160,16 +185,25 @@ function Bucket({
   tone,
   fallback,
   t,
+  locale,
   busyId,
   onHandle,
+  openRecipientId,
+  onToggleConversation,
+  onConversationChanged,
 }: {
   label: string;
   people: Responder[];
   tone: "urgent" | "quiet";
   fallback: string;
   t: Copy;
+  locale: Locale;
   busyId: string | null;
   onHandle: ((r: Responder, handled: boolean) => void) | null;
+  /** At most ONE conversation is open at a time, and it is named by ONE recipient id. */
+  openRecipientId: string | null;
+  onToggleConversation: (recipientId: string) => void;
+  onConversationChanged: () => void;
 }) {
   if (people.length === 0) return null;
   return (
@@ -184,6 +218,7 @@ function Bucket({
       </p>
       {people.map((p) => {
         const settled = p.handledAt !== null;
+        const conversationOpen = openRecipientId === p.recipientId;
         return (
           <div
             key={p.recipientId}
@@ -194,8 +229,16 @@ function Bucket({
           >
             <div className="flex items-center justify-between gap-3">
               {/* A bound person whose provider name could not be read is still shown, never dropped. */}
-              <span className={"text-[0.88rem] leading-6 " + (settled ? "text-white/55" : "text-white/85")}>
-                {p.display ?? fallback}
+              <span className="flex min-w-0 items-center gap-2">
+                <span className={"truncate text-[0.88rem] leading-6 " + (settled ? "text-white/55" : "text-white/85")}>
+                  {p.display ?? fallback}
+                </span>
+                {/*
+                  ★ ONE PERSON'S COUNT, NEXT TO THAT PERSON. Never a total for the run: "3 new"
+                  across an announcement would tell a Host nothing about whom to open, and merging
+                  counts is one step from merging the messages behind them.
+                */}
+                <NewMessageBadge n={p.unreadCount} locale={locale} />
               </span>
               {onHandle ? (
                 <button
@@ -215,8 +258,12 @@ function Bucket({
               ) : null}
             </div>
 
-            {/* The question survives being handled: acting on it is not permission to erase it. */}
-            {p.questionText ? (
+            {/*
+              The question survives being handled: acting on it is not permission to erase it.
+              It is hidden only while the conversation is open, where it is already the first
+              message — the same text twice on one screen reads as two separate things said.
+            */}
+            {p.questionText && !conversationOpen ? (
               <span
                 className={
                   "rounded-lg bg-white/[0.04] px-3 py-2 text-[0.82rem] leading-6 " +
@@ -232,6 +279,38 @@ function Bucket({
               <span className="text-[0.72rem] text-white/50" data-testid="tracking-person-handled">
                 {t.handled}
               </span>
+            ) : null}
+
+            {/*
+              ★ ONE PERSON, ONE CONVERSATION, OPENED ON PURPOSE.
+
+              The control is per person and the panel is addressed by that person's recipient id, so
+              there is no shape here in which two recipients' messages could appear together — and
+              the route would refuse a recipient this Host does not own even if one arrived.
+
+              It is offered for EVERY named person, including "No response yet": a Host who wants to
+              ask somebody directly should not first have to make them answer a form. Opening one
+              conversation closes the other, because reading two people at once on a phone is how a
+              Host ends up replying to the wrong one.
+            */}
+            <button
+              type="button"
+              data-testid="tracking-conversation-toggle"
+              data-recipient={p.recipientId}
+              aria-expanded={conversationOpen}
+              onClick={() => onToggleConversation(p.recipientId)}
+              className="min-h-[2.25rem] self-start text-[0.78rem] font-medium text-white/60 hover:text-white/80"
+            >
+              {conversationOpen ? t.hideConversation : t.openConversation}
+            </button>
+
+            {conversationOpen ? (
+              <TrackConversation
+                recipientId={p.recipientId}
+                locale={locale}
+                counterpartName={p.display}
+                onChanged={onConversationChanged}
+              />
             ) : null}
           </div>
         );
@@ -317,6 +396,17 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
 
   /** The person whose Handled write is in flight. Scoped to one row, never a screen-level spinner. */
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  /**
+   * WHICH ONE PERSON'S CONVERSATION IS OPEN. A single id, across every run and every bucket, so two
+   * people's messages can never be on screen together — and closing is what happens when another is
+   * opened, not something the Host has to remember to do.
+   */
+  const [openRecipientId, setOpenRecipientId] = useState<string | null>(null);
+  const toggleConversation = useCallback(
+    (recipientId: string) => setOpenRecipientId((cur) => (cur === recipientId ? null : recipientId)),
+    [],
+  );
 
   /**
    * Settle (or re-open) one person's follow-up.
@@ -471,14 +561,18 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
                   so a Host never has to read past settled rows to find the next thing to do.
                 */}
                 <Bucket label={t.needsHelp} people={openFirst(r.needHelp)} tone="urgent" fallback={t.someone}
-                  t={t} busyId={busyId} onHandle={handle} />
+                  t={t} locale={loc} busyId={busyId} onHandle={handle}
+                  openRecipientId={openRecipientId} onToggleConversation={toggleConversation} onConversationChanged={load} />
                 <Bucket label={t.needsReply} people={openFirst(r.question)} tone="urgent" fallback={t.someone}
-                  t={t} busyId={busyId} onHandle={handle} />
-                <Bucket label={t.noResponse} people={r.noResponse} tone="quiet" fallback={t.someone}
-                  t={t} busyId={busyId} onHandle={null} />
+                  t={t} locale={loc} busyId={busyId} onHandle={handle}
+                  openRecipientId={openRecipientId} onToggleConversation={toggleConversation} onConversationChanged={load} />
+                <Bucket label={t.noResponse} people={openFirst(r.noResponse)} tone="quiet" fallback={t.someone}
+                  t={t} locale={loc} busyId={busyId} onHandle={null}
+                  openRecipientId={openRecipientId} onToggleConversation={toggleConversation} onConversationChanged={load} />
                 {/* "Got it" is already an ending; there is nothing for a Host to settle. */}
-                <Bucket label={t.gotIt} people={r.acknowledged} tone="quiet" fallback={t.someone}
-                  t={t} busyId={busyId} onHandle={null} />
+                <Bucket label={t.gotIt} people={openFirst(r.acknowledged)} tone="quiet" fallback={t.someone}
+                  t={t} locale={loc} busyId={busyId} onHandle={null}
+                  openRecipientId={openRecipientId} onToggleConversation={toggleConversation} onConversationChanged={load} />
               </div>
             ) : null}
 

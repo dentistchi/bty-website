@@ -156,11 +156,25 @@ export function funnelIsComplete(f: AnnouncementFunnel): boolean {
  */
 export type RecipientProjection = {
   readonly announcementId: string;
+  /**
+   * THE CALLER'S OWN recipient row id, and the address of THEIR OWN private conversation.
+   *
+   * Safe to project for one reason: this list is scoped by `user_id` = the session user, so the
+   * only id a person ever receives here is the one naming their own thread. It identifies nobody —
+   * it is an internal row id, not a directory value — and possessing one grants nothing, because
+   * `bty_resolve_announcement_thread_role` re-derives authority in the database on every read and
+   * every write. Another recipient's id, guessed or stolen, resolves to `none`.
+   */
+  readonly recipientId: string;
   readonly hostFraming: string;
   readonly hostDisplay: string | null;
   readonly sourceUrl: string | null;
   readonly response: AnnouncementResponse | null;
   readonly respondedAt: string | null;
+  /** Messages from the HOST that this person has not opened yet. Never anyone else's. */
+  readonly unreadCount: number;
+  /** Whether a conversation exists at all — what decides if the panel is offered. */
+  readonly messageCount: number;
 };
 
 /** Only `https:` and Teams' own scheme may become a tappable link. */
@@ -172,18 +186,25 @@ export function safeSourceUrl(raw: unknown): string | null {
 
 export function projectForRecipient(row: {
   announcementId: string;
+  recipientId?: unknown;
   hostFraming: string;
   hostDisplay?: unknown;
   sourceUrl?: unknown;
   response?: unknown;
   respondedAt?: unknown;
+  unreadCount?: unknown;
+  messageCount?: unknown;
 }): RecipientProjection {
   return {
     announcementId: row.announcementId,
+    recipientId: typeof row.recipientId === "string" ? row.recipientId : "",
     hostFraming: row.hostFraming,
     hostDisplay: typeof row.hostDisplay === "string" && row.hostDisplay.trim() ? row.hostDisplay.trim() : null,
     sourceUrl: safeSourceUrl(row.sourceUrl),
     response: isAnnouncementResponse(row.response) ? row.response : null,
     respondedAt: typeof row.respondedAt === "string" ? row.respondedAt : null,
+    // Counts, never lists. A number cannot carry a body, a name or an identifier.
+    unreadCount: typeof row.unreadCount === "number" && row.unreadCount > 0 ? Math.floor(row.unreadCount) : 0,
+    messageCount: typeof row.messageCount === "number" && row.messageCount > 0 ? Math.floor(row.messageCount) : 0,
   };
 }

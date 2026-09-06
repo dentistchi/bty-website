@@ -69,8 +69,14 @@ describe("★ the Host projection never selects a directory identity", () => {
     const m = SERVICE.match(/\.select\("(id, announcement_id[^"]*)"\)/);
     expect(m, "the Host recipient select changed shape").toBeTruthy();
     const cols = m![1].split(",").map((c) => c.trim());
+    /*
+      Track conversation V1 added `host_last_read_at`. It is a TIMESTAMP OF THE HOST'S OWN
+      behaviour — when they last opened this person's conversation — and says nothing whatever
+      about who the recipient is. It is here because the Host's unread count is computed against it.
+    */
     expect(cols).toEqual([
       "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at",
+      "host_last_read_at",
     ]);
     for (const forbidden of ["tenant_id", "aad_object_id", "email", "preferred_username"]) {
       expect(cols, forbidden).not.toContain(forbidden);
@@ -271,11 +277,34 @@ describe("★ the display name comes from a source the subject cannot edit", () 
 });
 
 describe("★ 7+8. names never leave the owner-scoped route", () => {
-  it("★ 8. the participant projection returns no other recipient, named or otherwise", () => {
+  it("★ 8. the participant projection returns no OTHER RECIPIENT, named or otherwise", () => {
+    /*
+      ★ WHAT CHANGED, AND WHY IT IS NOT THIS INVARIANT.
+
+      This asserted `hostDisplay: null` and no name lookup at all, because A1 had nowhere to show a
+      name. Track conversation V1 does: a reply that reads only "message" is a message from nobody,
+      so the HOST — the one person who addressed this recipient directly, whose framing they are
+      already reading — is named. `RecipientProjection` has carried a `hostDisplay` field since A1
+      for exactly this.
+
+      The invariant this test is actually about is UNCHANGED and is asserted harder below: the ONLY
+      user ids this projection ever resolves are announcement OWNERS. No other recipient of the same
+      announcement is named, counted, or so much as looked up.
+    */
     const mine = SERVICE.slice(SERVICE.indexOf("listMyAnnouncements"), SERVICE.indexOf("respondToAnnouncement"));
-    expect(mine).not.toContain("resolveDisplayNames");
     expect(mine).not.toContain("responders");
-    expect(mine).toContain("hostDisplay: null");
+
+    // ★ The one name lookup here is fed OWNER ids and nothing else.
+    const call = mine.match(/resolveDisplayNames\(\s*admin,\s*([\s\S]*?)\);/);
+    expect(call, "listMyAnnouncements changed how it resolves names").toBeTruthy();
+    expect(call![1]).toContain("owner_user_id");
+    expect(call![1]).not.toContain("user_id)");
+    expect(call![1]).not.toMatch(/\br\.user_id\b/);
+
+    // And the thread metadata it loads is keyed on the CALLER'S OWN rows, which are all this
+    // `user_id`-scoped query can contain.
+    expect(mine).toContain("loadThreadMeta(admin, rows.map((r) => r.id))");
+    expect(mine).toContain('.eq("user_id", userId)');
   });
 
   it("★ 7. names are produced only inside the owner-scoped Host list", () => {

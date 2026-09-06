@@ -8,6 +8,8 @@ import {
   type AnnouncementResponse,
   type RecipientProjection,
 } from "@/domain/announcement/trackedAnnouncement";
+import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
+import { loadThreadMeta, messageCountFrom, unreadFrom } from "./announcementThread.server";
 import { resolveDisplayNames } from "./recipientDisplayName.server";
 
 /**
@@ -25,9 +27,11 @@ import { resolveDisplayNames } from "./recipientDisplayName.server";
  */
 
 type RecipientRow = {
+  id: string;
   announcement_id: string;
   response: string | null;
   responded_at: string | null;
+  recipient_last_read_at: string | null;
   bty_tracked_announcements: {
     id: string;
     host_framing: string;
@@ -50,7 +54,7 @@ export async function listMyAnnouncements(
     .from("bty_tracked_announcement_recipients")
     // The whitelist IS the privacy rule. Note what is absent: no preview, no metadata, no ids.
     .select(
-      "announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures!inner(source_url))",
+      "id, announcement_id, response, responded_at, recipient_last_read_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures!inner(source_url))",
     )
     .eq("user_id", userId)
     .eq("bty_tracked_announcements.status", "active")
@@ -62,15 +66,44 @@ export async function listMyAnnouncements(
     return [];
   }
 
-  return (data ?? []).map((r) =>
+  const rows = data ?? [];
+
+  /*
+    ★ ONLY THIS PERSON'S OWN THREADS ARE EVEN ASKED ABOUT.
+
+    `rows` is already scoped by `user_id` = the caller, so the id set handed to `loadThreadMeta`
+    can only ever contain their own recipient rows — there is no path here that could name another
+    recipient of the same announcement. And the metadata query carries no bodies: it selects
+    `recipient_id, author_role, created_at`, which is everything a badge needs and nothing a leak
+    could use.
+  */
+  const meta = await loadThreadMeta(admin, rows.map((r) => r.id));
+
+  /*
+    THE HOST'S NAME, FROM THE PROVIDER, BECAUSE A CONVERSATION HAS TWO NAMED SIDES.
+
+    A reply that reads only "message" is a message from nobody. The source is
+    `auth.identities.identity_data` — provider-written and not editable by the account holder — and
+    it is never the email. A Host whose name cannot be resolved stays null and the surface says
+    "Host" rather than inventing one.
+  */
+  const hostNames = await resolveDisplayNames(
+    admin,
+    rows.map((r) => r.bty_tracked_announcements?.owner_user_id ?? "").filter(Boolean),
+  );
+
+  return rows.map((r) =>
     projectForRecipient({
       announcementId: r.announcement_id,
+      recipientId: r.id,
       hostFraming: r.bty_tracked_announcements?.host_framing ?? "",
-      // A Host display name is resolved separately when one exists; never an email.
-      hostDisplay: null,
+      hostDisplay: hostNames.get(r.bty_tracked_announcements?.owner_user_id ?? "") ?? null,
       sourceUrl: r.bty_tracked_announcements?.bty_action_captures?.source_url ?? null,
       response: r.response,
       respondedAt: r.responded_at,
+      // Unread here means HOST messages this person has not opened. Their own never count.
+      unreadCount: unreadFrom(meta, r.id, "RECIPIENT", r.recipient_last_read_at),
+      messageCount: messageCountFrom(meta, r.id),
     }),
   );
 }
@@ -166,6 +199,19 @@ export type HostResponder = {
   respondedAt: string | null;
   /** Set only when the OWNING Host settled it. ACKNOWLEDGED is already an ending and never sets it. */
   handledAt: string | null;
+  /** Messages from THIS person that the Host has not opened. A Host's own replies never count. */
+  unreadCount: number;
+  /** Whether a conversation exists with this person at all. */
+  messageCount: number;
+  /**
+   * ★ THE HANDLED / REOPEN ANSWER, COMPUTED IN THE DOMAIN AND NOT HERE.
+   *
+   * True when the original request is still open (the existing, unchanged rule) OR when this
+   * person has said something new that the Host has not read. `handled_at` is never cleared to
+   * achieve this — settling a request stays a permanent record, it just stops being the last word.
+   * See `recipientNeedsHostAttention`.
+   */
+  needsAttention: boolean;
 };
 
 /**
@@ -204,7 +250,7 @@ export async function listHostAnnouncements(
 
   const { data: recips } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at")
+    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at, host_last_read_at")
     .in("announcement_id", runs.map((r) => r.id))
     .returns<
       {
@@ -215,8 +261,19 @@ export async function listHostAnnouncements(
         responded_at: string | null;
         question_text: string | null;
         handled_at: string | null;
+        host_last_read_at: string | null;
       }[]
     >();
+
+  /*
+    ★ EVERY RECIPIENT ROW HERE ALREADY BELONGS TO THIS OWNER.
+
+    `recips` was fetched with `.in("announcement_id", runs.map(...))` and `runs` is owner-scoped, so
+    the id set below cannot contain a row from someone else's announcement. Bodies are still never
+    loaded — this is `recipient_id, author_role, created_at` only, because a list needs counts and
+    a Host reads the actual words one person at a time, in that person's own conversation.
+  */
+  const threadMeta = await loadThreadMeta(admin, (recips ?? []).map((r) => r.id));
 
   const byRun = new Map<string, NonNullable<typeof recips>>();
   for (const r of recips ?? []) {
@@ -235,16 +292,28 @@ export async function listHostAnnouncements(
   const toResponder = (r: {
     id: string;
     user_id: string | null;
+    response: string | null;
     question_text: string | null;
     responded_at: string | null;
     handled_at: string | null;
-  }): HostResponder => ({
-    recipientId: r.id,
-    display: nameOf(r.user_id),
-    questionText: r.question_text,
-    respondedAt: r.responded_at,
-    handledAt: r.handled_at,
-  });
+    host_last_read_at: string | null;
+  }): HostResponder => {
+    const unreadCount = unreadFrom(threadMeta, r.id, "HOST", r.host_last_read_at);
+    return {
+      recipientId: r.id,
+      display: nameOf(r.user_id),
+      questionText: r.question_text,
+      respondedAt: r.responded_at,
+      handledAt: r.handled_at,
+      unreadCount,
+      messageCount: messageCountFrom(threadMeta, r.id),
+      needsAttention: recipientNeedsHostAttention({
+        response: r.response,
+        handledAt: r.handled_at,
+        unreadForHost: unreadCount,
+      }),
+    };
+  };
 
   return runs.map((run) => {
     const rows = byRun.get(run.id) ?? [];

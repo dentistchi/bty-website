@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnouncement";
+import TrackConversation, { NewMessageBadge } from "./TrackConversation";
 
 /**
  * Today → Needs your response. Slice A1.
@@ -25,11 +26,16 @@ import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnounce
 
 type Item = {
   announcementId: string;
+  /** THIS person's own row — the address of their own private conversation, and nobody else's. */
+  recipientId: string;
   hostFraming: string;
   hostDisplay: string | null;
   sourceUrl: string | null;
   response: AnnouncementResponse | null;
   respondedAt: string | null;
+  /** Messages from the Host this person has not opened. Their own replies never count. */
+  unreadCount: number;
+  messageCount: number;
 };
 
 type Locale = "en" | "ko";
@@ -184,6 +190,19 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
             data-answered={answered ? "1" : "0"}
             className="flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
           >
+            {/*
+              WHO IS ASKING, when the provider gave BTY a name. Never an email, and never invented:
+              a Host whose name could not be read simply is not named here.
+            */}
+            {it.hostDisplay || it.unreadCount > 0 ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[0.78rem] text-white/55" data-testid="announcement-host">
+                  {it.hostDisplay ?? ""}
+                </span>
+                <NewMessageBadge n={it.unreadCount} locale={locale} />
+              </div>
+            ) : null}
+
             <p className="text-[0.95rem] leading-6 text-white/85">{it.hostFraming}</p>
 
             {it.sourceUrl ? (
@@ -275,6 +294,21 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                 </button>
               </div>
             )}
+
+            {/*
+              ★ THE CONVERSATION CONTINUES WHERE THE ONE-SHOT ANSWER USED TO STOP.
+
+              Offered once there is something to continue: this person has answered, OR the Host has
+              already written to them. Before either, the three choices ARE the interaction, and a
+              reply box under an unanswered question would be a second way to do the same thing.
+
+              The question a person typed is already the first message in here — the same
+              transaction that recorded "I have a question" appended it — so the conversation opens
+              on their own words rather than on an empty box that lost them.
+            */}
+            {answered || it.messageCount > 0 ? (
+              <TrackConversation recipientId={it.recipientId} locale={locale} counterpartName={it.hostDisplay} onChanged={load} />
+            ) : null}
 
             {failed === it.announcementId ? (
               <p className="flex items-center gap-2 text-[0.78rem] text-white/60" data-testid="announcement-error">
