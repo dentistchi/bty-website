@@ -19,33 +19,53 @@ This script rasterises the three canonical trefoil lobes from the Founder's mast
 area-averaging. Same geometry, same brand mark — no redraw, no reinterpretation, no new logo. The result at the same mark width has 117 opaque pixels instead of
 12, and a semi:opaque ratio of 1.86 instead of 36.75.
 
-★ WHY THE FOOTPRINT SHRANK (TQ-4.1) — AND WHY THE EARLIER REASONING WAS WRONG.
+★ THE EXACT-MASTER APPROACH IS DEVICE-EXHAUSTED (TQ-4.2).
 
-TQ-4 kept the mark at the shipped 26x24 footprint and argued the measurements refused shrinking:
-at 24px a 23px mark left the same one-pixel channels as a 25.5px one, so it "bought nothing".
-Published as 1.0.7 and looked at on the real device, that reasoning FAILED. The icon changed
-rendering state and still read muddier than Activity / Chat / Files.
+Three packages were published and looked at on the Founder's iPhone:
 
-What the earlier analysis never measured was apparent WEIGHT against the icons beside it. Measured
-at 24px in ink pixels: Activity 83, Chat 104, Files 117 — and BTY 1.0.6 at 183, 1.0.7 at 135. The
-mark was simply heavier than its neighbours, and a heavier mark of three interlocking rings turns
-into a mass rather than a symbol. At a 22px optical box it lands at 108, inside the neighbour band.
+  1.0.6  the original asset — 12 opaque pixels of 453, essentially all anti-aliasing
+  1.0.7  rasterised once from the master; edge-to-core 36.75 -> 1.90.        DEVICE: still muddy
+  1.0.8  pixel-hinted, 22px box, weight corrected into the neighbour band.   DEVICE: still muddy
 
-★ WHAT PIXEL HINTING IS HERE, AND WHAT IT IS NOT.
+1.0.8 fixed apparent weight, edge-to-core AND optical box, and produced no device-level clarity.
+At that point the remaining defect could no longer be rasterisation, resolution or size: it is that
+three interlocking lobes, at 20-24px, MERGE. The crossings close up and the mark reads as one soft
+mass. Preserving the master's geometry literally is what fails.
 
-Not a hinting engine. Two deterministic steps: the mark box is placed on INTEGER pixel boundaries
-so extrema fall on the grid rather than straddling it, and coverage is then remapped around the
-0.5 midpoint so fractional pixels resolve toward ink or paper instead of sitting grey. Geometry is
-untouched — every curve is still the master's, to the character.
+★ WHAT THIS DOES INSTEAD — OPTICAL SIZING, THE TYPOGRAPHIC KIND.
 
-The edge-to-core ratio falls from 1.90 (1.0.7) to 0.55, with all four enclosed negative regions
-still intact at 24, 22 and 20px.
+The master stays authoritative for the colour icon, the web and every large use. This file derives a
+SMALL-SIZE COMPANION from it, by one deterministic operation:
 
-★ WHAT THIS DOES NOT CLAIM. It does not claim to fix the device. A DPR-3 app bar renders around 72
-physical pixels from a 32px asset, so some resampling softness is structural and outside this
-file. 32x32 is Microsoft's documented contract for the outline icon and is not negotiable here.
+    envelope    = closing(mask, R)        bridges the inter-lobe channels; outer silhouette intact
+    internal_bg = envelope AND NOT mask   the enclosed holes AND the crossing channels, nothing else
+    result      = mask AND NOT dilate(internal_bg, r)
+
+It only ever REMOVES ink, and only ink that faces an internal opening. So the outer silhouette is
+preserved EXACTLY, every internal opening and crossing widens by r, and strokes thin only on their
+inner-facing side — reducing local thickness precisely where the loops collide. It is not a uniform
+erosion, which thins the outside too and turns the mark skeletal.
+
+★ WHY box 26 AND r 0.30, MEASURED NOT PREFERRED.
+
+Opening the gaps inside 1.0.8's 22px box was tried first and cannot work: there is no room, so the
+gaps only widen by breaking the rings. The working direction is the opposite of shrinking — a
+LARGER box gives the structure room, and the inner-side opening pulls weight back down.
+
+Across a box x radius sweep, r = 0.30 at box 26 gave the highest gap contrast (194 at 24px against
+1.0.8's 183) while keeping the interlocking-ring topology intact. Stronger openings score WORSE:
+r = 0.45 drops to one enclosed region at 24px and r = 0.65 to zero — the rings are breaking, which
+is visible as a wiry, un-BTY mark. More opening is not monotonically better.
+
+Apparent weight at 24px is 122 against a mock neighbour band of 83-117. That band is measured from
+APPROXIMATED Activity / Chat / Files glyphs, not real Teams assets, and 122 is 4% over its top —
+against 1.0.6 at 183 and 1.0.7 at 135. Closed rings were judged worth 4% on an approximate ceiling.
+
+★ WHAT THIS STILL DOES NOT CLAIM. It does not claim the device will pass. 32x32 is Microsoft's
+documented contract for the outline icon and this file stays inside it.
 """
 import re, sys, os
+import numpy as np
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,8 +77,10 @@ TARGET = os.path.join(ROOT, "teams/manifest/outline.png")
 
 ARTBOARD = 1024.0    # the master's viewBox; the frame path spans it, the lobes do not
 CANVAS = 32          # Microsoft's required outline size. Not negotiable, not guessed.
-MARK_W = 22.0        # optical box (Slice TQ-4.1); see "WHY THE FOOTPRINT SHRANK" above
-SUPERSAMPLE_SS = 16  # hi-res factor before the single area-average
+MARK_W = 26.0        # optical box (TQ-4.2 B1); see above
+R_ENVELOPE = 3.2     # canvas px — must exceed the widest inter-lobe channel so the closing bridges it
+R_OPEN = 0.30        # canvas px — how far each INTERNAL opening is widened
+SUPERSAMPLE_SS = 16  # hi-res factor; part of the reproducible-bytes contract
 HINT_CONTRAST = 1.10 # coverage remap strength; 0 = plain area-average
 FLATTEN_STEPS = 96   # segments per Bezier; part of the reproducible-bytes contract, do not lower
 
@@ -102,6 +124,60 @@ def canonical_lobes(svg_text):
     return lobes
 
 
+def _shift(a, s, axis):
+    """Translate a boolean field, filling vacated cells with False (outside the mark)."""
+    out = np.zeros_like(a)
+    if s == 0:
+        return a.copy()
+    if axis == 0:
+        if s > 0: out[s:, :] = a[:-s, :]
+        else:     out[:s, :] = a[-s:, :]
+    else:
+        if s > 0: out[:, s:] = a[:, :-s]
+        else:     out[:, :s] = a[:, -s:]
+    return out
+
+
+def _square_dilate(m, R):
+    out = m
+    for axis in (0, 1):
+        acc = np.zeros_like(out)
+        for s in range(-R, R + 1):
+            acc |= _shift(out, s, axis)
+        out = acc
+    return out
+
+
+def _square_erode(m, R):
+    out = m
+    for axis in (0, 1):
+        acc = np.ones_like(out)
+        for s in range(-R, R + 1):
+            acc &= _shift(out, s, axis)
+        out = acc
+    return out
+
+
+def _disc_dilate(m, r):
+    out = m.copy()
+    R = int(np.floor(r))
+    for dy in range(-R, R + 1):
+        for dx in range(-R, R + 1):
+            if (dx or dy) and dx * dx + dy * dy <= r * r:
+                out |= _shift(_shift(m, dy, 0), dx, 1)
+    return out
+
+
+def open_internal_negative_space(mask, ss):
+    """The optical-sizing operation described at the top of this file."""
+    R = int(round(R_ENVELOPE * ss))
+    envelope = _square_erode(_square_dilate(mask, R), R)
+    internal = envelope & ~mask
+    if not internal.any():
+        raise SystemExit("no internal negative space found — refusing to guess")
+    return mask & ~_disc_dilate(internal, R_OPEN * ss)
+
+
 def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE_SS, contrast=HINT_CONTRAST):
     lobes = canonical_lobes(open(SOURCE, encoding="utf8").read())
     pts = [p for path in lobes for sub in path for p in sub]
@@ -118,30 +194,18 @@ def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE_SS, contrast=HINT_CONTRAS
         for sub in path:
             draw.polygon([(((x - x0) * scale + ox) * ss, ((y - y0) * scale + oy) * ss) for x, y in sub], fill=255)
 
-    # ONE resample, area-average: alpha is exact coverage. No blur, no feather, no second pass.
-    px = big.load()
-    alpha = Image.new("L", (canvas, canvas), 0)
-    ap = alpha.load()
-    for cy in range(canvas):
-        for cx in range(canvas):
-            hit = 0
-            for sy in range(cy * ss, (cy + 1) * ss):
-                for sx in range(cx * ss, (cx + 1) * ss):
-                    if px[sx, sy] > 127:
-                        hit += 1
-            cov = hit / float(ss * ss)
-            if contrast > 0:
-                # HINT: resolve fractional coverage toward ink or paper instead of leaving it grey.
-                cov = min(1.0, max(0.0, (cov - 0.5) * (1.0 + contrast) + 0.5))
-            ap[cx, cy] = int(round(cov * 255))
+    mask = np.array(big) > 127
+    mask = open_internal_negative_space(mask, ss)
 
-    out = Image.new("RGBA", (canvas, canvas), (255, 255, 255, 0))
-    out.putalpha(alpha)
-    p2 = out.load()
-    for y in range(canvas):
-        for x in range(canvas):
-            p2[x, y] = (255, 255, 255, p2[x, y][3])  # pure white everywhere; Teams applies the tint
-    return out
+    # ONE resample, area-average: alpha is exact coverage. No blur, no feather, no second pass.
+    cov = mask.reshape(canvas, ss, canvas, ss).mean(axis=(1, 3))
+    if contrast > 0:
+        # HINT: resolve fractional coverage toward ink or paper instead of leaving it grey.
+        cov = np.clip((cov - 0.5) * (1.0 + contrast) + 0.5, 0.0, 1.0)
+    rgba = np.zeros((canvas, canvas, 4), np.uint8)
+    rgba[..., 0:3] = 255                      # pure white everywhere; Teams applies the tint
+    rgba[..., 3] = np.round(cov * 255).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
 
 
 if __name__ == "__main__":

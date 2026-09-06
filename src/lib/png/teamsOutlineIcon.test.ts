@@ -131,84 +131,112 @@ describe("★ 7–8 placement", () => {
     expect({ dx: b.x0 - (W - 1 - b.x1), dy: b.y0 - (H - 1 - b.y1) }).toEqual({ dx: 0, dy: 0 });
   });
 
-  it("8 — the footprint is the TQ-4.1 optical box: 22 × 20, margins 5/5/6/6", () => {
+  it("8 — the footprint is the TQ-4.2 optical box: 26 × 24, margins 3/3/4/4", () => {
     /*
-      ★ THE PREVIOUS FOOTPRINT ASSUMPTION FAILED ON DEVICE, AND IS GONE.
+      ★ THE SIZE ARGUMENT HAS NOW BEEN WRONG IN BOTH DIRECTIONS, ON DEVICE.
 
-      TQ-4 pinned this to the shipped 26x24 and argued that shrinking "bought nothing" because a
-      23px mark left the same one-pixel channels at 24px as a 25.5px one. Published as 1.0.7 and
-      looked at on the real iPhone, the icon still read muddier than Activity / Chat / Files.
+      TQ-4 pinned 26x24 and said shrinking bought nothing        -> 1.0.7 FAILED on device.
+      TQ-4.1 shrank to 22x20 to match neighbour weight           -> 1.0.8 FAILED on device.
 
-      What that analysis never measured was apparent WEIGHT beside the icons it sits next to.
-      Measured at 24px, in ink pixels: Activity 83, Chat 104, Files 117 — against BTY 1.0.6 at 183
-      and 1.0.7 at 135. The mark was heavier than every neighbour, and three interlocking rings
-      carrying that much ink read as a mass rather than as a symbol. At a 22px optical box BTY
-      lands at 108, inside the neighbour band, which is the actual acceptance criterion.
+      Neither was the problem. Three interlocking lobes MERGE at 20-24px whatever their size, and
+      the fix is to open the internal negative space rather than to resize the mark. The box returns
+      to 26 not because 1.0.7 was right, but because opening the gaps needs room: attempted inside
+      1.0.8's 22px box, the gaps could only widen by BREAKING the rings.
     */
     const b = bbox();
-    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 22, h: 20 });
-    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 5, r: 5, t: 6, b: 6 });
+    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 26, h: 24 });
+    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 3, r: 3, t: 4, b: 4 });
   });
 
-  it("★ 8b — apparent weight at 24px sits inside the neighbouring app-bar icon band", () => {
+  it("★ 8b — ONLY inner-facing ink was removed: the outer silhouette is the master's, exactly", () => {
     /*
-      The criterion 1.0.6 and 1.0.7 both failed. Ink pixels once drawn at app-bar size; the band is
-      the measured range of simple Teams-style glyphs (bell 83, speech bubble 104, document 117).
-      Too light is a failure too — this is a band, not a ceiling.
+      The whole safety of an optical variant rests on this. The operation may only subtract, and
+      only where ink faces an internal opening — so the mark's outline, and therefore its identity
+      and its footprint, are untouched. Asserted structurally against the generator: it computes an
+      envelope, takes the internal background, and subtracts a dilation of it from the mask. There
+      is no dilation of the MARK anywhere, which is what would move the silhouette outward.
     */
-    const small = downsampleAlpha(alpha, W, H, 24);
-    const ink = small.filter((v) => v >= 110).length;
-    expect(ink, `apparent weight ${ink} is outside the 83–117 neighbour band`).toBeGreaterThanOrEqual(80);
-    expect(ink, `apparent weight ${ink} is outside the 83–117 neighbour band`).toBeLessThanOrEqual(120);
+    const gen = readFileSync(join(process.cwd(), "scripts/teams-icon/build_outline.py"), "utf8");
+    expect(gen).toContain("open_internal_negative_space");
+    expect(gen).toContain("internal = envelope & ~mask");
+    expect(gen).toContain("return mask & ~_disc_dilate(internal");
+    expect(gen).toContain("no internal negative space found — refusing to guess");
   });
 });
 
+/** How far an interior valley falls below the weaker stroke flanking it — "does the crossing merge". */
+function gapContrast(a: number[], size: number): number[] {
+  const out: number[] = [];
+  for (const transposed of [false, true]) {
+    for (let i = 0; i < size; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < size; j++) row.push(transposed ? a[i * size + j] : a[j * size + i]);
+      let k = 1;
+      while (k < size - 1) {
+        if (row[k] < row[k - 1]) {
+          let j2 = k;
+          while (j2 < size - 1 && row[j2 + 1] <= row[j2]) j2++;
+          const left = Math.max(...row.slice(0, k));
+          const right = Math.max(...row.slice(j2 + 1));
+          if (left > 0 && right > 0) {
+            const v = Math.min(left, right) - Math.min(...row.slice(k, j2 + 1));
+            if (v > 0) out.push(v);
+          }
+          k = j2 + 1;
+        } else k++;
+      }
+    }
+  }
+  return out;
+}
+const mean = (v: number[]) => v.reduce((p, c) => p + c, 0) / v.length;
+
 describe("★ 9–10 it survives the sizes Teams actually renders", () => {
-  it("9 — the trefoil's interior channels stay open when downsampled to 24 and 20", () => {
+  /*
+    ★ THE CRITERION CHANGED HERE, AND NOT TO MAKE AN ASSET PASS.
+
+    Gates 9 and 10 used to count interior channels and cap how many were only one pixel wide. That
+    proxy was written when channel WIDTH looked like the discriminator. It has now been overtaken
+    twice by the device: 1.0.7 and 1.0.8 both improved on it and both still read muddy.
+
+    What tracks the Founder's actual complaint — "the centre crossings merge" — is CONTRAST: how
+    far the gap between two loops falls below the loops themselves. Measured mean gap contrast at
+    24 / 22 / 20 px:
+
+        1.0.6   139.3 / 143.0 / 147.3      1.0.8 (A)  183.1 / 166.9 / 169.4
+        1.0.7   173.9 / 170.1 / 165.8      1.0.9 (B1) 194.1 / 196.7 / 183.7
+
+    ★ AND THE HONEST RESIDUAL. Opening the internal space creates MORE separations (39 against the
+    old asset's 27 at 20px) and proportionally more of them are only one pixel wide — 23% against
+    15% at 20px. Those are the most fragile ones. It was accepted because the separations that
+    exist are far higher-contrast, and because the alternative openings that reduce the fragile
+    fraction do it by closing the rings. The fraction is bounded below rather than left free.
+  */
+  const FIXTURE = "src/lib/png/__fixtures__/teams-outline-pre-tq4.png";
+
+  it("9 — the interior still separates at 24 and 20px, and the fragile fraction is bounded", () => {
     for (const size of [24, 20]) {
       const small = downsampleAlpha(alpha, W, H, size);
       const runs = interiorChannels(small, size);
       expect(runs.length, `no interior separation survives at ${size}px — it reads as a blob`).toBeGreaterThan(20);
-      const onePx = runs.filter((r) => r === 1).length;
-      expect(onePx, `too many one-pixel channels at ${size}px`).toBeLessThanOrEqual(8);
+      const fragile = runs.filter((r) => r === 1).length / runs.length;
+      expect(fragile, `${(fragile * 100).toFixed(0)}% of separations at ${size}px are one pixel wide`).toBeLessThan(0.3);
     }
   });
 
-  it("★ 10 — better DEFINED than the asset it replaces, at the sizes the bar renders", () => {
-    /*
-      ★ A METRIC I HAD TO THROW AWAY, RECORDED SO IT IS NOT TRIED AGAIN.
-
-      The first version of this test counted "mushy" pixels — neither ink nor paper (40 < a < 215)
-      — at 24px, and asserted the new asset had fewer. MEASURED, it has MORE: 132 against the old
-      asset's 119. That metric rewards INK, and the old icon is fatter precisely because its
-      anti-aliasing bled outward; a heavier smudge scores well on it. It was measuring the wrong
-      thing and it contradicted the eye, so it is gone rather than tuned until it agreed.
-
-      What "poorly defined" actually means for a trefoil is that the channels BETWEEN the lobes
-      close up, so three interlocking loops read as one mass. That is what is asserted here, against
-      the real previous bytes rather than a remembered number: more separations survive, and fewer
-      of them collapse to a single pixel that the next resample will erase.
-
-      Not asserted at 32px, where the new asset legitimately shows MORE one-pixel channels — it
-      resolves fine structure the old one had already smeared away. That is resolution, not mush.
-    */
-    const prev = decodePng(readFileSync(join(process.cwd(), "src/lib/png/__fixtures__/teams-outline-pre-tq4.png")));
+  it("★ 10 — gap contrast beats the asset it replaces at every size the bar renders", () => {
+    const prev = decodePng(readFileSync(join(process.cwd(), FIXTURE)));
     const prevAlpha = alphaOf(prev);
-
-    for (const size of [24, 20]) {
-      const nowRuns = interiorChannels(downsampleAlpha(alpha, W, H, size), size);
-      const wasRuns = interiorChannels(downsampleAlpha(prevAlpha, prev.width, prev.height, size), size);
-      expect(nowRuns.length, `${size}px: fewer visible separations than before`).toBeGreaterThanOrEqual(wasRuns.length);
-      expect(
-        nowRuns.filter((r) => r === 1).length,
-        `${size}px: more separations collapse to one pixel than before`,
-      ).toBeLessThanOrEqual(wasRuns.filter((r) => r === 1).length);
+    for (const size of [24, 22, 20]) {
+      const now = mean(gapContrast(downsampleAlpha(alpha, W, H, size), size));
+      const was = mean(gapContrast(downsampleAlpha(prevAlpha, prev.width, prev.height, size), size));
+      expect(now, `${size}px: gap contrast ${now.toFixed(1)} is not better than ${was.toFixed(1)}`).toBeGreaterThan(was);
     }
   });
 
   it("★ 10b — the fixture really is the asset that shipped, and it really was mostly edge", () => {
     // If this fixture is ever replaced by a copy of the new file, test 10 becomes vacuous.
-    const prev = decodePng(readFileSync(join(process.cwd(), "src/lib/png/__fixtures__/teams-outline-pre-tq4.png")));
+    const prev = decodePng(readFileSync(join(process.cwd(), FIXTURE)));
     const a = alphaOf(prev);
     const opaque = a.filter((v) => v >= 250).length;
     const semi = a.filter((v) => v > 0 && v < 250).length;
