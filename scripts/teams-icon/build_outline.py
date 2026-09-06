@@ -19,21 +19,31 @@ This script rasterises the three canonical trefoil lobes from the Founder's mast
 area-averaging. Same geometry, same brand mark — no redraw, no reinterpretation, no new logo. The result at the same mark width has 117 opaque pixels instead of
 12, and a semi:opaque ratio of 1.86 instead of 36.75.
 
-★ WHY THE MARK IS NOT SHRUNK.
+★ WHY THE FOOTPRINT SHRANK (TQ-4.1) — AND WHY THE EARLIER REASONING WAS WRONG.
 
-Shrinking to 22-24px was the obvious move and the measurements refused it. At 24px — the size a
-Teams app bar actually asks for — a 23px mark and a 25.5px mark leave the SAME two one-pixel
-channels, so the smaller mark buys nothing where it counts; it only wins in a pessimistic 20px
-simulation. It costs a lot: 182 ink units against the shipped icon's 301, which in a bar beside
-Activity / Chat / Calendar / More would read as weak rather than as crisp. Rendered side by side,
-that is exactly how it looked.
+TQ-4 kept the mark at the shipped 26x24 footprint and argued the measurements refused shrinking:
+at 24px a 23px mark left the same one-pixel channels as a 25.5px one, so it "bought nothing".
+Published as 1.0.7 and looked at on the real device, that reasoning FAILED. The icon changed
+rendering state and still read muddier than Activity / Chat / Files.
 
-25.5 was chosen because it reproduces the shipped icon's footprint EXACTLY — bbox 26x24, margins
-3/3/4/4 — so nothing about the mark's size or position in the bar changes. The entire repair is
-rasterisation quality: 115 fully-opaque pixels instead of 12, and a semi:opaque ratio of 1.90
-instead of 36.75. Same mark, same place, actually drawn.
+What the earlier analysis never measured was apparent WEIGHT against the icons beside it. Measured
+at 24px in ink pixels: Activity 83, Chat 104, Files 117 — and BTY 1.0.6 at 183, 1.0.7 at 135. The
+mark was simply heavier than its neighbours, and a heavier mark of three interlocking rings turns
+into a mass rather than a symbol. At a 22px optical box it lands at 108, inside the neighbour band.
 
-Deterministic: same input, same bytes out. No network, no font, no external binary.
+★ WHAT PIXEL HINTING IS HERE, AND WHAT IT IS NOT.
+
+Not a hinting engine. Two deterministic steps: the mark box is placed on INTEGER pixel boundaries
+so extrema fall on the grid rather than straddling it, and coverage is then remapped around the
+0.5 midpoint so fractional pixels resolve toward ink or paper instead of sitting grey. Geometry is
+untouched — every curve is still the master's, to the character.
+
+The edge-to-core ratio falls from 1.90 (1.0.7) to 0.55, with all four enclosed negative regions
+still intact at 24, 22 and 20px.
+
+★ WHAT THIS DOES NOT CLAIM. It does not claim to fix the device. A DPR-3 app bar renders around 72
+physical pixels from a 32px asset, so some resampling softness is structural and outside this
+file. 32x32 is Microsoft's documented contract for the outline icon and is not negotiable here.
 """
 import re, sys, os
 from PIL import Image, ImageDraw
@@ -47,8 +57,10 @@ TARGET = os.path.join(ROOT, "teams/manifest/outline.png")
 
 ARTBOARD = 1024.0    # the master's viewBox; the frame path spans it, the lobes do not
 CANVAS = 32          # Microsoft's required outline size. Not negotiable, not guessed.
-MARK_W = 25.5        # reproduces the shipped icon's exact 26x24 footprint; see above
-SUPERSAMPLE = 32     # 1024x1024 working raster -> one area-average down to 32x32
+MARK_W = 22.0        # optical box (Slice TQ-4.1); see "WHY THE FOOTPRINT SHRANK" above
+SUPERSAMPLE_SS = 16  # hi-res factor before the single area-average
+HINT_CONTRAST = 1.10 # coverage remap strength; 0 = plain area-average
+FLATTEN_STEPS = 96   # segments per Bezier; part of the reproducible-bytes contract, do not lower
 
 def canonical_lobes(svg_text):
     """
@@ -73,7 +85,7 @@ def canonical_lobes(svg_text):
     ds = re.findall(r'<path[^>]*\bd="([^"]+)"', svg_text)
     lobes, frames = [], 0
     for d in ds:
-        subs = parse(d)
+        subs = parse(d, steps=FLATTEN_STEPS)
         pts = [p for sub in subs for p in sub]
         if not pts:
             continue
@@ -90,14 +102,15 @@ def canonical_lobes(svg_text):
     return lobes
 
 
-def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE):
+def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE_SS, contrast=HINT_CONTRAST):
     lobes = canonical_lobes(open(SOURCE, encoding="utf8").read())
     pts = [p for path in lobes for sub in path for p in sub]
     x0, y0 = min(p[0] for p in pts), min(p[1] for p in pts)
     x1, y1 = max(p[0] for p in pts), max(p[1] for p in pts)
     scale = mark_w / (x1 - x0)
     mark_h = (y1 - y0) * scale
-    ox, oy = (canvas - mark_w) / 2.0, (canvas - mark_h) / 2.0
+    # PIXEL GRID: integer offsets, so the mark box starts on a pixel boundary rather than between two.
+    ox, oy = round((canvas - mark_w) / 2.0), round((canvas - mark_h) / 2.0)
 
     big = Image.new("L", (canvas * ss, canvas * ss), 0)
     draw = ImageDraw.Draw(big)
@@ -106,14 +119,30 @@ def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE):
             draw.polygon([(((x - x0) * scale + ox) * ss, ((y - y0) * scale + oy) * ss) for x, y in sub], fill=255)
 
     # ONE resample, area-average: alpha is exact coverage. No blur, no feather, no second pass.
-    alpha = big.resize((canvas, canvas), Image.BOX)
+    px = big.load()
+    alpha = Image.new("L", (canvas, canvas), 0)
+    ap = alpha.load()
+    for cy in range(canvas):
+        for cx in range(canvas):
+            hit = 0
+            for sy in range(cy * ss, (cy + 1) * ss):
+                for sx in range(cx * ss, (cx + 1) * ss):
+                    if px[sx, sy] > 127:
+                        hit += 1
+            cov = hit / float(ss * ss)
+            if contrast > 0:
+                # HINT: resolve fractional coverage toward ink or paper instead of leaving it grey.
+                cov = min(1.0, max(0.0, (cov - 0.5) * (1.0 + contrast) + 0.5))
+            ap[cx, cy] = int(round(cov * 255))
+
     out = Image.new("RGBA", (canvas, canvas), (255, 255, 255, 0))
     out.putalpha(alpha)
-    px = out.load()
+    p2 = out.load()
     for y in range(canvas):
         for x in range(canvas):
-            px[x, y] = (255, 255, 255, px[x, y][3])  # pure white everywhere; Teams applies the tint
+            p2[x, y] = (255, 255, 255, p2[x, y][3])  # pure white everywhere; Teams applies the tint
     return out
+
 
 if __name__ == "__main__":
     img = build()

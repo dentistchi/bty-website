@@ -105,7 +105,12 @@ describe("★ 5–6 no shadow, no glow, no feather", () => {
     const opaque = v.filter((p) => p.a >= 250).length;
     const semi = v.filter((p) => p.a > 0 && p.a < 250).length;
     expect(opaque, "an icon with no solid core cannot look crisp at any size").toBeGreaterThan(60);
-    expect(semi / opaque).toBeLessThan(4);
+    /*
+      TIGHTENED at TQ-4.1. 1.0.7 rasterised cleanly and scored 1.90; the pixel-hinted build resolves
+      fractional coverage toward ink or paper and scores 0.55. The bound is set just above that, so
+      a regression that removes the hinting step fails here rather than shipping quietly.
+    */
+    expect(semi / opaque).toBeLessThan(0.9);
   });
 
   it("5 — no shadow or glow: the faint halo is a thin edge, not a cloud", () => {
@@ -126,17 +131,35 @@ describe("★ 7–8 placement", () => {
     expect({ dx: b.x0 - (W - 1 - b.x1), dy: b.y0 - (H - 1 - b.y1) }).toEqual({ dx: 0, dy: 0 });
   });
 
-  it("8 — the footprint is UNCHANGED from the shipped icon: 26 × 24, margins 3/3/4/4", () => {
+  it("8 — the footprint is the TQ-4.1 optical box: 22 × 20, margins 5/5/6/6", () => {
     /*
-      Deliberately exact. The repair is rasterisation quality only; if the mark's size or position
-      in the app bar moves, that is a different change and needs its own decision. Shrinking to
-      22–24px was measured and REFUSED: at 24px — the size the bar actually asks for — a 23px mark
-      leaves the same two one-pixel channels as this one, so it buys nothing where it counts, while
-      costing 40% of the ink and reading as weak beside Teams' own glyphs.
+      ★ THE PREVIOUS FOOTPRINT ASSUMPTION FAILED ON DEVICE, AND IS GONE.
+
+      TQ-4 pinned this to the shipped 26x24 and argued that shrinking "bought nothing" because a
+      23px mark left the same one-pixel channels at 24px as a 25.5px one. Published as 1.0.7 and
+      looked at on the real iPhone, the icon still read muddier than Activity / Chat / Files.
+
+      What that analysis never measured was apparent WEIGHT beside the icons it sits next to.
+      Measured at 24px, in ink pixels: Activity 83, Chat 104, Files 117 — against BTY 1.0.6 at 183
+      and 1.0.7 at 135. The mark was heavier than every neighbour, and three interlocking rings
+      carrying that much ink read as a mass rather than as a symbol. At a 22px optical box BTY
+      lands at 108, inside the neighbour band, which is the actual acceptance criterion.
     */
     const b = bbox();
-    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 26, h: 24 });
-    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 3, r: 3, t: 4, b: 4 });
+    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 22, h: 20 });
+    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 5, r: 5, t: 6, b: 6 });
+  });
+
+  it("★ 8b — apparent weight at 24px sits inside the neighbouring app-bar icon band", () => {
+    /*
+      The criterion 1.0.6 and 1.0.7 both failed. Ink pixels once drawn at app-bar size; the band is
+      the measured range of simple Teams-style glyphs (bell 83, speech bubble 104, document 117).
+      Too light is a failure too — this is a band, not a ceiling.
+    */
+    const small = downsampleAlpha(alpha, W, H, 24);
+    const ink = small.filter((v) => v >= 110).length;
+    expect(ink, `apparent weight ${ink} is outside the 83–117 neighbour band`).toBeGreaterThanOrEqual(80);
+    expect(ink, `apparent weight ${ink} is outside the 83–117 neighbour band`).toBeLessThanOrEqual(120);
   });
 });
 
