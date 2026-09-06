@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Swipe a Today card left to reveal Remove, then TAP it.
+ * Swipe a Today card left to reveal WHAT THAT CARD CAN DO, then TAP it.
+ *
+ * ★ WHY THIS IS NOT "SwipeToRemove" ANY MORE (real device defect, 2026-09-06).
+ *
+ * It used to take an `enabled` flag and, when false, return from `onTouchStart` before recording
+ * the finger at all. A settled card slid open and offered Remove; an active one physically could
+ * not move. From the outside those are not two rules — one card works and the other looks broken,
+ * and nothing anywhere says why.
+ *
+ * So the gesture is now universal and the TRAY is what varies. A card that cannot be removed still
+ * opens, and tells the person what it needs first. Eligibility itself is unchanged and unwidened:
+ * the caller passes an action derived from the one canonical domain rule.
  *
  * ★ WHY THIS DOES NOT REUSE `SwipeAction`'s COMMIT-ON-RELEASE.
  *
@@ -40,24 +51,34 @@ const REVEAL_PX = 96;
 /** The row never leaves its lane. */
 const MAX_PX = 132;
 
-export default function SwipeToRemove({
-  enabled,
+/**
+ * What the tray offers. The TONE is a product fact, not a colour choice:
+ *
+ *   destructive  this hides the card. Red, because it removes something from view.
+ *   guidance     this navigates somewhere. Never red — a workflow step is not a destruction, and
+ *                painting it red would teach people to fear the thing they are supposed to do.
+ */
+export type TodaySwipeTrayAction = {
+  label: string;
+  tone: "destructive" | "guidance";
+  onCommit: () => void;
+};
+
+export default function TodaySwipeAction({
+  action,
   open,
   onOpenChange,
-  onRemove,
-  removeLabel,
   busy,
   children,
 }: {
-  /** False for a card that is not settled — there is nothing to tidy away yet. */
-  enabled: boolean;
+  /** Null only for a card with nothing to offer at all — then the row does not move. */
+  action: TodaySwipeTrayAction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRemove: () => void;
-  removeLabel: string;
   busy?: boolean;
   children: React.ReactNode;
 }) {
+  const enabled = action !== null;
   const [drag, setDrag] = useState(0);
   const start = useRef<{ x: number; y: number } | null>(null);
   const axis = useRef<"none" | "x" | "y">("none");
@@ -127,32 +148,46 @@ export default function SwipeToRemove({
     <div
       ref={rowRef}
       className="relative overflow-hidden rounded-2xl"
-      data-testid="swipe-remove-row"
+      data-testid="today-swipe-row"
       data-open={open ? "1" : "0"}
       data-enabled={enabled ? "1" : "0"}
+      data-tone={action?.tone ?? ""}
     >
       {/*
         ★ NOTHING IS MOUNTED BEHIND A RESTING ROW. A tray kept permanently behind every card reads
         straight through a `bg-white/[0.02]` surface as a translucent strip — a defect this repo has
         already paid for once. There is nothing to leak because there is nothing there.
       */}
-      {enabled && (open || translate < 0) ? (
-        <div className="absolute inset-y-0 right-0 flex items-stretch" data-testid="swipe-remove-tray">
+      {action && (open || translate < 0) ? (
+        <div className="absolute inset-y-0 right-0 flex items-stretch" data-testid="today-swipe-tray">
           <button
             type="button"
-            data-testid="swipe-remove-action"
+            data-testid="today-swipe-action"
+            data-tone={action.tone}
             disabled={busy}
-            onClick={onRemove}
-            /* 96px wide, full height — comfortably past the 44px thumb target. */
-            className="flex w-24 items-center justify-center bg-[#B3261E] px-3 text-sm font-semibold text-white disabled:opacity-60"
+            onClick={action.onCommit}
+            /*
+              96px wide, full height — comfortably past the 44px thumb target.
+
+              RED IS RESERVED FOR THE ONE ACTION THAT TAKES SOMETHING AWAY. Guidance uses the gold
+              this product already spends on "here is the next thing", so the two are unmistakable
+              at a glance without anybody reading a word.
+            */
+            className={
+              "flex w-28 items-center justify-center px-3 text-sm font-semibold " +
+              (action.tone === "destructive"
+                ? "bg-[#B3261E] text-white"
+                : "bg-[#C9A66B] text-[#0B1F3A]") +
+              " disabled:opacity-60"
+            }
           >
-            {removeLabel}
+            {action.label}
           </button>
         </div>
       ) : null}
 
       <div
-        data-testid="swipe-remove-surface"
+        data-testid="today-swipe-surface"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

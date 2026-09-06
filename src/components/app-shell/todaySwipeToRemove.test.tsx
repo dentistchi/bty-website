@@ -85,22 +85,23 @@ describe("★ 1-4 — swipe reveals, tap decides, one at a time, scroll untouche
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    expect(within(row).queryByTestId("swipe-remove-tray"), "nothing behind a resting row").toBeNull();
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"));
-    const tray = await within(row).findByTestId("swipe-remove-tray");
+    const row = await screen.findByTestId("today-swipe-row");
+    expect(within(row).queryByTestId("today-swipe-tray"), "nothing behind a resting row").toBeNull();
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const tray = await within(row).findByTestId("today-swipe-tray");
     expect(tray.className).toContain("right-0");
-    expect(within(tray).getByTestId("swipe-remove-action").textContent).toBe("Remove");
+    expect(within(tray).getByTestId("today-swipe-action").textContent).toBe("Remove");
   });
 
   it("★ 2 — the action LOOKS destructive but the request is a dismissal, not a delete", async () => {
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"));
-    const btn = await within(row).findByTestId("swipe-remove-action");
+    const row = await screen.findByTestId("today-swipe-row");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const btn = await within(row).findByTestId("today-swipe-action");
     expect(btn.className, "red").toContain("bg-[#B3261E]");
+    expect(btn.getAttribute("data-tone")).toBe("destructive");
     fireEvent.click(btn);
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0].url).toContain("/api/me/today/dismiss");
@@ -121,21 +122,21 @@ describe("★ 1-4 — swipe reveals, tap decides, one at a time, scroll untouche
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    const surface = within(row).getByTestId("swipe-remove-surface");
+    const row = await screen.findByTestId("today-swipe-row");
+    const surface = within(row).getByTestId("today-swipe-surface");
     fireEvent.touchStart(surface, { touches: [{ clientX: 200, clientY: 100 }] });
     fireEvent.touchMove(surface, { touches: [{ clientX: 196, clientY: 220 }] });
     fireEvent.touchEnd(surface, {});
-    expect(within(row).queryByTestId("swipe-remove-tray")).toBeNull();
+    expect(within(row).queryByTestId("today-swipe-tray")).toBeNull();
     expect(row.getAttribute("data-open")).toBe("0");
     // The browser keeps vertical panning; nothing here ever claims it.
     expect(surface.style.touchAction).toBe("pan-y");
     // Asserted on CODE, not prose: the file's own comment says it never preventDefaults.
-    expect(code("src/components/app-shell/SwipeToRemove.tsx")).not.toContain("preventDefault");
+    expect(code("src/components/app-shell/TodaySwipeAction.tsx")).not.toContain("preventDefault");
   });
 
   it("★ 3 — the row is clamped, so the page can never scroll sideways", () => {
-    const src = code("src/components/app-shell/SwipeToRemove.tsx");
+    const src = code("src/components/app-shell/TodaySwipeAction.tsx");
     expect(src).toContain("Math.max(-MAX_PX, Math.min(0, resting + drag))");
     expect(src).toContain("overflow-hidden");
   });
@@ -144,10 +145,10 @@ describe("★ 1-4 — swipe reveals, tap decides, one at a time, scroll untouche
     mine = [card(), card({ recipientId: R_B, announcementId: "ann-2" })];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const rows = await screen.findAllByTestId("swipe-remove-row");
-    swipeLeft(within(rows[0]).getByTestId("swipe-remove-surface"));
+    const rows = await screen.findAllByTestId("today-swipe-row");
+    swipeLeft(within(rows[0]).getByTestId("today-swipe-surface"));
     await waitFor(() => expect(rows[0].getAttribute("data-open")).toBe("1"));
-    swipeLeft(within(rows[1]).getByTestId("swipe-remove-surface"));
+    swipeLeft(within(rows[1]).getByTestId("today-swipe-surface"));
     await waitFor(() => expect(rows[1].getAttribute("data-open")).toBe("1"));
     expect(rows[0].getAttribute("data-open"), "only one open at a time").toBe("0");
   });
@@ -156,8 +157,8 @@ describe("★ 1-4 — swipe reveals, tap decides, one at a time, scroll untouche
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"), -20);
+    const row = await screen.findByTestId("today-swipe-row");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"), -20);
     expect(row.getAttribute("data-open")).toBe("0");
     expect(posted).toHaveLength(0);
   });
@@ -166,9 +167,9 @@ describe("★ 1-4 — swipe reveals, tap decides, one at a time, scroll untouche
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"), -300);
-    await within(row).findByTestId("swipe-remove-action");
+    const row = await screen.findByTestId("today-swipe-row");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"), -300);
+    await within(row).findByTestId("today-swipe-action");
     expect(posted, "a decisive swipe must not commit").toHaveLength(0);
   });
 });
@@ -236,33 +237,47 @@ describe("★ 5-9 — it hides, and it deletes nothing", () => {
 /* ══════════ 10-11. RESURFACE + NON-REMOVABLE ══════════ */
 
 describe("★ 10-11 — attention outranks tidiness", () => {
-  it("★ 11 — an UNANSWERED card exposes no Remove, by swipe or by button", async () => {
+  it("★ 11 — an UNANSWERED card exposes no REMOVE; it explains itself instead", async () => {
     mine = [card({ response: null, respondedAt: null })];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    expect(row.getAttribute("data-enabled")).toBe("0");
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"));
-    expect(within(row).queryByTestId("swipe-remove-tray")).toBeNull();
-    expect(screen.queryByTestId("announcement-remove")).toBeNull();
+    const row = await screen.findByTestId("today-swipe-row");
+    const item = within(row).getByTestId("announcement-item");
+    expect(item.getAttribute("data-removable")).toBe("0");
+    expect(item.getAttribute("data-blocker")).toBe("needs_response");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const btn = await within(row).findByTestId("today-swipe-action");
+    expect(btn.textContent).toBe("Respond first");
+    expect(btn.getAttribute("data-tone")).toBe("guidance");
+    expect(btn.className, "guidance is never red").not.toContain("bg-[#B3261E]");
+    fireEvent.click(btn);
+    expect(posted, "guidance submits nothing").toHaveLength(0);
   });
 
-  it("★ 11 — an answered card with an UNREAD reply exposes no Remove", async () => {
+  it("★ 11 — an answered card with an UNREAD reply offers Read reply, not Remove", async () => {
     mine = [card({ response: "QUESTION", unreadCount: 1, messageCount: 2 })];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    expect(row.getAttribute("data-enabled")).toBe("0");
-    expect(screen.queryByTestId("announcement-remove")).toBeNull();
+    const row = await screen.findByTestId("today-swipe-row");
+    expect(within(row).getByTestId("announcement-item").getAttribute("data-blocker")).toBe("unread");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const btn = await within(row).findByTestId("today-swipe-action");
+    expect(btn.textContent).toBe("Read reply");
+    expect(btn.getAttribute("data-tone")).toBe("guidance");
   });
 
-  it("★ 11 — a Host run where somebody needs attention exposes no Remove", async () => {
+  it("★ 11 — a Host run where somebody needs attention offers guidance, not Remove", async () => {
     host = [run({ question: [responder({ needsAttention: true })] })];
     stub();
     render(<TrackingSent locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    expect(row.getAttribute("data-enabled")).toBe("0");
-    expect(screen.queryByTestId("tracking-remove")).toBeNull();
+    const row = await screen.findByTestId("today-swipe-row");
+    const item = within(row).getByTestId("tracking-item");
+    expect(item.getAttribute("data-removable")).toBe("0");
+    expect(item.getAttribute("data-blocker")).toBe("needs_handling");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const btn = await within(row).findByTestId("today-swipe-action");
+    expect(btn.textContent).toBe("Handle first");
+    expect(btn.getAttribute("data-tone")).toBe("guidance");
   });
 
   it("a settled Host run IS removable, and posts the host kind", async () => {
@@ -301,7 +316,7 @@ describe("★ 12-13 — a hidden gesture is never the only path", () => {
     // …and revealing it on focus shifts no layout.
     expect(btn.className).toContain("focus:absolute");
     // The swipe tray is likewise absent until the row is dragged.
-    expect(screen.queryByTestId("swipe-remove-tray")).toBeNull();
+    expect(screen.queryByTestId("today-swipe-tray")).toBeNull();
   });
 
   it("★ 12 — it is still a real focusable button that does the same thing", async () => {
@@ -322,22 +337,22 @@ describe("★ 12-13 — a hidden gesture is never the only path", () => {
     const btn = await screen.findByTestId("tracking-remove");
     expect(btn.className).toContain("sr-only");
     expect(btn.className).toContain("focus:not-sr-only");
-    expect(screen.queryByTestId("swipe-remove-tray")).toBeNull();
+    expect(screen.queryByTestId("today-swipe-tray")).toBeNull();
   });
 
   it("★ 12 — the revealed action is itself a real button with a 44px+ target", async () => {
     mine = [card()];
     stub();
     render(<NeedsYourResponse locale="en" />);
-    const row = await screen.findByTestId("swipe-remove-row");
-    swipeLeft(within(row).getByTestId("swipe-remove-surface"));
-    const btn = await within(row).findByTestId("swipe-remove-action");
+    const row = await screen.findByTestId("today-swipe-row");
+    swipeLeft(within(row).getByTestId("today-swipe-surface"));
+    const btn = await within(row).findByTestId("today-swipe-action");
     expect(btn.tagName).toBe("BUTTON");
-    expect(btn.className).toContain("w-24"); // 96px wide, full row height
+    expect(btn.className).toContain("w-28"); // 112px wide, full row height
   });
 
   it("★ 13 — no hover dependency anywhere in the gesture surface", () => {
-    const src = code("src/components/app-shell/SwipeToRemove.tsx");
+    const src = code("src/components/app-shell/TodaySwipeAction.tsx");
     expect(src).not.toContain("hover:");
     expect(src).not.toContain("onMouseEnter");
     // No window-level listeners and no gesture library — the Teams WebView constraint.

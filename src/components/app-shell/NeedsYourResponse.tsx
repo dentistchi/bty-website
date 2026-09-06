@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnouncement";
 import TrackConversation, { NewMessageBadge } from "./TrackConversation";
-import SwipeToRemove from "./SwipeToRemove";
-import { recipientCardRemovable } from "@/domain/daily/todayDismissal";
+import TodaySwipeAction, { type TodaySwipeTrayAction } from "./TodaySwipeAction";
+import { recipientTodayAction } from "@/domain/daily/todayDismissal";
 
 /**
  * Today → Needs your response. Slice A1.
@@ -55,6 +55,8 @@ const COPY = {
     openConversation: "Open conversation",
     remove: "Remove",
     removed: "Removed from Today",
+    readReply: "Read reply",
+    respondFirst: "Respond first",
     hideConversation: "Hide conversation",
     newCount: (n: number) => ` · ${n} new`,
     answeredQuestion: "You asked a question",
@@ -75,6 +77,8 @@ const COPY = {
     openConversation: "대화 열기",
     remove: "치우기",
     removed: "오늘에서 치웠습니다",
+    readReply: "답장 확인",
+    respondFirst: "먼저 답하기",
     hideConversation: "대화 접기",
     newCount: (n: number) => ` · 새 메시지 ${n}개`,
     answeredQuestion: "질문을 남기셨습니다",
@@ -257,25 +261,56 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
         // Unread AUTO-EXPANDS. A deliberate toggle wins over that default, in both directions.
         const convoOpen = convoOverride[it.recipientId] ?? it.unreadCount > 0;
         /*
-          ★ ONLY A SETTLED CARD MAY BE TIDIED AWAY. Answered, and nothing waiting to be read. An
-          unanswered question is somebody waiting on this person; an unread Host reply is the exact
-          thing Today exists to surface. Neither is clutter, and neither can be swiped away.
+          ★ ONE CANONICAL ANSWER, AND THE SWIPE ALWAYS SAYS SOMETHING.
+
+          Eligibility is unchanged and unwidened — answered, and nothing waiting to be read. What
+          changed is that a card which CANNOT be removed no longer refuses to move. It opens and
+          names the thing standing in the way, because "I swiped and nothing happened" is
+          indistinguishable from a broken app.
+
+          Every branch here is driven by `recipientTodayAction`; this component derives no
+          eligibility of its own, so it cannot drift from the rule the server enforces.
         */
-        const removable = recipientCardRemovable({ response: it.response, unreadCount: it.unreadCount });
+        const act = recipientTodayAction({ response: it.response, unreadCount: it.unreadCount });
+        const trayAction: TodaySwipeTrayAction | null = act.removable
+          ? { label: t.remove, tone: "destructive", onCommit: () => void removeFromToday(it.recipientId) }
+          : act.blocker === "unread"
+            ? {
+                label: t.readReply,
+                tone: "guidance",
+                // GUIDANCE ONLY. Opening the conversation is what marks it read, exactly as a tap
+                // on the card's own control would — nothing is marked read from the swipe itself.
+                onCommit: () => {
+                  setConvoOverride((m) => ({ ...m, [it.recipientId]: true }));
+                  setSwipeOpenId(null);
+                },
+              }
+            : {
+                label: t.respondFirst,
+                tone: "guidance",
+                /*
+                  The three first-response buttons are already on the card and already explain what
+                  is required, so this closes the tray and puts them back in front of the person
+                  rather than inventing a second way to answer. It submits nothing.
+                */
+                onCommit: () => {
+                  setSwipeOpenId(null);
+                  setAsking(null);
+                },
+              };
         return (
-          <SwipeToRemove
+          <TodaySwipeAction
             key={it.announcementId}
-            enabled={removable}
+            action={trayAction}
             open={swipeOpenId === it.recipientId}
-            onOpenChange={(o) => setSwipeOpenId(o ? it.recipientId : null)}
-            onRemove={() => void removeFromToday(it.recipientId)}
-            removeLabel={t.remove}
+            onOpenChange={(o: boolean) => setSwipeOpenId(o ? it.recipientId : null)}
             busy={removing === it.recipientId}
           >
           <article
             data-testid="announcement-item"
             data-answered={answered ? "1" : "0"}
-            data-removable={removable ? "1" : "0"}
+            data-removable={act.removable ? "1" : "0"}
+            data-blocker={act.blocker ?? ""}
             className="flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
           >
             {/*
@@ -454,12 +489,13 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
               undiscoverable and unreachable without touch, so the same action is also a real,
               focusable button on the card. It is quiet — this is tidying, not a call to act.
             */}
-            {removable ? (
+            {trayAction ? (
               <button
                 type="button"
                 data-testid="announcement-remove"
+                data-tone={trayAction.tone}
                 disabled={removing === it.recipientId}
-                onClick={() => void removeFromToday(it.recipientId)}
+                onClick={trayAction.onCommit}
                 /*
                   ★ REACHABLE, BUT NOT PRESENT AT REST. A visible Remove on every settled card turns
                   a tidy-up affordance into standing furniture, and the swipe tray is the intended
@@ -471,11 +507,11 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                 */
                 className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
               >
-                {t.remove}
+                {trayAction.label}
               </button>
             ) : null}
           </article>
-          </SwipeToRemove>
+          </TodaySwipeAction>
         );
       })}
     </section>

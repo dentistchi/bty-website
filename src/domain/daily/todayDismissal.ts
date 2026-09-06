@@ -24,31 +24,56 @@ export function isTodayItemKind(v: unknown): v is TodayItemKind {
 }
 
 /**
- * A RECIPIENT's Track card is settled when they have answered AND nothing is waiting to be read.
+ * ★ ONE CANONICAL ANSWER FOR "WHAT CAN THIS CARD DO RIGHT NOW".
  *
- * Both halves are load-bearing:
- *   * unanswered — somebody asked this person something and is waiting. Removing it would let a
- *     tidy-up silently decline a colleague's question.
- *   * unread     — the Host has replied and this person has not seen it. Hiding that is the exact
- *     harm the whole feature must not cause.
+ * `removable` is the eligibility rule, UNCHANGED and NOT widened. `blocker` is the reason it is
+ * false, and it exists because the previous shape — a bare boolean — could only tell a surface to
+ * refuse. A refusal with no reason is what produced the real device defect: some cards swiped and
+ * revealed an action, others physically would not move, and nothing explained the difference.
+ *
+ * Both fields come from HERE so a component can never invent a second interpretation. A surface
+ * that re-derived "is this settled" would eventually disagree with the server that enforces it.
  */
-export function recipientCardRemovable(card: { response: string | null; unreadCount: number }): boolean {
-  return card.response !== null && card.unreadCount <= 0;
+export type TodayCardAction = {
+  removable: boolean;
+  /** Why not, when not. `null` exactly when `removable` is true. */
+  blocker: "unread" | "needs_handling" | "needs_response" | null;
+};
+
+/**
+ * A RECIPIENT's Track card.
+ *
+ *   needs_response   they have not answered. Somebody asked them something and is waiting; removing
+ *                    it would let a tidy-up silently decline a colleague's question.
+ *   unread           the Host has replied and they have not seen it. Hiding that is the exact harm
+ *                    this feature must never cause.
+ *
+ * ★ HANDLED IS NOT CONSULTED, DELIBERATELY. `handled_at` is the HOST's workflow state and is not a
+ * field of the recipient projection at all. A recipient who answered and has nothing waiting is
+ * finished with the card on THEIR Today, whatever the Host has or has not done about it.
+ */
+export function recipientTodayAction(card: { response: string | null; unreadCount: number }): TodayCardAction {
+  if (card.response === null) return { removable: false, blocker: "needs_response" };
+  if (card.unreadCount > 0) return { removable: false, blocker: "unread" };
+  return { removable: true, blocker: null };
 }
 
 /**
- * A HOST's Track card is settled when NO recipient still needs their attention.
+ * A HOST's Track run.
  *
- * `needsAttention` is the server's own rule (an open QUESTION/HELP_NEEDED, or an unread message
- * from that person), so this does not re-derive it — a second definition of "who is waiting" is
- * how the two surfaces would eventually disagree.
+ * `needsAttention` stays the single authority for "is anybody waiting on me" — this reads it rather
+ * than re-deriving it. The blocker only says WHICH kind of waiting, and unread is reported first
+ * because reading what somebody said is what a Host must do before deciding anything is handled.
  *
- * A run whose recipients have not answered at all is still removable: nobody is waiting on the
- * HOST there, and the Host is not the person who owes anything. The unanswered recipients keep
- * seeing their own card on their own Today, which is the surface that actually needs them.
+ * A run whose recipients have not answered at all is removable: nobody is waiting on the HOST
+ * there, and those recipients still see their own card on their own Today.
  */
-export function hostCardRemovable(card: { responders: readonly { needsAttention: boolean }[] }): boolean {
-  return !card.responders.some((r) => r.needsAttention);
+export function hostTodayAction(card: {
+  responders: readonly { needsAttention: boolean; unreadCount: number; response?: string | null; handledAt?: string | null }[];
+}): TodayCardAction {
+  if (!card.responders.some((r) => r.needsAttention)) return { removable: true, blocker: null };
+  if (card.responders.some((r) => r.unreadCount > 0)) return { removable: false, blocker: "unread" };
+  return { removable: false, blocker: "needs_handling" };
 }
 
 /**

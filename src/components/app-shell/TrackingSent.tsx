@@ -5,8 +5,8 @@ import { supabase } from "@/lib/supabase";
 import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnouncement";
 import { funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
 import TrackConversation, { NewMessageBadge } from "./TrackConversation";
-import SwipeToRemove from "./SwipeToRemove";
-import { hostCardRemovable } from "@/domain/daily/todayDismissal";
+import TodaySwipeAction, { type TodaySwipeTrayAction } from "./TodaySwipeAction";
+import { hostTodayAction } from "@/domain/daily/todayDismissal";
 
 /**
  * "Tracking" — what the Host asked for, and what came back. Today lane.
@@ -81,6 +81,8 @@ const COPY = {
     someone: "Someone",
     markHandled: "Mark handled",
     remove: "Remove",
+    readReply: "Read reply",
+    handleFirst: "Handle first",
     openConversation: "Open conversation",
     hideConversation: "Hide conversation",
     handled: "Handled",
@@ -108,6 +110,8 @@ const COPY = {
     someone: "이름 없음",
     markHandled: "처리 완료",
     remove: "치우기",
+    readReply: "답장 확인",
+    handleFirst: "먼저 처리",
     openConversation: "대화 열기",
     hideConversation: "대화 접기",
     handled: "처리됨",
@@ -517,28 +521,57 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
           r.acknowledged.length + r.question.length + r.needHelp.length + r.noResponse.length;
         const expanded = openId === it.id;
         /*
-          ★ ONLY A RUN WHERE NOBODY IS WAITING ON THIS HOST. `needsAttention` is the server's own
-          rule (an open question or an unread message from that person), reused rather than
-          re-derived — a second definition of "who is waiting" is how two surfaces disagree.
+          ★ ONE CANONICAL ANSWER, AND A BLOCKED RUN STILL OPENS.
+
+          `needsAttention` remains the single authority for "is anybody waiting on me"; this reads
+          it rather than re-deriving it. The blocker only says WHICH kind of waiting, so the tray
+          can name the next step instead of the row silently refusing to move.
         */
-        const removable = hostCardRemovable({
-          responders: [...r.needHelp, ...r.question, ...r.noResponse, ...r.acknowledged],
-        });
+        const everyone = [...r.needHelp, ...r.question, ...r.noResponse, ...r.acknowledged];
+        const act = hostTodayAction({ responders: everyone });
+        /** The person to open when the blocker is an unread reply — the one who actually spoke. */
+        const waiting = everyone.find((p) => p.unreadCount > 0) ?? everyone.find((p) => p.needsAttention);
+        const trayAction: TodaySwipeTrayAction | null = act.removable
+          ? { label: t.remove, tone: "destructive", onCommit: () => void removeRun(it.id) }
+          : act.blocker === "unread"
+            ? {
+                label: t.readReply,
+                tone: "guidance",
+                // Opens THAT recipient's conversation. Reading is not resolving: nothing is marked
+                // handled here, and the receipt is written by opening the thread, as always.
+                onCommit: () => {
+                  setOpenId(it.id);
+                  if (waiting) setOpenRecipientId(waiting.recipientId);
+                  setSwipeOpenId(null);
+                },
+              }
+            : {
+                label: t.handleFirst,
+                tone: "guidance",
+                /*
+                  Expands the run's own responses, where the existing Mark handled control lives.
+                  It does NOT mark anything handled — a swipe must never settle somebody's question
+                  on their behalf.
+                */
+                onCommit: () => {
+                  setOpenId(it.id);
+                  setSwipeOpenId(null);
+                },
+              };
         return (
-          <SwipeToRemove
+          <TodaySwipeAction
             key={it.id}
-            enabled={removable}
+            action={trayAction}
             open={swipeOpenId === it.id}
-            onOpenChange={(o) => setSwipeOpenId(o ? it.id : null)}
-            onRemove={() => void removeRun(it.id)}
-            removeLabel={t.remove}
+            onOpenChange={(o: boolean) => setSwipeOpenId(o ? it.id : null)}
             busy={removing === it.id}
           >
           <article
             data-testid="tracking-item"
             data-announcement={it.id}
             data-status={it.status}
-            data-removable={removable ? "1" : "0"}
+            data-removable={act.removable ? "1" : "0"}
+            data-blocker={act.blocker ?? ""}
             className="flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-4"
           >
             {/* The Host's own words first: it is what they wrote and what they will recognise. */}
@@ -653,12 +686,13 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
               </p>
             ) : null}
             {/* The gesture is never the only path — a real focusable control does the same thing. */}
-            {removable ? (
+            {trayAction ? (
               <button
                 type="button"
                 data-testid="tracking-remove"
+                data-tone={trayAction.tone}
                 disabled={removing === it.id}
-                onClick={() => void removeRun(it.id)}
+                onClick={trayAction.onCommit}
                 /*
                   ★ REACHABLE, BUT NOT PRESENT AT REST. A visible Remove on every settled card turns
                   a tidy-up affordance into standing furniture, and the swipe tray is the intended
@@ -670,11 +704,11 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
                 */
                 className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
               >
-                {t.remove}
+                {trayAction.label}
               </button>
             ) : null}
           </article>
-          </SwipeToRemove>
+          </TodaySwipeAction>
         );
       })}
     </section>

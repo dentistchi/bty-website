@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   hostActivityVersion,
-  hostCardRemovable,
+  hostTodayAction,
   isHiddenFromToday,
   isTodayItemKind,
   recipientActivityVersion,
-  recipientCardRemovable,
+  recipientTodayAction,
 } from "@/domain/daily/todayDismissal";
 
 /**
@@ -16,34 +16,81 @@ import {
  * tidy-up.
  */
 
-describe("★ only a SETTLED card may be removed — recipient", () => {
-  it("an UNANSWERED card is never removable — somebody is waiting on this person", () => {
-    expect(recipientCardRemovable({ response: null, unreadCount: 0 })).toBe(false);
+describe("★ recipient — ONE canonical answer, with the reason attached", () => {
+  it("★ unanswered → needs_response, never removable", () => {
+    expect(recipientTodayAction({ response: null, unreadCount: 0 }))
+      .toEqual({ removable: false, blocker: "needs_response" });
   });
 
-  it("★ an answered card with an UNREAD reply is never removable — that is the point of Today", () => {
-    expect(recipientCardRemovable({ response: "QUESTION", unreadCount: 1 })).toBe(false);
-    expect(recipientCardRemovable({ response: "HELP_NEEDED", unreadCount: 2 })).toBe(false);
+  it("★ answered with an UNREAD reply → unread, never removable", () => {
+    expect(recipientTodayAction({ response: "QUESTION", unreadCount: 1 }))
+      .toEqual({ removable: false, blocker: "unread" });
+    expect(recipientTodayAction({ response: "HELP_NEEDED", unreadCount: 2 }))
+      .toEqual({ removable: false, blocker: "unread" });
   });
 
-  it("answered and nothing waiting IS removable, for all three responses", () => {
+  it("answered and nothing waiting → removable, for all three responses", () => {
     for (const r of ["ACKNOWLEDGED", "QUESTION", "HELP_NEEDED"]) {
-      expect(recipientCardRemovable({ response: r, unreadCount: 0 }), r).toBe(true);
+      expect(recipientTodayAction({ response: r, unreadCount: 0 }), r)
+        .toEqual({ removable: true, blocker: null });
+    }
+  });
+
+  it("★ needs_response OUTRANKS unread — answering is the first thing they owe", () => {
+    expect(recipientTodayAction({ response: null, unreadCount: 3 }).blocker).toBe("needs_response");
+  });
+
+  it("★ HANDLED is not consulted — it is the HOST's state and not in this projection", () => {
+    // Passing it changes nothing; the function has no such parameter to read.
+    const a = recipientTodayAction({ response: "QUESTION", unreadCount: 0 } as never);
+    const b = recipientTodayAction({ response: "QUESTION", unreadCount: 0, handledAt: null } as never);
+    expect(a).toEqual(b);
+    expect(a.removable).toBe(true);
+  });
+
+  it("blocker is null EXACTLY when removable is true", () => {
+    for (const c of [
+      { response: null, unreadCount: 0 },
+      { response: "QUESTION", unreadCount: 1 },
+      { response: "QUESTION", unreadCount: 0 },
+    ]) {
+      const r = recipientTodayAction(c);
+      expect(r.removable === (r.blocker === null), JSON.stringify(c)).toBe(true);
     }
   });
 });
 
-describe("★ only a SETTLED run may be removed — host", () => {
-  it("a run where ANYONE needs attention is not removable", () => {
-    expect(hostCardRemovable({ responders: [{ needsAttention: false }, { needsAttention: true }] })).toBe(false);
+describe("★ host — ONE canonical answer, with the reason attached", () => {
+  const p = (over: Record<string, unknown> = {}) => ({ needsAttention: false, unreadCount: 0, ...over });
+
+  it("nobody waiting → removable", () => {
+    expect(hostTodayAction({ responders: [p(), p()] })).toEqual({ removable: true, blocker: null });
   });
 
-  it("a run where nobody needs attention is removable", () => {
-    expect(hostCardRemovable({ responders: [{ needsAttention: false }, { needsAttention: false }] })).toBe(true);
+  it("an empty run is removable — nobody is waiting on the Host", () => {
+    expect(hostTodayAction({ responders: [] })).toEqual({ removable: true, blocker: null });
   });
 
-  it("an empty run is removable — there is nobody waiting on the Host", () => {
-    expect(hostCardRemovable({ responders: [] })).toBe(true);
+  it("★ an unread recipient message → unread", () => {
+    expect(hostTodayAction({ responders: [p(), p({ needsAttention: true, unreadCount: 1 })] }))
+      .toEqual({ removable: false, blocker: "unread" });
+  });
+
+  it("★ attention with nothing unread → needs_handling", () => {
+    expect(hostTodayAction({ responders: [p({ needsAttention: true })] }))
+      .toEqual({ removable: false, blocker: "needs_handling" });
+  });
+
+  it("★ unread is reported FIRST — reading what somebody said comes before settling it", () => {
+    expect(hostTodayAction({
+      responders: [p({ needsAttention: true }), p({ needsAttention: true, unreadCount: 1 })],
+    }).blocker).toBe("unread");
+  });
+
+  it("★ eligibility is NOT widened — it is still exactly !some(needsAttention)", () => {
+    for (const rs of [[p()], [p(), p()], [], [p({ needsAttention: true })], [p({ needsAttention: true, unreadCount: 4 })]]) {
+      expect(hostTodayAction({ responders: rs }).removable).toBe(!rs.some((x) => x.needsAttention));
+    }
   });
 });
 

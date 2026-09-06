@@ -1,10 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   hostActivityVersion,
+  hostTodayAction,
   isTodayItemKind,
   recipientActivityVersion,
+  recipientTodayAction,
   type TodayItemKind,
 } from "@/domain/daily/todayDismissal";
+import { countUnreadFor } from "@/domain/announcement/announcementThread";
+import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
 
 /**
  * "Remove this from my Today" — SERVER ONLY.
@@ -22,11 +26,17 @@ import {
  *
  * ★ NOTHING HERE TOUCHES WHAT IT HIDES. Rows are READ from the Track tables to establish ownership
  * and to count activity; nothing in this file writes to any of them.
+ *
+ * ★ REMOVABILITY IS RE-DECIDED HERE, FROM LIVE ROWS. The client's tray is guidance, not authority.
+ * A projection can be seconds stale — a Host reply may have landed since the card was drawn — so a
+ * dismissal is refused unless the card is settled ACCORDING TO THE DATABASE RIGHT NOW. Without
+ * this, a stale screen could hide a card that had just become attention-worthy, which is the exact
+ * failure the whole eligibility rule exists to prevent.
  */
 
 export type DismissResult =
   | { ok: true; dismissedAt: string; activityVersion: number }
-  | { ok: false; reason: "invalid_kind" | "not_found" | "failed" };
+  | { ok: false; reason: "invalid_kind" | "not_found" | "not_removable" | "failed" };
 
 /**
  * The card's CURRENT monotonic activity count, and whether it belongs to this person at all.
@@ -34,20 +44,22 @@ export type DismissResult =
  * Returns null when the card is not theirs OR does not exist — deliberately the same answer, so a
  * dismissal request cannot be used to discover somebody else's Track.
  */
+type Owned = { version: number; removable: boolean };
+
 async function ownedActivityVersion(
   admin: SupabaseClient,
   userId: string,
   itemKind: TodayItemKind,
   itemId: string,
-): Promise<number | null> {
+): Promise<Owned | null> {
   if (itemKind === "track_recipient") {
     // OWNERSHIP: the recipient row must be BOUND to the caller.
     const { data: row, error } = await admin
       .from("bty_tracked_announcement_recipients")
-      .select("id")
+      .select("id, response")
       .eq("id", itemId)
       .eq("user_id", userId)
-      .maybeSingle();
+      .maybeSingle<{ id: string; response: string | null }>();
     if (error) {
       console.error("[today-dismissal] recipient lookup failed", { code: error.code ?? "unknown" });
       return null;
@@ -56,14 +68,36 @@ async function ownedActivityVersion(
 
     const { data: msgs, error: mErr } = await admin
       .from("bty_announcement_thread_messages")
-      .select("author_role")
+      .select("id, author_role")
       .eq("recipient_id", itemId)
-      .returns<{ author_role: string }[]>();
+      .returns<{ id: string; author_role: string }[]>();
     if (mErr) {
       console.error("[today-dismissal] recipient messages failed", { code: mErr.code ?? "unknown" });
       return null;
     }
-    return recipientActivityVersion((msgs ?? []).map((m) => ({ authorRole: m.author_role })));
+    const all = (msgs ?? []).map((m) => ({ messageId: m.id, authorRole: m.author_role as "HOST" | "RECIPIENT" }));
+
+    // The caller's OWN receipts — the same question the list surface asks.
+    const ids = all.map((m) => m.messageId);
+    let read = new Set<string>();
+    if (ids.length > 0) {
+      const { data: rd, error: rErr } = await admin
+        .from("bty_announcement_thread_message_reads")
+        .select("message_id")
+        .eq("reader_user_id", userId)
+        .in("message_id", ids)
+        .returns<{ message_id: string }[]>();
+      if (rErr) {
+        console.error("[today-dismissal] recipient receipts failed", { code: rErr.code ?? "unknown" });
+        return null;
+      }
+      read = new Set((rd ?? []).map((x) => x.message_id));
+    }
+    const unreadCount = countUnreadFor("RECIPIENT", all, read);
+    return {
+      version: recipientActivityVersion(all),
+      removable: recipientTodayAction({ response: row.response, unreadCount }).removable,
+    };
   }
 
   // OWNERSHIP: the announcement must be OWNED by the caller.
@@ -81,31 +115,67 @@ async function ownedActivityVersion(
 
   const { data: recips, error: rErr } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("id, response")
+    .select("id, response, handled_at")
     .eq("announcement_id", itemId)
-    .returns<{ id: string; response: string | null }[]>();
+    .returns<{ id: string; response: string | null; handled_at: string | null }[]>();
   if (rErr) {
     console.error("[today-dismissal] run recipients failed", { code: rErr.code ?? "unknown" });
     return null;
   }
   const ids = (recips ?? []).map((r) => r.id);
-  let msgs: { author_role: string }[] = [];
+  let msgs: { id: string; recipient_id: string; author_role: string }[] = [];
   if (ids.length > 0) {
     const { data, error: mErr } = await admin
       .from("bty_announcement_thread_messages")
-      .select("author_role")
+      .select("id, recipient_id, author_role")
       .in("recipient_id", ids)
-      .returns<{ author_role: string }[]>();
+      .returns<{ id: string; recipient_id: string; author_role: string }[]>();
     if (mErr) {
       console.error("[today-dismissal] run messages failed", { code: mErr.code ?? "unknown" });
       return null;
     }
     msgs = data ?? [];
   }
-  return hostActivityVersion(
-    msgs.map((m) => ({ authorRole: m.author_role })),
-    (recips ?? []).map((r) => r.response),
-  );
+
+  // The OWNER's own receipts, so "unread for the Host" means what it means everywhere else.
+  let read = new Set<string>();
+  if (msgs.length > 0) {
+    const { data: rd, error: rErr } = await admin
+      .from("bty_announcement_thread_message_reads")
+      .select("message_id")
+      .eq("reader_user_id", userId)
+      .in("message_id", msgs.map((m) => m.id))
+      .returns<{ message_id: string }[]>();
+    if (rErr) {
+      console.error("[today-dismissal] run receipts failed", { code: rErr.code ?? "unknown" });
+      return null;
+    }
+    read = new Set((rd ?? []).map((x) => x.message_id));
+  }
+
+  /* `needsAttention` is re-derived from LIVE rows with the same domain rule the Host surface uses. */
+  const responders = (recips ?? []).map((r) => {
+    const mine = msgs
+      .filter((m) => m.recipient_id === r.id)
+      .map((m) => ({ messageId: m.id, authorRole: m.author_role as "HOST" | "RECIPIENT" }));
+    const unreadCount = countUnreadFor("HOST", mine, read);
+    return {
+      unreadCount,
+      needsAttention: recipientNeedsHostAttention({
+        response: r.response,
+        handledAt: r.handled_at,
+        unreadForHost: unreadCount,
+      }),
+    };
+  });
+
+  return {
+    version: hostActivityVersion(
+      msgs.map((m) => ({ authorRole: m.author_role })),
+      (recips ?? []).map((r) => r.response),
+    ),
+    removable: hostTodayAction({ responders }).removable,
+  };
 }
 
 /**
@@ -129,8 +199,15 @@ export async function dismissTodayItem(
   const itemId = typeof params.itemId === "string" ? params.itemId.trim() : "";
   if (!itemId) return { ok: false, reason: "invalid_kind" };
 
-  const version = await ownedActivityVersion(admin, params.userId, params.itemKind, itemId);
-  if (version === null) return { ok: false, reason: "not_found" };
+  const owned = await ownedActivityVersion(admin, params.userId, params.itemKind, itemId);
+  if (owned === null) return { ok: false, reason: "not_found" };
+  /*
+    ★ THE SERVER DECIDES, NOT THE SCREEN. The tray a person tapped may have been drawn before a
+    Host reply landed. Refusing here is what stops a stale projection from hiding a card that has
+    since become attention-worthy.
+  */
+  if (!owned.removable) return { ok: false, reason: "not_removable" };
+  const version = owned.version;
 
   const dismissedAt = new Date().toISOString();
   const patch = { dismissed_at: dismissedAt, dismissed_activity_version: version };

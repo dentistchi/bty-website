@@ -40,7 +40,18 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     const res = NextResponse.json(
       { ok: false, code: result.reason },
-      { status: result.reason === "invalid_kind" ? 400 : result.reason === "not_found" ? 404 : 500 },
+      {
+        status:
+          result.reason === "invalid_kind"
+            ? 400
+            : result.reason === "not_found"
+              ? 404
+              : // The card is theirs, but somebody is waiting on it RIGHT NOW. 409, not 403: the
+                // request was well-formed and authorized, the card's state simply moved.
+                result.reason === "not_removable"
+                ? 409
+                : 500,
+      },
     );
     res.headers.set("Cache-Control", "private, no-store");
     return res;
