@@ -58,21 +58,21 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.9, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.10, and points $schema at the same version", () => {
     /*
-      1.0.9 (Slice TQ-4.2). The ONLY payload difference is `outline.png`, again — the fourth
-      attempt at one icon. 1.0.7 (clean rasterisation) and 1.0.8 (pixel hinting + corrected weight)
-      were both published and both FAILED on the Founder's iPhone, which is what established that
-      the literal master geometry cannot read at 20-24px. 1.0.9 carries the first asset that
-      deviates from it: internal openings widened where the loops merge, outer silhouette exact.
-      Teams caches app icons per installed package version, so each attempt costs a version.
+      1.0.10 (Slice TQ-4.5). The ONLY payload difference is `outline.png` — the fifth and final
+      attempt at one icon. 1.0.7, 1.0.8 and 1.0.9 each corrected what the previous one was blamed
+      on (rasterisation, then hinting and weight, then merged crossings) and each still failed on
+      the Founder's iPhone. That is what established that the master's woven trefoil cannot read at
+      20-24px at all. 1.0.10 carries a small-size glyph the Founder selected by eye, exported
+      unmodified. Teams caches app icons per installed package version, so each attempt cost one.
 
       Every identity field is asserted unchanged above and below: same app id, same bot id, same
       scopes, same contentUrl, same validDomains, same permissions. A version bump must never be
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.9");
+    expect(manifest.version).toBe("1.0.10");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");

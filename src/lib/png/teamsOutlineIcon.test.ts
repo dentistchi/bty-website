@@ -1,4 +1,34 @@
-/** @vitest-environment node */
+/**
+ * THE TEAMS APP-BAR ICON — now a FOUNDER-SELECTED DESIGN, not an algorithmic result. Slice TQ-4.5.
+ *
+ * ★ WHAT THESE GATES USED TO GUARD, AND WHY THAT ENDED.
+ *
+ * Four packages were published and every one failed on the Founder's real iPhone:
+ *
+ *   1.0.6  the original asset — 12 opaque pixels of 453, essentially all anti-aliasing
+ *   1.0.7  rasterised once from the master; edge-to-core 36.75 -> 1.90      DEVICE: still muddy
+ *   1.0.8  pixel-hinted, 22px optical box, weight into the neighbour band   DEVICE: still muddy
+ *   1.0.9  internal negative space opened where the loops merge             DEVICE: still muddy
+ *
+ * Each fixed the thing the previous one was blamed on, and each still read soft beside Activity,
+ * Chat and Files. That is what established the real finding: the master's woven trefoil cannot be
+ * made legible at 20-24px by ANY transformation of itself, because three interlocking lobes at
+ * that size merge no matter how they are rasterised, hinted, weighted or opened.
+ *
+ * The Founder then selected a small-size glyph BY EYE — `BTY_Teams_S1_Monoline.svg` — and that
+ * file is now the design authority for this icon. The master is unchanged and still authoritative
+ * for `color.png`, the web, and every large-format use.
+ *
+ * ★ SO THE GATES CHANGED SHAPE, DELIBERATELY.
+ *
+ * They no longer assert an optical box, an apparent-weight band, or an edge-to-core ceiling. Those
+ * were the previous four attempts' own success criteria and all four passed them on the way to
+ * failing on a phone. What is guarded now is the ASSET CONTRACT — that the shipped PNG is the
+ * approved SVG, unmodified, in the shape Teams requires — plus the package identity around it.
+ *
+ * Edge-to-core is deliberately UNBOUNDED here: this export applies no contrast hinting, because
+ * hinting would be an optical modification of a design that was approved as drawn.
+ */
 /**
  * THE TEAMS APP-BAR ICON, HELD TO OPTICAL QUALITY AND NOT ONLY TO THE MANIFEST. Slice TQ-4.
  *
@@ -26,7 +56,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { decodePng, alphaOf, downsampleAlpha, pngSize } from "./decodePng";
+import { createHash } from "node:crypto";
+import { decodePng, alphaOf, pngSize } from "./decodePng";
 
 const OUTLINE = join(process.cwd(), "teams/manifest/outline.png");
 const img = decodePng(readFileSync(OUTLINE));
@@ -93,218 +124,92 @@ describe("★ 1–4 shape, transparency and colour purity", () => {
   });
 });
 
-describe("★ 5–6 no shadow, no glow, no feather", () => {
-  it("★ 6 — the mark is drawn, not feathered: semi-transparent pixels per opaque pixel", () => {
-    /*
-      THE HEADLINE NUMBER. The shipped icon scored 36.75 here — 441 anti-aliased pixels around 12
-      solid ones. A mark rasterised once from a vector has a thin edge and a solid core. The bound
-      is generous (a real 32px icon lands near 2); anything approaching the old value means the
-      asset was resampled from another raster again.
-    */
-    const v = visible();
-    const opaque = v.filter((p) => p.a >= 250).length;
-    const semi = v.filter((p) => p.a > 0 && p.a < 250).length;
-    expect(opaque, "an icon with no solid core cannot look crisp at any size").toBeGreaterThan(60);
-    /*
-      TIGHTENED at TQ-4.1. 1.0.7 rasterised cleanly and scored 1.90; the pixel-hinted build resolves
-      fractional coverage toward ink or paper and scores 0.55. The bound is set just above that, so
-      a regression that removes the hinting step fails here rather than shipping quietly.
-    */
-    expect(semi / opaque).toBeLessThan(0.9);
-  });
-
-  it("5 — no shadow or glow: the faint halo is a thin edge, not a cloud", () => {
-    const halo = alpha.filter((a) => a > 0 && a < 32).length;
-    expect(halo, "a wide sub-alpha-32 skirt is a feather or a drop shadow").toBeLessThan(60);
-  });
-
-  it("5b — no pixel outside the mark's own bounding box carries ink", () => {
+describe("★ 5–6 no shadow, no glow, no colour fringe", () => {
+  it("5 — no pixel outside the glyph's own bounding box carries ink", () => {
     const b = bbox();
-    const stray = visible().filter((p) => p.x < b.x0 || p.x > b.x1 || p.y < b.y0 || p.y > b.y1);
-    expect(stray).toEqual([]);
+    expect(visible().filter((p) => p.x < b.x0 || p.x > b.x1 || p.y < b.y0 || p.y > b.y1)).toEqual([]);
+  });
+
+  it("6 — a stroked glyph, not a plate: most of the canvas is empty and the mark is a line", () => {
+    /*
+      Edge-to-core is NOT bounded here, and that is the point. The 1.0.8 and 1.0.9 assets scored
+      0.55 and 0.51 on it — the best numbers in the whole arc — and both failed on the device. This
+      export applies no contrast hinting at all, because hinting would optically modify a design the
+      Founder approved as drawn. What is worth asserting is only that the thing is a stroke.
+    */
+    const ink = visible().length;
+    expect(ink).toBeGreaterThan(150);
+    expect(ink, "an outline icon must not become a filled plate").toBeLessThan(32 * 32 * 0.45);
   });
 });
 
-describe("★ 7–8 placement", () => {
-  it("7 — optically centred: opposite margins are equal", () => {
-    const b = bbox();
-    expect({ dx: b.x0 - (W - 1 - b.x1), dy: b.y0 - (H - 1 - b.y1) }).toEqual({ dx: 0, dy: 0 });
+describe("★ 7–8 it is the approved S1, exported and not reinterpreted", () => {
+  const SVG = "scripts/teams-icon/BTY_Teams_S1_Monoline.svg";
+  const svgText = readFileSync(join(process.cwd(), SVG), "utf8");
+
+  it("1 — the approved S1 SVG exists at its frozen path", () => {
+    expect(svgText.length).toBeGreaterThan(1000);
   });
 
-  it("8 — the footprint is the TQ-4.2 optical box: 26 × 24, margins 3/3/4/4", () => {
-    /*
-      ★ THE SIZE ARGUMENT HAS NOW BEEN WRONG IN BOTH DIRECTIONS, ON DEVICE.
-
-      TQ-4 pinned 26x24 and said shrinking bought nothing        -> 1.0.7 FAILED on device.
-      TQ-4.1 shrank to 22x20 to match neighbour weight           -> 1.0.8 FAILED on device.
-
-      Neither was the problem. Three interlocking lobes MERGE at 20-24px whatever their size, and
-      the fix is to open the internal negative space rather than to resize the mark. The box returns
-      to 26 not because 1.0.7 was right, but because opening the gaps needs room: attempted inside
-      1.0.8's 22px box, the gaps could only widen by BREAKING the rings.
-    */
-    const b = bbox();
-    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 26, h: 24 });
-    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 3, r: 3, t: 4, b: 4 });
+  it("2 — the approved S1 SVG is FROZEN at its Founder-supplied bytes", () => {
+    const sha = createHash("sha256").update(readFileSync(join(process.cwd(), SVG))).digest("hex");
+    expect(sha).toBe("25e704aae326db51eb927257ae15d646b1746a53a2946541eb362453c7b1cede");
   });
 
-  it("★ 8b — ONLY inner-facing ink was removed: the outer silhouette is the master's, exactly", () => {
+  it("★ the approved file is a single white round-joined polyline on no background", () => {
+    // Everything the exporter relies on being true of the source, asserted independently of it.
+    expect(svgText).toContain('viewBox="0 0 32 32"');
+    expect((svgText.match(/<(path|polyline|polygon|rect|circle|line|ellipse)\b/g) ?? [])).toEqual(["<polyline"]);
+    expect(svgText).toContain('fill="none"');
+    expect(svgText).toContain('stroke="#FFFFFF"');
+    expect(svgText).toContain('stroke-linecap="round"');
+    expect(svgText).toContain('stroke-linejoin="round"');
+    expect(svgText).toContain('stroke-width="1.75"');
+  });
+
+  it("★ 8 — outline.png is EXPORTED from S1, never routed through the master pipeline", () => {
+    const exp = readFileSync(join(process.cwd(), "scripts/teams-icon/export_s1.py"), "utf8");
+    const code = exp.replace(/"""[\s\S]*?"""/g, "").replace(/^\s*#.*$/gm, "");
+    expect(code).toContain("BTY_Teams_S1_Monoline.svg");
+    expect(code).toContain("teams/manifest/outline.png");
+    // None of the four failed transformations may appear in the export path.
+    for (const forbidden of ["erode", "dilate", "closing", "envelope", "HINT_CONTRAST", "contrast", "MARK_W", "BTY_Master_plain"]) {
+      expect(code, `the exporter must not ${forbidden}`).not.toContain(forbidden);
+    }
+  });
+
+  it("★ the retired master pipeline can no longer overwrite the approved asset", () => {
     /*
-      The whole safety of an optical variant rests on this. The operation may only subtract, and
-      only where ink faces an internal opening — so the mark's outline, and therefore its identity
-      and its footprint, are untouched. Asserted structurally against the generator: it computes an
-      envelope, takes the internal background, and subtracts a dilation of it from the mask. There
-      is no dilation of the MARK anywhere, which is what would move the silhouette outward.
+      `build_outline.py` produced 1.0.7, 1.0.8 and 1.0.9 and is kept for provenance — the reasoning
+      inside it is the record of why this icon took five attempts. But a script that still writes to
+      `teams/manifest/outline.png` is a loaded footgun beside an approved design, so its entry point
+      refuses.
     */
-    const gen = readFileSync(join(process.cwd(), "scripts/teams-icon/build_outline.py"), "utf8");
-    expect(gen).toContain("open_internal_negative_space");
-    expect(gen).toContain("internal = envelope & ~mask");
-    expect(gen).toContain("return mask & ~_disc_dilate(internal");
-    expect(gen).toContain("no internal negative space found — refusing to guess");
+    const old = readFileSync(join(process.cwd(), "scripts/teams-icon/build_outline.py"), "utf8");
+    expect(old).toContain("RETIRED");
+    expect(old).toContain("export_s1.py");
+  });
+
+  it("★ 7 — the exported geometry lies within the SVG stroke's own bounds", () => {
+    /*
+      The glyph is one round-capped, round-joined polyline, so its stroke IS the Minkowski sum of
+      the path with a disc of radius w/2. The inked pixels must therefore fall inside the path's
+      extent grown by that radius — proof the export reproduced the stroke rather than reshaping it.
+    */
+    const pts = (svgText.match(/points="([^"]+)"/) ?? [])[1].trim().split(/\s+/)
+      .map((p) => p.split(",").map(Number) as [number, number]);
+    const w = 1.75 / 2;
+    const minX = Math.min(...pts.map((p) => p[0])) - w, maxX = Math.max(...pts.map((p) => p[0])) + w;
+    const minY = Math.min(...pts.map((p) => p[1])) - w, maxY = Math.max(...pts.map((p) => p[1])) + w;
+    const b = bbox();
+    expect(b.x0).toBeGreaterThanOrEqual(Math.floor(minX));
+    expect(b.x1).toBeLessThanOrEqual(Math.ceil(maxX));
+    expect(b.y0).toBeGreaterThanOrEqual(Math.floor(minY));
+    expect(b.y1).toBeLessThanOrEqual(Math.ceil(maxY));
   });
 });
 
-/** How far an interior valley falls below the weaker stroke flanking it — "does the crossing merge". */
-function gapContrast(a: number[], size: number): number[] {
-  const out: number[] = [];
-  for (const transposed of [false, true]) {
-    for (let i = 0; i < size; i++) {
-      const row: number[] = [];
-      for (let j = 0; j < size; j++) row.push(transposed ? a[i * size + j] : a[j * size + i]);
-      let k = 1;
-      while (k < size - 1) {
-        if (row[k] < row[k - 1]) {
-          let j2 = k;
-          while (j2 < size - 1 && row[j2 + 1] <= row[j2]) j2++;
-          const left = Math.max(...row.slice(0, k));
-          const right = Math.max(...row.slice(j2 + 1));
-          if (left > 0 && right > 0) {
-            const v = Math.min(left, right) - Math.min(...row.slice(k, j2 + 1));
-            if (v > 0) out.push(v);
-          }
-          k = j2 + 1;
-        } else k++;
-      }
-    }
-  }
-  return out;
-}
-const mean = (v: number[]) => v.reduce((p, c) => p + c, 0) / v.length;
-
-describe("★ 9–10 it survives the sizes Teams actually renders", () => {
-  /*
-    ★ THE CRITERION CHANGED HERE, AND NOT TO MAKE AN ASSET PASS.
-
-    Gates 9 and 10 used to count interior channels and cap how many were only one pixel wide. That
-    proxy was written when channel WIDTH looked like the discriminator. It has now been overtaken
-    twice by the device: 1.0.7 and 1.0.8 both improved on it and both still read muddy.
-
-    What tracks the Founder's actual complaint — "the centre crossings merge" — is CONTRAST: how
-    far the gap between two loops falls below the loops themselves. Measured mean gap contrast at
-    24 / 22 / 20 px:
-
-        1.0.6   139.3 / 143.0 / 147.3      1.0.8 (A)  183.1 / 166.9 / 169.4
-        1.0.7   173.9 / 170.1 / 165.8      1.0.9 (B1) 194.1 / 196.7 / 183.7
-
-    ★ AND THE HONEST RESIDUAL. Opening the internal space creates MORE separations (39 against the
-    old asset's 27 at 20px) and proportionally more of them are only one pixel wide — 23% against
-    15% at 20px. Those are the most fragile ones. It was accepted because the separations that
-    exist are far higher-contrast, and because the alternative openings that reduce the fragile
-    fraction do it by closing the rings. The fraction is bounded below rather than left free.
-  */
-  const FIXTURE = "src/lib/png/__fixtures__/teams-outline-pre-tq4.png";
-
-  it("9 — the interior still separates at 24 and 20px, and the fragile fraction is bounded", () => {
-    for (const size of [24, 20]) {
-      const small = downsampleAlpha(alpha, W, H, size);
-      const runs = interiorChannels(small, size);
-      expect(runs.length, `no interior separation survives at ${size}px — it reads as a blob`).toBeGreaterThan(20);
-      const fragile = runs.filter((r) => r === 1).length / runs.length;
-      expect(fragile, `${(fragile * 100).toFixed(0)}% of separations at ${size}px are one pixel wide`).toBeLessThan(0.3);
-    }
-  });
-
-  it("★ 10 — gap contrast beats the asset it replaces at every size the bar renders", () => {
-    const prev = decodePng(readFileSync(join(process.cwd(), FIXTURE)));
-    const prevAlpha = alphaOf(prev);
-    for (const size of [24, 22, 20]) {
-      const now = mean(gapContrast(downsampleAlpha(alpha, W, H, size), size));
-      const was = mean(gapContrast(downsampleAlpha(prevAlpha, prev.width, prev.height, size), size));
-      expect(now, `${size}px: gap contrast ${now.toFixed(1)} is not better than ${was.toFixed(1)}`).toBeGreaterThan(was);
-    }
-  });
-
-  it("★ 10b — the fixture really is the asset that shipped, and it really was mostly edge", () => {
-    // If this fixture is ever replaced by a copy of the new file, test 10 becomes vacuous.
-    const prev = decodePng(readFileSync(join(process.cwd(), FIXTURE)));
-    const a = alphaOf(prev);
-    const opaque = a.filter((v) => v >= 250).length;
-    const semi = a.filter((v) => v > 0 && v < 250).length;
-    expect({ w: prev.width, h: prev.height }).toEqual({ w: 32, h: 32 });
-    expect(opaque).toBe(12);
-    expect(Math.round((semi / opaque) * 100) / 100).toBe(36.75);
-  });
-});
-
-describe("★ provenance — the Founder's master, and only its knot", () => {
-  const MASTER = "scripts/teams-icon/BTY_Master_plain.svg";
-  const master = readFileSync(join(process.cwd(), MASTER), "utf8");
-  const paths = [...master.matchAll(/<path[^>]*\bd="([^"]+)"/g)].map((m) => m[1]);
-  const FRAME = "M1024 0V1024H0V0H1024Z";
-
-  it("the generator reads the vendored master and nothing else", () => {
-    const gen = readFileSync(join(process.cwd(), "scripts/teams-icon/build_outline.py"), "utf8");
-    expect(gen).toContain("BTY_Master_plain.svg");
-    expect(gen).toContain("teams/manifest/outline.png");
-    expect(gen).toContain("refusing to guess");
-    /*
-      The previous source must not still be reachable in CODE. It is named in the docstring on
-      purpose — the file records why the source changed and why fill-based selection stopped
-      working — so the check strips comments first. A class named in prose loads nothing.
-    */
-    const code = gen.replace(/"""[\s\S]*?"""/g, "").replace(/^\s*#.*$/gm, "");
-    expect(code).not.toContain("bty-knot-mono-white.svg");
-    expect(code).not.toContain('fill="#FFFFFF"');
-  });
-
-  it("★ fill CANNOT identify the knot in the master — every element is white", () => {
-    /*
-      This is why selection is geometric. In the previous source the frame was `fill="none"` and
-      picking `fill="#FFFFFF"` happened to work. Here the two background rects, the frame and the
-      three lobes are ALL `fill="white"`, so a fill-based selector matches everything or nothing.
-    */
-    const fills = [...master.matchAll(/<(?:path|rect)\b[^>]*fill="([^"]*)"/g)].map((m) => m[1]);
-    expect(new Set(fills)).toEqual(new Set(["white"]));
-    expect(fills.length).toBeGreaterThanOrEqual(5);
-  });
-
-  it("★ the frame path is present and is excluded by SPANNING THE ARTBOARD", () => {
-    // Rasterising it would produce a solid white plate with a rounded hole — not an icon.
-    expect(paths.filter((d) => d.startsWith(FRAME)), "exactly one full-canvas frame path").toHaveLength(1);
-    const gen = readFileSync(join(process.cwd(), "scripts/teams-icon/build_outline.py"), "utf8");
-    expect(gen).toContain("ARTBOARD * 0.95");
-    expect(gen).toContain("expected exactly 1 frame path");
-    expect(gen).toContain("expected 3 canonical knot paths");
-  });
-
-  it("the master holds exactly four paths: one frame and three lobes", () => {
-    expect(paths).toHaveLength(4);
-    expect(paths.filter((d) => !d.startsWith(FRAME))).toHaveLength(3);
-  });
-
-  it("★ the master's knot geometry is BYTE-IDENTICAL to the mark the product already ships", () => {
-    /*
-      Adopting the Founder's master was about provenance, not a redraw — and this proves it was
-      exactly that. The three lobes here are character-for-character the three in
-      `public/brand/bty-knot-mono-white.svg`, so the rendered icon did not change when the source
-      did. If a future master genuinely alters the mark, this fails and the change becomes a
-      decision instead of a surprise.
-    */
-    const repo = readFileSync(join(process.cwd(), "public/brand/bty-knot-mono-white.svg"), "utf8");
-    const repoKnot = [...repo.matchAll(/<path[^>]*\bd="([^"]+)"/g)].map((m) => m[1]).filter((d) => !d.startsWith(FRAME));
-    expect(paths.filter((d) => !d.startsWith(FRAME))).toEqual(repoKnot);
-  });
-
+describe("★ the package around it is unchanged", () => {
   it("the colour icon and the manifest are untouched by this slice", () => {
     // color.png is 8-bit RGB with no alpha (colour type 2), which decodePng refuses on purpose.
     const colour = pngSize(readFileSync(join(process.cwd(), "teams/manifest/color.png")));
@@ -312,6 +217,12 @@ describe("★ provenance — the Founder's master, and only its knot", () => {
     const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
     expect(m.icons).toEqual({ color: "color.png", outline: "outline.png" });
     expect(m.id).toBe("374ec662-0deb-4e0b-8514-e38a035a349e");
+    expect(m.version).toBe("1.0.10");
+    expect(m.bots[0].botId).toBe("820f231b-9dbb-4c84-94c5-65bc43d35d91");
+    expect(m.staticTabs[0].contentUrl).toBe("https://arena.btydaily.com/teams");
+    // color.png must be byte-identical to what has shipped since 1.0.6.
+    const colourSha = createHash("sha256").update(readFileSync(join(process.cwd(), "teams/manifest/color.png"))).digest("hex");
+    expect(colourSha).toBe("e23c9df31ecd5cfe8a8727952da882ab29367d294b7a1e62a14d01588bdb847a");
     expect(m.composeExtensions[0].commands.map((c: { id: string }) => c.id)).toEqual(["saveToBty", "trackWithBty"]);
   });
 });

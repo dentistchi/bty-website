@@ -208,7 +208,21 @@ def build(canvas=CANVAS, mark_w=MARK_W, ss=SUPERSAMPLE_SS, contrast=HINT_CONTRAS
     return Image.fromarray(rgba, "RGBA")
 
 
+# ── RETIRED (Slice TQ-4.5) ────────────────────────────────────────────────────
+# This script produced the 1.0.7, 1.0.8 and 1.0.9 outline icons. All three FAILED on the Founder's
+# real iPhone, which is what established that the master's woven trefoil cannot be made legible at
+# 20-24px by any transformation of itself. The shipped icon now comes from a Founder-selected
+# small-size glyph via `export_s1.py`.
+#
+# The file is kept because the reasoning in it is the record of why this icon took five attempts,
+# and deleting that would leave the next person to rediscover it. But it must never again overwrite
+# an approved design, so the entry point refuses.
+RETIRED = True
+
 if __name__ == "__main__":
-    img = build()
-    img.save(TARGET, "PNG", optimize=True)
-    print("wrote %s  (%dx%d)" % (TARGET, *img.size))
+    raise SystemExit(
+        "build_outline.py is RETIRED (TQ-4.5).\n"
+        "It generated the 1.0.7 / 1.0.8 / 1.0.9 icons, all of which failed on device.\n"
+        "teams/manifest/outline.png is now exported from the Founder-approved S1 glyph:\n"
+        "    python3 scripts/teams-icon/export_s1.py"
+    )
