@@ -29,10 +29,16 @@ const fnBody = (name: string) => {
 /* ───────────────────────  A. ADDITIVE, AND LAST  ─────────────────────── */
 
 describe("A — additive, ordered last, and it rewrites no history", () => {
-  it("sorts after every migration that already exists", () => {
+  it("sorts immediately after the last migration that preceded it", () => {
+    /*
+      This asserted `.at(-1)` — "nothing sorts after me" — which is a claim about the FUTURE and
+      trips on the next slice that legitimately adds SQL. Re-anchored to the PREDECESSOR, which is
+      the fact this file actually depends on: it must replace the 20260907 function and extend the
+      20260902/20260906 tables, so what matters is what comes BEFORE it, not what comes after.
+    */
     const all = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
     expect(all).toContain(FILE);
-    expect(all.at(-1)).toBe(FILE);
+    expect(all.filter((f) => f < FILE).at(-1)).toBe("20260911000000_bty_bind_recipients_on_canonical_entry_v1.sql");
   });
 
   it("does not edit, rename or replay any earlier migration", () => {

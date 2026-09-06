@@ -10,6 +10,8 @@ import {
 } from "@/domain/announcement/trackedAnnouncement";
 import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
 import { allMessageIds, loadReadReceipts, loadThreadMeta, messageCountFrom, unreadFrom } from "./announcementThread.server";
+import { hostActivityVersion, isHiddenFromToday, recipientActivityVersion } from "@/domain/daily/todayDismissal";
+import { loadTodayDismissals } from "@/lib/bty/daily/todayDismissal.server";
 import { resolveDisplayNames } from "./recipientDisplayName.server";
 
 /**
@@ -97,7 +99,33 @@ export async function listMyAnnouncements(
     rows.map((r) => r.bty_tracked_announcements?.owner_user_id ?? "").filter(Boolean),
   );
 
-  return rows.map((r) =>
+  /*
+    ★ A CARD THIS PERSON REMOVED FROM THEIR TODAY IS FILTERED HERE, ON THE SERVER.
+
+    Filtering in the component would ship the hidden card to the browser and rely on a renderer to
+    keep quiet about it — one refactor away from a card the person removed reappearing. It is also
+    scoped by `userId`, so it is structurally incapable of hiding anything on anybody else's Today.
+
+    AND THE HIDE EXPIRES. It is compared against the card's own latest activity, so a Host reply
+    that arrives after the tidy-up brings the card straight back rather than being buried by it.
+  */
+  const dismissed = await loadTodayDismissals(admin, userId, "track_recipient");
+
+  return rows
+    .filter((r) => {
+      const at = dismissed.get(r.id);
+      if (at === undefined) return true;
+      /*
+        A COUNT, never a clock. A Host message that was uncommitted when this person removed the
+        card could not have been counted then, so the current count is strictly greater now and
+        the card comes back. A timestamp comparison would have buried it permanently.
+      */
+      return !isHiddenFromToday({
+        dismissedActivityVersion: at,
+        currentActivityVersion: recipientActivityVersion(meta.get(r.id) ?? []),
+      });
+    })
+    .map((r) =>
     projectForRecipient({
       announcementId: r.announcement_id,
       recipientId: r.id,
@@ -320,7 +348,24 @@ export async function listHostAnnouncements(
     };
   };
 
-  return runs.map((run) => {
+  /* The OWNER's own dismissals. Scoped by `ownerUserId`, so a Host tidying their Tracking surface
+     cannot change what any recipient sees on theirs. */
+  const dismissedRuns = await loadTodayDismissals(admin, ownerUserId, "track_host");
+
+  return runs
+    .filter((run) => {
+      const at = dismissedRuns.get(run.id);
+      if (at === undefined) return true;
+      const rows = byRun.get(run.id) ?? [];
+      return !isHiddenFromToday({
+        dismissedActivityVersion: at,
+        currentActivityVersion: hostActivityVersion(
+          rows.flatMap((r) => threadMeta.get(r.id) ?? []),
+          rows.map((r) => r.response),
+        ),
+      });
+    })
+    .map((run) => {
     const rows = byRun.get(run.id) ?? [];
     const funnel = summariseAnnouncement(
       run.resolved_count,

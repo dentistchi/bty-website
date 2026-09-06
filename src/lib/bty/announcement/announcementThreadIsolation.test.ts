@@ -485,7 +485,12 @@ describe("★ unread is persistent truth for both sides, as RECEIPTS", () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "a secret about my pay" });
     const meta = await loadThreadMeta(admin, ["r-a"]);
     expect(JSON.stringify([...meta])).not.toContain("secret");
-    expect(Object.keys(meta.get("r-a")![0]).sort()).toEqual(["authorRole", "messageId", "recipientId"]);
+    /*
+      `createdAt` joined this projection for the Today dismissal rule ("has anything happened since
+      this card was removed?"). It is a TIMESTAMP, not content — the assertion that matters is
+      unchanged and asserted above: no body reaches a list surface.
+    */
+    expect(Object.keys(meta.get("r-a")![0]).sort()).toEqual(["authorRole", "createdAt", "messageId", "recipientId"]);
   });
 
   it("no recipient ids means no query at all", async () => {

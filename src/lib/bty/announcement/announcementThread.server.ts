@@ -38,7 +38,13 @@ type MessageRow = {
 };
 
 /** Message METADATA only — never a body. Used to count unread across a whole list surface. */
-export type ThreadMeta = { messageId: string; recipientId: string; authorRole: ThreadRole };
+export type ThreadMeta = {
+  messageId: string;
+  recipientId: string;
+  authorRole: ThreadRole;
+  /** Needed by the Today dismissal rule to ask "has anything happened since this was removed?". */
+  createdAt: string;
+};
 
 export type ThreadRoleResult = ThreadRole | null;
 
@@ -209,9 +215,9 @@ export async function loadThreadMeta(
 
   const { data, error } = await admin
     .from("bty_announcement_thread_messages")
-    .select("id, recipient_id, author_role")
+    .select("id, recipient_id, author_role, created_at")
     .in("recipient_id", ids)
-    .returns<{ id: string; recipient_id: string; author_role: string }[]>();
+    .returns<{ id: string; recipient_id: string; author_role: string; created_at: string }[]>();
 
   if (error) {
     console.error("[announcement-thread] meta failed", { code: error.code ?? "unknown" });
@@ -224,6 +230,7 @@ export async function loadThreadMeta(
       messageId: m.id,
       recipientId: m.recipient_id,
       authorRole: m.author_role as ThreadRole,
+      createdAt: m.created_at,
     };
     const list = out.get(m.recipient_id);
     if (list) list.push(entry);

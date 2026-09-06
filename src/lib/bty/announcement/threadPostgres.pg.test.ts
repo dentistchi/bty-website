@@ -71,6 +71,9 @@ const ORDERED = [
   "20260911000000_bty_bind_recipients_on_canonical_entry_v1.sql",
 ];
 
+/** Applied after the thread migration — additive, and it touches nothing above. */
+const DISMISSAL_MIGRATION = "20260913000000_bty_today_dismissal_v1.sql";
+
 /**
  * ★ RECONCILE REPO HISTORY TO PRODUCTION TRUTH BEFORE APPLYING 20260912.
  *
@@ -124,6 +127,7 @@ beforeAll(async () => {
     for (const f of ORDERED) await c.query(readFileSync(join(MIGRATIONS, f), "utf8"));
     await c.query(RECONCILE_TO_PRODUCTION);
     await c.query(readFileSync(join(MIGRATIONS, THREAD_MIGRATION), "utf8"));
+    await c.query(readFileSync(join(MIGRATIONS, DISMISSAL_MIGRATION), "utf8"));
     c.release();
     reachable = true;
   } catch (e) {
@@ -776,5 +780,229 @@ pg("★ E — ordering is total, and the bounds are the database's", () => {
     expect(both.every((r) => r.status === "fulfilled")).toBe(true);
     const n = await pool.query("select count(*)::int as n from public.bty_announcement_thread_messages where recipient_id=$1", [S.rowA]);
     expect(n.rows[0].n, "the unique index is the backstop when both pass the lookup").toBe(1);
+  });
+});
+
+/* ═══════════════════ TODAY DISMISSAL — hides, never deletes ═══════════════════ */
+
+pg("★ Today dismissal — the MVCC race, and what the grants actually allow", () => {
+  /** The two monotonic counts, expressed in SQL exactly as the service expresses them in TS. */
+  const recipientVersion = (c: Client | Pool, rowId: string) =>
+    c.query(
+      `select count(*)::int as v from public.bty_announcement_thread_messages
+        where recipient_id = $1 and author_role = 'HOST'`,
+      [rowId],
+    ).then((r) => r.rows[0].v as number);
+
+  const hostVersion = (c: Client | Pool, annId: string) =>
+    c.query(
+      `select (
+         (select count(*) from public.bty_announcement_thread_messages m
+            join public.bty_tracked_announcement_recipients r on r.id = m.recipient_id
+           where r.announcement_id = $1 and m.author_role = 'RECIPIENT')
+       + (select count(*) from public.bty_tracked_announcement_recipients r
+           where r.announcement_id = $1 and r.response in ('QUESTION','HELP_NEEDED'))
+       )::int as v`,
+      [annId],
+    ).then((r) => r.rows[0].v as number);
+
+  const dismiss = (user: string, kind: string, id: string, version: number) =>
+    pool.query(
+      `insert into public.bty_today_dismissals (user_id,item_kind,item_id,dismissed_activity_version)
+       values ($1,$2,$3,$4)
+       on conflict (user_id,item_kind,item_id)
+       do update set dismissed_at = now(), dismissed_activity_version = excluded.dismissed_activity_version`,
+      [user, kind, id, version],
+    );
+
+  const hidden = (dismissedVersion: number, current: number) => current <= dismissedVersion;
+
+  it("★ 1 — RECIPIENT card: an UNCOMMITTED Host reply still resurfaces after it commits", async () => {
+    // The card is settled and the recipient tidies it away.
+    const t1 = new Client({ connectionString: URL });
+    await t1.connect();
+    await t1.query("begin");
+    await t1.query(
+      `insert into public.bty_announcement_thread_messages (recipient_id, author_user_id, author_role, body)
+       values ($1,$2,'HOST','a reply that has not committed yet')`,
+      [S.rowA, S.host],
+    );
+
+    // T2 cannot see it — and therefore cannot count it.
+    const seen = await recipientVersion(pool, S.rowA);
+    expect(seen, "the dismissing snapshot contains no uncommitted row").toBe(0);
+    await dismiss(S.recipA, "track_recipient", S.rowA, seen);
+
+    await t1.query("commit");
+    await t1.end();
+
+    const now = await recipientVersion(pool, S.rowA);
+    expect(now, "the count rose once the message landed").toBe(1);
+    expect(hidden(seen, now), "★ the card MUST be visible again").toBe(false);
+  }, 30_000);
+
+  it("★ 2 — HOST card: an UNCOMMITTED recipient reply still resurfaces after it commits", async () => {
+    const t1 = new Client({ connectionString: URL });
+    await t1.connect();
+    await t1.query("begin");
+    await t1.query(
+      `insert into public.bty_announcement_thread_messages (recipient_id, author_user_id, author_role, body)
+       values ($1,$2,'RECIPIENT','uncommitted question')`,
+      [S.rowA, S.recipA],
+    );
+
+    const seen = await hostVersion(pool, S.annId);
+    await dismiss(S.host, "track_host", S.annId, seen);
+
+    await t1.query("commit");
+    await t1.end();
+
+    const now = await hostVersion(pool, S.annId);
+    expect(now).toBeGreaterThan(seen);
+    expect(hidden(seen, now), "★ the Host card MUST be visible again").toBe(false);
+  }, 30_000);
+
+  it("★ 3 — HELP_NEEDED resurfaces the HOST even though it fabricates NO message", async () => {
+    const before = await hostVersion(pool, S.annId);
+    await dismiss(S.host, "track_host", S.annId, before);
+    // A first response with no thread message at all.
+    await pool.query(
+      "select * from public.bty_respond_to_announcement($1,$2,'HELP_NEEDED',null)",
+      [S.annId, S.recipB],
+    );
+    const msgs = await pool.query(
+      "select count(*)::int as n from public.bty_announcement_thread_messages where recipient_id=$1",
+      [S.rowB],
+    );
+    expect(msgs.rows[0].n, "nothing was fabricated").toBe(0);
+    const after = await hostVersion(pool, S.annId);
+    expect(after, "the response term is what moves it").toBe(before + 1);
+    expect(hidden(before, after)).toBe(false);
+  });
+
+  it("★ the timestamp rule this replaced would have FAILED case 1", async () => {
+    // Same interleaving, judged the old way: the message is stamped BEFORE the dismissal.
+    const t1 = new Client({ connectionString: URL });
+    await t1.connect();
+    await t1.query("begin");
+    const { rows } = await t1.query(
+      `insert into public.bty_announcement_thread_messages (recipient_id, author_user_id, author_role, body)
+       values ($1,$2,'HOST','x') returning created_at`,
+      [S.rowB, S.host],
+    );
+    const msgStamp = rows[0].created_at as Date;
+    const dismissedAt = (await pool.query("select now() as t")).rows[0].t as Date;
+    await t1.query("commit");
+    await t1.end();
+    expect(
+      msgStamp.getTime() <= dismissedAt.getTime(),
+      "★ the old rule would have hidden this message permanently",
+    ).toBe(true);
+  }, 30_000);
+
+  it("★ 5 — service_role holds SELECT/INSERT and column-scoped UPDATE only", async () => {
+    const { rows } = await pool.query(
+      `select
+         has_table_privilege('service_role','public.bty_today_dismissals','SELECT')   as sel,
+         has_table_privilege('service_role','public.bty_today_dismissals','INSERT')   as ins,
+         has_table_privilege('service_role','public.bty_today_dismissals','DELETE')   as del,
+         has_table_privilege('service_role','public.bty_today_dismissals','TRUNCATE') as trunc,
+         has_table_privilege('service_role','public.bty_today_dismissals','REFERENCES') as refs,
+         has_table_privilege('service_role','public.bty_today_dismissals','TRIGGER')  as trig,
+         has_column_privilege('service_role','public.bty_today_dismissals','dismissed_at','UPDATE') as u_at,
+         has_column_privilege('service_role','public.bty_today_dismissals','dismissed_activity_version','UPDATE') as u_ver,
+         has_column_privilege('service_role','public.bty_today_dismissals','user_id','UPDATE')   as u_user,
+         has_column_privilege('service_role','public.bty_today_dismissals','item_kind','UPDATE') as u_kind,
+         has_column_privilege('service_role','public.bty_today_dismissals','item_id','UPDATE')   as u_item`,
+    );
+    expect(rows[0]).toEqual({
+      sel: true, ins: true, del: false, trunc: false, refs: false, trig: false,
+      u_at: true, u_ver: true,
+      u_user: false, u_kind: false, u_item: false,
+    });
+  });
+
+  it("★ 6 — as the REAL role: it cannot re-point a dismissal, delete one, or truncate", async () => {
+    await dismiss(S.recipA, "track_recipient", S.rowA, 0);
+    const c = new Client({ connectionString: URL });
+    await c.connect();
+    await c.query("set role service_role");
+
+    // The two mutable facts ARE writable.
+    await c.query("update public.bty_today_dismissals set dismissed_activity_version = 5, dismissed_at = now()");
+
+    // The identity is NOT — this is the whole point of the column grant.
+    await expect(c.query("update public.bty_today_dismissals set user_id = $1", [S.host])).rejects.toThrow(/permission denied/i);
+    await expect(c.query("update public.bty_today_dismissals set item_kind = 'track_host'")).rejects.toThrow(/permission denied/i);
+    await expect(c.query("update public.bty_today_dismissals set item_id = $1", [S.rowB])).rejects.toThrow(/permission denied/i);
+    await expect(c.query("delete from public.bty_today_dismissals")).rejects.toThrow(/permission denied/i);
+    await expect(c.query("truncate public.bty_today_dismissals")).rejects.toThrow(/permission denied/i);
+
+    await c.query("reset role");
+    await c.end();
+  });
+
+  it("anon and authenticated reach it not at all", async () => {
+    for (const role of ["anon", "authenticated"]) {
+      const { rows } = await pool.query(
+        `select bool_or(has_table_privilege($1,'public.bty_today_dismissals',p)) as any
+           from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p`,
+        [role],
+      );
+      expect(rows[0].any, role).toBe(false);
+    }
+  });
+
+  it("★ two people hide the SAME card independently", async () => {
+    for (const u of [S.host, S.recipA]) await dismiss(u, "track_recipient", S.rowB, 0);
+    const { rows } = await pool.query(
+      "select user_id from public.bty_today_dismissals where item_id=$1 and item_kind='track_recipient'",
+      [S.rowB],
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it("★ an invented kind, and a negative version, are refused by the database", async () => {
+    await expect(dismiss(S.host, "saved_item", S.rowA, 0)).rejects.toThrow(/bty_today_dismissals_kind_check/);
+    await expect(dismiss(S.host, "track_host", S.annId, -1)).rejects.toThrow(/bty_today_dismissals_version_check/);
+  });
+
+  it("★ HIDING DELETES NOTHING — the Track survives untouched", async () => {
+    await post(S.rowA, S.recipA, "still here");
+    await markRead(S.rowA, S.host);
+    await dismiss(S.recipA, "track_recipient", S.rowA, 0);
+    const q = async (sql: string, v: unknown[]) => (await pool.query(sql, v)).rows[0].n as number;
+    expect({
+      recipient: await q("select count(*)::int n from public.bty_tracked_announcement_recipients where id=$1", [S.rowA]),
+      announcement: await q("select count(*)::int n from public.bty_tracked_announcements where id=$1", [S.annId]),
+      messages: await q("select count(*)::int n from public.bty_announcement_thread_messages where recipient_id=$1", [S.rowA]),
+      receipts: await q(
+        `select count(*)::int n from public.bty_announcement_thread_message_reads r
+           join public.bty_announcement_thread_messages m on m.id=r.message_id where m.recipient_id=$1`, [S.rowA]),
+    }).toEqual({ recipient: 1, announcement: 1, messages: expect.any(Number), receipts: expect.any(Number) });
+    expect(await q("select count(*)::int n from public.bty_announcement_thread_messages where recipient_id=$1", [S.rowA])).toBeGreaterThan(0);
+  });
+
+  it("★ deleting a person removes their preference and nothing they were looking at", async () => {
+    const [{ id: u }] = (await pool.query("insert into auth.users default values returning id")).rows;
+    await dismiss(u, "track_host", S.annId, 0);
+    await pool.query("delete from auth.users where id=$1", [u]);
+    const d = await pool.query("select count(*)::int n from public.bty_today_dismissals where user_id=$1", [u]);
+    const a = await pool.query("select count(*)::int n from public.bty_tracked_announcements where id=$1", [S.annId]);
+    expect(d.rows[0].n).toBe(0);
+    expect(a.rows[0].n).toBe(1);
+  });
+
+  it("★ 9 — the PK covers the only read shape; no extra index was kept", async () => {
+    const idx = await pool.query(
+      "select indexname from pg_indexes where tablename='bty_today_dismissals' order by indexname",
+    );
+    expect(idx.rows.map((r) => r.indexname)).toEqual(["bty_today_dismissals_pk"]);
+    const plan = await pool.query(
+      "explain (format json) select item_id from public.bty_today_dismissals where user_id=$1 and item_kind='track_recipient'",
+      [S.recipA],
+    );
+    // The leading-column prefix is enough: the planner uses the PK, not a sequential scan.
+    expect(JSON.stringify(plan.rows[0]["QUERY PLAN"])).toContain("bty_today_dismissals_pk");
   });
 });
