@@ -58,9 +58,19 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.6, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.7, and points $schema at the same version", () => {
+    /*
+      1.0.6 -> 1.0.7 (Slice TQ-4). The ONLY payload difference is `outline.png`, regenerated from
+      the Founder's master vector. Teams caches app icons per installed package version, so an icon
+      repair reaches nobody until the catalog receives a HIGHER version — the bump is not
+      bookkeeping, it is the delivery mechanism.
+
+      Every identity field is asserted unchanged above and below: same app id, same bot id, same
+      scopes, same contentUrl, same validDomains, same permissions. A version bump must never be
+      the change in which an identity quietly moves.
+    */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.6");
+    expect(manifest.version).toBe("1.0.7");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");

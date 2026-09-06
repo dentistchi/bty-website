@@ -68,3 +68,7 @@ assets/
 
 # Teams app package build output (contains only public ids, but is a build artifact)
 teams/dist/
+
+# Python bytecode from the Teams icon generator (build artifact, never source)
+__pycache__/
+*.pyc
