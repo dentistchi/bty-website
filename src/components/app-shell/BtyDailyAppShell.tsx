@@ -1243,7 +1243,19 @@ function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greeti
   );
 }
 
-export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
+export default function BtyDailyAppShell({
+  locale,
+  onLocaleChanged,
+}: {
+  locale: Locale;
+  /**
+   * Present ⇒ the HOST owns the resolved locale and this shell must not navigate to change it.
+   * Only `/teams` passes it: its document is framed, and any navigation off `/teams` is opened in
+   * a real browser by the frame guard, which is how changing language escaped Teams entirely.
+   * Absent ⇒ the standalone web shell, where locale is the path prefix and links are correct.
+   */
+  onLocaleChanged?: (next: "en" | "ko") => void;
+}) {
   const [tab, setTab] = useState<AppTabKey>("today");
   // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
   // authenticated read-only review inside the Foundry tab. Null = normal Foundry surface.
@@ -2098,7 +2110,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               */}
               <div className="flex justify-end" data-testid="me-language">
                 <Suspense fallback={<span className="px-2 py-1 text-xs text-white/50">…</span>}>
-                  <LangSwitch ensureParams={{ tab: "me" }} current={locale === "ko" ? "ko" : "en"} />
+                  <LangSwitch
+                    ensureParams={{ tab: "me" }}
+                    current={locale === "ko" ? "ko" : "en"}
+                    onLocaleChanged={onLocaleChanged}
+                  />
                 </Suspense>
               </div>
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />

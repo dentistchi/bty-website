@@ -204,7 +204,7 @@ describe("★ TEAMS BOOTSTRAP AND THE VISUAL REPAIR ARE UNCHANGED", () => {
   it("the tab still bootstraps, still renders the app shell, and still honours ?diag=1", () => {
     const shell = read("src/components/teams/TeamsTabShell.tsx");
     expect(shell).toContain("/api/auth/teams-bootstrap");
-    expect(shell).toMatch(/<BtyDailyAppShell locale=\{phase\.locale\} \/>/);
+    expect(shell).toMatch(/<BtyDailyAppShell\s+locale=\{phase\.locale\}/);
     expect(shell).toContain('get("diag") === "1"');
     expect(shell).toMatch(/diag \? <TeamsRuntimeProbe \/> : null/);
   });

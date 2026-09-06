@@ -25,7 +25,7 @@ describe("★ it is off unless the URL asks", () => {
   });
 
   it("the ordinary tab is unchanged — the shell still renders BtyDailyAppShell on ready", () => {
-    expect(code(SHELL)).toMatch(/<BtyDailyAppShell locale=\{phase\.locale\} \/>/);
+    expect(code(SHELL)).toMatch(/<BtyDailyAppShell\s+locale=\{phase\.locale\}/);
   });
 });
 

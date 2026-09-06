@@ -263,7 +263,7 @@ describe("★ authority, Save / Track and Open in Teams are untouched by a visua
     const tab = code("src/components/teams/TeamsTabShell.tsx");
     expect(tab).toContain("/api/auth/teams-bootstrap");
     expect(tab).toContain('get("diag") === "1"');
-    expect(tab).toMatch(/<BtyDailyAppShell locale=\{phase\.locale\} \/>/);
+    expect(tab).toMatch(/<BtyDailyAppShell\s+locale=\{phase\.locale\}/);
   });
 
   it("the manifest's two message actions and the tab contentUrl are unchanged", () => {

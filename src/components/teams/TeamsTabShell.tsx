@@ -263,7 +263,21 @@ export default function TeamsTabShell() {
   if (phase.k === "ready") {
     return (
       <>
-        <BtyDailyAppShell locale={phase.locale} />
+        <BtyDailyAppShell
+          locale={phase.locale}
+          /*
+            ★ CHANGING LANGUAGE IS A STATE CHANGE HERE, NOT A NAVIGATION.
+
+            This component already owns the resolved locale — it picks it once at bootstrap from
+            the saved cookie, falling back to the Teams context. Moving it forward re-renders the
+            same shell in the new language: same document, same Teams host context, same session,
+            same tab, same Today / Track / unread / dismissal state, because nothing unmounts.
+
+            The alternative — letting the control navigate — is what put iOS's in-app browser in
+            front of the Founder, since `/teams` opens anything leaving the frame in a real browser.
+          */
+          onLocaleChanged={(next) => setPhase({ k: "ready", locale: next })}
+        />
         {diag ? <TeamsRuntimeProbe /> : null}
       </>
     );

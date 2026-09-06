@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 /**
@@ -56,6 +57,28 @@ import { usePathname, useSearchParams } from "next/navigation";
  *
  * The single writer is unchanged. This does NOT introduce a second locale mechanism — it stops
  * building an address that never existed.
+ *
+ * ★ AND INSIDE TEAMS THE CONTROL IS A COMMAND, BECAUSE A LINK CANNOT STAY IN THE FRAME.
+ *
+ * Sending Teams to the right URL was still the wrong fix. MEASURED on the Founder's iPhone: the
+ * language control opened iOS's in-app browser, BTY loaded at `arena.btydaily.com` with no Teams
+ * host context, and the tab said "BTY couldn't open yet."
+ *
+ * The destination was never consulted. `/teams` installs a CAPTURE-PHASE document click guard
+ * (`installTeamsFrameContainment`) that reads the anchor's OWN href and opens anything leaving
+ * `/teams` in a real browser — correctly, because every other BTY route is served
+ * `X-Frame-Options: DENY` and would blank the tab instead. Our href is `/api/locale/set`, whose
+ * pathname is not `/teams`, so `escapesTeamsFrame` said true and the guard did exactly its job.
+ *
+ * `preventDefault` in an onClick handler cannot help: the guard runs in the CAPTURE phase on
+ * `document`, before React's bubble-phase handler exists to prevent anything.
+ *
+ * So when a caller passes `onLocaleChanged`, this renders a BUTTON, not a link. There is no href
+ * for the guard to find (`closest("a[href]")` matches nothing), the writer is called with `fetch`,
+ * and the host tells its own shell to re-render in the new language. Nothing navigates, so nothing
+ * can escape — the containment is not bypassed, it is never reached.
+ *
+ * Same cookie, same route, same single writer. Only the response shape and the transport differ.
  */
 
 /**
@@ -70,13 +93,26 @@ const HOST_ROUTE_SEGMENTS = new Set(["teams", "start"]);
 function firstSegment(pathname: string): string {
   return pathname.replace(/^\/+/, "").split("/")[0] ?? "";
 }
+/** Told to the person in the language they are currently reading, not the one that failed. */
+const FAILED_COPY = {
+  en: "Language couldn't be changed.",
+  ko: "\uc5b8\uc5b4\ub97c \ubc14\uafb8\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4.",
+} as const;
+
 export function LangSwitch({
   ensureParams,
   current,
+  onLocaleChanged,
 }: {
   ensureParams?: Record<string, string>;
   /** The resolved locale, for surfaces whose path does not carry one (the Teams tab). */
   current?: "en" | "ko";
+  /**
+   * Present ⇒ COMMAND MODE. The host owns the resolved locale and will re-render in place; this
+   * control writes the preference and reports the new choice instead of navigating anywhere.
+   * Absent ⇒ the unchanged link behaviour every other surface uses.
+   */
+  onLocaleChanged?: (locale: "en" | "ko") => void;
 } = {}) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
@@ -113,6 +149,92 @@ export function LangSwitch({
   const activeEn = onHostRoute ? current === "en" : isEn;
   const activeKo = onHostRoute ? current === "ko" : isKo;
 
+  const commandMode = typeof onLocaleChanged === "function";
+  const [busy, setBusy] = useState<"en" | "ko" | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  /*
+    COMMAND MODE ONLY. Write the preference, then tell the host — which re-renders the shell it
+    already owns. Deliberately no navigation of any kind: no href, no `window.location`, no
+    `router.push`, no `window.open`, no `app.openLink`. The document that was standing on `/teams`
+    when this was tapped is the same document afterwards.
+  */
+  const commit = useCallback(
+    async (locale: "en" | "ko") => {
+      if (busy) return; // a second tap mid-flight would race two writes for one preference
+      setBusy(locale);
+      setFailed(false);
+      try {
+        /*
+          `mode=json` so the canonical writer answers instead of redirecting. No `next`: we are not
+          going anywhere, and asking for a destination we will never follow would only invite one.
+          `credentials: "include"` because the cookie is the whole point of the request.
+        */
+        const res = await fetch(`/api/locale/set?to=${locale}&mode=json`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(`locale_write_${res.status}`);
+        onLocaleChanged?.(locale);
+      } catch {
+        /*
+          ★ A FAILED WRITE STAYS PUT. No login, no browser, no navigation, no modal — the person is
+          on the screen they were on, in the language they were already reading, and the same
+          control is the retry.
+        */
+        setFailed(true);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [busy, onLocaleChanged],
+  );
+
+  const cls = (active: boolean) =>
+    `px-2 py-1 rounded ${active ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`;
+
+  /*
+    ★ A BUTTON, NOT A LINK — and that is the entire containment.
+
+    The Teams frame guard finds its target with `closest("a[href]")`. A button matches nothing, so
+    the guard never runs and there is no href for it to judge. It is not disabled or worked around;
+    this control simply stops being the kind of thing it looks at.
+  */
+  if (commandMode) {
+    return (
+      <div className="flex flex-col items-end gap-0.5 text-sm">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void commit("en")}
+            disabled={busy !== null}
+            aria-pressed={activeEn}
+            data-testid="lang-switch-en"
+            className={cls(activeEn)}
+          >
+            EN
+          </button>
+          <span className="text-gray-300">|</span>
+          <button
+            type="button"
+            onClick={() => void commit("ko")}
+            disabled={busy !== null}
+            aria-pressed={activeKo}
+            data-testid="lang-switch-ko"
+            className={cls(activeKo)}
+          >
+            KO
+          </button>
+        </div>
+        {failed ? (
+          <p role="status" data-testid="lang-switch-error" className="text-[11px] text-gray-500">
+            {FAILED_COPY[current === "ko" ? "ko" : "en"]}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1 text-sm">
       {/*
@@ -120,19 +242,11 @@ export function LangSwitch({
         each now goes through the route that writes the preference and redirects to the same place
         the link used to point at directly.
       */}
-      <a
-        href={prefHref("en", toEn)}
-        data-testid="lang-switch-en"
-        className={`px-2 py-1 rounded ${activeEn ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
-      >
+      <a href={prefHref("en", toEn)} data-testid="lang-switch-en" className={cls(activeEn)}>
         EN
       </a>
       <span className="text-gray-300">|</span>
-      <a
-        href={prefHref("ko", toKo)}
-        data-testid="lang-switch-ko"
-        className={`px-2 py-1 rounded ${activeKo ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
-      >
+      <a href={prefHref("ko", toKo)} data-testid="lang-switch-ko" className={cls(activeKo)}>
         KO
       </a>
     </div>

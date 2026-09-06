@@ -36,6 +36,24 @@ export const runtime = "nodejs";
  * It is the ONLY writer of `NEXT_LOCALE`. The client-side write was removed rather than kept as a
  * fallback: two writers for one preference is two things to reason about and two places for them
  * to disagree.
+ *
+ * ★ `mode=json` — THE SAME WRITE, WITHOUT THE MOVE (Teams).
+ *
+ * MEASURED on the Founder's iPhone: inside a Teams tab the redirect is the problem. The language
+ * control was an `<a href="/api/locale/set?...">`, and `/teams` installs a capture-phase click
+ * guard that opens any href leaving `/teams` in a real browser -- because every other BTY route is
+ * served `X-Frame-Options: DENY` and would otherwise blank the tab. `/api/locale/set` is not
+ * `/teams`, so changing language opened iOS's in-app browser at an origin with no Teams host
+ * context, and BTY could not start there.
+ *
+ * Inside Teams, changing language must not move the document at all. So this mode returns the
+ * IDENTICAL `Set-Cookie` with a 200 the caller can `fetch` and actually read. It is not a second
+ * writer and not a second cookie: the same validation, the same cookie attributes, the same route.
+ * Only the response shape differs -- one says "and go here", the other says "done".
+ *
+ * A plain `fetch` of the redirect form would also have worked, but it downloads a whole page to
+ * throw away, and a 200 from the followed destination says nothing about whether the cookie was
+ * written. This says exactly what happened, which is what the failure UX needs.
  */
 export async function GET(req: NextRequest) {
   const to = req.nextUrl.searchParams.get("to");
@@ -59,9 +77,18 @@ export async function GET(req: NextRequest) {
   */
   const next = sanitizeNextForRedirect(req.nextUrl.searchParams.get("next"), { locale: to });
 
-  // 303: the browser follows with GET regardless of how it arrived, and it is not cached by
-  // default — the right semantics for "I did something, now go here".
-  const res = NextResponse.redirect(new URL(next, req.nextUrl.origin), 303);
+  /*
+    ONE cookie write, TWO response shapes. `mode=json` is for callers that must not navigate; every
+    other caller gets the redirect that has always been here. The cookie below is set on whichever
+    response this is, so the two can never drift apart.
+
+    303 for the navigating form: the browser follows with GET regardless of how it arrived, and it
+    is not cached by default — the right semantics for "I did something, now go here".
+  */
+  const res =
+    req.nextUrl.searchParams.get("mode") === "json"
+      ? NextResponse.json({ ok: true, locale: to, next })
+      : NextResponse.redirect(new URL(next, req.nextUrl.origin), 303);
 
   res.cookies.set({
     name: LOCALE_COOKIE,

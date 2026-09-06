@@ -139,3 +139,50 @@ describe("R4-R4B-R1N-R1-R1 · 14 · it writes no data", () => {
     expect(names).toEqual(["LOCALE_COOKIE"]);
   });
 });
+
+/**
+ * ★ mode=json — THE SAME WRITE, WITHOUT THE MOVE.
+ *
+ * Inside a Teams tab the redirect is the defect: `/teams` opens any href that leaves the frame in
+ * a real browser, so a language link took the Founder's iPhone out of Teams entirely. This mode
+ * lets the control `fetch` the writer instead of following it. The point of these tests is that it
+ * is the SAME cookie — a second response shape, never a second writer.
+ */
+describe("★ mode=json · the non-navigating shape of the one writer", () => {
+  it("it does not redirect, and says plainly that it worked", async () => {
+    const res = await call("?to=ko&mode=json");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    await expect(res.json()).resolves.toMatchObject({ ok: true, locale: "ko" });
+  });
+
+  it("★ the cookie is byte-identical to the redirecting form — one writer, two shapes", async () => {
+    const strip = (c: string) => c.replace(/expires=[^;]+;?\s*/i, "").toLowerCase();
+    const viaJson = strip(setCookie(await call("?to=ko&mode=json")));
+    const viaRedirect = strip(setCookie(await call("?to=ko&next=%2Fteams%3Ftab%3Dme")));
+    expect(viaJson).toBe(viaRedirect);
+    expect(viaJson).toContain("next_locale=ko");
+  });
+
+  it("an unrecognised language still writes NOTHING, in either shape", async () => {
+    for (const qs of ["?to=fr&mode=json", "?to=&mode=json", "?mode=json"]) {
+      const res = await call(qs);
+      expect(res.status, qs).toBe(400);
+      expect(setCookie(res), qs).not.toContain("NEXT_LOCALE");
+    }
+  });
+
+  it("it is not cached — a stale 200 would be a language change that never happened", async () => {
+    expect((await call("?to=en&mode=json")).headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("★ every OTHER caller is untouched: no mode ⇒ still a 303 to the sanitised destination", async () => {
+    const res = await call("?to=ko&next=%2Fteams%3Ftab%3Dme");
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/teams?tab=me`);
+  });
+
+  it("an unknown mode is not a magic word — it redirects, like anything else", async () => {
+    expect((await call("?to=ko&mode=xml&next=%2Fko%2Fapp")).status).toBe(303);
+  });
+});
