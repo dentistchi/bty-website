@@ -55,6 +55,13 @@ create table if not exists public.bty_action_captures (
   preview_text text,
   source_url text
 );
+
+-- ★ THE SUPABASE CONDITION, REPRODUCED. A real Supabase project carries default
+-- privileges that hand service_role EVERY table privilege the moment a table is
+-- created. Without this line the harness would test a database that is strictly
+-- more restrictive than production, and an ACL bug that only exists there could
+-- never be seen here. Measured on the live database after 20260912 was applied.
+alter default privileges in schema public grant all on tables to service_role;
 `;
 
 const ORDERED = [
@@ -592,45 +599,115 @@ pg("★ 8-9 — the delete contract, and what the grants actually enforce", () =
     expect(orphaned.rows[0].n, "receipts cascade with their message — none is left orphaned").toBe(0);
   });
 
-  it("★ 9 — service_role holds SELECT and INSERT on both tables, and NO UPDATE or DELETE", async () => {
-    const { rows } = await pool.query(
-      `select table_name, privilege_type from information_schema.role_table_grants
-        where grantee = 'service_role' and table_name like 'bty_announcement_thread%'
-        order by table_name, privilege_type`,
-    );
-    const got = rows.map((r) => `${r.table_name}:${r.privilege_type}`);
-    expect(got).toEqual([
-      "bty_announcement_thread_message_reads:INSERT",
-      "bty_announcement_thread_message_reads:SELECT",
-      "bty_announcement_thread_messages:INSERT",
-      "bty_announcement_thread_messages:SELECT",
-    ]);
+  it("★ 9 — service_role holds EXACTLY SELECT and INSERT on both tables — every other privilege is gone", async () => {
+    /*
+      ★ WHY THIS IS ASKED OF THE DATABASE AND NOT OF THE FILE.
+
+      Reading `grant select, insert ... to service_role` out of the SQL proves nothing about the
+      ACL that results. Supabase's default privileges grant service_role ALL on a table the instant
+      it is created, so a revoke that names only anon/public/authenticated leaves UPDATE, DELETE,
+      TRUNCATE, REFERENCES and TRIGGER standing and the grant below is merely additive on top of
+      ALL. That is exactly what happened in production. `has_table_privilege` is the only thing that
+      can tell the difference.
+    */
+    for (const t of ["bty_announcement_thread_messages", "bty_announcement_thread_message_reads"]) {
+      const { rows } = await pool.query(
+        `select
+           has_table_privilege('service_role', $1, 'SELECT')     as sel,
+           has_table_privilege('service_role', $1, 'INSERT')     as ins,
+           has_table_privilege('service_role', $1, 'UPDATE')     as upd,
+           has_table_privilege('service_role', $1, 'DELETE')     as del,
+           has_table_privilege('service_role', $1, 'TRUNCATE')   as trunc,
+           has_table_privilege('service_role', $1, 'REFERENCES') as refs,
+           has_table_privilege('service_role', $1, 'TRIGGER')    as trig`,
+        [`public.${t}`],
+      );
+      expect(rows[0], t).toEqual({
+        sel: true,
+        ins: true,
+        upd: false,
+        del: false,
+        trunc: false,
+        refs: false,
+        trig: false,
+      });
+    }
   });
 
-  it("★ 9 — service_role is actually BLOCKED from updating or deleting a message", async () => {
-    // Not a grant listing: the real refusal, from the real role.
+  it("★ THE NEGATIVE PROOF — a revoke that omits service_role leaves ALL of it standing", async () => {
+    /*
+      The defect class, demonstrated on a scratch table under the SAME default privileges. This is
+      what the migration used to do, and why the file now names service_role in its revoke.
+    */
+    await pool.query("create table if not exists public.acl_probe (id int)");
+    try {
+      // The OLD pattern, verbatim.
+      await pool.query("revoke all on public.acl_probe from anon, public, authenticated");
+      await pool.query("grant select, insert on public.acl_probe to service_role");
+      const before = await pool.query(
+        `select has_table_privilege('service_role','public.acl_probe','UPDATE') as upd,
+                has_table_privilege('service_role','public.acl_probe','DELETE') as del`,
+      );
+      expect(before.rows[0], "★ the old pattern enforced NOTHING").toEqual({ upd: true, del: true });
+
+      // The NEW pattern — service_role reset first.
+      await pool.query("revoke all on public.acl_probe from anon, public, authenticated, service_role");
+      await pool.query("grant select, insert on public.acl_probe to service_role");
+      const after = await pool.query(
+        `select has_table_privilege('service_role','public.acl_probe','SELECT') as sel,
+                has_table_privilege('service_role','public.acl_probe','INSERT') as ins,
+                has_table_privilege('service_role','public.acl_probe','UPDATE') as upd,
+                has_table_privilege('service_role','public.acl_probe','DELETE') as del`,
+      );
+      expect(after.rows[0]).toEqual({ sel: true, ins: true, upd: false, del: false });
+    } finally {
+      await pool.query("drop table if exists public.acl_probe");
+    }
+  });
+
+  it("★ 9 — service_role is ACTUALLY BLOCKED, as the real role, on both tables", async () => {
+    // Not a privilege lookup: the real refusal, from the real role, under the same default
+    // privileges Supabase applies. A catalogue that says "no UPDATE" and a database that accepts
+    // one would disagree here and nowhere else.
     await post(S.rowA, S.recipA, "immutable");
     const c = new Client({ connectionString: URL });
     await c.connect();
     await c.query("set role service_role");
-    await expect(c.query("update public.bty_announcement_thread_messages set body = 'tampered'")).rejects.toThrow(/permission denied/i);
+    await expect(c.query("update public.bty_announcement_thread_messages set body = 'tampered'")).rejects.toThrow(
+      /permission denied/i,
+    );
     await expect(c.query("delete from public.bty_announcement_thread_messages")).rejects.toThrow(/permission denied/i);
     // And it cannot re-point a message at another recipient.
     await expect(
       c.query("update public.bty_announcement_thread_messages set recipient_id = $1", [S.rowB]),
     ).rejects.toThrow(/permission denied/i);
+    // Receipts are equally immutable — there is no un-read.
+    await markRead(S.rowA, S.host);
+    await expect(c.query("delete from public.bty_announcement_thread_message_reads")).rejects.toThrow(
+      /permission denied/i,
+    );
+    await expect(
+      c.query("update public.bty_announcement_thread_message_reads set read_at = now()"),
+    ).rejects.toThrow(/permission denied/i);
     await c.query("reset role");
     await c.end();
-    const body = (await pool.query("select body from public.bty_announcement_thread_messages where recipient_id=$1", [S.rowA])).rows[0].body;
+    const body = (
+      await pool.query("select body from public.bty_announcement_thread_messages where recipient_id=$1", [S.rowA])
+    ).rows[0].body;
     expect(body).toBe("immutable");
   });
 
   it("anon and authenticated reach neither table at all", async () => {
-    const { rows } = await pool.query(
-      `select count(*)::int as n from information_schema.role_table_grants
-        where grantee in ('anon','authenticated') and table_name like 'bty_announcement_thread%'`,
-    );
-    expect(rows[0].n).toBe(0);
+    for (const role of ["anon", "authenticated"]) {
+      for (const t of ["bty_announcement_thread_messages", "bty_announcement_thread_message_reads"]) {
+        const { rows } = await pool.query(
+          `select bool_or(has_table_privilege($1, $2, priv)) as any_priv
+             from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as priv`,
+          [role, `public.${t}`],
+        );
+        expect(rows[0].any_priv, `${role} on ${t}`).toBe(false);
+      }
+    }
   });
 });
 

@@ -266,7 +266,14 @@ describe("E — the append-only claim matches what is actually enforceable", () 
       const grants = [...code.matchAll(new RegExp(`grant [^;]*on public\\.${t}[^;]*;`, "g"))].map((m) => m[0]);
       expect(grants, t).toHaveLength(1);
       expect(grants[0], t).not.toMatch(/update|delete/i);
-      expect(code, t).toContain(`revoke all on public.${t} from anon, public, authenticated;`);
+      /*
+        ★ service_role IS IN THE REVOKE LIST. Supabase's default privileges grant it ALL the moment
+        the table is created, so a revoke naming only anon/public/authenticated leaves UPDATE and
+        DELETE standing and the grant below becomes additive on top of ALL -- it reads like a
+        restriction and enforces nothing. Measured on production. The runtime proof is in
+        `threadPostgres.pg.test.ts`, which reproduces those default privileges.
+      */
+      expect(code, t).toContain(`revoke all on public.${t} from anon, public, authenticated, service_role;`);
       expect(code, t).toContain(`alter table public.${t} enable row level security;`);
     }
     expect(code).not.toMatch(/create policy/i);

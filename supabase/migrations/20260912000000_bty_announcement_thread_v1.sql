@@ -201,7 +201,7 @@ comment on column public.bty_announcement_thread_messages.client_message_id is
   'Optional client nonce that makes a double-submit return the first message instead of writing a second. Scoped under (recipient_id, author_user_id), so it addresses nothing and names nobody.';
 
 -- Client-deny, exactly like the two tables it hangs off.
-revoke all on public.bty_announcement_thread_messages from anon, public, authenticated;
+revoke all on public.bty_announcement_thread_messages from anon, public, authenticated, service_role;
 alter table public.bty_announcement_thread_messages enable row level security;
 
 -- ---------------------------------------------------------------------------
@@ -218,6 +218,17 @@ alter table public.bty_announcement_thread_messages enable row level security;
 --              has NO UPDATE and NO DELETE on this table, so no application
 --              query -- including a mistaken one -- can edit or remove a
 --              message, and no PostgREST call can either.
+--
+--              ★ service_role IS IN THE REVOKE LIST, AND THAT IS LOAD-BEARING.
+--              Supabase carries `alter default privileges ... grant all on
+--              tables to service_role`, so the instant this table is CREATED
+--              service_role already holds ALL privileges -- SELECT, INSERT,
+--              UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER. A revoke naming
+--              only anon/public/authenticated leaves every one of them standing,
+--              and the `grant select, insert` below is then ADDITIVE ON TOP of
+--              ALL: it reads like a restriction and enforces nothing. Measured
+--              on the real production database after this migration was applied.
+--              The revoke must therefore reset service_role first.
 --   ENFORCED   RLS is on and anon/authenticated are revoked, so no client
 --              reaches the table directly at all.
 --   ASSERTED   no function in this migration contains an UPDATE or DELETE
@@ -247,7 +258,9 @@ grant select, insert on public.bty_announcement_thread_messages to service_role;
 -- the price of the answer being correct.
 --
 -- A RECEIPT IS A FACT, NOT A SETTING. There is no un-read: service_role holds
--- SELECT and INSERT here too. Rows leave only by cascade, with the message.
+-- SELECT and INSERT here too -- and, as on the message table, it is REVOKED
+-- first, because Supabase's default privileges have already granted it ALL by
+-- the time this statement runs.
 -- ---------------------------------------------------------------------------
 create table if not exists public.bty_announcement_thread_message_reads (
   message_id uuid not null
@@ -273,7 +286,7 @@ create index if not exists bty_ann_thread_reads_reader_idx
 comment on table public.bty_announcement_thread_message_reads is
   'Per-message read truth for Track conversations. Replaces a per-side timestamp cursor, which could mark a concurrently-inserted message as read by someone whose snapshot never contained it. Unread = opposite-party messages in this thread with no receipt for the current user.';
 
-revoke all on public.bty_announcement_thread_message_reads from anon, public, authenticated;
+revoke all on public.bty_announcement_thread_message_reads from anon, public, authenticated, service_role;
 alter table public.bty_announcement_thread_message_reads enable row level security;
 grant select, insert on public.bty_announcement_thread_message_reads to service_role;
 
