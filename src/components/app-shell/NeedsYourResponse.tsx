@@ -40,7 +40,7 @@ type Item = {
 
 type Locale = "en" | "ko";
 
-const COPY: Record<Locale, Record<string, string>> = {
+const COPY = {
   en: {
     title: "Needs your response",
     openInTeams: "Open in Teams",
@@ -50,6 +50,9 @@ const COPY: Record<Locale, Record<string, string>> = {
     questionPrompt: "What would you like clarified?",
     questionSend: "Send",
     answeredGotIt: "You said: Got it",
+    openConversation: "Open conversation",
+    hideConversation: "Hide conversation",
+    newCount: (n: number) => ` · ${n} new`,
     answeredQuestion: "You asked a question",
     answeredHelp: "You asked for help",
     failed: "Couldn't save that.",
@@ -65,13 +68,16 @@ const COPY: Record<Locale, Record<string, string>> = {
     questionPrompt: "무엇을 명확히 하고 싶으신가요?",
     questionSend: "보내기",
     answeredGotIt: "답변: 확인했습니다",
+    openConversation: "대화 열기",
+    hideConversation: "대화 접기",
+    newCount: (n: number) => ` · 새 메시지 ${n}개`,
     answeredQuestion: "질문을 남기셨습니다",
     answeredHelp: "도움을 요청하셨습니다",
     failed: "저장하지 못했습니다.",
     loadFailed: "답변이 필요한 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
   },
-};
+} as const;
 
 export default function NeedsYourResponse({ locale, refreshKey }: { locale: Locale; refreshKey?: number }) {
   const t = COPY[locale];
@@ -89,6 +95,15 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
   const [asking, setAsking] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * WHICH CONVERSATIONS ARE OPEN — an override map, not the state itself.
+   *
+   * The DEFAULT is derived per card (`unreadCount > 0` auto-expands), so a person who has something
+   * waiting never has to discover a control to reach it. This map only records a DELIBERATE toggle,
+   * which is why it is keyed and sparse rather than initialised from the list: a later refresh that
+   * changes the unread count must not silently re-collapse something the person opened by hand.
+   */
+  const [convoOverride, setConvoOverride] = useState<Record<string, boolean>>({});
   const [failed, setFailed] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -183,6 +198,20 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
 
       {items.map((it) => {
         const answered = it.response !== null;
+        /*
+          ★ A QUESTION OR A REQUEST FOR HELP IS NEVER FINISHED BY THE FIRST TAP.
+
+          Those two responses are the START of something, so their conversation is always reachable
+          — even with zero messages, where HELP_NEEDED correctly opens on an empty thread and the
+          person writes the first free-text follow-up themselves. Nothing is fabricated for them.
+
+          ACKNOWLEDGED is an ENDING. It gets a conversation only once one actually exists, i.e. the
+          Host wrote to them.
+        */
+        const continuable = it.response === "QUESTION" || it.response === "HELP_NEEDED";
+        const canConverse = continuable || it.messageCount > 0;
+        // Unread AUTO-EXPANDS. A deliberate toggle wins over that default, in both directions.
+        const convoOpen = convoOverride[it.recipientId] ?? it.unreadCount > 0;
         return (
           <article
             key={it.announcementId}
@@ -298,16 +327,55 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
             {/*
               ★ THE CONVERSATION CONTINUES WHERE THE ONE-SHOT ANSWER USED TO STOP.
 
-              Offered once there is something to continue: this person has answered, OR the Host has
-              already written to them. Before either, the three choices ARE the interaction, and a
-              reply box under an unanswered question would be a second way to do the same thing.
+              ★ MEASURED PRODUCTION FAILURE (2026-09-06). A real recipient with response=QUESTION, a
+              Host reply waiting and unread=1 saw only "You asked a question" and had NO way to
+              reach it. Two things were wrong, and both are repaired here.
 
-              The question a person typed is already the first message in here — the same
-              transaction that recorded "I have a question" appended it — so the conversation opens
-              on their own words rather than on an empty box that lost them.
+              (1) ACKNOWLEDGED opened a composer it had no business opening. `answered` was the gate,
+                  and "Got it" is an ENDING — offering a reply box under it invents a conversation
+                  nobody started. It now needs a real message to exist first.
+
+              (2) A conversation that exists was reachable only by scrolling to a component that
+                  rendered NOTHING until its fetch resolved. Waiting is now visible, and anything
+                  unread AUTO-EXPANDS so the person never has to find a control to be told
+                  somebody answered them.
+
+              ★ HANDLED DOES NOT APPEAR HERE, AND CANNOT. `handled_at` is the HOST's workflow state;
+              it is not in `RecipientProjection` at all, so no branch on this surface can read it.
+              A recipient can always reply, and that reply clears the flag in the same database
+              transaction — the Host never has to press Reopen first.
             */}
-            {answered || it.messageCount > 0 ? (
-              <TrackConversation recipientId={it.recipientId} locale={locale} counterpartName={it.hostDisplay} onChanged={load} />
+            {canConverse ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  data-testid="announcement-conversation-toggle"
+                  data-open={convoOpen ? "1" : "0"}
+                  aria-expanded={convoOpen}
+                  onClick={() => setConvoOverride((m) => ({ ...m, [it.recipientId]: !convoOpen }))}
+                  className={
+                    "min-h-[2.75rem] self-start text-[0.82rem] font-medium " +
+                    (it.unreadCount > 0 ? "text-[#E5B769]" : "text-white/60 hover:text-white/80")
+                  }
+                >
+                  {convoOpen ? t.hideConversation : t.openConversation}
+                  {it.unreadCount > 0 ? t.newCount(it.unreadCount) : ""}
+                </button>
+
+                {/*
+                  MOUNTED ONLY WHEN OPEN, DELIBERATELY. Opening is what performs the read — the
+                  component's own fetch is the mark-read call — so mounting it collapsed would mark
+                  a Host reply read that the person never actually saw.
+                */}
+                {convoOpen ? (
+                  <TrackConversation
+                    recipientId={it.recipientId}
+                    locale={locale}
+                    counterpartName={it.hostDisplay}
+                    onChanged={load}
+                  />
+                ) : null}
+              </div>
             ) : null}
 
             {failed === it.announcementId ? (

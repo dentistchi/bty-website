@@ -88,6 +88,20 @@ const hostRun = (responders: Record<string, unknown[]>) => ({
   responders: { acknowledged: [], question: [], needHelp: [], noResponse: [], ...responders },
 });
 
+/**
+ * Reach the conversation the way a person now does.
+ *
+ * The recipient card AUTO-EXPANDS when something is unread and otherwise hides the conversation
+ * behind one obvious control — deliberately, so that merely LISTING a card never performs the
+ * mark-read fetch and silently marks a Host reply seen. These tests therefore open it explicitly
+ * when the fixture has nothing unread.
+ */
+async function openConvo() {
+  await screen.findByTestId("announcement-item");
+  const toggle = screen.queryByTestId("announcement-conversation-toggle");
+  if (toggle?.getAttribute("data-open") === "0") fireEvent.click(toggle);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   threads = { [R_A]: { role: "RECIPIENT", messages: [] } };
@@ -125,6 +139,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered();
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
 
     const convo = await screen.findByTestId("track-conversation");
     expect(convo.getAttribute("data-recipient")).toBe(R_A);
@@ -138,6 +153,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered({ response: null, respondedAt: null, messageCount: 0 });
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     await screen.findByTestId("announcement-got-it");
     expect(screen.queryByTestId("track-conversation")).toBeNull();
   });
@@ -149,6 +165,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered({ response: null, respondedAt: null, messageCount: 1, unreadCount: 1 });
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     const convo = await screen.findByTestId("track-conversation");
     expect(convo.textContent).toContain("Any trouble with it?");
     expect(within(convo).getAllByTestId("track-message")[0].getAttribute("data-mine")).toBe("0");
@@ -161,6 +178,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered();
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
 
     const box = await screen.findByTestId("track-reply-input");
     fireEvent.change(box, { target: { value: "  Thanks — Monday works.  " } });
@@ -181,6 +199,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered();
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     const send = await screen.findByTestId("track-reply-send");
     expect((send as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByTestId("track-reply-input"), { target: { value: "   " } });
@@ -204,6 +223,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     });
 
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     await screen.findByTestId("track-reply-input");
     fireEvent.change(screen.getByTestId("track-reply-input"), { target: { value: "same words" } });
     fireEvent.click(screen.getByTestId("track-reply-send"));
@@ -223,6 +243,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered();
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     await screen.findByTestId("track-reply-input");
     fireEvent.change(screen.getByTestId("track-reply-input"), { target: { value: "first" } });
     fireEvent.click(screen.getByTestId("track-reply-send"));
@@ -237,6 +258,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered({ unreadCount: 2 });
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     const badge = await screen.findByTestId("track-unread-badge");
     expect(badge.textContent).toBe("2 new");
     expect(badge.getAttribute("data-unread")).toBe("2");
@@ -246,6 +268,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered({ unreadCount: 0 });
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     await screen.findByTestId("track-conversation");
     expect(screen.queryByTestId("track-unread-badge")).toBeNull();
   });
@@ -257,6 +280,7 @@ describe("★ RECIPIENT — the conversation continues where the one-shot answer
     mine = answered({ unreadCount: 1 });
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     const convo = await screen.findByTestId("track-conversation");
 
     // What a person actually reads on the screen. Source comments are not the product.
@@ -415,6 +439,7 @@ describe("★ N — the original Track response path still works exactly as it d
     ];
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     const item = await screen.findByTestId("announcement-item");
     // Stacked, full-width, 44px — the production mis-tap repair is not disturbed.
     for (const id of ["announcement-got-it", "announcement-question", "announcement-help"]) {
@@ -451,6 +476,7 @@ describe("★ N — the original Track response path still works exactly as it d
     ];
     stubFetch();
     render(<NeedsYourResponse locale="en" />);
+    await openConvo();
     expect((await screen.findByTestId("announcement-answered")).textContent).toBe("You said: Got it");
   });
 });

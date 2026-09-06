@@ -39,6 +39,7 @@ const COPY = {
     send: "Send",
     sending: "Sending…",
     empty: "No messages yet.",
+    loading: "Loading the conversation…",
     loadFailed: "Couldn't load the conversation.",
     sendFailed: "Couldn't send that.",
     tooLong: "That's too long to send.",
@@ -53,6 +54,7 @@ const COPY = {
     send: "보내기",
     sending: "보내는 중…",
     empty: "아직 메시지가 없습니다.",
+    loading: "대화를 불러오는 중…",
     loadFailed: "대화를 불러오지 못했습니다.",
     sendFailed: "보내지 못했습니다.",
     tooLong: "내용이 너무 깁니다.",
@@ -196,7 +198,24 @@ export default function TrackConversation({
     }
   }, [draft, sending, recipientId, load]);
 
-  if (state === "loading") return null;
+  /*
+    ★ WAITING IS VISIBLE. This returned `null` while loading, so a card whose fetch was slow — or
+    whose promise never settled — showed the person nothing at all where their conversation belongs.
+    That is indistinguishable from "there is no conversation", which is exactly the production
+    failure this component exists to prevent. A conversation that cannot be seen to be coming is a
+    conversation that looks absent.
+  */
+  if (state === "loading") {
+    return (
+      <div
+        className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-3"
+        data-testid="track-conversation-loading"
+      >
+        <p className="text-[0.72rem] font-medium uppercase tracking-[0.1em] text-white/50">{t.conversation}</p>
+        <p className="text-[0.8rem] text-white/50">{t.loading}</p>
+      </div>
+    );
+  }
 
   if (state === "error") {
     return (
