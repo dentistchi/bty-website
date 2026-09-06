@@ -23,7 +23,7 @@ const MANIFEST_PATH = `${MANIFEST_DIR}/manifest.json`;
 const PACKAGE_PATH = "teams/dist/bty-arena-teams-t1.zip";
 
 /** The files the packager copies into the zip — nothing else may live in the manifest directory. */
-const PACKAGE_FILES = ["color.png", "manifest.json", "outline.png"] as const;
+const PACKAGE_FILES = ["color.png", "manifest.json", "outline-s1-v110.png"] as const;
 
 type Manifest = {
   $schema?: string;
@@ -58,21 +58,27 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.10, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.11, and points $schema at the same version", () => {
     /*
-      1.0.10 (Slice TQ-4.5). The ONLY payload difference is `outline.png` — the fifth and final
-      attempt at one icon. 1.0.7, 1.0.8 and 1.0.9 each corrected what the previous one was blamed
-      on (rasterisation, then hinting and weight, then merged crossings) and each still failed on
-      the Founder's iPhone. That is what established that the master's woven trefoil cannot read at
-      20-24px at all. 1.0.10 carries a small-size glyph the Founder selected by eye, exported
-      unmodified. Teams caches app icons per installed package version, so each attempt cost one.
+      1.0.11 (Slice TQ-4.7B) is NOT a design change — the icon bytes are byte-identical to 1.0.10's.
+      It changes the asset's FILENAME, and nothing else, to isolate one hypothesis.
+
+      1.0.10 shipped the Founder-approved S1 glyph. The admin catalog showed 1.0.10, the app bar is
+      documented to use the outline icon, the package provably contained S1 — and the iPhone still
+      rendered the historical woven knot, through a force-quit and through an unpin/re-pin. Bytes
+      right, surface right, still wrong on screen. What has never changed across any package since
+      1.0.6 is the asset PATH, `outline.png`, so that is what this version varies.
+
+      If S1 appears now, the client keys its icon cache on the path. If the knot persists, the
+      filename hypothesis is dead and the investigation moves to catalog/client propagation — and
+      the icon files stop being touched.
 
       Every identity field is asserted unchanged above and below: same app id, same bot id, same
       scopes, same contentUrl, same validDomains, same permissions. A version bump must never be
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.10");
+    expect(manifest.version).toBe("1.0.11");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -213,7 +219,7 @@ describe("Teams app manifest — permission boundary", () => {
 });
 
 describe("Teams app package contents", () => {
-  it("ships exactly manifest.json, color.png and outline.png", () => {
+  it("ships exactly manifest.json, color.png and the declared outline icon", () => {
     // The packager copies this directory's three files and nothing else, so the directory listing
     // IS the package contents — asserted here because it holds on a clean checkout, where the
     // built zip (gitignored) does not exist.

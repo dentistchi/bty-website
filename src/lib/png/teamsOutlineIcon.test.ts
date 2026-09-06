@@ -54,12 +54,12 @@
  * These gates are the acceptance criteria, expressed as arithmetic.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { decodePng, alphaOf, pngSize } from "./decodePng";
 
-const OUTLINE = join(process.cwd(), "teams/manifest/outline.png");
+const OUTLINE = join(process.cwd(), "teams/manifest/outline-s1-v110.png");
 const img = decodePng(readFileSync(OUTLINE));
 const alpha = alphaOf(img);
 const { width: W, height: H, data } = img;
@@ -171,7 +171,7 @@ describe("★ 7–8 it is the approved S1, exported and not reinterpreted", () =
     const exp = readFileSync(join(process.cwd(), "scripts/teams-icon/export_s1.py"), "utf8");
     const code = exp.replace(/"""[\s\S]*?"""/g, "").replace(/^\s*#.*$/gm, "");
     expect(code).toContain("BTY_Teams_S1_Monoline.svg");
-    expect(code).toContain("teams/manifest/outline.png");
+    expect(code).toContain("teams/manifest/outline-s1-v110.png");
     // None of the four failed transformations may appear in the export path.
     for (const forbidden of ["erode", "dilate", "closing", "envelope", "HINT_CONTRAST", "contrast", "MARK_W", "BTY_Master_plain"]) {
       expect(code, `the exporter must not ${forbidden}`).not.toContain(forbidden);
@@ -209,15 +209,54 @@ describe("★ 7–8 it is the approved S1, exported and not reinterpreted", () =
   });
 });
 
+describe("★ TQ-4.7B — the cache-key experiment changes ONE variable", () => {
+  const APPROVED_S1_SHA = "a5444c517dd17318b1994ec93d666f4e4ff66e23fa4316206d00344cbffb7528";
+
+  it("1 — the manifest points at the NEW filename", () => {
+    const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
+    expect(m.icons.outline).toBe("outline-s1-v110.png");
+    expect(m.version).toBe("1.0.11");
+  });
+
+  it("★ 2 — the renamed asset is BYTE-IDENTICAL to the approved 1.0.10 S1", () => {
+    /*
+      The whole experiment rests on this. If the bytes moved even slightly, a device result would be
+      uninterpretable — we would not know whether a new filename or a new image caused the change.
+      The asset was produced with `git mv`, never re-exported.
+    */
+    const sha = createHash("sha256").update(readFileSync(OUTLINE)).digest("hex");
+    expect(sha).toBe(APPROVED_S1_SHA);
+  });
+
+  it("★ 3 — the old outline.png is gone from the repo, so it cannot ride along", () => {
+    expect(existsSync(join(process.cwd(), "teams/manifest/outline.png"))).toBe(false);
+  });
+
+  it("★ 4 — the packager derives its file list FROM the manifest, in both places", () => {
+    /*
+      A REAL BUG THIS SLICE CAUGHT. `package.mjs` named the icon files literally in TWO places — once
+      when staging and once in the `zip` argument list. Renaming the icon made the first ship the
+      wrong file and the second ship NO outline at all: `zip -q` is silent about a file it was never
+      given, so the package built cleanly and contained two entries. A hardcoded list here is not a
+      style preference; it silently produces an invalid package.
+    */
+    const pkg = readFileSync(join(process.cwd(), "teams/package.mjs"), "utf8");
+    expect(pkg).toContain("JSON.parse(rawManifest).icons");
+    expect(pkg).toContain("iconFiles.map((f) => join(STAGE, f))");
+    expect(pkg).not.toContain('["color.png", "outline.png"]');
+    expect(pkg).not.toContain('join(STAGE, "outline.png")');
+  });
+});
+
 describe("★ the package around it is unchanged", () => {
   it("the colour icon and the manifest are untouched by this slice", () => {
     // color.png is 8-bit RGB with no alpha (colour type 2), which decodePng refuses on purpose.
     const colour = pngSize(readFileSync(join(process.cwd(), "teams/manifest/color.png")));
     expect({ w: colour.width, h: colour.height, type: colour.colorType }).toEqual({ w: 192, h: 192, type: 2 });
     const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
-    expect(m.icons).toEqual({ color: "color.png", outline: "outline.png" });
+    expect(m.icons).toEqual({ color: "color.png", outline: "outline-s1-v110.png" });
     expect(m.id).toBe("374ec662-0deb-4e0b-8514-e38a035a349e");
-    expect(m.version).toBe("1.0.10");
+    expect(m.version).toBe("1.0.11");
     expect(m.bots[0].botId).toBe("820f231b-9dbb-4c84-94c5-65bc43d35d91");
     expect(m.staticTabs[0].contentUrl).toBe("https://arena.btydaily.com/teams");
     // color.png must be byte-identical to what has shipped since 1.0.6.

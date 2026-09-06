@@ -203,9 +203,16 @@ describe("★ the Teams app package icons meet Microsoft's current shape rules",
 
   it("the manifest references both icons by the filenames that exist", () => {
     expect(manifest.icons.color).toBe("color.png");
-    expect(manifest.icons.outline).toBe("outline.png");
+    /*
+      The outline icon's FILENAME is deliberately not pinned here (Slice TQ-4.7B renamed it to
+      isolate a path-keyed icon cache). What matters at this layer is that the manifest declares an
+      outline icon and that the file it names actually exists — a manifest referencing a missing
+      asset is the failure this guards.
+    */
+    expect(typeof manifest.icons.outline).toBe("string");
+    expect(manifest.icons.outline.length).toBeGreaterThan(0);
     expect(statSync(join(process.cwd(), "teams/manifest/color.png")).size).toBeGreaterThan(0);
-    expect(statSync(join(process.cwd(), "teams/manifest/outline.png")).size).toBeGreaterThan(0);
+    expect(statSync(join(process.cwd(), "teams/manifest", manifest.icons.outline)).size).toBeGreaterThan(0);
   });
 
   it("color is a square 192 × 192 PNG", () => {
@@ -214,7 +221,8 @@ describe("★ the Teams app package icons meet Microsoft's current shape rules",
   });
 
   it("outline is a square 32 × 32 PNG", () => {
-    const { w, h } = pngSize("teams/manifest/outline.png");
+    const declared = (JSON.parse(read("teams/manifest/manifest.json")) as { icons: { outline: string } }).icons.outline;
+    const { w, h } = pngSize(join("teams/manifest", declared));
     expect({ w, h }).toEqual({ w: 32, h: 32 });
   });
 });

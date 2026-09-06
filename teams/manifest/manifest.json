@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.25/MicrosoftTeams.schema.json",
   "manifestVersion": "1.25",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "id": "374ec662-0deb-4e0b-8514-e38a035a349e",
   "developer": {
     "name": "BTY Training Center",
@@ -19,7 +19,7 @@
   },
   "icons": {
     "color": "color.png",
-    "outline": "outline.png"
+    "outline": "outline-s1-v110.png"
   },
   "accentColor": "#0B1F3A",
   "bots": [

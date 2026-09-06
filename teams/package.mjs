@@ -32,7 +32,32 @@ if (rawManifest.includes("${TEAMS_BOT_APP_ID}") && !botAppId) {
 
 rmSync(STAGE, { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
-for (const f of ["color.png", "outline.png"]) cpSync(join(SRC, f), join(STAGE, f));
+
+/*
+  ★ THE ICON FILES COME FROM THE MANIFEST, NOT FROM A LIST IN THIS FILE (Slice TQ-4.7B).
+
+  This used to be a literal two-element array of icon filenames. It worked for as long as the icons were
+  never renamed — and the moment TQ-4.7B pointed `icons.outline` at `outline-s1-v110.png` to test a
+  path-keyed icon cache, a hardcoded list would have shipped the OLD `outline.png` and referenced a
+  file the package does not contain. Teams would have rejected it, or worse, rendered nothing, and
+  the experiment would have produced a meaningless result blamed on the hypothesis.
+
+  Reading the names from the manifest makes the package ship exactly what it declares. It also means
+  the stale asset cannot ride along: only the declared icons are staged.
+*/
+const declaredIcons = JSON.parse(rawManifest).icons ?? {};
+const iconFiles = [...new Set(Object.values(declaredIcons))].filter((f) => typeof f === "string" && f.length > 0);
+if (iconFiles.length < 2) {
+  console.error("[teams-package] manifest must declare at least color and outline icons");
+  process.exit(1);
+}
+for (const f of iconFiles) {
+  if (!existsSync(join(SRC, f))) {
+    console.error(`[teams-package] manifest declares icon "${f}" but ${join(SRC, f)} does not exist`);
+    process.exit(1);
+  }
+  cpSync(join(SRC, f), join(STAGE, f));
+}
 
 const manifest = botAppId ? rawManifest.replaceAll("${TEAMS_BOT_APP_ID}", botAppId) : rawManifest;
 
@@ -182,7 +207,13 @@ writeFileSync(join(STAGE, "manifest.json"), manifest);
 
 rmSync(OUT, { force: true });
 // -j: junk paths, so every entry lands at the ZIP ROOT.
-execFileSync("zip", ["-j", "-q", OUT, join(STAGE, "manifest.json"), join(STAGE, "color.png"), join(STAGE, "outline.png")]);
+/*
+  The SAME manifest-derived list is used here. This line used to name the three files literally, and
+  when the icon was renamed it silently zipped only two of them — `zip -q` says nothing about a file
+  it was not given, so the package looked built and shipped without an outline icon at all. One list,
+  derived once, used for both staging and zipping.
+*/
+execFileSync("zip", ["-j", "-q", OUT, join(STAGE, "manifest.json"), ...iconFiles.map((f) => join(STAGE, f))]);
 rmSync(STAGE, { recursive: true, force: true });
 
 const listing = execFileSync("unzip", ["-Z1", OUT]).toString().trim().split("\n");

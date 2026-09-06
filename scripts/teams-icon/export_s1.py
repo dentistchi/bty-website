@@ -29,6 +29,18 @@ sampling the path densely and stamping that disc reproduces the SVG's own stroke
 than imitating it. Every attribute below is read FROM the file; nothing about the glyph is decided
 here.
 
+★ THE FILENAME CARRIES AN EXPERIMENT (Slice TQ-4.7B).
+
+The target is `outline-s1-v110.png`, not `outline.png`. The approved S1 asset shipped in 1.0.10 and
+the Founder's iPhone still rendered the historical woven knot — after the admin catalog showed
+1.0.10, after a force-quit, and after unpinning and re-pinning the app. The package provably
+contains S1 and Microsoft documents the app bar as using the outline icon, so the bytes are right
+and the surface is right; what is left is that the client may key its icon cache on the asset PATH,
+which has been `outline.png` in every package since 1.0.6.
+
+Renaming changes ONE variable. The bytes are byte-identical to the approved 1.0.10 asset — asserted
+by sha256 in a test, not by intention.
+
 Deterministic: same input, same bytes out. No network, no font, no external binary.
 """
 import os, re
@@ -38,7 +50,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 SOURCE = os.path.join(HERE, "BTY_Teams_S1_Monoline.svg")
-TARGET = os.path.join(ROOT, "teams/manifest/outline.png")
+TARGET = os.path.join(ROOT, "teams/manifest/outline-s1-v110.png")
 
 CANVAS = 32          # Microsoft's required outline size, and the SVG's own viewBox
 SUPERSAMPLE_SS = 16  # part of the reproducible-bytes contract
