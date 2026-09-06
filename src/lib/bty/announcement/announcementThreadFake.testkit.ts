@@ -33,8 +33,7 @@ export type FakeRecipientRow = {
   respondedAt: string | null;
   questionText: string | null;
   handledAt: string | null;
-  hostLastReadAt: string | null;
-  recipientLastReadAt: string | null;
+  handledByUserId: string | null;
 };
 
 export type FakeMessage = {
@@ -47,10 +46,14 @@ export type FakeMessage = {
   createdAt: string;
 };
 
+/** One receipt per (message, reader) — the primary key, as a row. */
+export type FakeRead = { messageId: string; readerUserId: string };
+
 export type ThreadStore = {
   announcements: FakeAnnouncement[];
   recipients: FakeRecipientRow[];
   messages: FakeMessage[];
+  reads: FakeRead[];
   /** Deterministic, monotonic clock, so ordering assertions do not depend on wall time. */
   tick: () => string;
 };
@@ -64,8 +67,7 @@ export function makeRecipientRow(over: Partial<FakeRecipientRow> = {}): FakeReci
     respondedAt: null,
     questionText: null,
     handledAt: null,
-    hostLastReadAt: null,
-    recipientLastReadAt: null,
+    handledByUserId: null,
     ...over,
   };
 }
@@ -76,6 +78,7 @@ export function makeStore(over: Partial<Omit<ThreadStore, "tick">> = {}): Thread
     announcements: over.announcements ?? [{ id: "ann-1", ownerUserId: "host-1" }],
     recipients: over.recipients ?? [makeRecipientRow()],
     messages: over.messages ?? [],
+    reads: [],
     tick: () => new Date(Date.UTC(2026, 8, 12, 0, 0, ++n)).toISOString(),
   };
 }
@@ -125,7 +128,15 @@ export function makeThreadAdmin(store: ThreadStore) {
         );
         if (dup) {
           return {
-            data: [{ result: "duplicate", message_id: dup.id, author_role: dup.authorRole, created_at: dup.createdAt }],
+            data: [
+              {
+                result: "duplicate",
+                message_id: dup.id,
+                author_role: dup.authorRole,
+                created_at: dup.createdAt,
+                reopened: false,
+              },
+            ],
             error: null,
           };
         }
@@ -142,22 +153,48 @@ export function makeThreadAdmin(store: ThreadStore) {
         createdAt: store.tick(),
       };
       store.messages.push(msg);
+
+      /*
+        ★ THE REOPEN, IN THE SAME STEP AS THE INSERT. A new RECIPIENT message clears the settled
+        marker; a HOST message never does, or answering somebody would put them back on your own
+        list. A duplicate reopens nothing, because no NEW thing was said.
+      */
+      let reopened = false;
+      if (role === "RECIPIENT") {
+        const row = store.recipients.find((x) => x.id === recipientId)!;
+        if (row.handledAt !== null) {
+          row.handledAt = null;
+          row.handledByUserId = null;
+          reopened = true;
+        }
+      }
+
       return {
-        data: [{ result: "posted", message_id: msg.id, author_role: msg.authorRole, created_at: msg.createdAt }],
+        data: [
+          { result: "posted", message_id: msg.id, author_role: msg.authorRole, created_at: msg.createdAt, reopened },
+        ],
         error: null,
       };
     },
 
     bty_mark_announcement_thread_read: (a) => {
       const recipientId = String(a.p_recipient_id ?? "");
-      const role = roleOf(store, recipientId, String(a.p_actor_user_id ?? ""));
-      if (role === "none") return { data: [{ result: "not_found", role: null }], error: null };
-      const r = store.recipients.find((x) => x.id === recipientId)!;
-      const now = store.tick();
-      // Which side moves follows from the ROLE. There is no parameter for it.
-      if (role === "HOST") r.hostLastReadAt = now;
-      else r.recipientLastReadAt = now;
-      return { data: [{ result: "read", role }], error: null };
+      const actor = String(a.p_actor_user_id ?? "");
+      const role = roleOf(store, recipientId, actor);
+      if (role === "none") return { data: [{ result: "not_found", role: null, marked: 0 }], error: null };
+
+      // WHICH SIDE follows from the ROLE. There is no parameter for it, so neither party can mark
+      // the other's reading done. Receipts, never a cursor -- see the migration header.
+      const other = role === "HOST" ? "RECIPIENT" : "HOST";
+      let marked = 0;
+      for (const m of store.messages) {
+        if (m.recipientId !== recipientId || m.authorRole !== other) continue;
+        if (store.reads.some((x) => x.messageId === m.id && x.readerUserId === actor)) continue;
+        store.reads.push({ messageId: m.id, readerUserId: actor });
+        marked += 1;
+      }
+      // ★ IT DOES NOT HANDLE ANYTHING. `handledAt` is deliberately untouched here.
+      return { data: [{ result: "read", role, marked }], error: null };
     },
 
     /** The 20260912 body: disposition and first message in ONE step, or neither. */
@@ -204,6 +241,29 @@ export function makeThreadAdmin(store: ThreadStore) {
       return fn(args);
     },
     from(table: string) {
+      if (table === "bty_announcement_thread_message_reads") {
+        let reads = store.reads;
+        const rq = {
+          select(_cols: string) {
+            void _cols;
+            return rq;
+          },
+          eq(col: string, val: string) {
+            if (col !== "reader_user_id") throw new Error(`unmodelled filter: ${col}`);
+            reads = reads.filter((r) => r.readerUserId === val);
+            return rq;
+          },
+          in(col: string, vals: string[]) {
+            if (col !== "message_id") throw new Error(`unmodelled filter: ${col}`);
+            reads = reads.filter((r) => vals.includes(r.messageId));
+            return rq;
+          },
+          returns() {
+            return Promise.resolve({ data: reads.map((r) => ({ message_id: r.messageId })), error: null });
+          },
+        };
+        return rq;
+      }
       if (table !== "bty_announcement_thread_messages") throw new Error(`unmodelled table: ${table}`);
       let rows = store.messages;
       const q = {
@@ -225,10 +285,15 @@ export function makeThreadAdmin(store: ThreadStore) {
           rows = rows.filter((m) => vals.includes(m.recipientId));
           return q;
         },
+        /*
+          (created_at, id) is a TOTAL order. Applied as ONE stable comparison rather than two passes,
+          which is what the two chained `.order()` calls mean to PostgREST.
+        */
         order(col: string, opts: { ascending: boolean }) {
-          if (col !== "created_at") throw new Error(`unmodelled order: ${col}`);
-          rows = [...rows].sort((x, y) =>
-            opts.ascending ? x.createdAt.localeCompare(y.createdAt) : y.createdAt.localeCompare(x.createdAt),
+          if (col !== "created_at" && col !== "id") throw new Error(`unmodelled order: ${col}`);
+          const dir = opts.ascending ? 1 : -1;
+          rows = [...rows].sort(
+            (x, y) => dir * (x.createdAt.localeCompare(y.createdAt) || x.id.localeCompare(y.id)),
           );
           return q;
         },

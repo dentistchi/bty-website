@@ -9,7 +9,7 @@ import {
   type RecipientProjection,
 } from "@/domain/announcement/trackedAnnouncement";
 import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
-import { loadThreadMeta, messageCountFrom, unreadFrom } from "./announcementThread.server";
+import { allMessageIds, loadReadReceipts, loadThreadMeta, messageCountFrom, unreadFrom } from "./announcementThread.server";
 import { resolveDisplayNames } from "./recipientDisplayName.server";
 
 /**
@@ -31,7 +31,6 @@ type RecipientRow = {
   announcement_id: string;
   response: string | null;
   responded_at: string | null;
-  recipient_last_read_at: string | null;
   bty_tracked_announcements: {
     id: string;
     host_framing: string;
@@ -54,7 +53,7 @@ export async function listMyAnnouncements(
     .from("bty_tracked_announcement_recipients")
     // The whitelist IS the privacy rule. Note what is absent: no preview, no metadata, no ids.
     .select(
-      "id, announcement_id, response, responded_at, recipient_last_read_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures!inner(source_url))",
+      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures!inner(source_url))",
     )
     .eq("user_id", userId)
     .eq("bty_tracked_announcements.status", "active")
@@ -78,6 +77,12 @@ export async function listMyAnnouncements(
     could use.
   */
   const meta = await loadThreadMeta(admin, rows.map((r) => r.id));
+  /*
+    WHAT THIS PERSON HAS ALREADY SEEN, as receipts rather than a timestamp. Scoped to `userId`, so
+    it can only ever answer about the caller — see `loadReadReceipts` for why the cursor it replaced
+    was unsound.
+  */
+  const readIds = await loadReadReceipts(admin, allMessageIds(meta), userId);
 
   /*
     THE HOST'S NAME, FROM THE PROVIDER, BECAUSE A CONVERSATION HAS TWO NAMED SIDES.
@@ -102,7 +107,7 @@ export async function listMyAnnouncements(
       response: r.response,
       respondedAt: r.responded_at,
       // Unread here means HOST messages this person has not opened. Their own never count.
-      unreadCount: unreadFrom(meta, r.id, "RECIPIENT", r.recipient_last_read_at),
+      unreadCount: unreadFrom(meta, r.id, "RECIPIENT", readIds),
       messageCount: messageCountFrom(meta, r.id),
     }),
   );
@@ -250,7 +255,7 @@ export async function listHostAnnouncements(
 
   const { data: recips } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at, host_last_read_at")
+    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at")
     .in("announcement_id", runs.map((r) => r.id))
     .returns<
       {
@@ -261,7 +266,6 @@ export async function listHostAnnouncements(
         responded_at: string | null;
         question_text: string | null;
         handled_at: string | null;
-        host_last_read_at: string | null;
       }[]
     >();
 
@@ -274,6 +278,8 @@ export async function listHostAnnouncements(
     a Host reads the actual words one person at a time, in that person's own conversation.
   */
   const threadMeta = await loadThreadMeta(admin, (recips ?? []).map((r) => r.id));
+  // The OWNER'S own receipts. A Host can never learn what a recipient has read.
+  const readIds = await loadReadReceipts(admin, allMessageIds(threadMeta), ownerUserId);
 
   const byRun = new Map<string, NonNullable<typeof recips>>();
   for (const r of recips ?? []) {
@@ -296,9 +302,8 @@ export async function listHostAnnouncements(
     question_text: string | null;
     responded_at: string | null;
     handled_at: string | null;
-    host_last_read_at: string | null;
   }): HostResponder => {
-    const unreadCount = unreadFrom(threadMeta, r.id, "HOST", r.host_last_read_at);
+    const unreadCount = unreadFrom(threadMeta, r.id, "HOST", readIds);
     return {
       recipientId: r.id,
       display: nameOf(r.user_id),

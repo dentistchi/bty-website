@@ -30,14 +30,15 @@ import { resolveDisplayNames } from "./recipientDisplayName.server";
 
 type MessageRow = {
   id: string;
-  author_user_id: string;
+  /** NULL once that account is deleted -- the message and its role survive. */
+  author_user_id: string | null;
   author_role: string;
   body: string;
   created_at: string;
 };
 
 /** Message METADATA only — never a body. Used to count unread across a whole list surface. */
-export type ThreadMeta = { recipientId: string; authorRole: ThreadRole; createdAt: string };
+export type ThreadMeta = { messageId: string; recipientId: string; authorRole: ThreadRole };
 
 export type ThreadRoleResult = ThreadRole | null;
 
@@ -89,7 +90,11 @@ export async function readThread(
     .from("bty_announcement_thread_messages")
     .select("id, author_user_id, author_role, body, created_at")
     .eq("recipient_id", params.recipientId)
+    // (created_at, id) is a TOTAL order. `created_at` alone is not: the first-response bridge
+    // deliberately stamps the disposition and its first message with one instant, so ties are
+    // ordinary here and a partial order can come back arranged differently on two reads.
     .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
     .returns<MessageRow[]>();
 
   if (error) {
@@ -100,7 +105,8 @@ export async function readThread(
   const rows = data ?? [];
   const names = await resolveDisplayNames(
     admin,
-    rows.map((m) => m.author_user_id),
+    // A deleted account contributes no id to look up, and renders with no name.
+    rows.map((m) => m.author_user_id).filter((id): id is string => typeof id === "string" && id.length > 0),
   );
 
   const messages: ThreadMessage[] = rows
@@ -111,7 +117,7 @@ export async function readThread(
     .map((m) => ({
       id: m.id,
       authorRole: m.author_role as ThreadRole,
-      authorDisplay: names.get(m.author_user_id) ?? null,
+      authorDisplay: m.author_user_id ? (names.get(m.author_user_id) ?? null) : null,
       body: m.body,
       createdAt: m.created_at,
     }));
@@ -128,7 +134,7 @@ export async function readThread(
 }
 
 export type PostMessageResult =
-  | { ok: true; role: ThreadRole; messageId: string; duplicate: boolean }
+  | { ok: true; role: ThreadRole; messageId: string; duplicate: boolean; reopened: boolean }
   | { ok: false; reason: "not_found" | "empty_message" | "message_too_long" | "failed" };
 
 /**
@@ -160,7 +166,7 @@ export async function postThreadMessage(
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { result?: string; message_id?: string; author_role?: string }
+    | { result?: string; message_id?: string; author_role?: string; reopened?: boolean }
     | null;
   const result = row?.result;
 
@@ -171,6 +177,9 @@ export async function postThreadMessage(
       role: row.author_role as ThreadRole,
       messageId: row.message_id,
       duplicate: result === "duplicate",
+      // The DATABASE reports whether this message reopened a settled item. The clearing happens in
+      // the same transaction as the insert, so this is an OUTCOME, never a second decision here.
+      reopened: row.reopened === true,
     };
   }
   if (result === "not_found") return { ok: false, reason: "not_found" };
@@ -200,9 +209,9 @@ export async function loadThreadMeta(
 
   const { data, error } = await admin
     .from("bty_announcement_thread_messages")
-    .select("recipient_id, author_role, created_at")
+    .select("id, recipient_id, author_role")
     .in("recipient_id", ids)
-    .returns<{ recipient_id: string; author_role: string; created_at: string }[]>();
+    .returns<{ id: string; recipient_id: string; author_role: string }[]>();
 
   if (error) {
     console.error("[announcement-thread] meta failed", { code: error.code ?? "unknown" });
@@ -212,9 +221,9 @@ export async function loadThreadMeta(
   for (const m of data ?? []) {
     if (!isThreadRole(m.author_role)) continue;
     const entry: ThreadMeta = {
+      messageId: m.id,
       recipientId: m.recipient_id,
       authorRole: m.author_role as ThreadRole,
-      createdAt: m.created_at,
     };
     const list = out.get(m.recipient_id);
     if (list) list.push(entry);
@@ -223,14 +232,55 @@ export async function loadThreadMeta(
   return out;
 }
 
+/**
+ * Every message id THIS reader holds a receipt for, among the given messages.
+ *
+ * ★ SCOPED TO ONE READER, ALWAYS. `reader_user_id` is the caller's own session id, so this can
+ * never answer "has somebody else read it" -- a question no surface in this product asks, and none
+ * should be able to.
+ *
+ * An empty set on failure. A badge that under-reports is a missing hint; a list that fails to load
+ * because a receipt lookup errored is a broken surface.
+ */
+export async function loadReadReceipts(
+  admin: SupabaseClient,
+  messageIds: readonly string[],
+  readerUserId: string,
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const ids = [...new Set(messageIds.filter(Boolean))];
+  if (ids.length === 0 || !readerUserId) return out;
+
+  const { data, error } = await admin
+    .from("bty_announcement_thread_message_reads")
+    .select("message_id")
+    .eq("reader_user_id", readerUserId)
+    .in("message_id", ids)
+    .returns<{ message_id: string }[]>();
+
+  if (error) {
+    console.error("[announcement-thread] receipts failed", { code: error.code ?? "unknown" });
+    return out;
+  }
+  for (const r of data ?? []) out.add(r.message_id);
+  return out;
+}
+
+/** Every message id in the loaded metadata -- the input to `loadReadReceipts`. */
+export function allMessageIds(meta: Map<string, ThreadMeta[]>): string[] {
+  const out: string[] = [];
+  for (const list of meta.values()) for (const m of list) out.push(m.messageId);
+  return out;
+}
+
 /** Unread for one viewer on one thread, from already-loaded metadata. Pure counting lives in domain. */
 export function unreadFrom(
   meta: Map<string, ThreadMeta[]>,
   recipientId: string,
   viewer: ThreadRole,
-  lastReadAt: string | null,
+  readMessageIds: ReadonlySet<string>,
 ): number {
-  return countUnreadFor(viewer, meta.get(recipientId) ?? [], lastReadAt);
+  return countUnreadFor(viewer, meta.get(recipientId) ?? [], readMessageIds);
 }
 
 /** How many messages this thread holds at all — what decides whether a conversation is shown. */

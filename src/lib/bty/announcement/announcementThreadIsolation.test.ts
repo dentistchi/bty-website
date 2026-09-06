@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  allMessageIds,
+  loadReadReceipts,
   loadThreadMeta,
   messageCountFrom,
   postThreadMessage,
@@ -396,73 +398,151 @@ describe("★ the conversation continues, with no artificial limit", () => {
 
 /* ────────────────────────  UNREAD / READ MARKING  ──────────────────────── */
 
-describe("★ unread is persistent truth for both sides", () => {
+/** Unread for one viewer, loading exactly what the list surfaces load. */
+async function unread(rowIds: string[], viewer: "HOST" | "RECIPIENT", reader: string, row: string) {
+  const meta = await loadThreadMeta(admin, rowIds);
+  const readIds = await loadReadReceipts(admin, allMessageIds(meta), reader);
+  return unreadFrom(meta, row, viewer, readIds);
+}
+
+describe("★ unread is persistent truth for both sides, as RECEIPTS", () => {
   it("★ the Host's unread counts the recipient's messages, not their own", async () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "1" });
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "2" });
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: HOST, body: "mine" });
-    const meta = await loadThreadMeta(admin, ["r-a"]);
-    const row = store.recipients.find((r) => r.id === "r-a")!;
-    expect(unreadFrom(meta, "r-a", "HOST", row.hostLastReadAt)).toBe(2);
+    expect(await unread(["r-a"], "HOST", HOST, "r-a")).toBe(2);
   });
 
   it("★ the recipient's unread counts the Host's messages, not their own", async () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: HOST, body: "h1" });
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "mine" });
-    const meta = await loadThreadMeta(admin, ["r-a"]);
-    const row = store.recipients.find((r) => r.id === "r-a")!;
-    expect(unreadFrom(meta, "r-a", "RECIPIENT", row.recipientLastReadAt)).toBe(1);
+    expect(await unread(["r-a"], "RECIPIENT", A, "r-a")).toBe(1);
   });
 
-  it("★ opening the thread marks ONLY the opener's side read", async () => {
+  it("★ opening the thread writes receipts for ONLY the opener's side", async () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "from A" });
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: HOST, body: "from Host" });
 
     await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
-    const row = store.recipients.find((r) => r.id === "r-a")!;
-    expect(row.hostLastReadAt).not.toBeNull();
+    expect(await unread(["r-a"], "HOST", HOST, "r-a")).toBe(0);
     // The Host reading cannot mark the recipient's side. There is no parameter for it.
-    expect(row.recipientLastReadAt).toBeNull();
-
-    const meta = await loadThreadMeta(admin, ["r-a"]);
-    expect(unreadFrom(meta, "r-a", "HOST", row.hostLastReadAt)).toBe(0);
-    expect(unreadFrom(meta, "r-a", "RECIPIENT", row.recipientLastReadAt)).toBe(1);
+    expect(await unread(["r-a"], "RECIPIENT", A, "r-a")).toBe(1);
+    expect(store.reads.every((r) => r.readerUserId === HOST)).toBe(true);
   });
 
-  it("★ read state survives a refresh — it is a stored cursor, not component state", async () => {
+  it("★ a receipt is per MESSAGE, so a later message is unread even though earlier ones were read", async () => {
+    // This is the shape the timestamp cursor could not express: reading is not a watermark.
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "first" });
+    await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "second" });
+    expect(await unread(["r-a"], "HOST", HOST, "r-a")).toBe(1);
+  });
+
+  it("★ read state survives a refresh — it is stored, not component state", async () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "x" });
     await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
 
     // A completely fresh admin over the SAME store is what "another device, later" looks like.
     const fresh = makeThreadAdmin(store) as unknown as SupabaseClient;
     const meta = await loadThreadMeta(fresh, ["r-a"]);
-    const row = store.recipients.find((r) => r.id === "r-a")!;
-    expect(unreadFrom(meta, "r-a", "HOST", row.hostLastReadAt)).toBe(0);
+    const readIds = await loadReadReceipts(fresh, allMessageIds(meta), HOST);
+    expect(unreadFrom(meta, "r-a", "HOST", readIds)).toBe(0);
 
-    // And a NEW message after that read is unread again.
     await postThreadMessage(fresh, { recipientId: "r-a", actorUserId: A, body: "y" });
     const meta2 = await loadThreadMeta(fresh, ["r-a"]);
-    expect(unreadFrom(meta2, "r-a", "HOST", row.hostLastReadAt)).toBe(1);
+    const readIds2 = await loadReadReceipts(fresh, allMessageIds(meta2), HOST);
+    expect(unreadFrom(meta2, "r-a", "HOST", readIds2)).toBe(1);
+  });
+
+  it("★ marking read twice writes nothing new — a receipt is a key, not a counter", async () => {
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "x" });
+    await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
+    const after = store.reads.length;
+    await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
+    expect(store.reads).toHaveLength(after);
   });
 
   it("★ unread is per recipient — B's messages never appear in A's count", async () => {
     await postThreadMessage(admin, { recipientId: "r-b", actorUserId: B, body: "B" });
     const meta = await loadThreadMeta(admin, ["r-a", "r-b"]);
-    expect(unreadFrom(meta, "r-a", "HOST", null)).toBe(0);
-    expect(unreadFrom(meta, "r-b", "HOST", null)).toBe(1);
+    const readIds = await loadReadReceipts(admin, allMessageIds(meta), HOST);
+    expect(unreadFrom(meta, "r-a", "HOST", readIds)).toBe(0);
+    expect(unreadFrom(meta, "r-b", "HOST", readIds)).toBe(1);
     expect(messageCountFrom(meta, "r-a")).toBe(0);
     expect(messageCountFrom(meta, "r-b")).toBe(1);
+  });
+
+  it("★ receipts are scoped to ONE reader — a Host cannot learn what a recipient has read", async () => {
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: HOST, body: "h" });
+    await readThread(admin, { recipientId: "r-a", actorUserId: A });
+    const meta = await loadThreadMeta(admin, ["r-a"]);
+    // The recipient read it; asking as the HOST returns none of the recipient's receipts.
+    expect((await loadReadReceipts(admin, allMessageIds(meta), HOST)).size).toBe(0);
+    expect((await loadReadReceipts(admin, allMessageIds(meta), A)).size).toBe(1);
   });
 
   it("★ the list projection carries NO message bodies", async () => {
     await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "a secret about my pay" });
     const meta = await loadThreadMeta(admin, ["r-a"]);
     expect(JSON.stringify([...meta])).not.toContain("secret");
-    expect(Object.keys(meta.get("r-a")![0]).sort()).toEqual(["authorRole", "createdAt", "recipientId"]);
+    expect(Object.keys(meta.get("r-a")![0]).sort()).toEqual(["authorRole", "messageId", "recipientId"]);
   });
 
   it("no recipient ids means no query at all", async () => {
     const meta = await loadThreadMeta(admin, []);
     expect(meta.size).toBe(0);
+    expect((await loadReadReceipts(admin, [], HOST)).size).toBe(0);
+  });
+});
+
+/* ────────────────────  HANDLED / REOPEN  ──────────────────── */
+
+describe("★ B — a new recipient message reopens a settled item; reading never does", () => {
+  const settle = () => {
+    const row = store.recipients.find((r) => r.id === "r-a")!;
+    row.handledAt = "2026-09-12T09:30:00.000Z";
+    row.handledByUserId = HOST;
+    return row;
+  };
+
+  it("★ a RECIPIENT message clears handled, and the call reports it", async () => {
+    const row = settle();
+    const res = await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "one more thing" });
+    expect(res.ok && res.reopened).toBe(true);
+    expect(row.handledAt).toBeNull();
+    expect(row.handledByUserId).toBeNull();
+  });
+
+  it("★ a HOST message does NOT reopen — answering somebody must not re-list them", async () => {
+    const row = settle();
+    const res = await postThreadMessage(admin, { recipientId: "r-a", actorUserId: HOST, body: "here you go" });
+    expect(res.ok && res.reopened).toBe(false);
+    expect(row.handledAt).not.toBeNull();
+  });
+
+  it("★ READING is not RESOLVING — opening the thread leaves handled exactly as it was", async () => {
+    const row = settle();
+    await readThread(admin, { recipientId: "r-a", actorUserId: HOST });
+    expect(row.handledAt).not.toBeNull();
+    expect(row.handledByUserId).toBe(HOST);
+  });
+
+  it("a duplicate reopens nothing — no NEW thing was said", async () => {
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "x", clientMessageId: "n1" });
+    const row = settle();
+    const dup = await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "x", clientMessageId: "n1" });
+    expect(dup.ok && dup.duplicate).toBe(true);
+    expect(dup.ok && dup.reopened).toBe(false);
+    expect(row.handledAt).not.toBeNull();
+  });
+
+  it("the reopen erases nothing a person said", async () => {
+    await respondToAnnouncement(admin, { announcementId: "ann-1", userId: A, response: "QUESTION", questionText: "original" });
+    const row = settle();
+    await postThreadMessage(admin, { recipientId: "r-a", actorUserId: A, body: "follow-up" });
+    expect(row.handledAt).toBeNull();
+    expect(row.response).toBe("QUESTION");
+    expect(row.questionText).toBe("original");
+    expect(store.messages.map((m) => m.body)).toEqual(["original", "follow-up"]);
   });
 });

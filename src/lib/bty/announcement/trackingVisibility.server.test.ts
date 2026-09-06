@@ -70,13 +70,13 @@ describe("★ the Host projection never selects a directory identity", () => {
     expect(m, "the Host recipient select changed shape").toBeTruthy();
     const cols = m![1].split(",").map((c) => c.trim());
     /*
-      Track conversation V1 added `host_last_read_at`. It is a TIMESTAMP OF THE HOST'S OWN
-      behaviour — when they last opened this person's conversation — and says nothing whatever
-      about who the recipient is. It is here because the Host's unread count is computed against it.
+      UNCHANGED BY TRACK CONVERSATION V1. R1 of that slice added `host_last_read_at` here; the
+      production audit removed the timestamp cursor entirely in favour of per-message read receipts,
+      which live in their own table. So this select is byte-identical to what A1-CLOSURE left, and
+      the unread count is computed from a join the Host projection never has to widen for.
     */
     expect(cols).toEqual([
       "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at",
-      "host_last_read_at",
     ]);
     for (const forbidden of ["tenant_id", "aad_object_id", "email", "preferred_username"]) {
       expect(cols, forbidden).not.toContain(forbidden);

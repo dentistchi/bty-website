@@ -72,43 +72,51 @@ describe("isThreadRole — the whole author vocabulary", () => {
 
 describe("countUnreadFor — and the rule that an author never makes unread for themselves", () => {
   const thread = [
-    { authorRole: "RECIPIENT" as const, createdAt: at("01") },
-    { authorRole: "HOST" as const, createdAt: at("02") },
-    { authorRole: "RECIPIENT" as const, createdAt: at("03") },
-    { authorRole: "RECIPIENT" as const, createdAt: at("04") },
+    { messageId: "m1", authorRole: "RECIPIENT" as const },
+    { messageId: "m2", authorRole: "HOST" as const },
+    { messageId: "m3", authorRole: "RECIPIENT" as const },
+    { messageId: "m4", authorRole: "RECIPIENT" as const },
   ];
+  const none = new Set<string>();
 
   it("★ the HOST counts only RECIPIENT messages — never their own replies", () => {
-    expect(countUnreadFor("HOST", thread, null)).toBe(3);
+    expect(countUnreadFor("HOST", thread, none)).toBe(3);
   });
 
   it("★ the RECIPIENT counts only HOST messages — never their own", () => {
-    expect(countUnreadFor("RECIPIENT", thread, null)).toBe(1);
+    expect(countUnreadFor("RECIPIENT", thread, none)).toBe(1);
   });
 
-  it("a null cursor means never opened, which is all of the other side's messages", () => {
-    expect(countUnreadFor("HOST", thread, null)).toBe(3);
-    expect(countUnreadFor("RECIPIENT", thread, null)).toBe(1);
+  it("no receipts means never opened, which is all of the other side's messages", () => {
+    expect(countUnreadFor("HOST", thread, none)).toBe(3);
   });
 
-  it("counts strictly AFTER the cursor — what you just opened is not new", () => {
-    expect(countUnreadFor("HOST", thread, at("03"))).toBe(1);
-    expect(countUnreadFor("HOST", thread, at("04"))).toBe(0);
+  it("a receipt removes exactly that message, and nothing near it", () => {
+    expect(countUnreadFor("HOST", thread, new Set(["m3"]))).toBe(2);
+    expect(countUnreadFor("HOST", thread, new Set(["m1", "m3", "m4"]))).toBe(0);
   });
 
-  it("a cursor later than everything is zero, and never negative", () => {
-    expect(countUnreadFor("HOST", thread, "2027-01-01T00:00:00Z")).toBe(0);
-    expect(countUnreadFor("RECIPIENT", thread, "2027-01-01T00:00:00Z")).toBe(0);
+  it("★ reading is NOT a watermark — an EARLIER message stays unread when only a later one is read", () => {
+    /*
+      This is precisely what a timestamp cursor could not express, and why one was removed: a cursor
+      set past m4 would have swallowed m1 and m3 as well, including a message that had not yet
+      committed when the reader looked.
+    */
+    expect(countUnreadFor("HOST", thread, new Set(["m4"]))).toBe(2);
+  });
+
+  it("a receipt for the OTHER side's own message changes nothing", () => {
+    // m2 is HOST-authored; it was never in the Host's own count to begin with.
+    expect(countUnreadFor("HOST", thread, new Set(["m2"]))).toBe(3);
   });
 
   it("an empty thread is zero for both sides", () => {
-    expect(countUnreadFor("HOST", [], null)).toBe(0);
-    expect(countUnreadFor("RECIPIENT", [], null)).toBe(0);
+    expect(countUnreadFor("HOST", [], none)).toBe(0);
+    expect(countUnreadFor("RECIPIENT", [], none)).toBe(0);
   });
 
-  it("★ an UNPARSEABLE cursor is treated as never-read, not as everything-read", () => {
-    // Showing a message twice is recoverable. Hiding one somebody is waiting on is not.
-    expect(countUnreadFor("HOST", thread, "not-a-date")).toBe(3);
+  it("a receipt for an unknown id is inert — it can never make a count negative", () => {
+    expect(countUnreadFor("HOST", thread, new Set(["not-in-this-thread"]))).toBe(3);
   });
 });
 
@@ -133,11 +141,22 @@ describe("★ recipientNeedsHostAttention — the handled / reopen rule, stated 
     expect(recipientNeedsHostAttention({ ...base, handledAt: at("05"), unreadForHost: 1 })).toBe(true);
   });
 
-  it("★ handled is NOT cleared to achieve that — the rule reads it, it does not write it", () => {
+  it("★ this rule READS state, it never writes it — the reopen is the database's job", () => {
+    // `handled_at` is cleared by bty_post_announcement_thread_message, in the same transaction as
+    // the message that caused it. This function must not be a second place that decides.
     const row = { response: "QUESTION", handledAt: at("05"), unreadForHost: 2 };
     const before = { ...row };
     recipientNeedsHostAttention(row);
     expect(row).toEqual(before);
+  });
+
+  it("★ after the database reopens it, (a) alone already fires — and (b) still covers ACKNOWLEDGED", () => {
+    // Post-reopen the stored state IS handledAt=null, so the open-request half is true on its own.
+    expect(recipientNeedsHostAttention({ response: "QUESTION", handledAt: null, unreadForHost: 1 })).toBe(true);
+    // ACKNOWLEDGED can never satisfy (a) — the schema forbids handled_at on it — so (b) is the
+    // only thing that can ever raise such a person, and it is therefore load-bearing.
+    expect(recipientNeedsHostAttention({ response: "ACKNOWLEDGED", handledAt: null, unreadForHost: 1 })).toBe(true);
+    expect(recipientNeedsHostAttention({ response: "ACKNOWLEDGED", handledAt: null, unreadForHost: 0 })).toBe(false);
   });
 
   it("ACKNOWLEDGED is already an ending and needs nothing — until they say something new", () => {

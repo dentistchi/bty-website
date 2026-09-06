@@ -74,27 +74,34 @@ export function normalizeClientMessageKey(raw: unknown): string | null {
  * than a rule a caller is trusted to remember: `viewer` selects the messages written by the OPPOSITE
  * role, so a Host's own reply can never appear in the Host's count.
  *
- * A null cursor means "never opened", which is correctly every message the other side has sent —
- * including on the day this ships, when every existing row has one.
+ * ★ WHY THIS TAKES A SET OF READ MESSAGE IDS AND NOT A TIMESTAMP CURSOR.
  *
- * The comparison is strictly greater-than: a message stamped at the same instant the cursor was
- * moved was, by construction, part of what that person just opened.
+ * The first version compared each message's `created_at` against a per-side "last read" timestamp.
+ * That is unsound under MVCC, and not in a corner case:
+ *
+ *     T1 begins, inserts a message stamped 10:00:00, and does not commit
+ *     T2 begins at 10:00:05, sees nothing, and stores its cursor as 10:00:05
+ *     T1 commits — the message lands, still stamped 10:00:00
+ *     => created_at < cursor, so it counts as READ, permanently
+ *
+ * A person is told nobody is waiting on them while somebody is. No later action repairs it, because
+ * the cursor only moves forward. Any monotonic proxy — `clock_timestamp()`, a sequence — fails
+ * identically, because the defect is commit order versus stamp order, not resolution.
+ *
+ * So the authority is a RECEIPT PER MESSAGE. A receipt can only be written for a row the writer's
+ * snapshot actually contained, so the invisible message simply has none and stays unread. Proven
+ * against a real PostgreSQL server in `threadPostgres.pg.test.ts`.
  */
 export function countUnreadFor(
   viewer: ThreadRole,
-  messages: readonly { authorRole: ThreadRole; createdAt: string }[],
-  lastReadAt: string | null,
+  messages: readonly { messageId: string; authorRole: ThreadRole }[],
+  readMessageIds: ReadonlySet<string>,
 ): number {
   const from: ThreadRole = viewer === "HOST" ? "RECIPIENT" : "HOST";
-  const cursor = lastReadAt ? Date.parse(lastReadAt) : Number.NEGATIVE_INFINITY;
-  // An unparseable cursor is treated as never-read rather than as "everything is read": showing a
-  // message twice is recoverable, and silently hiding one somebody is waiting on is not.
-  const since = Number.isNaN(cursor) ? Number.NEGATIVE_INFINITY : cursor;
   let n = 0;
   for (const m of messages) {
     if (m.authorRole !== from) continue;
-    const at = Date.parse(m.createdAt);
-    if (Number.isNaN(at) || at > since) n += 1;
+    if (!readMessageIds.has(m.messageId)) n += 1;
   }
   return n;
 }
@@ -102,22 +109,33 @@ export function countUnreadFor(
 /**
  * ★ THE HANDLED / REOPEN RULE, STATED ONCE.
  *
- * The existing model is untouched and still means exactly what it meant: `handled_at` is the moment
- * the OWNING Host settled this person's original QUESTION or HELP_NEEDED request, it is only
- * writable for those two responses, and it is never cleared by anything in this slice — acting on a
- * request is not permission to erase the record of having acted.
+ * `handled_at` still means exactly what it meant: the moment the OWNING Host settled this person's
+ * QUESTION or HELP_NEEDED request. It is still only writable for those two responses, and the
+ * explicit `bty_handle_announcement_recipient` is still the only thing that SETS it.
  *
- * What changes is that it no longer gets the last word. A recipient who sends a NEW message after
- * being marked handled is asking for something the Host has not answered, and a stale flag that
- * means "nothing left for me here" must not be allowed to hide them.
+ * What changed after the production audit is that a new RECIPIENT message now CLEARS it, in the same
+ * database transaction that appends the message. An earlier design left the flag standing and merely
+ * out-ranked it here — which meant the stored state still said "settled" while the product behaved
+ * as though it were not, and any surface that read the column directly disagreed with any surface
+ * that read this rule. One fact, one place.
  *
- * So attention is the OR of two independent facts:
+ * READING IS NOT RESOLVING, and that is enforced in SQL too: `bty_mark_announcement_thread_read`
+ * does not touch `handled_at`, so a Host opening a conversation never marks it dealt with.
+ *
+ * Attention therefore remains the OR of two independent facts:
  *
  *   (a) the original request is open      response ∈ {QUESTION, HELP_NEEDED} and handledAt is null
  *   (b) they have said something new      unreadForHost > 0
  *
- * With no thread messages, (b) is always false and this returns exactly what the product returned
- * before — the existing behaviour is a special case of the new rule, not a thing replaced by it.
+ * (b) is still load-bearing rather than implied by (a): a recipient who answered ACKNOWLEDGED can
+ * never satisfy (a) — the schema forbids `handled_at` on that response — yet a message from them
+ * is still something the Host has not answered.
+ *
+ * ★ WHAT IS LOST, STATED PLAINLY. Clearing the column discards WHEN the Host had settled it. Only
+ * the reopen is recorded, not the history of having handled it before. `response`, `responded_at`,
+ * `question_text` and every message are untouched, so what the person actually SAID is fully
+ * preserved; if the audit of Host actions is later needed, that is an append-only log of its own,
+ * not a flag that has to mean two things at once.
  */
 export function recipientNeedsHostAttention(r: {
   response: string | null;
