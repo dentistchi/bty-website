@@ -692,14 +692,90 @@ comment on function public.bty_respond_to_announcement(uuid, uuid, text, text) i
 -- run: the filter leaves zero oids and the existing `zero_recipients` exception
 -- fires, unchanged.
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- 7a. FAIL-CLOSED PRECONDITION — THE LIVE SIGNATURE MUST BE THE ONE WE REPLACE.
+--
+-- ★ WHY THIS EXISTS, AND WHAT IT CAUGHT.
+--
+-- `create or replace function` matches on the IDENTITY ARGUMENT LIST. If the
+-- live function's parameter ORDER differs from the one written here by even one
+-- position, PostgreSQL does not replace it -- it silently creates a SECOND
+-- OVERLOAD. Both then accept the same NAMED arguments that PostgREST sends, so
+-- the next Track resolves ambiguously and fails in production, having passed
+-- every local test.
+--
+-- That is not hypothetical. Repo migration `20260907` declares
+-- (..., p_recipient_oids text[], p_service_url text default null) while
+-- PRODUCTION carries (..., p_service_url text, p_recipient_oids text[]).
+-- The repository's migration history and the live database have DIVERGED, so a
+-- test that builds its schema only from these files can never see it.
+--
+-- ★ IT REFUSES, IT DOES NOT REPAIR. No overload is dropped speculatively:
+-- dropping the wrong one would delete the function Track is currently using.
+-- The migration aborts and a person reconciles the divergence deliberately.
+--
+-- ★ IT IS RE-ENTRANT. After a successful apply the identity is unchanged, so a
+-- second run of this file passes the same gate.
+--
+-- ★ IT COMPARES ARGUMENT TYPES, NOT `pg_get_function_identity_arguments`. That
+-- function includes parameter NAMES, which are not part of what `create or
+-- replace` matches on -- so a harmless rename would read as a signature change,
+-- and the real thing being guarded (argument ORDER and TYPES) would be checked
+-- only incidentally. `format_type` over `proargtypes` is exactly the identity.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_expected constant text := 'uuid, uuid, text, text, text, text, text[]';
+  v_all integer;
+  v_match integer;
+  v_found text;
+begin
+  select count(*) into v_all
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'bty_track_announcement';
+
+  select count(*) into v_match
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'bty_track_announcement'
+     and pg_catalog.array_to_string(
+           array(select pg_catalog.format_type(t, null)
+                   from pg_catalog.unnest(p.proargtypes) as t), ', ') = v_expected;
+
+  if v_all <> 1 or v_match <> 1 then
+    select coalesce(
+             string_agg('  (' || pg_catalog.array_to_string(
+                            array(select pg_catalog.format_type(t, null)
+                                    from pg_catalog.unnest(p.proargtypes) as t), ', ') || ')',
+                        chr(10) order by p.oid),
+             '  <none>')
+      into v_found
+      from pg_catalog.pg_proc p
+      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'bty_track_announcement';
+
+    raise exception
+      using errcode = 'P0001',
+            message = 'bty_track_announcement live signature mismatch -- refusing to create a second overload',
+            detail  = format('expected exactly ONE overload with identity arguments (%s); found %s:%s%s',
+                             v_expected, v_all, chr(10), v_found),
+            hint    = 'Repo migration history and production have diverged. Reconcile the live function first; do NOT drop an overload blindly, Track is calling one of them.';
+  end if;
+end $$;
+
+
 create or replace function public.bty_track_announcement(
   p_owner_user_id uuid,
   p_source_capture_id uuid,
   p_host_framing text,
   p_tenant_id text,
   p_conversation_id text,
-  p_recipient_oids text[],
-  p_service_url text default null
+  p_service_url text,
+  p_recipient_oids text[]
 )
 returns table (announcement_id uuid, resolved_count integer, already_existed boolean)
 language plpgsql
@@ -828,8 +904,8 @@ begin
 end;
 $$;
 
-revoke all on function public.bty_track_announcement(uuid, uuid, text, text, text, text[], text) from public, anon, authenticated;
-grant execute on function public.bty_track_announcement(uuid, uuid, text, text, text, text[], text) to service_role;
+revoke all on function public.bty_track_announcement(uuid, uuid, text, text, text, text, text[]) from public, anon, authenticated;
+grant execute on function public.bty_track_announcement(uuid, uuid, text, text, text, text, text[]) to service_role;
 
-comment on function public.bty_track_announcement(uuid, uuid, text, text, text, text[], text) is
+comment on function public.bty_track_announcement(uuid, uuid, text, text, text, text, text[]) is
   'Create one tracked announcement and its frozen audience, atomically and idempotently by (owner, source). The Host''s own Entra object ids are excluded from the audience, so a person can never be both parties to a private two-party conversation; a Host who selected only themselves is refused with zero_recipients.';

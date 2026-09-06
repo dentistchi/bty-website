@@ -318,7 +318,7 @@ describe("F — the role is derived by a join, and default-deny", () => {
       "bty_post_announcement_thread_message(uuid, uuid, text, text)",
       "bty_mark_announcement_thread_read(uuid, uuid)",
       "bty_respond_to_announcement(uuid, uuid, text, text)",
-      "bty_track_announcement(uuid, uuid, text, text, text, text[], text)",
+      "bty_track_announcement(uuid, uuid, text, text, text, text, text[])",
     ]) {
       expect(code, fn).toContain(`revoke all on function public.${fn} from public, anon, authenticated;`);
       expect(code, fn).toContain(`grant execute on function public.${fn} to service_role;`);
@@ -409,9 +409,21 @@ describe("H — a Host can never be in their own audience", () => {
   });
 
   it("★ everything else about Track is untouched — signature, idempotency, dedupe, service_url", () => {
+    /*
+      ★ THE PARAMETER ORDER IS PRODUCTION'S, NOT THE REPO'S.
+
+      Repo 20260907 declares (..., p_recipient_oids text[], p_service_url text default null).
+      PRODUCTION carries     (..., p_service_url text, p_recipient_oids text[]).
+      `create or replace` matches on argument TYPES, so the repo order would have created a SECOND
+      OVERLOAD rather than replacing anything -- and both would accept the same NAMED arguments
+      PostgREST sends, making every Track call ambiguous.
+    */
     expect(code).toContain(
-      "create or replace function public.bty_track_announcement(\n  p_owner_user_id uuid,\n  p_source_capture_id uuid,\n  p_host_framing text,\n  p_tenant_id text,\n  p_conversation_id text,\n  p_recipient_oids text[],\n  p_service_url text default null\n)",
+      "create or replace function public.bty_track_announcement(\n  p_owner_user_id uuid,\n  p_source_capture_id uuid,\n  p_host_framing text,\n  p_tenant_id text,\n  p_conversation_id text,\n  p_service_url text,\n  p_recipient_oids text[]\n)",
     );
+    // ★ NO DEFAULT on p_service_url: a default would make a 6-argument form callable too, which is
+    // a second PostgREST-visible shape -- the same ambiguity by another route.
+    expect(code).not.toMatch(/p_service_url text default/);
     expect(code).toContain("returns table (announcement_id uuid, resolved_count integer, already_existed boolean)");
     expect(track).toContain("select array_agg(distinct lower(btrim(o)))");
     expect(track).toContain("where a.owner_user_id = p_owner_user_id");
@@ -425,5 +437,42 @@ describe("H — a Host can never be in their own audience", () => {
     const resolve = fnBody("bty_resolve_announcement_thread_role");
     expect(resolve.indexOf("'HOST'::text")).toBeLessThan(resolve.indexOf("'RECIPIENT'::text"));
     expect(sql).toMatch(/defensive tie-break/i);
+  });
+});
+
+/* ───────────────────────  I. THE FAIL-CLOSED SIGNATURE GATE  ─────────────────────── */
+
+describe("I — the migration refuses to run against a signature that is not production's", () => {
+  const gate = code.slice(code.indexOf("do $$"), code.indexOf("create or replace function public.bty_track_announcement"));
+
+  it("★ the gate runs BEFORE the replacement, not after", () => {
+    expect(code.indexOf("do $$")).toBeLessThan(
+      code.indexOf("create or replace function public.bty_track_announcement"),
+    );
+  });
+
+  it("★ it asserts EXACTLY ONE overload, with production's argument types", () => {
+    expect(gate).toContain("v_expected constant text := 'uuid, uuid, text, text, text, text, text[]'");
+    expect(gate).toContain("if v_all <> 1 or v_match <> 1 then");
+    expect(gate).toContain("raise exception");
+  });
+
+  it("★ it compares argument TYPES, never pg_get_function_identity_arguments", () => {
+    // That function includes parameter NAMES, which are not part of the identity `create or
+    // replace` matches on -- so a rename would read as a signature change and the real risk
+    // (argument order) would be checked only incidentally.
+    expect(gate).toContain("format_type(t, null)");
+    expect(gate).toContain("unnest(p.proargtypes)");
+    expect(gate).not.toContain("pg_get_function_identity_arguments");
+  });
+
+  it("★ it DROPS NOTHING — a wrong overload is reported, never removed", () => {
+    expect(gate).not.toMatch(/drop function/i);
+    expect(code).not.toMatch(/drop function/i);
+  });
+
+  it("★ the refusal tells a person what it found and what not to do", () => {
+    expect(gate).toContain("found %s:%s%s");
+    expect(gate).toMatch(/do NOT drop an overload blindly/i);
   });
 });

@@ -62,8 +62,48 @@ const ORDERED = [
   "20260906000000_bty_announcement_recipient_handled_v1.sql",
   "20260907000000_bty_announcement_service_url_v1.sql",
   "20260911000000_bty_bind_recipients_on_canonical_entry_v1.sql",
-  "20260912000000_bty_announcement_thread_v1.sql",
 ];
+
+/**
+ * ★ RECONCILE REPO HISTORY TO PRODUCTION TRUTH BEFORE APPLYING 20260912.
+ *
+ * Repo migration 20260907 declares `bty_track_announcement(..., p_recipient_oids text[],
+ * p_service_url text default null)`. PRODUCTION carries the other order:
+ * `(..., p_service_url text, p_recipient_oids text[])`. The migration history and the live database
+ * have DIVERGED, and 20260912's fail-closed gate refuses to run against a shape that is not
+ * production's -- correctly, because `create or replace` would otherwise add a second overload and
+ * make every Track call ambiguous.
+ *
+ * So this file, which otherwise reproduces the repo's history faithfully, replaces that one function
+ * with production's before continuing. Without this step the tests below would be proving behaviour
+ * on a schema that does not exist anywhere. The signature itself is proven in
+ * `trackSignatureLive.pg.test.ts`.
+ */
+const RECONCILE_TO_PRODUCTION = `
+drop function if exists public.bty_track_announcement(uuid, uuid, text, text, text, text[], text);
+create or replace function public.bty_track_announcement(
+  p_owner_user_id uuid,
+  p_source_capture_id uuid,
+  p_host_framing text,
+  p_tenant_id text,
+  p_conversation_id text,
+  p_service_url text,
+  p_recipient_oids text[]
+)
+returns table (announcement_id uuid, resolved_count integer, already_existed boolean)
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $fn$
+begin
+  return query select null::uuid, 0, false;
+end;
+$fn$;
+revoke all on function public.bty_track_announcement(uuid, uuid, text, text, text, text, text[]) from public, anon, authenticated;
+grant execute on function public.bty_track_announcement(uuid, uuid, text, text, text, text, text[]) to service_role;
+`;
+
+const THREAD_MIGRATION = "20260912000000_bty_announcement_thread_v1.sql";
 
 let pool: Pool;
 let reachable = false;
@@ -75,6 +115,8 @@ beforeAll(async () => {
     const c = await pool.connect();
     await c.query(BOOTSTRAP);
     for (const f of ORDERED) await c.query(readFileSync(join(MIGRATIONS, f), "utf8"));
+    await c.query(RECONCILE_TO_PRODUCTION);
+    await c.query(readFileSync(join(MIGRATIONS, THREAD_MIGRATION), "utf8"));
     c.release();
     reachable = true;
   } catch (e) {
@@ -374,8 +416,22 @@ pg("★ 7 — a Host can never be in their own audience", () => {
     return { user, cap };
   }
 
+  /*
+    NAMED arguments, deliberately — that is how PostgREST resolves this call, and a positional call
+    would silently encode a parameter ORDER that this slice just proved the repo had wrong.
+  */
   const track = (owner: string, cap: string, oids: string[]) =>
-    pool.query("select * from public.bty_track_announcement($1,$2,'framing','t1','c1',$3,null)", [owner, cap, oids]);
+    pool.query(
+      `select * from public.bty_track_announcement(
+         p_owner_user_id := $1,
+         p_source_capture_id := $2,
+         p_host_framing := 'framing',
+         p_tenant_id := 't1',
+         p_conversation_id := 'c1',
+         p_service_url := null,
+         p_recipient_oids := $3)`,
+      [owner, cap, oids],
+    );
 
   it("★ the Host's own oid is dropped from a mixed selection", async () => {
     const { user, cap } = await hostWithIdentity(OWNER_OID);
