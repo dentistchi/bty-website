@@ -41,6 +41,27 @@ which has been `outline.png` in every package since 1.0.6.
 Renaming changes ONE variable. The bytes are byte-identical to the approved 1.0.10 asset — asserted
 by sha256 in a test, not by intention.
 
+★ THE EXPORT SCALE (Slice TQ-4.9) — SIZE ONLY.
+
+With S1 finally reaching both clients, the remaining complaint was size: the glyph read smaller and
+weaker than Activity and Chat beside it. The approved artwork occupied a 24x23 box inside a 32x32
+canvas, leaving far more empty margin than the neighbouring icons use.
+
+So the export applies ONE uniform scale of 1.19 about the mark's optical centre. Every point moves
+by the same factor; no point moves independently. Stroke width stays 1.75, caps and joins stay
+round, colour stays white, topology is untouched. The SVG itself is NOT modified — it stays
+byte-frozen as the approved design authority, and the scale lives here as an export parameter, so
+what was approved as artwork and what is shipped as an asset never diverge in geometry, only in
+size.
+
+MEASURED at 1.19: bbox 28x27, margins L2/R2/T3/B2, zero ink on any canvas edge pixel, all four
+enclosed regions intact, and the minimum internal opening at 24px IMPROVES from 1px to 2px — the
+extra size opens the crossings rather than crowding them.
+
+The mark's aspect is 1.092, so a uniform scale cannot produce an arbitrary target box; width binds
+first. 28x27 falls out because the optical centre sits at y=16.4 rather than 16.0. A scale chosen to
+force a different box would have to distort the glyph, and this file will not do that.
+
 Deterministic: same input, same bytes out. No network, no font, no external binary.
 """
 import os, re
@@ -50,9 +71,11 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 SOURCE = os.path.join(HERE, "BTY_Teams_S1_Monoline.svg")
-TARGET = os.path.join(ROOT, "teams/manifest/outline-s1-v110.png")
+TARGET = os.path.join(ROOT, "teams/manifest/outline-s1-v112.png")
 
 CANVAS = 32          # Microsoft's required outline size, and the SVG's own viewBox
+EXPORT_SCALE = 1.19  # uniform, about the optical centre — see "THE EXPORT SCALE" below
+EXPECTED_CENTRE = (16.000, 16.400)   # derived from the approved points; asserted, never assumed
 SUPERSAMPLE_SS = 16  # part of the reproducible-bytes contract
 STEP = 0.02          # path resampling pitch in canvas px; well below one hi-res cell (1/16)
 
@@ -90,9 +113,23 @@ def resample(pts, step):
     return np.array(out)
 
 
+def scaled(pts, scale=EXPORT_SCALE):
+    """Uniform scale about the mark's own optical centre. Nothing else moves."""
+    cx = (pts[:, 0].min() + pts[:, 0].max()) / 2.0
+    cy = (pts[:, 1].min() + pts[:, 1].max()) / 2.0
+    # The centre is DERIVED from the approved points, then checked against the value this scale was
+    # chosen for. If the artwork ever changes, the scale stops being the one that was reviewed.
+    if abs(cx - EXPECTED_CENTRE[0]) > 1e-6 or abs(cy - EXPECTED_CENTRE[1]) > 1e-6:
+        raise SystemExit("optical centre is (%.6f, %.6f), expected %s — refusing to guess" % (cx, cy, EXPECTED_CENTRE))
+    out = pts.copy()
+    out[:, 0] = (pts[:, 0] - cx) * scale + cx
+    out[:, 1] = (pts[:, 1] - cy) * scale + cy
+    return out
+
+
 def build(canvas=CANVAS, ss=SUPERSAMPLE_SS):
     pts, width = read_glyph(open(SOURCE, encoding="utf8").read())
-    dense = resample(pts, STEP)
+    dense = resample(scaled(pts), STEP)
     n = canvas * ss
     yy, xx = np.mgrid[0:n, 0:n]
     # centre of each hi-res cell, in the SVG's own coordinate space

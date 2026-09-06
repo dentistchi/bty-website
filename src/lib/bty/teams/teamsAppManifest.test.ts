@@ -23,7 +23,7 @@ const MANIFEST_PATH = `${MANIFEST_DIR}/manifest.json`;
 const PACKAGE_PATH = "teams/dist/bty-arena-teams-t1.zip";
 
 /** The files the packager copies into the zip — nothing else may live in the manifest directory. */
-const PACKAGE_FILES = ["color.png", "manifest.json", "outline-s1-v110.png"] as const;
+const PACKAGE_FILES = ["color.png", "manifest.json", "outline-s1-v112.png"] as const;
 
 type Manifest = {
   $schema?: string;
@@ -58,10 +58,16 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.11, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.12, and points $schema at the same version", () => {
     /*
-      1.0.11 (Slice TQ-4.7B) is NOT a design change — the icon bytes are byte-identical to 1.0.10's.
-      It changes the asset's FILENAME, and nothing else, to isolate one hypothesis.
+      1.0.12 (Slice TQ-4.9) is a SIZE change and nothing else. 1.0.11 proved the hypothesis it was
+      built to test — renaming the asset path made the approved S1 finally appear on both clients,
+      so Teams was caching the icon by path. With S1 visible, the remaining complaint was that it
+      read smaller and weaker than Activity and Chat; the export now applies a uniform 1.19 scale
+      about the mark's optical centre. The approved SVG is untouched and still byte-frozen.
+
+      The filename advances to `outline-s1-v112.png` deliberately: the path-cache behaviour is now
+      known, so every icon change from here gets a fresh path rather than hoping for a refresh.
 
       1.0.10 shipped the Founder-approved S1 glyph. The admin catalog showed 1.0.10, the app bar is
       documented to use the outline icon, the package provably contained S1 — and the iPhone still
@@ -78,7 +84,7 @@ describe("Teams app manifest — identity", () => {
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.11");
+    expect(manifest.version).toBe("1.0.12");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");

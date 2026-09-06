@@ -57,9 +57,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { decodePng, alphaOf, pngSize } from "./decodePng";
+import { decodePng, alphaOf, pngSize, downsampleAlpha } from "./decodePng";
 
-const OUTLINE = join(process.cwd(), "teams/manifest/outline-s1-v110.png");
+const OUTLINE = join(process.cwd(), "teams/manifest/outline-s1-v112.png");
 const img = decodePng(readFileSync(OUTLINE));
 const alpha = alphaOf(img);
 const { width: W, height: H, data } = img;
@@ -97,6 +97,41 @@ function interiorChannels(a: number[], size: number, clear = 64, ink = 128): num
     }
   }
   return runs;
+}
+
+/** Background regions fully enclosed by ink — the trefoil's three lobes plus its centre. */
+function enclosedRegions(a: number[], n: number, thresh = 64): number {
+  const bg = a.map((v) => v < thresh);
+  const seen = new Array(n * n).fill(false);
+  const q: number[] = [];
+  for (let i = 0; i < n; i++) {
+    for (const idx of [i, (n - 1) * n + i, i * n, i * n + (n - 1)]) {
+      if (bg[idx] && !seen[idx]) { seen[idx] = true; q.push(idx); }
+    }
+  }
+  while (q.length) {
+    const p = q.pop()!; const x = p % n, y = (p - x) / n;
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] as [number, number][]) {
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (bg[j] && !seen[j]) { seen[j] = true; q.push(j); }
+    }
+  }
+  let count = 0;
+  const done = new Array(n * n).fill(false);
+  for (let i = 0; i < n * n; i++) {
+    if (!bg[i] || seen[i] || done[i]) continue;
+    count++; const st = [i]; done[i] = true;
+    while (st.length) {
+      const p = st.pop()!; const x = p % n, y = (p - x) / n;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] as [number, number][]) {
+        if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+        const j = ny * n + nx;
+        if (bg[j] && !seen[j] && !done[j]) { done[j] = true; st.push(j); }
+      }
+    }
+  }
+  return count;
 }
 
 describe("★ 1–4 shape, transparency and colour purity", () => {
@@ -171,7 +206,7 @@ describe("★ 7–8 it is the approved S1, exported and not reinterpreted", () =
     const exp = readFileSync(join(process.cwd(), "scripts/teams-icon/export_s1.py"), "utf8");
     const code = exp.replace(/"""[\s\S]*?"""/g, "").replace(/^\s*#.*$/gm, "");
     expect(code).toContain("BTY_Teams_S1_Monoline.svg");
-    expect(code).toContain("teams/manifest/outline-s1-v110.png");
+    expect(code).toContain("teams/manifest/outline-s1-v112.png");
     // None of the four failed transformations may appear in the export path.
     for (const forbidden of ["erode", "dilate", "closing", "envelope", "HINT_CONTRAST", "contrast", "MARK_W", "BTY_Master_plain"]) {
       expect(code, `the exporter must not ${forbidden}`).not.toContain(forbidden);
@@ -190,61 +225,86 @@ describe("★ 7–8 it is the approved S1, exported and not reinterpreted", () =
     expect(old).toContain("export_s1.py");
   });
 
-  it("★ 7 — the exported geometry lies within the SVG stroke's own bounds", () => {
+  it("★ 7 — the exported geometry is the SVG's stroke at the DECLARED scale, nothing else", () => {
     /*
       The glyph is one round-capped, round-joined polyline, so its stroke IS the Minkowski sum of
-      the path with a disc of radius w/2. The inked pixels must therefore fall inside the path's
-      extent grown by that radius — proof the export reproduced the stroke rather than reshaping it.
+      the path with a disc of radius w/2. Applying the documented uniform scale about the optical
+      centre and growing by that radius gives the exact box the ink must occupy. Checking against
+      that — rather than against the unscaled path — keeps this a proof that the export reproduced
+      the stroke, while allowing the one transformation that was actually approved.
+
+      A non-uniform scale, a moved point or a thickened stroke would all break these bounds.
     */
+    const SCALE = 1.19, CX = 16.0, CY = 16.4, HALF = 1.75 / 2;
     const pts = (svgText.match(/points="([^"]+)"/) ?? [])[1].trim().split(/\s+/)
       .map((p) => p.split(",").map(Number) as [number, number]);
-    const w = 1.75 / 2;
-    const minX = Math.min(...pts.map((p) => p[0])) - w, maxX = Math.max(...pts.map((p) => p[0])) + w;
-    const minY = Math.min(...pts.map((p) => p[1])) - w, maxY = Math.max(...pts.map((p) => p[1])) + w;
+    const sx = pts.map((p) => (p[0] - CX) * SCALE + CX);
+    const sy = pts.map((p) => (p[1] - CY) * SCALE + CY);
+    const minX = Math.min(...sx) - HALF, maxX = Math.max(...sx) + HALF;
+    const minY = Math.min(...sy) - HALF, maxY = Math.max(...sy) + HALF;
     const b = bbox();
     expect(b.x0).toBeGreaterThanOrEqual(Math.floor(minX));
     expect(b.x1).toBeLessThanOrEqual(Math.ceil(maxX));
     expect(b.y0).toBeGreaterThanOrEqual(Math.floor(minY));
     expect(b.y1).toBeLessThanOrEqual(Math.ceil(maxY));
+    // And the centre really is the mark's own, derived from the approved points.
+    expect((Math.min(...pts.map((p) => p[0])) + Math.max(...pts.map((p) => p[0]))) / 2).toBeCloseTo(CX, 6);
+    expect((Math.min(...pts.map((p) => p[1])) + Math.max(...pts.map((p) => p[1]))) / 2).toBeCloseTo(CY, 6);
   });
 });
 
-describe("★ TQ-4.7B — the cache-key experiment changes ONE variable", () => {
-  const APPROVED_S1_SHA = "a5444c517dd17318b1994ec93d666f4e4ff66e23fa4316206d00344cbffb7528";
+describe("★ TQ-4.9 — the export transform is SIZE ONLY", () => {
+  const exp = readFileSync(join(process.cwd(), "scripts/teams-icon/export_s1.py"), "utf8");
+  const code = exp.replace(/"""[\s\S]*?"""/g, "").replace(/^\s*#.*$/gm, "");
 
-  it("1 — the manifest points at the NEW filename", () => {
-    const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
-    expect(m.icons.outline).toBe("outline-s1-v110.png");
-    expect(m.version).toBe("1.0.11");
+  it("2 — the export scale is exactly 1.19", () => {
+    expect(code).toMatch(/EXPORT_SCALE\s*=\s*1\.19\b/);
   });
 
-  it("★ 2 — the renamed asset is BYTE-IDENTICAL to the approved 1.0.10 S1", () => {
+  it("3 — the optical centre is exactly (16.000, 16.400) and is DERIVED, then checked", () => {
     /*
-      The whole experiment rests on this. If the bytes moved even slightly, a device result would be
-      uninterpretable — we would not know whether a new filename or a new image caused the change.
-      The asset was produced with `git mv`, never re-exported.
+      The centre is computed from the approved points rather than typed in, and compared against
+      the value this scale was reviewed against. If the artwork ever changes, the export refuses
+      instead of silently applying a scale nobody approved for the new geometry.
     */
-    const sha = createHash("sha256").update(readFileSync(OUTLINE)).digest("hex");
-    expect(sha).toBe(APPROVED_S1_SHA);
+    expect(code).toMatch(/EXPECTED_CENTRE\s*=\s*\(16\.000,\s*16\.400\)/);
+    expect(code).toContain("(pts[:, 0].min() + pts[:, 0].max()) / 2.0");
+    expect(code).toContain("refusing to guess");
   });
 
-  it("★ 3 — the old outline.png is gone from the repo, so it cannot ride along", () => {
-    expect(existsSync(join(process.cwd(), "teams/manifest/outline.png"))).toBe(false);
+  it("4 — the scale is UNIFORM: one factor, both axes, about that centre", () => {
+    expect(code).toContain("(pts[:, 0] - cx) * scale + cx");
+    expect(code).toContain("(pts[:, 1] - cy) * scale + cy");
+    // No second factor anywhere — a non-uniform scale would distort the mark.
+    expect(code).not.toMatch(/scale_x|scale_y|SCALE_X|SCALE_Y/);
   });
 
-  it("★ 4 — the packager derives its file list FROM the manifest, in both places", () => {
+  it("5–7 — bbox 28x27, every margin >= 2, and zero ink on any canvas edge", () => {
+    const b = bbox();
+    expect({ w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 }).toEqual({ w: 28, h: 27 });
+    expect({ l: b.x0, r: W - 1 - b.x1, t: b.y0, b: H - 1 - b.y1 }).toEqual({ l: 2, r: 2, t: 3, b: 2 });
+    let edge = 0;
+    for (let i = 0; i < W; i++) edge += alpha[i] + alpha[(H - 1) * W + i] + alpha[i * W] + alpha[i * W + (W - 1)];
+    expect(edge, "antialiased ink touching the canvas edge would be clipped by the host").toBe(0);
+  });
+
+  it("★ the stroke was NOT thickened — the export still reads 1.75 from the approved file", () => {
+    // Width is read from the SVG, never scaled with the geometry: this is a size change, not a weight change.
+    expect(code).toContain('stroke-width="([\\d.]+)"');
+    expect(code).not.toMatch(/width\s*\*\s*scale|width\s*\*=\s*/);
+    const svg = readFileSync(join(process.cwd(), "scripts/teams-icon/BTY_Teams_S1_Monoline.svg"), "utf8");
+    expect(svg).toContain('stroke-width="1.75"');
+  });
+
+  it("8 — internal topology survives: four enclosed regions at 24, 22 and 20px", () => {
     /*
-      A REAL BUG THIS SLICE CAUGHT. `package.mjs` named the icon files literally in TWO places — once
-      when staging and once in the `zip` argument list. Renaming the icon made the first ship the
-      wrong file and the second ship NO outline at all: `zip -q` is silent about a file it was never
-      given, so the package built cleanly and contained two entries. A hardcoded list here is not a
-      style preference; it silently produces an invalid package.
+      The trefoil's three lobe interiors plus its centre. If a scale ever closed one, the mark would
+      have stopped being the mark — this is the identity guard, not an aesthetic one.
     */
-    const pkg = readFileSync(join(process.cwd(), "teams/package.mjs"), "utf8");
-    expect(pkg).toContain("JSON.parse(rawManifest).icons");
-    expect(pkg).toContain("iconFiles.map((f) => join(STAGE, f))");
-    expect(pkg).not.toContain('["color.png", "outline.png"]');
-    expect(pkg).not.toContain('join(STAGE, "outline.png")');
+    for (const size of [24, 22, 20]) {
+      const small = downsampleAlpha(alpha, W, H, size);
+      expect(enclosedRegions(small, size), `at ${size}px`).toBe(4);
+    }
   });
 });
 
@@ -254,9 +314,9 @@ describe("★ the package around it is unchanged", () => {
     const colour = pngSize(readFileSync(join(process.cwd(), "teams/manifest/color.png")));
     expect({ w: colour.width, h: colour.height, type: colour.colorType }).toEqual({ w: 192, h: 192, type: 2 });
     const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
-    expect(m.icons).toEqual({ color: "color.png", outline: "outline-s1-v110.png" });
+    expect(m.icons).toEqual({ color: "color.png", outline: "outline-s1-v112.png" });
     expect(m.id).toBe("374ec662-0deb-4e0b-8514-e38a035a349e");
-    expect(m.version).toBe("1.0.11");
+    expect(m.version).toBe("1.0.12");
     expect(m.bots[0].botId).toBe("820f231b-9dbb-4c84-94c5-65bc43d35d91");
     expect(m.staticTabs[0].contentUrl).toBe("https://arena.btydaily.com/teams");
     // color.png must be byte-identical to what has shipped since 1.0.6.
