@@ -2098,7 +2098,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               */}
               <div className="flex justify-end" data-testid="me-language">
                 <Suspense fallback={<span className="px-2 py-1 text-xs text-white/50">…</span>}>
-                  <LangSwitch ensureParams={{ tab: "me" }} />
+                  <LangSwitch ensureParams={{ tab: "me" }} current={locale === "ko" ? "ko" : "en"} />
                 </Suspense>
               </div>
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />

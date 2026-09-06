@@ -47,12 +47,44 @@ export type BottomNavProps = {
  * BTY Navigation Rule (D5): navigation never competes, content is hero, nav is the floor.
  * 고정 하단, locale 기반 href.
  */
+/**
+ * Is this path a surface for someone who is NOT signed in?
+ *
+ * Matched on the segment AFTER the locale, so `/en/bty/login`, `/ko/bty/login` and any deeper
+ * auth step are all covered while `/en/bty/leaderboard` is not.
+ */
+export function isAuthSurfacePath(pathname: string): boolean {
+  // The measured contents of the `(public)` route group, plus the auth steps that share its shape.
+  // Route groups do not appear in the URL, so these are the real paths.
+  return /^\/(en|ko)\/bty\/(login|forgot-password|signup|auth)(\/|$)/.test(pathname);
+}
+
 export default function BottomNav({
   locale,
   className = "",
   "aria-label": ariaLabel = "Main navigation",
 }: BottomNavProps) {
   const pathname = usePathname() ?? "";
+
+  /*
+    ★ A LOGIN PAGE IS A LOGIN PAGE (Teams locale defect, 2026-09-06).
+
+    `[locale]/bty/layout.tsx` wraps EVERY `/bty/*` route in `ArenaLayoutShell`, and login lives
+    under it — so an unauthenticated person was handed a sign-in screen wearing the full retired
+    five-tab floor (Today·Arena·Foundry·Center·Me). That is navigation into an application they are
+    not inside, on a surface whose whole job is to say they are not inside it.
+
+    Found by tracing a real device report: changing language in the Teams tab built `/ko/teams`,
+    which does not exist, so middleware redirected to `/ko/bty/login` and the retired shell
+    appeared. The locale defect itself is repaired in `LangSwitch`; this is the containment, so no
+    OTHER road to an auth surface can dress it up as a signed-in app either.
+
+    CONTAINMENT, NOT DELETION. Nothing legacy is removed: `nav-items.ts`, the five items and every
+    historical route that still mounts this component are untouched, because the reachability audit
+    showed those surfaces still exist. Only the auth surfaces stop wearing it.
+  */
+  if (isAuthSurfacePath(pathname)) return null;
+
   const loc = (locale === "ko" ? "ko" : "en") as Locale;
   const t = getMessages(loc).uxPhase1Stub;
   const { contract: arenaEntry } = useArenaEntryResolution(loc);
