@@ -217,7 +217,8 @@ describe("★ the success confirmation is light, and still visible", () => {
     const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
     expect(body.task.value.title, "Teams already attributes the command to BTY").toBeUndefined();
     expect(body.task.value.card.content.body[0].size, "a receipt, not a headline").toBeUndefined();
-    expect(body.task.value.height).toBe("small");
+    // The height moved to an explicit 130px in the device-gated experiment below; what this test
+    // guards is the absence of a header and headline sizing, which is unchanged.
     expect(body.task.value.width).toBe("small");
   });
 
@@ -247,5 +248,42 @@ describe("★ the success confirmation is light, and still visible", () => {
     for (const leak of ["NOT_LINKED", "500", "error", "code"]) {
       expect(JSON.stringify(body), leak).not.toContain(leak);
     }
+  });
+});
+
+/**
+ * ★ DEVICE-GATED HEIGHT EXPERIMENT (2026-09-07).
+ *
+ * The confirmation content is already one line, and the iPhone still renders it inside a nearly
+ * full-height sheet — so the empty space is the Teams DIALOG CONTAINER, not Adaptive Card padding,
+ * and no further trimming of the card can reach it. Teams documents numeric pixel heights for
+ * message-extension dialogs; whether iOS honours them is unknown and cannot be feature-detected.
+ *
+ * These tests pin the numbers so the experiment is reproducible and so a later "tidy-up" cannot
+ * silently revert it to "small" and lose the measurement.
+ */
+describe("★ explicit pixel height on the terminal confirmations", () => {
+  it("★ Save success asks for 130px, small width, and is still one line", async () => {
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(body.task.type).toBe("continue");
+    expect(body.task.value.height).toBe(130);
+    expect(body.task.value.width).toBe("small");
+    expect(body.task.value.title).toBeUndefined();
+    const card = body.task.value.card;
+    expect(card.content.body).toHaveLength(1);
+    expect(card.content.body[0].text).toBe("✓ Saved");
+    expect(card.content.actions).toBeUndefined();
+  });
+
+  it("★ A FAILURE KEEPS \"small\" — the number must not reach a message someone has to read", async () => {
+    /*
+      `say()` builds the same card for refusals, and those are longer sentences. A pixel height
+      pinned globally could clip the one message that actually matters, so only the success path
+      passes a number.
+    */
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(body.task.value.height).toBe("small");
+    expect(cardText(body)).toBe("Sign in to BTY with Microsoft first.");
   });
 });

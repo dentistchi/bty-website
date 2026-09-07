@@ -82,12 +82,24 @@ export function trackDialogCard() {
   };
 }
 
+/** Measured on a phone, not chosen for looks — see the note inside. */
+export const TRACK_CONFIRM_HEIGHT = 170;
+
 /** The one-line confirmation after a successful Track. Calm, and it states the denominator. */
 export function trackConfirmationCard(count: number) {
   const people = count === 1 ? "1 person" : `${count} people`;
   return {
     // No `title` — see the note on the Save confirmation. Teams already attributes this to BTY.
-    height: "small",
+    /*
+      ★ DEVICE-GATED EXPERIMENT (2026-09-07): an explicit pixel height, because Teams iOS renders
+      this inside a nearly full-height sheet even at "small" and the empty space is the DIALOG
+      CONTAINER rather than card padding. 170 rather than Save's 130 because this receipt carries a
+      second line — the destination guidance, which is navigation and stays.
+
+      The SETUP dialog above is untouched at medium/medium: it holds a people picker and a text
+      input, and shrinking it would be a different change with a different risk.
+    */
+    height: TRACK_CONFIRM_HEIGHT,
     width: "small",
     card: {
       contentType: ADAPTIVE_CARD,

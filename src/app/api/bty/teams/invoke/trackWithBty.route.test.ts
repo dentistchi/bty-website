@@ -308,3 +308,27 @@ describe("★ Track is a COLLABORATION action", () => {
     expect(isActiveFoundryHost).not.toHaveBeenCalled();
   });
 });
+
+describe("★ Track terminal confirmation — explicit pixel height (device-gated)", () => {
+  it("★ 170px, small width, and the destination guidance survives", async () => {
+    const { trackConfirmationCard, TRACK_CONFIRM_HEIGHT } = await import("@/lib/bty/teams/trackDialogCard");
+    const v = trackConfirmationCard(3) as {
+      height: number; width: string; title?: unknown;
+      card: { content: { body: { text: string }[] } };
+    };
+    expect(TRACK_CONFIRM_HEIGHT).toBe(170);
+    expect(v.height).toBe(170);
+    expect(v.width).toBe("small");
+    expect(v.title, "no redundant BTY header").toBeUndefined();
+    expect(v.card.content.body[0].text).toBe("✓ Tracking started");
+    // Navigation, not decoration: a real Track succeeded once and the Host could not find it.
+    expect(v.card.content.body[1].text).toBe("3 people · See it in Today → Tracking.");
+  });
+
+  it("★ THE SETUP DIALOG IS UNTOUCHED — it holds a picker and an input", async () => {
+    const { trackDialogCard } = await import("@/lib/bty/teams/trackDialogCard");
+    const v = trackDialogCard() as { height: string; width: string };
+    expect(v.height).toBe("medium");
+    expect(v.width).toBe("medium");
+  });
+});

@@ -70,7 +70,16 @@ export const dynamic = "force-dynamic";
  */
 const ADAPTIVE_CARD = "application/vnd.microsoft.card.adaptive";
 
-function confirmationCard(text: string) {
+/**
+ * ★ `height` IS A PARAMETER SO THE EXPERIMENT CANNOT REACH A FAILURE MESSAGE.
+ *
+ * `say()` builds this card for successes AND refusals, and the refusals are longer sentences
+ * ("Sign in to BTY with Microsoft first.", "Add a line about what they should know or do."). Pinning
+ * a numeric pixel height globally would risk clipping the one message a person actually needs to
+ * read. Only the terminal SUCCESS passes a number; everything else keeps `"small"`, exactly as it
+ * shipped.
+ */
+function confirmationCard(text: string, height: number | "small" = "small") {
   return {
     /*
       ★ NO `title`, DELIBERATELY (2026-09-07, Founder device observation).
@@ -84,7 +93,7 @@ function confirmationCard(text: string) {
       Teams mobile still presents a task module as a sheet, so this asks for the smallest one rather
       than pretending we control it.
     */
-    height: "small",
+    height,
     width: "small",
     card: {
       contentType: ADAPTIVE_CARD,
@@ -99,11 +108,23 @@ function confirmationCard(text: string) {
   };
 }
 
-function say(text: string, invokeName?: TeamsInvokeName) {
+function say(text: string, invokeName?: TeamsInvokeName, height: number | "small" = "small") {
   return invokeName === TEAMS_INVOKE_FETCH_TASK
-    ? NextResponse.json({ task: { type: "continue", value: confirmationCard(text) } })
+    ? NextResponse.json({ task: { type: "continue", value: confirmationCard(text, height) } })
     : NextResponse.json({ composeExtension: { type: "message", text } });
 }
+
+/*
+  ★ DEVICE-GATED EXPERIMENT (2026-09-07). Teams iOS renders this confirmation inside a nearly
+  full-height sheet even at `height: "small"`, and the empty space is the DIALOG CONTAINER, not card
+  padding — so no amount of trimming the Adaptive Card can reach it. Teams documents numeric pixel
+  heights for message-extension dialogs; whether the mobile client honours them is unknown and
+  cannot be feature-detected, so these two numbers exist to be measured on a phone.
+
+  If the sheet is still nearly full height afterwards, that is the answer: the remaining whitespace
+  is platform chrome, and the next attempt must not be another Adaptive Card layout change.
+*/
+const SAVE_CONFIRM_HEIGHT = 130;
 
 /** A dialog (or a confirmation) rather than a bare message — see the card note above. */
 function dialog(value: unknown, invokeName?: TeamsInvokeName) {
@@ -318,5 +339,5 @@ export async function POST(req: NextRequest) {
     return say(sourceProblem ? MSG.cannotSave : MSG.serverBusy, parsed.invokeName);
   }
 
-  return say(MSG.saved, parsed.invokeName);
+  return say(MSG.saved, parsed.invokeName, SAVE_CONFIRM_HEIGHT);
 }
