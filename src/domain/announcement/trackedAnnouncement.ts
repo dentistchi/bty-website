@@ -186,6 +186,16 @@ export type RecipientProjection = {
    * `status`, which means something different: that a Host deliberately closed their own run.
    */
   readonly hostAvailable: boolean;
+  /**
+   * ★ THE RUN'S OWN LIFECYCLE, so a surface can tell "no Host" from "the Host closed this".
+   *
+   * Two different facts, deliberately not merged: `hostAvailable: false` means the account is gone,
+   * `status: "closed"` means a Host deliberately ended their run. Both make a Track read-only, and a
+   * reader deserves to know which one happened.
+   *
+   * A closed value, and nothing else. It names nobody and says nothing about any other recipient.
+   */
+  readonly status: "active" | "closed";
 };
 
 /** Only `https:` and Teams' own scheme may become a tappable link. */
@@ -206,6 +216,7 @@ export function projectForRecipient(row: {
   unreadCount?: unknown;
   messageCount?: unknown;
   hostAvailable?: unknown;
+  status?: unknown;
 }): RecipientProjection {
   return {
     announcementId: row.announcementId,
@@ -224,5 +235,11 @@ export function projectForRecipient(row: {
       unknown as "no Host" would silently make every live Track read-only.
     */
     hostAvailable: row.hostAvailable === undefined ? true : row.hostAvailable !== false,
+    /*
+      ★ ONLY the literal "closed" is closed. An absent or unrecognised value reads as active, the
+      same fail-safe direction the server partition uses: mistaking an unknown for closed would
+      silently freeze a live conversation, which is the dead end this whole slice exists to remove.
+    */
+    status: row.status === "closed" ? "closed" : "active",
   };
 }

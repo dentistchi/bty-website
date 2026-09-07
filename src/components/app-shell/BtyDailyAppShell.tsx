@@ -10,6 +10,7 @@ import { parseTodayDeepLink, type TodayTarget } from "@/components/app-shell/tod
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
+import PastTracks from "@/components/app-shell/PastTracks";
 import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayHome from "@/components/app-shell/TodayHome";
@@ -1293,7 +1294,7 @@ export default function BtyDailyAppShell({
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
-  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account">("home");
+  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "past-tracks" | "account">("home");
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
@@ -2070,6 +2071,19 @@ export default function BtyDailyAppShell({
                 setTab("learn");
               }}
             />
+          ) : meView === "past-tracks" ? (
+            /*
+              ★ RETRIEVAL, NOT A SECOND TODAY.
+
+              Today lets a person remove a settled Track and every earlier slice made sure the record
+              survives that. Nothing showed it to them afterwards, and for a Track whose Host account
+              has been deleted that was permanent — no new activity can ever lift it back, so the
+              conversation the database is deliberately keeping had no door. This is the door.
+
+              Today and Past are a PARTITION decided in the service by one predicate, so a Track is
+              in exactly one of them and neither surface can drift from the other.
+            */
+            <PastTracks locale={locale} onBack={() => setMeView("home")} />
           ) : meView === "account" ? (
             // Account detail (B3A.2C-R1): the canonical account-management surface — current
             // email + Switch account + Sign out — behind one calm "Account" row, not a
@@ -2145,6 +2159,7 @@ export default function BtyDailyAppShell({
                     Until it does, one honest row beats two that lie about being different.
                   */
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
+                  { id: "me-row-past-tracks", label: locale === "ko" ? "지난 Track" : "Past Tracks", go: () => setMeView("past-tracks") },
                   { id: "me-row-center", label: locale === "ko" ? "센터" : "Center", go: () => setMeView("center") },
                   { id: "me-account-row", label: locale === "ko" ? "계정" : "Account", go: () => setMeView("account") },
                 ].map((r) => (

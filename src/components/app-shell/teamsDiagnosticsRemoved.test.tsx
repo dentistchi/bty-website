@@ -63,22 +63,30 @@ afterEach(() => {
 });
 
 describe("★ ORDINARY APP UX CONTAINS NO DIAGNOSTIC ENTRY", () => {
-  it("★ inside the Teams tab, Me holds exactly the three real rows and nothing else", async () => {
+  it("★ inside the Teams tab, Me holds exactly the real product rows and nothing else", async () => {
     at("/teams");
     stubFetch();
     const home = await gotoMe();
     const rows = Array.from(home.querySelectorAll("nav button")).map((r) => r.getAttribute("data-testid"));
-    expect(rows).toEqual(["me-row-learned", "me-row-center", "me-account-row"]);
+    /*
+      The list grew by ONE, deliberately: "Past Tracks" is a real product destination — the door
+      back to a Track that left Today — not a diagnostic. What this guard exists to catch is a
+      temporary/developer entry reaching ordinary people, and that is asserted directly below rather
+      than through a row count that any legitimate feature would break.
+    */
+    expect(rows).toEqual(["me-row-learned", "me-row-past-tracks", "me-row-center", "me-account-row"]);
     expect(screen.queryByTestId("me-row-teams-diagnostics")).toBeNull();
     expect(home.textContent).not.toContain("Teams display diagnostics");
+    expect(home.textContent, "no diagnostic vocabulary of any kind").not.toMatch(/diagnostic|debug|dev only/i);
   });
 
-  it("on the web the rows are identical — no row moved when the temporary one left", async () => {
+  it("on the web the rows are identical — the Teams tab and the web show the same Me", async () => {
     at("/en/app");
     stubFetch();
     const home = await gotoMe();
     expect(Array.from(home.querySelectorAll("nav button")).map((r) => r.getAttribute("data-testid"))).toEqual([
       "me-row-learned",
+      "me-row-past-tracks",
       "me-row-center",
       "me-account-row",
     ]);

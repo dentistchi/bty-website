@@ -292,7 +292,14 @@ describe("★ 10-11 — attention outranks tidiness", () => {
   it("★ 10 — RESURFACING is a SERVER rule, not a client one", () => {
     // The client never decides what is hidden; it renders what the owner-scoped route returns.
     const svc = read("src/lib/bty/announcement/announcementService.server.ts");
-    expect(svc).toContain("isHiddenFromToday");
+    /*
+      `isHiddenFromToday` is now reached through `isTrackOnToday`, which Past Tracks negates so the
+      two surfaces are one partition. The rule did not move to the client — it moved one level up,
+      still in this file, still server-side.
+    */
+    expect(svc).toContain("isTrackInScope");
+    expect(read("src/domain/daily/todayDismissal.ts"), "and it still composes the dismissal rule")
+      .toMatch(/export function isTrackOnToday[\s\S]*?isHiddenFromToday\(/);
     // A monotonic COUNT is the authority — never a timestamp. See the MVCC note in the domain.
     expect(svc).toContain("recipientActivityVersion");
     expect(svc).toContain("hostActivityVersion");

@@ -207,8 +207,18 @@ describe("★ the road that was missing: GET /mine", () => {
     expect(MINE).not.toMatch(/const\s+\w+\s*=\s*await bindAnnouncementRecipientsForUser/);
   });
 
-  it("the response is still owner-scoped to the session, never a supplied id", () => {
+  it("★ the response is still owner-scoped to the session, never a supplied id", () => {
+    /*
+      This used to ban `searchParams.get(` outright, as a proxy for "no identity comes from the
+      request". Past Tracks now reads ONE query parameter, so the proxy would have failed on a read
+      that carries no identity at all. The rule itself is unchanged and asserted directly instead:
+      the caller is `user.id`, the only parameter read is `scope`, and its value can only ever be
+      one of two literals — there is no request-supplied value that can become a user.
+    */
     expect(MINE).toContain("user.id");
-    expect(MINE).not.toMatch(/searchParams\.get\(|req\.json\(\)/);
+    expect(MINE, "nothing is taken from a request body").not.toMatch(/req\.json\(\)/);
+    const params = [...MINE.matchAll(/searchParams\.get\("([^"]+)"\)/g)].map((m) => m[1]);
+    expect(params, "exactly one parameter, and it is not an identity").toEqual(["scope"]);
+    expect(MINE).toMatch(/=== "past" \? "past" : "today"/);
   });
 });

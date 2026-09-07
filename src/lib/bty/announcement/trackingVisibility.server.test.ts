@@ -98,12 +98,31 @@ describe("★ the Host projection never selects a directory identity", () => {
 });
 
 describe("★ 9. a participant sees only rows bound to their own id", () => {
-  it("★ listMyAnnouncements filters by user_id and by active status", async () => {
+  it("★ listMyAnnouncements filters by user_id — the privacy scope is still in the query", async () => {
     const { client, seen } = db({ bty_tracked_announcement_recipients: [] });
     await listMyAnnouncements(client, "u-1");
     const r = seen.find((s) => s.table === "bty_tracked_announcement_recipients")!;
     expect(r.filters).toContainEqual(["user_id", "u-1"]);
-    expect(r.filters).toContainEqual(["bty_tracked_announcements.status", "active"]);
+  });
+
+  it("★ status is NO LONGER filtered in SQL — and that is what makes Past retrievable", async () => {
+    /*
+      It used to be `.eq("bty_tracked_announcements.status", "active")` here. That put half the
+      Today rule in the query and half in the code, so a CLOSED run was excluded from Today by the
+      query AND from Past by never being fetched — it existed in neither, which is precisely the
+      unreachable-history defect Past Tracks exists to close.
+
+      The rule did not weaken; it moved into `isTrackOnToday`, where a negation can reach it. The
+      privacy scope (`user_id`) stayed in the query, where it cannot be forgotten by a renderer.
+    */
+    const { client, seen } = db({ bty_tracked_announcement_recipients: [] });
+    await listMyAnnouncements(client, "u-1");
+    const r = seen.find((s) => s.table === "bty_tracked_announcement_recipients")!;
+    expect(r.filters.map(([k]) => k)).not.toContain("bty_tracked_announcements.status");
+    // ...and the column is now SELECTED, because the partition needs to read it.
+    expect(r.select).toContain("status");
+    expect(SERVICE, "one predicate decides both halves").toMatch(/isTrackInScope\(scope, \{/);
+    expect(SERVICE, "a closed run is historical for a RECIPIENT").toMatch(/status === "closed"/);
   });
 
   it("★ 5. an unbound row belongs to nobody, so no participant query can return it", () => {
@@ -318,7 +337,7 @@ describe("★ 7+8. names never leave the owner-scoped route", () => {
     const HOST_ROUTE = code(readFileSync("src/app/api/bty/announcements/host/route.ts", "utf8"));
     const MINE_ROUTE = code(readFileSync("src/app/api/bty/announcements/mine/route.ts", "utf8"));
     expect(HOST_ROUTE).toContain("listHostAnnouncements");
-    expect(HOST_ROUTE).toMatch(/listHostAnnouncements\(admin, user\.id\)/);
+    expect(HOST_ROUTE).toMatch(/listHostAnnouncements\(admin, user\.id,/);
     expect(MINE_ROUTE).not.toContain("listHostAnnouncements");
     expect(MINE_ROUTE).not.toContain("resolveDisplayNames");
   });

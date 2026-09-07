@@ -31,6 +31,17 @@ export const dynamic = "force-dynamic";
   What remains is the part that was always load-bearing: the row must be BOUND to the caller's own
   canonical user id. That is unchanged, and it is what makes an unbound row invisible to everyone.
 */
+/**
+ * Which half of the Today/Past partition the caller wants.
+ *
+ * ★ ANYTHING BUT THE LITERAL "past" MEANS TODAY. A typo, a stale client, or a missing parameter
+ * must never widen what comes back — Today is the smaller, action-only half, so an unrecognised
+ * value fails toward showing less rather than quietly returning a person's whole history.
+ */
+function scopeFrom(req: NextRequest): "today" | "past" {
+  return req.nextUrl.searchParams.get("scope") === "past" ? "past" : "today";
+}
+
 export async function GET(req: NextRequest) {
   const { user, base } = await requireUser(req);
   if (!user) return unauthenticated(req, base);
@@ -61,7 +72,7 @@ export async function GET(req: NextRequest) {
   */
   await bindAnnouncementRecipientsForUser(admin, user.id);
 
-  const items = await listMyAnnouncements(admin, user.id);
+  const items = await listMyAnnouncements(admin, user.id, { scope: scopeFrom(req) });
   const res = NextResponse.json({ ok: true, items }, { status: 200 });
   res.headers.set("Cache-Control", "private, no-store");
   copyCookiesAndDebug(base, res, req, true);

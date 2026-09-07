@@ -153,6 +153,12 @@ describe("what a recipient may see — the privacy whitelist", () => {
       carries no id, no name and nothing about the Host beyond the fact the surface must act on:
       whether new writing is still possible. The `owner_user_id_snapshot` that records WHO created
       the run is deliberately NOT here and has no route to a recipient.
+
+      ★ AND BY ONE MORE (Past Tracks V1). `status` is the run's own lifecycle -- 'active' or
+      'closed', two literals and nothing else. It is here because "the Host's account is gone" and
+      "the Host closed this run" are DIFFERENT facts that both freeze a conversation, and a reader
+      deserves to know which one happened rather than being told a single flattened "read-only".
+      Like hostAvailable it carries no id, no name, and nothing about any other recipient.
     */
     expect(Object.keys(p).sort()).toEqual([
       "announcementId",
@@ -164,6 +170,7 @@ describe("what a recipient may see — the privacy whitelist", () => {
       "respondedAt",
       "response",
       "sourceUrl",
+      "status",
       "unreadCount",
     ]);
     const dump = JSON.stringify(p);

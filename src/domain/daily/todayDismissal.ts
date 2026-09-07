@@ -128,6 +128,59 @@ export function isHiddenFromToday(input: {
 }
 
 /**
+ * ★ THE ONE PLACE THAT DECIDES WHETHER A TRACK IS ON TODAY.
+ *
+ * Today and Past Tracks are a PARTITION, and the only way to guarantee that is for both to ask the
+ * SAME question and take opposite answers. If Past re-derived "is this old" with its own rule, the
+ * two would drift the first time either changed: a Track could appear in both (the person sees it
+ * twice and cannot tell which is real) or in neither (history the database is deliberately keeping
+ * becomes unreachable, which is the whole defect this surface exists to close).
+ *
+ * So this function is the definition, `scope: "past"` is its negation, and there is no second
+ * approximation of it anywhere.
+ *
+ * ★ `historical` IS SUPPLIED BY THE CALLER, AND THE TWO SIDES DISAGREE — deliberately.
+ *
+ * A RECIPIENT's Today already hides a closed run: a Host who closed their run is not asking that
+ * person for anything any more. A HOST's Today still shows their own closed runs, with a badge,
+ * because closing is something they DID and the outcome is theirs to read back. Rather than bury
+ * that asymmetry inside here, each caller states its own rule and this composes it with the
+ * dismissal test — so the difference is visible at the two call sites instead of being a hidden
+ * branch on a role.
+ */
+export function isTrackOnToday(card: {
+  /** True when THIS side treats the run as no longer Today-eligible, whatever the dismissal says. */
+  historical: boolean;
+  dismissedActivityVersion: number | null;
+  currentActivityVersion: number;
+}): boolean {
+  if (card.historical) return false;
+  return !isHiddenFromToday({
+    dismissedActivityVersion: card.dismissedActivityVersion,
+    currentActivityVersion: card.currentActivityVersion,
+  });
+}
+
+/** Which half of the partition a surface is asking for. */
+export type TrackScope = "today" | "past";
+
+/**
+ * ★ THE PARTITION ITSELF, IN ONE LINE.
+ *
+ * Every caller-owned Track satisfies this for EXACTLY ONE scope, because `past` is the boolean
+ * negation of `today` over the same inputs — not a separate query, not a status flag, and nothing
+ * that has to be kept in sync. New activity that lifts a card back onto Today removes it from Past
+ * in the same read, with no write anywhere.
+ */
+export function isTrackInScope(scope: TrackScope, card: {
+  historical: boolean;
+  dismissedActivityVersion: number | null;
+  currentActivityVersion: number;
+}): boolean {
+  return scope === "today" ? isTrackOnToday(card) : !isTrackOnToday(card);
+}
+
+/**
  * ★ A RECIPIENT CARD'S ACTIVITY = HOST-AUTHORED MESSAGES.
  *
  * Once a recipient has settled their card, the only thing that can legitimately bring it back is

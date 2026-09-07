@@ -10,7 +10,12 @@ import {
 } from "@/domain/announcement/trackedAnnouncement";
 import { recipientNeedsHostAttention } from "@/domain/announcement/announcementThread";
 import { allMessageIds, loadReadReceipts, loadThreadMeta, messageCountFrom, unreadFrom } from "./announcementThread.server";
-import { hostActivityVersion, isHiddenFromToday, recipientActivityVersion } from "@/domain/daily/todayDismissal";
+import {
+  hostActivityVersion,
+  isTrackInScope,
+  recipientActivityVersion,
+  type TrackScope,
+} from "@/domain/daily/todayDismissal";
 import { loadTodayDismissals } from "@/lib/bty/daily/todayDismissal.server";
 import { resolveDisplayNames } from "./recipientDisplayName.server";
 
@@ -36,6 +41,7 @@ type RecipientRow = {
   bty_tracked_announcements: {
     id: string;
     host_framing: string;
+    status: string;
     // NULLABLE since 20260915: the Host's account may have been deleted while the Track survives.
     owner_user_id: string | null;
     bty_action_captures: { source_url: string | null } | null;
@@ -51,7 +57,10 @@ type RecipientRow = {
 export async function listMyAnnouncements(
   admin: SupabaseClient,
   userId: string,
+  /** Which half of the Today/Past partition to return. Defaults to Today — the original behaviour. */
+  opts: { scope?: TrackScope } = {},
 ): Promise<RecipientProjection[]> {
+  const scope: TrackScope = opts.scope ?? "today";
   const { data, error } = await admin
     .from("bty_tracked_announcement_recipients")
     // The whitelist IS the privacy rule. Note what is absent: no preview, no metadata, no ids.
@@ -67,10 +76,21 @@ export async function listMyAnnouncements(
         No source link is a smaller loss than the entire Track. `sourceUrl` becomes null and the
         card renders without a link; nothing is fabricated to fill the gap.
       */
-      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures(source_url))",
+      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, status, owner_user_id, bty_action_captures(source_url))",
     )
     .eq("user_id", userId)
-    .eq("bty_tracked_announcements.status", "active")
+    /*
+      ★ `status` IS NO LONGER FILTERED IN SQL, and that is what makes the partition exact.
+
+      It used to be `.eq(status, "active")` here, which put half the Today rule in the query and
+      half in the code below. Past Tracks is the exact NEGATION of Today, so both halves have to
+      live in one place a negation can be applied to — otherwise a closed run would be excluded
+      from Today by the query AND from Past by never being fetched, and would exist in neither.
+      That is the "silently neither" gap this surface exists to close.
+
+      Nothing about Today changes: `isTrackOnToday` receives `historical: status !== "active"`
+      and reaches the same answer it always did.
+    */
     .order("created_at", { ascending: false })
     .returns<RecipientRow[]>();
 
@@ -124,19 +144,32 @@ export async function listMyAnnouncements(
   const dismissed = await loadTodayDismissals(admin, userId, "track_recipient");
 
   return rows
-    .filter((r) => {
-      const at = dismissed.get(r.id);
-      if (at === undefined) return true;
+    .filter((r) =>
       /*
+        ★ ONE PREDICATE, TWO SCOPES. `past` is its negation, so a Track is in exactly one of the two
+        surfaces and neither can drift from the other.
+
         A COUNT, never a clock. A Host message that was uncommitted when this person removed the
         card could not have been counted then, so the current count is strictly greater now and
-        the card comes back. A timestamp comparison would have buried it permanently.
+        the card comes back — from Past to Today, with nothing written anywhere.
+
+        ★ A RECIPIENT'S TODAY TREATS A CLOSED RUN AS HISTORICAL. The Host is no longer asking them
+        for anything, so it belongs in retrieval — but it must still be RETRIEVABLE, which is why
+        it is fetched and partitioned rather than filtered away in SQL.
       */
-      return !isHiddenFromToday({
-        dismissedActivityVersion: at,
+      isTrackInScope(scope, {
+        /*
+          ★ `=== "closed"`, NOT `!== "active"`. An ABSENT or unrecognised status is not the same
+          fact as a CLOSED one. The database constrains this to exactly two values, so in practice
+          they agree — but the two failure directions do not: reading an unknown as historical would
+          silently move a card OFF Today, hiding something the person may still owe an answer to.
+          An unknown therefore stays on Today, where being wrong is visible rather than silent.
+        */
+        historical: r.bty_tracked_announcements?.status === "closed",
+        dismissedActivityVersion: dismissed.get(r.id) ?? null,
         currentActivityVersion: recipientActivityVersion(meta.get(r.id) ?? []),
-      });
-    })
+      }),
+    )
     .map((r) =>
     projectForRecipient({
       announcementId: r.announcement_id,
@@ -146,6 +179,8 @@ export async function listMyAnnouncements(
       sourceUrl: r.bty_tracked_announcements?.bty_action_captures?.source_url ?? null,
       // No owner = the Host's account is gone. The Track is readable and closed to new writing.
       hostAvailable: r.bty_tracked_announcements?.owner_user_id != null,
+      // The run's own lifecycle, so a surface can distinguish "no Host" from "the Host closed it".
+      status: r.bty_tracked_announcements?.status,
       response: r.response,
       respondedAt: r.responded_at,
       // Unread here means HOST messages this person has not opened. Their own never count.
@@ -272,6 +307,8 @@ export type HostResponder = {
 export async function listHostAnnouncements(
   admin: SupabaseClient,
   ownerUserId: string,
+  /** Which half of the Today/Past partition to return. Defaults to Today — the original behaviour. */
+  opts: { scope?: TrackScope } = {},
 ): Promise<HostAnnouncement[]> {
   const { data: runs, error } = await admin
     .from("bty_tracked_announcements")
@@ -368,13 +405,22 @@ export async function listHostAnnouncements(
      cannot change what any recipient sees on theirs. */
   const dismissedRuns = await loadTodayDismissals(admin, ownerUserId, "track_host");
 
+  const scope: TrackScope = opts.scope ?? "today";
+
   return runs
     .filter((run) => {
-      const at = dismissedRuns.get(run.id);
-      if (at === undefined) return true;
       const rows = byRun.get(run.id) ?? [];
-      return !isHiddenFromToday({
-        dismissedActivityVersion: at,
+      /*
+        ★ THE SAME PREDICATE THE RECIPIENT SIDE USES — with `historical: false`, deliberately.
+
+        A HOST's Today keeps their own closed runs, with a badge: closing is something they DID and
+        the outcome is theirs to read back. Only dismissal moves a run to Past for them. Stating it
+        here rather than branching on a role inside the predicate keeps the asymmetry visible at the
+        two places that actually disagree.
+      */
+      return isTrackInScope(scope, {
+        historical: false,
+        dismissedActivityVersion: dismissedRuns.get(run.id) ?? null,
         currentActivityVersion: hostActivityVersion(
           rows.flatMap((r) => threadMeta.get(r.id) ?? []),
           rows.map((r) => r.response),
