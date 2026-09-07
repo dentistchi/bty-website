@@ -125,48 +125,37 @@ function say(text: string, invokeName?: TeamsInvokeName, height: number | "small
   is platform chrome, and the next attempt must not be another Adaptive Card layout change.
 */
 /**
- * Kept as the ROLLBACK value, not as live configuration: Save success no longer returns a task
- * module at all (see `saveSucceeded`). If the transport experiment fails on device, this is the
- * number the previous known-visible flow used.
+ * Asked for, and measured NOT to matter: 130 and "small" produce the same nearly full-height sheet
+ * on Teams iOS. Kept rather than reverted because it is the honest request — this is the size the
+ * confirmation wants — and because reverting it would erase the record of what was tried.
  */
 const SAVE_CONFIRM_HEIGHT = 130;
 
 /**
- * ★ SAVE SUCCESS — TRANSPORT EXPERIMENT, DEVICE-GATED (2026-09-07).
+ * ★ TEAMS iOS CONFIRMATION TRANSPORT — SETTLED BY DEVICE MEASUREMENT. DO NOT RE-LITIGATE.
  *
- * MEASURED AND SETTLED: the task-module sheet cannot be made smaller from here. `height: "small"`
- * and `height: 130` produced the SAME nearly full-height white sheet on the Founder's iPhone, so
- * the remaining space is Teams iOS dialog chrome and no card layout, padding, width or content
- * change can reach it. Layout is exhausted; the only thing left to vary is the TRANSPORT.
+ * Four things were tried on the Founder's iPhone. Only one of them is visible to a human being:
  *
- * ★ THIS IS NOT THE SHAPE THAT ALREADY FAILED. Two different response FAMILIES share the word
- * "message" and they are not interchangeable:
+ *   task.type = "message"               INVISIBLE. Tried twice. Both invokes fully successful —
+ *                                       JWT valid, identity RESOLVED, capture written, HTTP 200.
+ *                                       The save worked and the person could not tell.
+ *   composeExtension.type = "message"   INVISIBLE. Tried once, 2026-09-07, on a successful Save.
+ *                                       Different response FAMILY from the above, same outcome.
+ *   task.type = "continue" + card       VISIBLE. The only shape that reaches the user.
+ *   height: "small" vs height: 130      NO APPARENT DIFFERENCE. The sheet stays nearly full
+ *                                       height, so the whitespace is Teams iOS dialog chrome and
+ *                                       is not reachable from here.
  *
- *     task.type = "message"              ← TASK family. Tried first. Rendered NOTHING on the
- *                                          Founder's iPhone, twice, on fully successful invokes.
- *     composeExtension.type = "message"  ← MESSAGE-EXTENSION family. This experiment.
+ * ★ WHAT THAT MEANS FOR ANYONE EDITING THIS FILE. Both "message" response families are documented
+ * for exactly this case and both render nothing on this platform. Documentation describes the
+ * platform's intent; the client decides what it paints. Neither may be reintroduced on the strength
+ * of a citation — only on a NEW device experiment that someone actually ran.
  *
- * The first is a task-module response that happens to carry text; the second is the message
- * extension answering without opening a dialog at all. Confusing them would repeat a known failure,
- * so the tests pin the distinction explicitly.
+ * A confirmation nobody sees is worse than a heavy one. The card stays.
  *
- * ★ SUCCESS ONLY, DELIBERATELY. Failures keep the render-proven card path. Moving them too would
- * risk a person being unable to see WHY something did not work — the one message they actually
- * need — on the strength of an unproven transport.
- *
- * ★ ROLLBACK IS THIS FUNCTION. If the phone shows nothing or a generic Teams error, replace the
- * body with `say(MSG.saved, invokeName, SAVE_CONFIRM_HEIGHT)` and the previous known-visible flow
- * is back. Do not stack another transport experiment on top of a failed one.
- *
- * ★ KNOWN RISK, STATED PLAINLY. This file's original slice recorded that "a `fetchTask` expects a
- * `task` response ... replying in the wrong shape shows a generic Teams error even though the save
- * succeeded." That is design rationale from the first Save slice, NOT tagged with a device
- * measurement the way the `task.type` failure is — so it is a real risk and not a settled fact,
- * and it is exactly what this experiment measures.
+ * The sheet is still bigger than the sentence deserves, and that is now a known platform limit
+ * rather than an open problem: it cannot be fixed with layout, padding, width, content or height.
  */
-function saveSucceeded() {
-  return NextResponse.json({ composeExtension: { type: "message", text: MSG.saved } });
-}
 
 /** A dialog (or a confirmation) rather than a bare message — see the card note above. */
 function dialog(value: unknown, invokeName?: TeamsInvokeName) {
@@ -381,9 +370,5 @@ export async function POST(req: NextRequest) {
     return say(sourceProblem ? MSG.cannotSave : MSG.serverBusy, parsed.invokeName);
   }
 
-  /*
-    The one line the experiment changes. Every failure above still goes through `say()`, and Track
-    is untouched — see the note on `saveSucceeded`.
-  */
-  return saveSucceeded();
+  return say(MSG.saved, parsed.invokeName, SAVE_CONFIRM_HEIGHT);
 }
