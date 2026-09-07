@@ -59,11 +59,21 @@ describe("Me root nav — every row is a distinct destination", () => {
     expect(screen.getByTestId("me-home").textContent).not.toMatch(/내가 이룬/);
   });
 
-  it("'What I learned' survives and still opens My Learning", async () => {
+  it("★ 'What I learned' is GONE — learning has one door, under Learn (IA simplification V1)", async () => {
+    /*
+      This used to assert the row survived. It no longer does, and that is the point: the Me door
+      rendered the SAME `FoundryMyLearning` component as Learn, over the same API, with the same
+      inclusion rules and the same actions. Two doors to one surface is exactly the "rows that lie
+      about being different" defect this whole file exists to catch — it simply took a device gate
+      to notice that the duplicate was a whole screen rather than two labels.
+
+      Learning itself is untouched; `learnDoorMyLearning.test.tsx` still holds the remaining door.
+    */
     stub();
     await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-row-learned"));
-    expect(await screen.findByTestId("foundry-my-learning")).toBeTruthy();
+    await screen.findByTestId("me-home");
+    expect(screen.queryByTestId("me-row-learned")).toBeNull();
+    expect(screen.getByTestId("me-home").textContent).not.toMatch(/What I learned/);
   });
 
   it("no two rows share a label, and no two share a destination", async () => {

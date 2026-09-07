@@ -148,18 +148,23 @@ export function LearnDoors({
         </button>
       ) : null}
 
-      {/* Reality Event Host results (Slice 3.2E-EVENT-HOST). In-shell callback; same creator gate. */}
-      {canCreate && onOpenMyEvents ? (
-        <button
-          type="button"
-          onClick={onOpenMyEvents}
-          data-testid="door-my-events"
-          className="flex flex-col items-start gap-1 rounded-2xl border border-white/[0.12] bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
-        >
-          <span className="text-lg font-semibold text-white">{t.myEventsTitle}</span>
-          <span className="text-sm leading-6 text-white/60">{t.myEventsBody}</span>
-        </button>
-      ) : null}
+      {/*
+        ★ LEGACY "My events" DOOR RETIRED (IA simplification V1). UI ONLY — THE DOMAIN IS INTACT.
+
+        That door opened the QR live-experience surface backed by `bty_events`, which is a
+        different table, lifecycle and API from the `foundry_events` training sessions on this same
+        screen. Two unrelated products both called "events", side by side, is most of why this
+        screen was confusing.
+
+        And it opened onto nothing: measured on production 2026-09-07, `bty_events` holds 0 rows
+        and `bty_event_participation` holds 0. An empty door must not stay visible merely because
+        its table exists.
+
+        NOTHING WAS DELETED. `bty_events`, `bty_event_participation`, their migrations, routes, QR
+        infrastructure and the `EventHostList` component all remain, untouched and unmerged. When
+        Live Experience gets a deliberate canonical design it inherits a working domain rather than
+        an archaeology project. The `onOpenMyEvents` prop is kept for that day.
+      */}
     </section>
   );
 }

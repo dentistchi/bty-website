@@ -42,7 +42,9 @@ describe("T1 — the learner sees current work first", () => {
 
   it("T8b — the Host-only doors are untouched and still exist", () => {
     const d = code(read("LearnDoors.tsx"));
-    for (const t of ["door-create-training", "door-open-event", "door-my-events"]) expect(d).toContain(t);
+    for (const t of ["door-create-training", "door-open-event"]) expect(d).toContain(t);
+    // The legacy QR "My events" door was retired from the UI in IA simplification V1.
+    expect(d).not.toContain("door-my-events");
     expect(d).toContain("{canCreate ? (");
     // Create training keeps its distinct emphasis; only the history door was made secondary.
     expect(d).toContain('text-lg font-semibold text-[#E5B769]">{t.createTitle}');

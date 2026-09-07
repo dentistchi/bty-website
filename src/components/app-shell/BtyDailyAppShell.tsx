@@ -1270,14 +1270,15 @@ export default function BtyDailyAppShell({
   // Follow-up response surface (Slice 3.1B-3K): `?tab=foundry&followup=<id>` opens the focused
   // learner follow-up outcome surface inside the Foundry tab (from the Today FOLLOW_UP_DUE reminder).
   const [followupId, setFollowupId] = useState<string | null>(null);
-  /*
-    Where Back goes from the follow-up surface (Slice 3.2R-R3-R1). The Today deep link and the
-    Learn→My Learning entry both leave `foundryView` where it was, so clearing `followupId` already
-    returns them correctly and they carry no origin. Only the ME-tab origin needs one: the surface
-    renders under Learn, so without this a learner who opened it from Me→My Learning would be
-    returned to Learn — the same origin-blindness 3.2G-R1 had to repair for the Host rows.
+    /*
+    ★ THE FOLLOW-UP ORIGIN TOKEN IS GONE WITH THE DOOR THAT PRODUCED IT.
+
+    `followupReturn` existed for ONE origin: Me → What I learned. The follow-up surface renders
+    under Learn, so a learner who arrived from Me had to be returned to Me rather than left there.
+    That door was removed in IA simplification V1, so nothing can set the token any more and the
+    branch reading it became unreachable — dead state that would outlive its reason and confuse the
+    next person. Every other entry into a follow-up already returns correctly and carries no origin.
   */
-  const [followupReturn, setFollowupReturn] = useState<"me-my-learning" | null>(null);
   // Center is ONE canonical Personal Reality Feed (Slice 3.1B-3J) — no subview. `centerFocusEntry`
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
@@ -1294,7 +1295,7 @@ export default function BtyDailyAppShell({
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
-  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "past-tracks" | "account">("home");
+  const [meView, setMeView] = useState<"home" | "center" | "past-tracks" | "account">("home");
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
@@ -1940,15 +1941,9 @@ export default function BtyDailyAppShell({
             <FoundryFollowUpResponse
               followupId={followupId}
               locale={locale}
-              onBack={() => {
-                setFollowupId(null);
-                // Origin-aware return (3.2R-R3-R1): only the Me origin carries one; every other
-                // entry keeps the existing behaviour of simply revealing what was underneath.
-                if (followupReturn === "me-my-learning") {
-                  setFollowupReturn(null);
-                  setTab("me");
-                }
-              }}
+              // Every entry into a follow-up now simply reveals what was underneath. See the
+              // note beside the removed `followupReturn` state.
+              onBack={() => setFollowupId(null)}
             />
           ) : reviewId ? (
             <FoundryCompletionReview
@@ -2055,22 +2050,6 @@ export default function BtyDailyAppShell({
               </button>
               <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry} />
             </div>
-          ) : meView === "my-learning" ? (
-            // Opened FROM Me → the back label is "Me" and it returns to the Me root (B3A.2D-R1);
-            // it must never present "Required learning" as its parent. Origin is explicit, never
-            // inferred from tab/history. (The Learn-tab entry below keeps its own default label.)
-            <FoundryMyLearning
-              locale={locale}
-              onBack={() => setMeView("home")}
-              backLabel={locale === "ko" ? "나" : "Me"}
-              /* Me origin: the follow-up surface lives under Learn, so the tab moves and an
-                 explicit origin token brings Back to Me → My Learning (meView is left intact). */
-              onOpenFollowUp={(id) => {
-                setFollowupId(id);
-                setFollowupReturn("me-my-learning");
-                setTab("learn");
-              }}
-            />
           ) : meView === "past-tracks" ? (
             /*
               ★ RETRIEVAL, NOT A SECOND TODAY.
@@ -2158,7 +2137,18 @@ export default function BtyDailyAppShell({
                     A second row here would have to mean something the system can actually establish.
                     Until it does, one honest row beats two that lie about being different.
                   */
-                  { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
+                  /*
+                    ★ "What I learned" WAS REMOVED (IA simplification V1), not repointed.
+
+                    It rendered the SAME `FoundryMyLearning` component as Learn, over the same API,
+                    with the same inclusion rules and the same actions — measured, not assumed. The
+                    prop sets differed by exactly two: Learn passes `focusEntryId` (deep-link focus,
+                    which this row never had) and Me passed a cosmetic `backLabel`. So there was
+                    nothing here to move before removing it.
+
+                    One concept, one door: learning lives under Learn. No learning data, history or
+                    behaviour changed — only the second way in.
+                  */
                   { id: "me-row-past-tracks", label: locale === "ko" ? "지난 Track" : "Past Tracks", go: () => setMeView("past-tracks") },
                   { id: "me-row-center", label: locale === "ko" ? "센터" : "Center", go: () => setMeView("center") },
                   { id: "me-account-row", label: locale === "ko" ? "계정" : "Account", go: () => setMeView("account") },

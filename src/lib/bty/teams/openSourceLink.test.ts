@@ -193,11 +193,11 @@ describe("★ 8+9+10. nothing else moved", () => {
     // Compare the 14-digit PREFIX. Comparing whole filenames makes 20260913000000_x.sql "greater
     // than" 20260913000000 and the guard reports the newest applied migration as a new one.
     //
-    // Re-anchored to 20260916 (Saved for later remove). Bumping it is the
+    // Re-anchored to 20260917 (Foundry training-history dismissal). Bumping it is the
     // DELIBERATE act this guard
     // asks for: it still fails the moment SQL appears that nobody moved this line for, which is
     // the smuggled migration it exists to catch. What it never claimed is that the repository
     // would stop growing.
-    expect(migrations.filter((f) => f.slice(0, 14) > "20260916000000")).toEqual([]);
+    expect(migrations.filter((f) => f.slice(0, 14) > "20260917000000")).toEqual([]);
   });
 });

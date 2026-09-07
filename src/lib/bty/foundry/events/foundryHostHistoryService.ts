@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadHistoryDismissals } from "@/lib/bty/foundry/events/foundryEventHistoryDismissal.server";
 import { readContentType, isGuidanceContentType, type FoundryContentType, type GuidanceContentType } from "@/domain/foundry/events/content-type";
 import { readGuidanceContent } from "./foundryGuidanceService";
 import {
@@ -179,7 +180,19 @@ export async function listHostHistory(
     .order("closed_at", { ascending: false, nullsFirst: false })
     .returns<HistoryEventRow[]>();
 
-  const historical = (events ?? []).filter((e) => isHistoricalEventStatus(e.status));
+  /*
+    ★ SUBTRACT WHAT THIS PERSON HAS TIDIED AWAY.
+
+    Filtered HERE, on the server, rather than in the component: filtering in the renderer would ship
+    the hidden session to the browser and rely on a surface to keep quiet about it, one refactor
+    away from reappearing. Scoped by `ownerUserId`, so it is structurally incapable of hiding
+    anything from anybody else — the session, its participants and every completion record are
+    untouched, and another Host reading their own history sees exactly what they always did.
+  */
+  const hidden = await loadHistoryDismissals(admin, ownerUserId);
+  const historical = (events ?? [])
+    .filter((e) => isHistoricalEventStatus(e.status))
+    .filter((e) => !hidden.has(e.id));
   if (historical.length === 0) return [];
 
   const ids = historical.map((e) => e.id);

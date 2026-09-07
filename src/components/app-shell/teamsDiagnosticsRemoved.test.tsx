@@ -74,7 +74,7 @@ describe("★ ORDINARY APP UX CONTAINS NO DIAGNOSTIC ENTRY", () => {
       temporary/developer entry reaching ordinary people, and that is asserted directly below rather
       than through a row count that any legitimate feature would break.
     */
-    expect(rows).toEqual(["me-row-learned", "me-row-past-tracks", "me-row-center", "me-account-row"]);
+    expect(rows).toEqual(["me-row-past-tracks", "me-row-center", "me-account-row"]);
     expect(screen.queryByTestId("me-row-teams-diagnostics")).toBeNull();
     expect(home.textContent).not.toContain("Teams display diagnostics");
     expect(home.textContent, "no diagnostic vocabulary of any kind").not.toMatch(/diagnostic|debug|dev only/i);
@@ -85,7 +85,6 @@ describe("★ ORDINARY APP UX CONTAINS NO DIAGNOSTIC ENTRY", () => {
     stubFetch();
     const home = await gotoMe();
     expect(Array.from(home.querySelectorAll("nav button")).map((r) => r.getAttribute("data-testid"))).toEqual([
-      "me-row-learned",
       "me-row-past-tracks",
       "me-row-center",
       "me-account-row",

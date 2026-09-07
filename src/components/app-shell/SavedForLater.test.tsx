@@ -100,7 +100,8 @@ describe("Today → Saved for later — the measured Today focused-view grammar"
     expect(screen.queryByTestId("me-saved-view")).toBeNull();
     expect(screen.getByTestId("me-home").textContent ?? "").not.toMatch(/Saved for later/i);
     // The rows that remain still work.
-    for (const id of ["me-row-learned", "me-row-center", "me-account-row"]) {
+    // "me-row-learned" was removed in IA simplification V1 — learning has one door, under Learn.
+    for (const id of ["me-row-past-tracks", "me-row-center", "me-account-row"]) {
       expect(screen.getByTestId(id)).toBeTruthy();
     }
   });

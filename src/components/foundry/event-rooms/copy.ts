@@ -56,6 +56,16 @@ export type EventRoomsCopy = {
   status_complete: string;
   completedCount: (done: number, total: number) => string;
   // home
+  /*
+    ★ "TRAINING SESSIONS" / "PAST TRAINING", not "events" (IA simplification V1).
+
+    `foundry_events` and `bty_events` are two unrelated products — a training room with
+    participants, progress and completion, and a QR live experience with XP and attendance. They
+    have different tables, different lifecycles and different APIs, and calling both of them
+    "events" on the same screen is most of why that screen was confusing.
+
+    The object stays `foundry_events` internally: this is what people READ, not a rename.
+  */
   openHeader: string;
   pastHeader: string;
   joinedCount: (n: number) => string;
@@ -97,8 +107,17 @@ export type EventRoomsCopy = {
   joinedHeader: (n: number) => string;
   closeEvent: string;
   closeConfirm: string;
+  /** Remove a PARTICIPANT from a session. Not the same act as tidying your own history. */
   remove: string;
   removeConfirm: string;
+  /*
+    ★ SEPARATE KEYS FROM `remove`, DELIBERATELY. That one takes a person out of a training session
+    — a shared, consequential act with a confirmation. This one hides a finished session from the
+    reader's OWN history and changes nothing anybody else can see. Same English word, two different
+    meanings; sharing a key would eventually let one surface borrow the other's copy.
+  */
+  historyRemove: string;
+  historyRemoveFailed: string;
   rosterEmpty: string;
   /*
     TRAINING OUTCOME (Slice R4-R3A). Ordinary manager language: a Host should be able to read this
@@ -157,7 +176,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     emptyLead: "Bring your team into one room.",
     createCta: "Create quick event",
     createQuickNote: "Skip guided setup.",
-    pastViewAll: "View all past events",
+    pastViewAll: "View all past training",
     pastShowLess: "Show less",
     createEyebrow: "CREATE TRAINING EVENT",
     nameLabel: "Event name",
@@ -196,8 +215,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     status_response_pending: "Response pending",
     status_complete: "Complete",
     completedCount: (done, total) => `${done} of ${total} completed`,
-    openHeader: "OPEN EVENTS",
-    pastHeader: "PAST EVENTS",
+    openHeader: "TRAINING SESSIONS",
+    pastHeader: "PAST TRAINING",
     joinedCount: (n) => (n === 1 ? "1 joined" : `${n} joined`),
     closedTag: "Closed",
     back: "Back",
@@ -235,6 +254,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     closeConfirm: "Close this event? No one new will be able to join.",
     remove: "Remove",
     removeConfirm: "Remove this participant?",
+    historyRemove: "Remove",
+    historyRemoveFailed: "Couldn't remove that.",
     rosterEmpty: "No one has joined yet.",
     outcomeHeading: "Training outcome",
     outcomeQuestion: "Did anything change?",
@@ -287,7 +308,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     // The door BELOW the Builder door: one video or one document, no design step.
     createCta: "자료로 바로 시작하기",
     createQuickNote: "영상이나 자료 하나로 훈련을 바로 시작하세요.",
-    pastViewAll: "지난 이벤트 모두 보기",
+    pastViewAll: "지난 교육 모두 보기",
     pastShowLess: "간략히 보기",
     createEyebrow: "훈련 이벤트 만들기",
     nameLabel: "이벤트 이름",
@@ -326,8 +347,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     status_response_pending: "응답 대기",
     status_complete: "완료",
     completedCount: (done, total) => `${total}명 중 ${done}명 완료`,
-    openHeader: "진행 중인 이벤트",
-    pastHeader: "지난 이벤트",
+    openHeader: "교육 세션",
+    pastHeader: "지난 교육",
     joinedCount: (n) => `${n}명 입장`,
     closedTag: "종료됨",
     back: "뒤로",
@@ -365,6 +386,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     closeConfirm: "이 이벤트를 종료할까요? 더 이상 새로 입장할 수 없습니다.",
     remove: "내보내기",
     removeConfirm: "이 참가자를 내보낼까요?",
+    historyRemove: "치우기",
+    historyRemoveFailed: "치우지 못했습니다.",
     rosterEmpty: "아직 아무도 입장하지 않았습니다.",
     outcomeHeading: "훈련 결과",
     outcomeQuestion: "무엇이 달라졌나요?",

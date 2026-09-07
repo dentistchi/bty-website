@@ -21,8 +21,15 @@ beforeAll(() => {
  */
 type Row = Record<string, unknown>;
 
-function makeFakeAdmin(seed?: { events?: Row[]; participants?: Row[] }) {
+function makeFakeAdmin(seed?: { events?: Row[]; participants?: Row[]; historyDismissals?: Row[] }) {
   const tables: Record<string, Row[]> = {
+    /*
+      The personal history-dismissal table (20260917). `listOwnerEvents` now subtracts the caller's
+      own dismissals, so the fake must know the table exists — an unknown name previously produced
+      an undefined store and a crash inside the fake itself, not a product failure. Seeded empty,
+      which is the state every existing assertion here already assumes.
+    */
+    bty_foundry_event_history_dismissals: [...(seed?.historyDismissals ?? [])],
     foundry_events: [...(seed?.events ?? [])],
     foundry_event_participants: [...(seed?.participants ?? [])],
   };

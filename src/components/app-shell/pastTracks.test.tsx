@@ -294,7 +294,7 @@ describe("★ A — the entry point is one quiet row under Me", () => {
   });
 
   it("★ it uses the same meView pattern as the rows beside it", () => {
-    expect(SHELL).toMatch(/"home" \| "center" \| "my-learning" \| "past-tracks" \| "account"/);
+    expect(SHELL).toMatch(/"home" \| "center" \| "past-tracks" \| "account"/);
     expect(SHELL).toContain('meView === "past-tracks"');
     expect(SHELL).toContain('onBack={() => setMeView("home")}');
   });

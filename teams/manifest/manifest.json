@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.25/MicrosoftTeams.schema.json",
   "manifestVersion": "1.25",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "id": "374ec662-0deb-4e0b-8514-e38a035a349e",
   "developer": {
     "name": "BTY Training Center",
@@ -40,7 +40,7 @@
         {
           "id": "saveToBty",
           "type": "action",
-          "title": "Save to BTY",
+          "title": "Save",
           "description": "Save this message to BTY so you don't lose it.",
           "context": [
             "message"
@@ -50,7 +50,7 @@
         {
           "id": "trackWithBty",
           "type": "action",
-          "title": "Track with BTY",
+          "title": "Track",
           "description": "Ask the people you choose to acknowledge this, or say they have a question.",
           "context": [
             "message"

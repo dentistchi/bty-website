@@ -58,7 +58,7 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.12, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.13, and points $schema at the same version", () => {
     /*
       1.0.12 (Slice TQ-4.9) is a SIZE change and nothing else. 1.0.11 proved the hypothesis it was
       built to test — renaming the asset path made the approved S1 finally appear on both clients,
@@ -84,7 +84,7 @@ describe("Teams app manifest — identity", () => {
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.12");
+    expect(manifest.version).toBe("1.0.13");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -98,24 +98,35 @@ describe("Teams app manifest — capability", () => {
     expect(manifest.bots?.[0]?.isNotificationOnly).toBe(false);
   });
 
-  it("keeps Save to BTY EXACTLY as it shipped — a change here is a regression, not an addition", () => {
+  it("keeps saveToBty's capability EXACTLY as it shipped — only its title was shortened", () => {
+    /*
+      ★ TITLES SHORTENED, IDs AND BEHAVIOUR UNCHANGED (IA simplification V1).
+
+      Teams renders each message action as command title over the app's short name, so
+      "Save to BTY / BTY" repeated the word. The titles are now "Save" and "Track"; `name.short`
+      stays "BTY" because that second line is Teams' own attribution and is correct.
+
+      What this guard is really protecting is that the CAPABILITY did not change — the ids, the
+      fetchTask, the context and the ordering are what the backend routes on, and all four are
+      asserted below exactly as before.
+    */
     const commands = manifest.composeExtensions?.[0]?.commands ?? [];
     expect(manifest.composeExtensions).toHaveLength(1);
     expect(commands[0]?.id).toBe("saveToBty");
     expect(commands[0]?.type).toBe("action");
-    expect(commands[0]?.title).toBe("Save to BTY");
+    expect(commands[0]?.title).toBe("Save");
     // `message` is what puts the command in a message's `...` menu; `compose`/`commandBox` would
     // put it somewhere this product does not use.
     expect(commands[0]?.context).toEqual(["message"]);
     expect(commands[0]?.fetchTask).toBe(true);
   });
 
-  it("adds Track with BTY as the SECOND command, and exposes no third", () => {
+  it("keeps trackWithBty as the SECOND command, and exposes no third", () => {
     const commands = manifest.composeExtensions?.[0]?.commands ?? [];
     expect(commands).toHaveLength(2);
     expect(commands.map((c) => c?.id)).toEqual(["saveToBty", "trackWithBty"]);
     expect(commands[1]?.type).toBe("action");
-    expect(commands[1]?.title).toBe("Track with BTY");
+    expect(commands[1]?.title).toBe("Track");
     expect(commands[1]?.context).toEqual(["message"]);
     expect(commands[1]?.fetchTask).toBe(true);
   });

@@ -43,15 +43,23 @@ async function gotoMe() {
   return { nav, tapMe };
 }
 
-describe("Me → What I learned return semantics (carried)", () => {
-  it("shows back label 'Me', never 'Required learning', and returns to root", async () => {
+/**
+ * ★ "Me → What I learned return semantics" WAS REMOVED WITH ITS FEATURE (IA simplification V1).
+ *
+ * That test guarded a back-label: opening My Learning from Me had to say "Me", never "Required
+ * learning". The Me door itself is gone — learning has ONE door, under Learn — so there is no
+ * origin left for the label to get wrong, and a test asserting it would be asserting a path nobody
+ * can walk.
+ *
+ * What it was really protecting is not lost: the Learn entry keeps its own default back label, and
+ * `learnDoorMyLearning.test.tsx` still holds that door. Nothing about learning data, history or the
+ * `FoundryMyLearning` surface changed.
+ */
+describe("Me → What I learned (REMOVED — one learning door)", () => {
+  it("★ the Me door is gone, and the Me root still renders without it", async () => {
     stub();
     await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-row-learned"));
-    const back = await screen.findByTestId("my-learning-back");
-    expect(back.textContent).toContain("Me");
-    expect(back.textContent).not.toMatch(/Required learning/i);
-    fireEvent.click(back);
+    expect(screen.queryByTestId("me-row-learned"), "no second learning door").toBeNull();
     expect(await screen.findByTestId("me-home")).toBeTruthy();
   });
 });

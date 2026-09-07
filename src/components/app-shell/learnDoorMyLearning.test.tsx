@@ -89,9 +89,21 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
 
     fireEvent.click(screen.getByTestId("door-open-event"));
     expect(onOpenEvent).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId("door-my-events"));
-    expect(onOpenMyEvents).toHaveBeenCalledTimes(1);
-    expect(onOpenMyLearning, "neither is My Learning").not.toHaveBeenCalled();
+    /*
+      ★ THE LEGACY "My events" DOOR WAS RETIRED FROM THE UI (IA simplification V1).
+
+      It opened the QR live-experience surface backed by `bty_events` — a different table, lifecycle
+      and API from the `foundry_events` training sessions beside it, and measured at 0 rows in
+      production. Two unrelated products both called "events" on one screen was most of the
+      confusion this slice removed.
+
+      The DOMAIN is untouched: table, migration, route, component and the `onOpenMyEvents` prop all
+      remain, so a deliberate Live Experience design inherits a working system. Only the door is
+      gone, and that is what these assertions now hold.
+    */
+    expect(screen.queryByTestId("door-my-events"), "retired from the UI").toBeNull();
+    expect(onOpenMyEvents, "and nothing can fire it").not.toHaveBeenCalled();
+    expect(onOpenMyLearning, "the open-event door is not My Learning").not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("door-create-training"));
     expect(onOpenMyLearning).not.toHaveBeenCalled();

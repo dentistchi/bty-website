@@ -157,7 +157,8 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     expect(screen.getByText("Closed event 2")).toBeTruthy();
     expect(screen.queryByText("Closed event 4")).toBeNull();
     // the "view all" affordance now opens the dedicated read-only History archive
-    fireEvent.click(screen.getByText(/View all past events/));
+    // Renamed in IA simplification V1: two unrelated domains stopped both being called "events".
+    fireEvent.click(screen.getByText(/View all past training/));
     expect(await screen.findByText("History")).toBeTruthy();
     expect(await screen.findByText("No past training yet")).toBeTruthy();
   });

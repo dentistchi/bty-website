@@ -68,24 +68,29 @@ describe("[KO Learn landing T4] each card is one obvious, distinct job", () => {
   it("T4 the four doors name four different jobs", () => {
     render(<LearnDoors locale="ko" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={() => {}} onOpenMyEvents={() => {}} />);
     const t = (id: string) => screen.getByTestId(id).textContent ?? "";
-    const [learn, create, open, mine] = ["door-my-learning", "door-create-training", "door-open-event", "door-my-events"].map(t);
+    /*
+      THREE doors now, not four: the legacy QR "내가 만든 이벤트" door was retired from the UI in IA
+      simplification V1. It opened a different product (`bty_events`, 0 rows in production) from the
+      training sessions beside it, and two unrelated things called "이벤트" on one screen was most of
+      what made this landing confusing. The rule this test holds — every door names a DIFFERENT job
+      — is unchanged and now easier to satisfy honestly.
+    */
+    const [learn, create, open] = ["door-my-learning", "door-create-training", "door-open-event"].map(t);
 
     expect(learn).toContain("마친 학습");
     expect(create).toContain("반복되는 문제");
     expect(open).toContain("팀이 참여할");
-    expect(mine).toContain("누가 참여했는지");
+    expect(screen.queryByTestId("door-my-events"), "the legacy QR door is gone").toBeNull();
 
-    expect(new Set([learn, create, open, mine]).size).toBe(4);
+    expect(new Set([learn, create, open]).size).toBe(3);
     /*
-      FOUNDER-CORRECTED. The first pass replaced "이벤트" everywhere, including on the two
-      surfaces that really are Reality Events, and the substitutes ("팀 모으기", "내가 연
-      자리") read as invented rather than ordinary. The overloading was the defect, not the
-      word: these two doors keep it, and the quick TRAINING door below no longer borrows it.
-      What still has to hold is that the two are not the same door - one makes, one checks.
+      FOUNDER-CORRECTED, then narrowed by IA simplification V1. The original pair was "open a
+      Reality Event" and "check who joined the ones I opened"; the second of those was the legacy
+      QR door, now retired from the UI. The surviving door keeps the ordinary word — the defect was
+      always the OVERLOADING of "이벤트" across two unrelated products, not the word itself, and
+      retiring one of them is what actually removed the overload.
     */
     expect(open).toContain("만드세요");
-    expect(mine).toContain("확인하세요");
-    expect(open).not.toContain("확인");
   });
 
   it("uses no architecture vocabulary in Korean either", () => {
@@ -102,7 +107,6 @@ describe("[KO Learn landing T5-T6] nothing but words moved", () => {
       'data-testid="door-my-learning"',
       'data-testid="door-create-training"',
       'data-testid="door-open-event"',
-      'data-testid="door-my-events"',
       "onClick={onOpenLearning}",
       "onClick={onCreate}",
     ]) {
@@ -116,7 +120,13 @@ describe("[KO Learn landing T5-T6] nothing but words moved", () => {
     expect(en).toContain("Learning history");
     expect(en).toContain("Turn a real workplace issue into clear training for your team.");
     expect(en).toContain("Open a real moment for your team to participate in.");
-    expect(en).toContain("See participation in the Reality Events you opened.");
+    // The legacy QR "My events" door's copy is no longer rendered — the door was retired from the
+    // UI. Its STRING is still in the copy table, unchanged, for the day Live Experience returns.
+    expect(en).not.toContain("See participation in the Reality Events you opened.");
+    // ...but its STRING is still in LearnDoors' own copy table, untouched, for the day Live
+    // Experience returns with a deliberate design.
+    expect(readFileSync("src/components/foundry/event-rooms/LearnDoors.tsx", "utf8"))
+      .toContain("See participation in the Reality Events you opened.");
     expect(MODULE_BUILDER_COPY.en.quickLead).toBe("Need to launch something quickly?");
     expect(EVENT_ROOMS_COPY.en.createCta).toBe("Create quick event");
     expect(EVENT_ROOMS_COPY.en.createQuickNote).toBe("Skip guided setup.");
@@ -126,7 +136,7 @@ describe("[KO Learn landing T5-T6] nothing but words moved", () => {
 describe("[KO Learn landing T7-T8] length, and the quick door", () => {
   it("T7 every KO card is short enough for a phone", () => {
     render(<LearnDoors locale="ko" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={() => {}} onOpenMyEvents={() => {}} />);
-    for (const id of ["door-my-learning", "door-create-training", "door-open-event", "door-my-events"]) {
+    for (const id of ["door-my-learning", "door-create-training", "door-open-event"]) {
       expect((screen.getByTestId(id).textContent ?? "").length, id).toBeLessThanOrEqual(60);
     }
   });

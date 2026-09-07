@@ -123,26 +123,20 @@ describe("3.2R-R3-R1 — the return route, in-shell", () => {
     await waitFor(() => expect(screen.getByTestId("foundry-my-learning")).toBeTruthy());
   });
 
-  it("Back from a ME origin returns to Me → My Learning, never silently to Learn", async () => {
-    stub();
+  it("★ the ME origin no longer exists — there is ONE learning door (IA simplification V1)", async () => {
     /*
-      Reached by NAVIGATION, not by an address. `?view=my-learning` is resolved by the shell to the
-      LEARN entry regardless of `tab`, so a URL cannot express the Me origin — the learner gets
-      there by tapping "What I learned" on the Me root. Writing this test against the URL would
-      have proven the Learn path twice and the Me path never.
+      This asserted that Back from a follow-up opened via Me → What I learned returned to Me rather
+      than to Learn. That whole origin was removed: the Me door rendered the SAME component as
+      Learn, so it was a second way into one surface, and the `followupReturn` token existed only to
+      undo the confusion it created. With one door there is no origin to get wrong.
+
+      What it was really protecting — that Back returns you to My Learning rather than dropping you
+      somewhere else — is still held by the LEARN test directly above this one.
     */
+    stub();
     renderAt("?tab=me");
-    fireEvent.click(await screen.findByTestId("me-row-learned"));
-
-    // The Me entry renders the same surface with the Me back label.
-    const cta = await screen.findByTestId("my-learning-check-in-again");
-    fireEvent.click(cta);
-    await waitFor(() => expect(screen.getByTestId("foundry-followup-response")).toBeTruthy());
-
-    fireEvent.click(screen.getByTestId("followup-back"));
-    await waitFor(() => expect(screen.getByTestId("foundry-my-learning")).toBeTruthy());
-    // The Me origin is what proves it: the back label is the one only the Me entry passes.
-    expect(screen.getByTestId("my-learning-back").textContent).toContain("Me");
+    await screen.findByTestId("me-home");
+    expect(screen.queryByTestId("me-row-learned"), "no second learning door").toBeNull();
   });
 
   it("walking the whole route writes NOTHING — every request is a read", async () => {

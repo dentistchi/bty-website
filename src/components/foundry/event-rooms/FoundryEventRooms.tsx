@@ -8,6 +8,7 @@ import { MODULE_BUILDER_COPY, type ModuleBuilderCopy } from "./moduleBuilderCopy
 import type { ManagerEventSummary, ManagerSnapshot } from "./types";
 import type { ClientDraftSummary } from "@/lib/bty/foundry/events/moduleClient";
 import { CreateFoundryEventForm } from "./CreateFoundryEventForm";
+import TodaySwipeAction from "@/components/app-shell/TodaySwipeAction";
 import { FoundryEventControlRoom } from "./FoundryEventControlRoom";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import FoundryHistoryArchive from "./FoundryHistoryArchive";
@@ -249,6 +250,48 @@ export default function FoundryEventRooms({
     }
   }, []);
 
+  /** ONE ROW OPEN AT A TIME, owned here: there is only one slot to be open in. */
+  const [historySwipeId, setHistorySwipeId] = useState<string | null>(null);
+  const [historyBusy, setHistoryBusy] = useState<string | null>(null);
+  const [historyFailed, setHistoryFailed] = useState(false);
+
+  /**
+   * ★ HIDE A FINISHED TRAINING FROM MY OWN HISTORY. Optimistic, but never lossy.
+   *
+   * On failure the row comes straight back and says so. It is not a deletion: the session, its
+   * participants, their progress and every completion record are untouched, and no other Host's
+   * history changes. There is no Restore in V1 — a closed session receives no further activity, so
+   * a hide that expired would be a hide that never expires.
+   */
+  const removeFromHistory = useCallback(
+    async (id: string) => {
+      if (historyBusy) return; // one at a time, as everywhere else in this shell
+      setHistoryFailed(false);
+      setHistoryBusy(id);
+      setHistorySwipeId(null);
+      const previous = events;
+      setEvents((prev) => (prev ?? []).filter((e) => e.id !== id));
+      try {
+        const res = await fetch(
+          `/api/bty/foundry/event-history/${encodeURIComponent(id)}/dismiss`,
+          { method: "POST", credentials: "include", cache: "no-store" },
+        );
+        const d = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+        if (!res.ok || d?.ok !== true) {
+          setEvents(previous);
+          setHistoryFailed(true);
+        }
+        // `changed: false` is success: it had already gone, and it is already gone from this list.
+      } catch {
+        setEvents(previous);
+        setHistoryFailed(true);
+      } finally {
+        setHistoryBusy(null);
+      }
+    },
+    [events, historyBusy],
+  );
+
   const openDraft = useCallback((id: string) => setView({ kind: "builder", draftId: id }), []);
 
   // Create a new version of a published Guided training (Slice 3.2C-B1). The server
@@ -484,8 +527,23 @@ export default function FoundryEventRooms({
             {t.pastHeader}
           </h2>
           {past.slice(0, 3).map((e) => (
-            <EventRow key={e.id} summary={e} onOpen={openControl} t={t} />
+            <EventRow
+              key={e.id}
+              summary={e}
+              onOpen={openControl}
+              t={t}
+              /* Finished sessions only — the open list above deliberately gets none of this. */
+              onRemove={removeFromHistory}
+              swipeOpenId={historySwipeId}
+              setSwipeOpenId={setHistorySwipeId}
+              busy={historyBusy === e.id}
+            />
           ))}
+          {historyFailed ? (
+            <p className="text-[0.78rem] text-white/60" role="status" data-testid="training-history-remove-error">
+              {t.historyRemoveFailed}
+            </p>
+          ) : null}
           {/* First-class read-only History archive door (deterministic ordering,
               token-free, aggregate counts) — always available, not just past 3. */}
           <button
@@ -507,13 +565,22 @@ function EventRow({
   summary,
   onOpen,
   t,
+  onRemove,
+  swipeOpenId,
+  setSwipeOpenId,
+  busy,
 }: {
   summary: ManagerEventSummary;
   onOpen: (id: string) => void;
   t: EventRoomsCopy;
+  /** Present only where tidying is offered. A row without it behaves exactly as it always did. */
+  onRemove?: (id: string) => void;
+  swipeOpenId?: string | null;
+  setSwipeOpenId?: (id: string | null) => void;
+  busy?: boolean;
 }) {
   const isOpen = summary.status === "open";
-  return (
+  const body = (
     <button
       type="button"
       onClick={() => onOpen(summary.id)}
@@ -526,6 +593,41 @@ function EventRow({
         {isOpen ? t.joinedCount(summary.joined_count) : t.closedTag}
       </span>
     </button>
+  );
+
+  /*
+    ★ ONLY A FINISHED SESSION CAN BE TIDIED AWAY.
+
+    An OPEN session is live work — hiding it would hide an obligation, not a record — so it never
+    receives the tray and simply renders as it always has. The server refuses an open session too;
+    this stops offering the control rather than relying on that refusal.
+
+    The gesture is the one already proven on Today and Saved for later: left only, REVEAL, then an
+    explicit tap. `TodaySwipeAction` is reused rather than reimplemented, with only its test hooks
+    renamed. And it is not gesture-only — the same sr-only focusable button pattern the shell
+    already uses keeps it in the accessibility tree and in tab order.
+  */
+  if (isOpen || !onRemove || !setSwipeOpenId) return body;
+
+  return (
+    <TodaySwipeAction
+      action={{ label: t.historyRemove, tone: "destructive", onCommit: () => onRemove(summary.id) }}
+      open={swipeOpenId === summary.id}
+      onOpenChange={(o: boolean) => setSwipeOpenId(o ? summary.id : null)}
+      busy={busy}
+      testIdPrefix="training-history"
+    >
+      {body}
+      <button
+        type="button"
+        data-testid="training-history-remove"
+        disabled={busy}
+        onClick={() => onRemove(summary.id)}
+        className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
+      >
+        {t.historyRemove}
+      </button>
+    </TodaySwipeAction>
   );
 }
 

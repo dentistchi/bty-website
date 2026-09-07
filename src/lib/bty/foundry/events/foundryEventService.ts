@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadHistoryDismissals } from "@/lib/bty/foundry/events/foundryEventHistoryDismissal.server";
 import {
   validateEventTitle,
   validateDisplayName,
@@ -156,7 +157,19 @@ export async function listOwnerEvents(
 
   if (error || !events || events.length === 0) return [];
 
-  const ids = events.map((e) => e.id);
+  /*
+    ★ A CLOSED SESSION THE OWNER TIDIED AWAY IS GONE FROM THIS LIST TOO.
+
+    This list carries BOTH open and closed sessions — the Learn landing splits them into "Training
+    sessions" and "Past training". Only the closed half is removable, and only the closed half is
+    subtracted here: an OPEN session is live work, and a dismissal must never be able to hide an
+    obligation. Belt and braces, since the service also refuses to create one for an open session.
+  */
+  const hidden = await loadHistoryDismissals(admin, ownerUserId);
+  const visible = events.filter((e) => !(e.status === "closed" && hidden.has(e.id)));
+  if (visible.length === 0) return [];
+
+  const ids = visible.map((e) => e.id);
   const { data: parts } = await admin
     .from("foundry_event_participants")
     .select("event_id, status")
@@ -167,7 +180,7 @@ export async function listOwnerEvents(
   const counts = new Map<string, number>();
   for (const p of parts ?? []) counts.set(p.event_id, (counts.get(p.event_id) ?? 0) + 1);
 
-  return events.map((e) => ({
+  return visible.map((e) => ({
     id: e.id,
     title: e.title,
     status: e.status,

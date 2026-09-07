@@ -118,6 +118,7 @@ describe("T13/T18/T19 — plumbing, in all three families", () => {
       "20260914000000_bty_identity_integrity_reconciliation_v1.sql",
       "20260915000000_bty_host_track_history_retention_v1.sql",
       "20260916000000_bty_action_capture_saved_removed_v1.sql",
+      "20260917000000_bty_foundry_event_history_dismissal_v1.sql",
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));

@@ -309,14 +309,14 @@ describe("★ TQ-4.9 — the export transform is SIZE ONLY", () => {
 });
 
 describe("★ the package around it is unchanged", () => {
-  it("the colour icon and the manifest are untouched by this slice", () => {
+  it("the ICON assets are untouched — only the manifest's command titles and version moved", () => {
     // color.png is 8-bit RGB with no alpha (colour type 2), which decodePng refuses on purpose.
     const colour = pngSize(readFileSync(join(process.cwd(), "teams/manifest/color.png")));
     expect({ w: colour.width, h: colour.height, type: colour.colorType }).toEqual({ w: 192, h: 192, type: 2 });
     const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
     expect(m.icons).toEqual({ color: "color.png", outline: "outline-s1-v112.png" });
     expect(m.id).toBe("374ec662-0deb-4e0b-8514-e38a035a349e");
-    expect(m.version).toBe("1.0.12");
+    expect(m.version).toBe("1.0.13");
     expect(m.bots[0].botId).toBe("820f231b-9dbb-4c84-94c5-65bc43d35d91");
     expect(m.staticTabs[0].contentUrl).toBe("https://arena.btydaily.com/teams");
     // color.png must be byte-identical to what has shipped since 1.0.6.

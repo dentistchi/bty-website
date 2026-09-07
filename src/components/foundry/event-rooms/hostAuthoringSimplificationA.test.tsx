@@ -612,6 +612,7 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
       "20260914000000_bty_identity_integrity_reconciliation_v1.sql",
       "20260915000000_bty_host_track_history_retention_v1.sql",
       "20260916000000_bty_action_capture_saved_removed_v1.sql",
+      "20260917000000_bty_foundry_event_history_dismissal_v1.sql",
     ];
     const newer = [...known]
       .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")
