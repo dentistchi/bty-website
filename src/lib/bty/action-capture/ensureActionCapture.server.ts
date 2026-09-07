@@ -34,9 +34,10 @@ import {
 
 /** Explicit column allow-list — never select('*'); the DTO shape is decided here, not by the table. */
 const CAPTURE_COLS =
-  // `saved_at` is selected but NOT projected: the service needs it to decide whether a Save must
-  // stamp an existing row, and no client has any use for it.
-  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at, triage_choice, triaged_at, saved_at";
+  // `saved_at` and `saved_removed_at` are selected but NOT projected: the service needs both to
+  // decide whether a Save must stamp or un-remove an existing row, and no client has a use for
+  // either. The lane's membership answer reaches the client as presence in the list, not as a date.
+  "id, source_type, external_key, preview_text, source_url, source_metadata, status, captured_at, triage_choice, triaged_at, saved_at, saved_removed_at";
 
 export type ActionCapture = {
   id: string;
@@ -136,7 +137,7 @@ export async function ensureActionCapture(
       The `is("saved_at", null)` guard is what makes the second true: a row already stamped is not
       re-stamped, so a later Track can never move a save's timestamp, and neither can a second Save.
     */
-    const row = existing as Row & { saved_at?: string | null };
+    const row = existing as Row & { saved_at?: string | null; saved_removed_at?: string | null };
     if (intent === "save" && !row.saved_at) {
       const { data: stamped } = await admin
         .from("bty_action_captures")
@@ -146,6 +147,29 @@ export async function ensureActionCapture(
         .select(CAPTURE_COLS)
         .maybeSingle();
       if (stamped) return { ok: true, capture: project(stamped as Row), created: false };
+    }
+
+    /*
+      ★ AN EXPLICIT SAVE BRINGS A CLEARED ITEM BACK — as the SAME row, and as UNDECIDED.
+
+      `saved_at` is NOT rewritten: they saved this once, and that moment is not moved by saving it
+      again. Only the removal is lifted. `triage_choice` was already cleared when they removed it
+      (a position in a queue means nothing once the item has left), and it is normalized here as
+      well so a historically inconsistent row cannot return still wearing a stale Soon or Later.
+
+      Track never reaches this branch: only `intent === "save"` lifts a removal, so a message the
+      person cleared cannot be dragged back into their list by somebody tracking it.
+    */
+    if (intent === "save" && row.saved_removed_at) {
+      const { data: restored } = await admin
+        .from("bty_action_captures")
+        .update({ saved_removed_at: null, triage_choice: null, triaged_at: null })
+        .eq("id", row.id)
+        .eq("user_id", userId)
+        .not("saved_removed_at", "is", null)
+        .select(CAPTURE_COLS)
+        .maybeSingle();
+      if (restored) return { ok: true, capture: project(restored as Row), created: false };
     }
     return { ok: true, capture: project(existing as Row), created: false };
   }
@@ -210,6 +234,13 @@ export async function listMyActionCaptures(
     // ★ EXPLICIT SAVES ONLY. A capture that exists solely as an announcement's source evidence was
     // never put here by anybody, and showing it made "Track with BTY" quietly mean "and save it".
     .not("saved_at", "is", null)
+    /*
+      ★ AND NOT ONE THEY HAVE CLEARED. Membership of this queue is the CONJUNCTION of two different
+      facts, deliberately kept apart: `saved_at` says they once asked for this, `saved_removed_at`
+      says they have since let it go. Collapsing them into one column would have made a cleared item
+      indistinguishable from one nobody ever saved.
+    */
+    .is("saved_removed_at", null)
     .order("captured_at", { ascending: false });
   if (error) throw new Error(`listMyActionCaptures: ${error.message}`);
   return ((data ?? []) as Row[]).map(project).sort(compareForSavedLane);
@@ -293,5 +324,84 @@ export async function setActionCaptureTriage(
   if (existing && (existing as Row).triage_choice !== null) {
     return { ok: true, capture: project(existing as Row), changed: false };
   }
+  return { ok: false, code: "not_found" };
+}
+
+/**
+ * ★ REMOVE ONE ITEM FROM THE CALLER'S OWN SAVED FOR LATER QUEUE.
+ *
+ * "Remove" here means CLEAR MY QUEUE, and the boundary is in the SQL rather than in a promise: this
+ * function names two columns and no others, so it cannot reach the source, the permalink, the
+ * capture's identity, its promotion history, or any Track that references it. There is no DELETE --
+ * `service_role` does not hold one on this table since 20260915, and this does not want one.
+ *
+ * ★ TRIAGE IS CLEARED HERE, NOT ON THE WAY BACK. `triage_choice` is the item's CURRENT position in
+ * this queue; once it has left, it does not have one. Clearing it at removal also keeps the
+ * biconditional (`triage_choice IS NULL` ↔ `triaged_at IS NULL`) true at every instant, rather than
+ * leaving a row that satisfies it only because nothing has looked yet.
+ *
+ * ★ THE REMOVAL MOMENT IS ESTABLISHED ONCE. `.is("saved_removed_at", null)` makes a repeat Remove
+ * match nothing, so the timestamp is never moved: they let this go when they let it go, and pressing
+ * the same button again does not make it a more recent decision. That is what `changed` reports.
+ *
+ * OWNER-SCOPED, AND SILENT ABOUT WHY. Both the update and the follow-up read are scoped by
+ * `user_id`, so somebody else's capture is `not_found` — the same answer as a capture that does not
+ * exist. Nothing here can tell one from the other.
+ */
+export type RemoveFromSavedResult =
+  | { ok: true; capture: ActionCapture; changed: boolean }
+  | { ok: false; code: "not_found" | "update_failed" };
+
+export async function removeFromSavedLane(
+  admin: SupabaseClient,
+  params: { userId: string; captureId: string },
+): Promise<RemoveFromSavedResult> {
+  const userId = typeof params.userId === "string" ? params.userId.trim() : "";
+  const captureId = typeof params.captureId === "string" ? params.captureId.trim() : "";
+  if (!userId || !captureId) return { ok: false, code: "not_found" };
+
+  const { data: updated, error: upErr } = await admin
+    .from("bty_action_captures")
+    .update({
+      saved_removed_at: new Date().toISOString(),
+      // A queue position is meaningless off the queue, and the pair invariant must hold throughout.
+      triage_choice: null,
+      triaged_at: null,
+    })
+    .eq("id", captureId)
+    .eq("user_id", userId)
+    // Only something actually IN the lane can leave it.
+    .not("saved_at", "is", null)
+    .is("saved_removed_at", null)
+    .select(CAPTURE_COLS)
+    .maybeSingle();
+
+  if (upErr) {
+    console.error("[actionCapture] saved-remove failed", {
+      user: userId.slice(0, 8),
+      code: (upErr as { code?: string }).code ?? null,
+    });
+    return { ok: false, code: "update_failed" };
+  }
+  if (updated) return { ok: true, capture: project(updated as Row), changed: true };
+
+  /*
+    Nothing matched. Either it was ALREADY removed — idempotent, report it unchanged — or it is not
+    the caller's to see. Owner-scoped, so the second stays indistinguishable from absence.
+  */
+  const { data: existing, error: exErr } = await admin
+    .from("bty_action_captures")
+    .select(CAPTURE_COLS)
+    .eq("id", captureId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (exErr) return { ok: false, code: "update_failed" };
+  if (!existing) return { ok: false, code: "not_found" };
+
+  const row = existing as Row & { saved_removed_at?: string | null };
+  if (row.saved_removed_at) return { ok: true, capture: project(existing as Row), changed: false };
+
+  // It exists and is theirs, but was never in the lane (Track-only source evidence). There is
+  // nothing to remove, and saying "not found" about a queue entry that never existed is truthful.
   return { ok: false, code: "not_found" };
 }

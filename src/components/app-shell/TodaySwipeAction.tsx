@@ -69,6 +69,7 @@ export default function TodaySwipeAction({
   open,
   onOpenChange,
   busy,
+  testIdPrefix = "today",
   children,
 }: {
   /** Null only for a card with nothing to offer at all — then the row does not move. */
@@ -76,6 +77,13 @@ export default function TodaySwipeAction({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   busy?: boolean;
+  /**
+   * Names the row's test hooks. The SMALLEST thing that had to become generic when Saved for later
+   * adopted this gesture: the physics, the thresholds, the tray and the clamp are identical there,
+   * and duplicating them would have been two implementations of one interaction drifting apart.
+   * Only the hook names were Today's; everything else already belonged to nobody in particular.
+   */
+  testIdPrefix?: string;
   children: React.ReactNode;
 }) {
   const enabled = action !== null;
@@ -148,7 +156,7 @@ export default function TodaySwipeAction({
     <div
       ref={rowRef}
       className="relative overflow-hidden rounded-2xl"
-      data-testid="today-swipe-row"
+      data-testid={`${testIdPrefix}-swipe-row`}
       data-open={open ? "1" : "0"}
       data-enabled={enabled ? "1" : "0"}
       data-tone={action?.tone ?? ""}
@@ -159,10 +167,10 @@ export default function TodaySwipeAction({
         already paid for once. There is nothing to leak because there is nothing there.
       */}
       {action && (open || translate < 0) ? (
-        <div className="absolute inset-y-0 right-0 flex items-stretch" data-testid="today-swipe-tray">
+        <div className="absolute inset-y-0 right-0 flex items-stretch" data-testid={`${testIdPrefix}-swipe-tray`}>
           <button
             type="button"
-            data-testid="today-swipe-action"
+            data-testid={`${testIdPrefix}-swipe-action`}
             data-tone={action.tone}
             disabled={busy}
             onClick={action.onCommit}
@@ -187,7 +195,7 @@ export default function TodaySwipeAction({
       ) : null}
 
       <div
-        data-testid="today-swipe-surface"
+        data-testid={`${testIdPrefix}-swipe-surface`}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

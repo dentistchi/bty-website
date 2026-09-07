@@ -120,11 +120,23 @@ describe("★ 1+2. the production rows, replayed through the real query", () => 
         const chain = {
           eq: (c: string, v: unknown) => { filters.push(["eq", c, v]); return chain; },
           not: (c: string, op: unknown, v: unknown) => { filters.push([`not.${op}`, c, v]); return chain; },
+          /*
+            Added when Remove split lane membership into two facts (20260916): `saved_at` says they
+            asked for this, `saved_removed_at` says they have since cleared it. The fake records the
+            predicate like every other one, so the assertions below still measure the query the
+            service ASKS for rather than a hand-picked result.
+          */
+          is: (c: string, v: unknown) => { filters.push(["is", c, v]); return chain; },
           order: () => ({
             // The fake applies the recorded predicate itself, so the assertion is about the
             // query the service ASKED for, not about a hand-picked result set.
             then: undefined,
-            data: [SAVE, OLDER, TRACK_ONLY].filter((r) => r.status === "captured" && r.saved_at !== null),
+            data: [SAVE, OLDER, TRACK_ONLY].filter(
+              (r) =>
+                r.status === "captured" &&
+                r.saved_at !== null &&
+                (r as { saved_removed_at?: string | null }).saved_removed_at == null,
+            ),
             error: null,
           }),
         };
@@ -148,6 +160,8 @@ describe("★ 1+2. the production rows, replayed through the real query", () => 
     const { listMyActionCaptures } = await import("@/lib/bty/action-capture/ensureActionCapture.server");
     await listMyActionCaptures(admin, "dc5bcdbb");
     expect(filters).toContainEqual(["not.is", "saved_at", null]);
+    // ★ AND the removal half of the same membership rule is in the query too.
+    expect(filters).toContainEqual(["is", "saved_removed_at", null]);
     expect(filters).toContainEqual(["eq", "user_id", "dc5bcdbb"]);
     expect(filters).toContainEqual(["eq", "status", "captured"]);
     expect(filters.some(([, c]) => c === "source_type")).toBe(false);

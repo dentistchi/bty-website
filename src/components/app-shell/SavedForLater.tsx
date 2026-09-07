@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
 import SwipeAction from "@/components/app-shell/SwipeAction";
+import TodaySwipeAction from "@/components/app-shell/TodaySwipeAction";
 import { openSourceLink } from "@/lib/bty/teams/openSourceLink";
 
 /**
@@ -80,10 +81,15 @@ const COPY: Record<Locale, {
   soon: string;
   later: string;
   notSaved: string;
+  remove: string;
+  removeFailed: string;
 }> = {
   en: {
     title: "Saved for later",
     back: "Today",
+    // The SAME word Today uses for the same gesture. One vocabulary for one meaning.
+    remove: "Remove",
+    removeFailed: "Couldn't remove that.",
     loading: "Loading…",
     empty: "Nothing saved for later.",
     errorText: "Saved items could not be loaded.",
@@ -112,6 +118,8 @@ const COPY: Record<Locale, {
   ko: {
     title: "나중에 보기",
     back: "오늘",
+    remove: "치우기",
+    removeFailed: "치우지 못했습니다.",
     loading: "불러오는 중…",
     empty: "아직 저장한 항목이 없습니다.",
     errorText: "저장한 항목을 불러오지 못했습니다.",
@@ -145,12 +153,19 @@ t,
 pendingId,
 failedId,
 choose,
+remove,
+swipeOpenId,
+setSwipeOpenId,
 }: {
 it: SavedCapture;
 t: (typeof COPY)[Locale];
 pendingId: string | null;
 failedId: string | null;
 choose: (id: string, choice: TriageChoice) => void;
+/** ★ DECIDED ROWS ONLY. Undecided rows keep their existing swipe and are never given this. */
+remove: (id: string) => void;
+swipeOpenId: string | null;
+setSwipeOpenId: (id: string | null) => void;
 }) {
   /** Local to this row: one card failing to open must not disturb any other. */
   const [openFailed, setOpenFailed] = useState(false);
@@ -265,11 +280,63 @@ choose: (id: string, choice: TriageChoice) => void;
 
       {failedId === it.id ? (
         <p className="mt-1 text-[0.75rem] text-white/60" role="status" data-testid="saved-triage-error">
-          {t.notSaved}
+          {/*
+            ★ SAY WHICH THING FAILED. The two mutations are mutually exclusive per row — an
+            undecided row can only triage, a decided one can only be removed — so the row's own
+            state is enough to tell them apart without a second piece of state. "That didn't save"
+            after somebody pressed Remove would be a true sentence about the wrong action.
+          */}
+          {undecided ? t.notSaved : t.removeFailed}
         </p>
       ) : null}
     </div>
   );
+
+  /*
+    ★ TWO GRAMMARS IN ONE LIST, AND THE DIFFERENCE IS THE POINT.
+
+    UNDECIDED — swipe COMMITS on release, left Soon / right Later. Untouched here. Classification is
+    reversible by looking at the list, the visible buttons sit right there, and a tray was
+    deliberately removed from this row once already ("the gesture reached the same place by a longer
+    road, and parked the card open on the way").
+
+    DECIDED — swipe LEFT only, and it REVEALS. Removal leaves the queue, so it asks for a second,
+    deliberate tap rather than firing off a flick. Same physics, same thresholds, same clamp as
+    Today: `TodaySwipeAction` is reused rather than reimplemented, with only its test hooks renamed.
+
+    A decided row had NO gesture at all before this, so nothing was taken away to make room.
+  */
+  if (!undecided) {
+    return (
+      <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
+        <TodaySwipeAction
+          action={{ label: t.remove, tone: "destructive", onCommit: () => remove(it.id) }}
+          open={swipeOpenId === it.id}
+          onOpenChange={(o: boolean) => setSwipeOpenId(o ? it.id : null)}
+          busy={pendingId === it.id}
+          testIdPrefix="saved"
+        >
+          {body}
+          {/*
+            ★ REACHABLE, BUT NOT PRESENT AT REST. The same pattern this shell already uses on Today:
+            an always-visible Remove would turn tidying into standing furniture, and the tray is the
+            intended surface — but a hidden gesture must never be the ONLY way to do a thing.
+            `sr-only` keeps it in the accessibility tree and in tab order; `focus:not-sr-only` brings
+            it into view the moment it is focused, so a keyboard user can see what they will press.
+          */}
+          <button
+            type="button"
+            data-testid="saved-remove"
+            disabled={pendingId === it.id}
+            onClick={() => remove(it.id)}
+            className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
+          >
+            {t.remove}
+          </button>
+        </TodaySwipeAction>
+      </li>
+    );
+  }
 
   return (
     <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
@@ -303,6 +370,8 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   /** Which card's decision failed to save. Scoped to one row — never a screen-level error. */
   const [failedId, setFailedId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  /** ONE ROW OPEN AT A TIME, owned here: there is only one slot to be open in. */
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
   /** Which conversations are open. Local only — a reading position is not worth persisting. */
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = useCallback((key: string) => {
@@ -380,6 +449,48 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     [items, pendingId],
   );
 
+  /**
+   * ★ REMOVE THIS FROM MY QUEUE — the same optimistic-but-never-lossy shape as `choose`.
+   *
+   * On failure the previous list is restored EXACTLY, so a saved thing cannot disappear because a
+   * request failed. That matters more here than for triage: a wrong triage is visible and
+   * reversible by looking, whereas a card that silently vanished looks exactly like one somebody
+   * removed on purpose.
+   *
+   * It is NOT deletion. The server writes `saved_removed_at` plus the two triage columns and
+   * nothing else; the capture, its permalink and any Track that references it are untouched, and an
+   * explicit Save to BTY on the same source brings this same row back.
+   */
+  const removeFromSaved = useCallback(
+    async (id: string) => {
+      if (pendingId) return; // one mutation at a time, exactly as triage
+      const previous = items;
+      setFailedId(null);
+      setPendingId(id);
+      setItems((prev) => prev.filter((it) => it.id !== id));
+      setSwipeOpenId(null);
+      try {
+        const res = await fetch(`/api/bty/action-capture/${encodeURIComponent(id)}/remove`, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const d = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+        if (!res.ok || d?.ok !== true) {
+          setItems(previous);
+          setFailedId(id);
+        }
+        // `changed: false` is success: it had already left, and it is already gone from this list.
+      } catch {
+        setItems(previous);
+        setFailedId(id);
+      } finally {
+        setPendingId(null);
+      }
+    },
+    [items, pendingId],
+  );
+
   const lanes: { key: "new" | "soon" | "later"; heading: string; rows: SavedCapture[] }[] = [
     { key: "new", heading: t.groupNew, rows: items.filter((i) => i.triageChoice === null) },
     { key: "soon", heading: t.groupSoon, rows: items.filter((i) => i.triageChoice === "soon") },
@@ -445,6 +556,9 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                         pendingId={pendingId}
                         failedId={failedId}
                         choose={choose}
+                        remove={removeFromSaved}
+                        swipeOpenId={swipeOpenId}
+                        setSwipeOpenId={setSwipeOpenId}
                       />
                     ) : (
                       <li key={conv.key} data-testid="saved-conversation" data-count={conv.count}>
@@ -485,6 +599,9 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
                                 pendingId={pendingId}
                                 failedId={failedId}
                                 choose={choose}
+                                remove={removeFromSaved}
+                                swipeOpenId={swipeOpenId}
+                                setSwipeOpenId={setSwipeOpenId}
                               />
                             ))}
                           </ul>
