@@ -141,7 +141,7 @@ export async function readThread(
 
 export type PostMessageResult =
   | { ok: true; role: ThreadRole; messageId: string; duplicate: boolean; reopened: boolean }
-  | { ok: false; reason: "not_found" | "empty_message" | "message_too_long" | "failed" };
+  | { ok: false; reason: "not_found" | "host_unavailable" | "empty_message" | "message_too_long" | "failed" };
 
 /**
  * Append one message.
@@ -189,6 +189,12 @@ export async function postThreadMessage(
     };
   }
   if (result === "not_found") return { ok: false, reason: "not_found" };
+  /*
+    The Host's account is gone, so there is nobody to send this to. A DISTINCT reason, not folded
+    into `not_found`: the person is genuinely part of this thread and can still read it, and telling
+    them "no such thing" would be untrue about a conversation they are looking at.
+  */
+  if (result === "host_unavailable") return { ok: false, reason: "host_unavailable" };
   if (result === "empty_message") return { ok: false, reason: "empty_message" };
   if (result === "message_too_long") return { ok: false, reason: "message_too_long" };
   return { ok: false, reason: "failed" };

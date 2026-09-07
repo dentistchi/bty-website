@@ -50,7 +50,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
 
   if (!result.ok) {
-    const status = result.reason === "not_a_recipient" ? 404 : 400;
+    // 409 for host_unavailable: nothing about the request was wrong, the Host's account is gone.
+    const status =
+      result.reason === "not_a_recipient" ? 404 : result.reason === "host_unavailable" ? 409 : 400;
     const res = NextResponse.json({ ok: false, code: result.reason }, { status });
     res.headers.set("Cache-Control", "private, no-store");
     return res;

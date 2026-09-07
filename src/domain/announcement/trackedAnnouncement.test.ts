@@ -147,9 +147,16 @@ describe("what a recipient may see — the privacy whitelist", () => {
 
       `unreadCount` and `messageCount` are COUNTS. A number cannot carry a body, a name or an
       identifier, and neither can say anything about another recipient of the same announcement.
+
+      ★ AND BY ONE MORE (Host Track history retention V1). `hostAvailable` is a BOOLEAN saying only
+      whether this Track still has a Host at all. It is derived from `owner_user_id IS NOT NULL` and
+      carries no id, no name and nothing about the Host beyond the fact the surface must act on:
+      whether new writing is still possible. The `owner_user_id_snapshot` that records WHO created
+      the run is deliberately NOT here and has no route to a recipient.
     */
     expect(Object.keys(p).sort()).toEqual([
       "announcementId",
+      "hostAvailable",
       "hostDisplay",
       "hostFraming",
       "messageCount",

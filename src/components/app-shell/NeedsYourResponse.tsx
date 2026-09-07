@@ -38,6 +38,12 @@ type Item = {
   /** Messages from the Host this person has not opened. Their own replies never count. */
   unreadCount: number;
   messageCount: number;
+  /**
+   * `false` once the Host's account has been deleted. The Track is then HISTORICAL: everything
+   * already said stays readable, and nothing new may be written. Optional so an older caller that
+   * does not send it keeps the ordinary behaviour rather than turning every card read-only.
+   */
+  hostAvailable?: boolean;
 };
 
 type Locale = "en" | "ko";
@@ -64,6 +70,7 @@ const COPY = {
     failed: "Couldn't save that.",
     loadFailed: "Couldn't load what needs your response.",
     retry: "Retry",
+    hostGone: "Host account removed. This Track is read-only.",
   },
   ko: {
     title: "답변이 필요합니다",
@@ -86,6 +93,7 @@ const COPY = {
     failed: "저장하지 못했습니다.",
     loadFailed: "답변이 필요한 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
+    hostGone: "Host 계정이 삭제되어 이 Track은 기록으로만 남아 있습니다.",
   },
 } as const;
 
@@ -247,6 +255,16 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
       {items.map((it) => {
         const answered = it.response !== null;
         /*
+          ★ NO HOST, NO NEW WORDS — AND THE SURFACE SAYS SO BEFORE ANYBODY TRIES.
+
+          The database refuses both write paths with `host_unavailable`, and that refusal stays the
+          authority. This only stops offering a control that would now fail: letting somebody type
+          an answer and then telling them it could not be sent is a worse way to learn the same
+          fact. Reading is untouched — a reply the Host wrote before the account was deleted was
+          really sent to this person.
+        */
+        const hostGone = it.hostAvailable === false;
+        /*
           ★ A QUESTION OR A REQUEST FOR HELP IS NEVER FINISHED BY THE FIRST TAP.
 
           Those two responses are the START of something, so their conversation is always reachable
@@ -257,7 +275,11 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
           Host wrote to them.
         */
         const continuable = it.response === "QUESTION" || it.response === "HELP_NEEDED";
-        const canConverse = continuable || it.messageCount > 0;
+        /*
+          A historical Track still OPENS its conversation when one exists — the words are readable.
+          What it never does is offer to START one, because there is nobody at the other end.
+        */
+        const canConverse = hostGone ? it.messageCount > 0 : continuable || it.messageCount > 0;
         // Unread AUTO-EXPANDS. A deliberate toggle wins over that default, in both directions.
         const convoOpen = convoOverride[it.recipientId] ?? it.unreadCount > 0;
         /*
@@ -271,7 +293,11 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
           Every branch here is driven by `recipientTodayAction`; this component derives no
           eligibility of its own, so it cannot drift from the rule the server enforces.
         */
-        const act = recipientTodayAction({ response: it.response, unreadCount: it.unreadCount });
+        const act = recipientTodayAction({
+          response: it.response,
+          unreadCount: it.unreadCount,
+          hostAvailable: !hostGone,
+        });
         const trayAction: TodaySwipeTrayAction | null = act.removable
           ? { label: t.remove, tone: "destructive", onCommit: () => void removeFromToday(it.recipientId) }
           : act.blocker === "unread"
@@ -340,7 +366,19 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
               </a>
             ) : null}
 
-            {answered ? (
+            {/*
+              ★ THE TRUTH, SAID PLAINLY AND ONCE. Not a modal, not an alert — a quiet line where the
+              controls used to be, so the absence of the answer buttons is explained rather than
+              merely noticed. The snapshot uuid is never shown: it identifies nobody to a reader and
+              would be leaking an internal id to say nothing.
+            */}
+            {hostGone ? (
+              <p className="text-[0.8rem] text-white/55" data-testid="announcement-host-gone">
+                {t.hostGone}
+              </p>
+            ) : null}
+
+            {hostGone && !answered ? null : answered ? (
               <p className="text-[0.8rem] text-white/55" data-testid="announcement-answered">
                 {it.response === "ACKNOWLEDGED"
                   ? t.answeredGotIt
@@ -467,6 +505,8 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
                     locale={locale}
                     counterpartName={it.hostDisplay}
                     onChanged={load}
+                    // No Host, no composer. Reading what was already said stays untouched.
+                    readOnly={hostGone}
                   />
                 ) : null}
               </div>

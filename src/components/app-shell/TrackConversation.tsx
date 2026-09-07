@@ -102,11 +102,19 @@ export default function TrackConversation({
   /** The other person's name, when one is known. Never an email, and never invented. */
   counterpartName,
   onChanged,
+  readOnly,
 }: {
   recipientId: string;
   locale: string;
   counterpartName?: string | null;
   onChanged?: () => void;
+  /**
+   * `true` when the Host's account has been deleted. The conversation stays fully readable — those
+   * words were really sent — but there is nobody to send a new one to, so the composer is not
+   * offered. The server refuses the write with `host_unavailable` regardless; this only stops
+   * someone typing a reply before being told it cannot go anywhere.
+   */
+  readOnly?: boolean;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -277,6 +285,7 @@ export default function TrackConversation({
         </div>
       )}
 
+      {readOnly ? null : (
       <div className="flex flex-col gap-2">
         <label className="sr-only" htmlFor={`reply-${recipientId}`}>
           {t.placeholder}
@@ -308,6 +317,7 @@ export default function TrackConversation({
           </p>
         ) : null}
       </div>
+      )}
     </div>
   );
 }

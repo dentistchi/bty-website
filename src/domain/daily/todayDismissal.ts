@@ -52,7 +52,27 @@ export type TodayCardAction = {
  * field of the recipient projection at all. A recipient who answered and has nothing waiting is
  * finished with the card on THEIR Today, whatever the Host has or has not done about it.
  */
-export function recipientTodayAction(card: { response: string | null; unreadCount: number }): TodayCardAction {
+export function recipientTodayAction(card: {
+  response: string | null;
+  unreadCount: number;
+  /** `false` once the Host's account is gone. Absent means "unknown", read as the ordinary case. */
+  hostAvailable?: boolean;
+}): TodayCardAction {
+  /*
+    ★ NOBODY IS WAITING FOR AN ANSWER THAT CAN NEVER BE READ.
+
+    When the Host's account has been deleted the Track is historical. `needs_response` would ask a
+    person to answer somebody who no longer exists AND refuse to let them clear the card — a
+    permanent obligation to nobody, which is the exact harm this feature must not cause.
+
+    `unread` still outranks it, deliberately. A reply the Host wrote BEFORE the account was deleted
+    was really sent to this person; they are owed those words, and the card stays until they have
+    seen them. After that it is theirs to remove.
+  */
+  if (card.hostAvailable === false) {
+    if (card.unreadCount > 0) return { removable: false, blocker: "unread" };
+    return { removable: true, blocker: null };
+  }
   if (card.response === null) return { removable: false, blocker: "needs_response" };
   if (card.unreadCount > 0) return { removable: false, blocker: "unread" };
   return { removable: true, blocker: null };

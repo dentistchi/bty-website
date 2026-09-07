@@ -175,6 +175,17 @@ export type RecipientProjection = {
   readonly unreadCount: number;
   /** Whether a conversation exists at all — what decides if the panel is offered. */
   readonly messageCount: number;
+  /**
+   * ★ IS THERE STILL A HOST?
+   *
+   * `false` when the Host's account was deleted. The Track is then HISTORICAL: everything already
+   * said stays readable, and nothing new can be written — the database refuses both write paths
+   * with `host_unavailable`, and the surface must stop offering them BEFORE somebody tries.
+   *
+   * Derived from `owner_user_id IS NOT NULL` and nothing else. Deliberately NOT the announcement's
+   * `status`, which means something different: that a Host deliberately closed their own run.
+   */
+  readonly hostAvailable: boolean;
 };
 
 /** Only `https:` and Teams' own scheme may become a tappable link. */
@@ -194,6 +205,7 @@ export function projectForRecipient(row: {
   respondedAt?: unknown;
   unreadCount?: unknown;
   messageCount?: unknown;
+  hostAvailable?: unknown;
 }): RecipientProjection {
   return {
     announcementId: row.announcementId,
@@ -206,5 +218,11 @@ export function projectForRecipient(row: {
     // Counts, never lists. A number cannot carry a body, a name or an identifier.
     unreadCount: typeof row.unreadCount === "number" && row.unreadCount > 0 ? Math.floor(row.unreadCount) : 0,
     messageCount: typeof row.messageCount === "number" && row.messageCount > 0 ? Math.floor(row.messageCount) : 0,
+    /*
+      Defaults to TRUE when the caller says nothing. An absent flag means "this caller does not know
+      about orphaned Tracks", and the safe reading of not-knowing is the ordinary case — treating an
+      unknown as "no Host" would silently make every live Track read-only.
+    */
+    hostAvailable: row.hostAvailable === undefined ? true : row.hostAvailable !== false,
   };
 }

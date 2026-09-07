@@ -36,7 +36,8 @@ type RecipientRow = {
   bty_tracked_announcements: {
     id: string;
     host_framing: string;
-    owner_user_id: string;
+    // NULLABLE since 20260915: the Host's account may have been deleted while the Track survives.
+    owner_user_id: string | null;
     bty_action_captures: { source_url: string | null } | null;
   } | null;
 };
@@ -55,7 +56,18 @@ export async function listMyAnnouncements(
     .from("bty_tracked_announcement_recipients")
     // The whitelist IS the privacy rule. Note what is absent: no preview, no metadata, no ids.
     .select(
-      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures!inner(source_url))",
+      /*
+        ★ THE CAPTURE RELATION IS OPTIONAL, AND THAT IS LOAD-BEARING.
+
+        It used to be `bty_action_captures!inner(...)`. Once a Host account can be deleted while
+        the Track survives, `source_capture_id` goes NULL — and an inner join would have made the
+        whole historical card VANISH from this person's list. Preserving the row in the database
+        and then filtering it out of the only surface that shows it is not preservation.
+
+        No source link is a smaller loss than the entire Track. `sourceUrl` becomes null and the
+        card renders without a link; nothing is fabricated to fill the gap.
+      */
+      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, owner_user_id, bty_action_captures(source_url))",
     )
     .eq("user_id", userId)
     .eq("bty_tracked_announcements.status", "active")
@@ -132,6 +144,8 @@ export async function listMyAnnouncements(
       hostFraming: r.bty_tracked_announcements?.host_framing ?? "",
       hostDisplay: hostNames.get(r.bty_tracked_announcements?.owner_user_id ?? "") ?? null,
       sourceUrl: r.bty_tracked_announcements?.bty_action_captures?.source_url ?? null,
+      // No owner = the Host's account is gone. The Track is readable and closed to new writing.
+      hostAvailable: r.bty_tracked_announcements?.owner_user_id != null,
       response: r.response,
       respondedAt: r.responded_at,
       // Unread here means HOST messages this person has not opened. Their own never count.
@@ -143,7 +157,7 @@ export async function listMyAnnouncements(
 
 export type RespondResult =
   | { ok: true; response: AnnouncementResponse; alreadyResponded: boolean }
-  | { ok: false; reason: "invalid_response" | "not_a_recipient" | "question_too_long" | "failed" };
+  | { ok: false; reason: "invalid_response" | "not_a_recipient" | "host_unavailable" | "question_too_long" | "failed" };
 
 /**
  * Record one response. WRITE-ONCE.
@@ -180,6 +194,8 @@ export async function respondToAnnouncement(
     return { ok: true, response: settled as AnnouncementResponse, alreadyResponded: result === "already_responded" };
   }
   if (result === "not_a_recipient") return { ok: false, reason: "not_a_recipient" };
+  // Same domain fact as the thread path: this Track has no Host, so nothing new can be said to one.
+  if (result === "host_unavailable") return { ok: false, reason: "host_unavailable" };
   if (result === "question_too_long") return { ok: false, reason: "question_too_long" };
   return { ok: false, reason: "invalid_response" };
 }

@@ -45,6 +45,12 @@ export const dynamic = "force-dynamic";
 
 const POST_STATUS: Record<string, number> = {
   not_found: 404,
+  /*
+    409, not 400. The request was well formed and the person really is in this thread — what
+    changed is the world: the Host's account no longer exists. "Bad request" would blame the
+    caller for a state they could not have known about.
+  */
+  host_unavailable: 409,
   empty_message: 400,
   message_too_long: 400,
   failed: 500,

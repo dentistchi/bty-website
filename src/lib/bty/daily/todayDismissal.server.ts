@@ -56,10 +56,16 @@ async function ownedActivityVersion(
     // OWNERSHIP: the recipient row must be BOUND to the caller.
     const { data: row, error } = await admin
       .from("bty_tracked_announcement_recipients")
-      .select("id, response")
+      /*
+        `owner_user_id` comes along because removability now depends on whether a Host still
+        exists: an orphaned Track asks nothing of anybody, so it is removable even unanswered.
+        The join is NOT `!inner`-style filtering — it reads one column of the parent, and the
+        ownership rule above is still the recipient binding and nothing else.
+      */
+      .select("id, response, bty_tracked_announcements!inner(owner_user_id)")
       .eq("id", itemId)
       .eq("user_id", userId)
-      .maybeSingle<{ id: string; response: string | null }>();
+      .maybeSingle<{ id: string; response: string | null; bty_tracked_announcements: { owner_user_id: string | null } | null }>();
     if (error) {
       console.error("[today-dismissal] recipient lookup failed", { code: error.code ?? "unknown" });
       return null;
@@ -96,7 +102,11 @@ async function ownedActivityVersion(
     const unreadCount = countUnreadFor("RECIPIENT", all, read);
     return {
       version: recipientActivityVersion(all),
-      removable: recipientTodayAction({ response: row.response, unreadCount }).removable,
+      removable: recipientTodayAction({
+        response: row.response,
+        unreadCount,
+        hostAvailable: row.bty_tracked_announcements?.owner_user_id != null,
+      }).removable,
     };
   }
 
