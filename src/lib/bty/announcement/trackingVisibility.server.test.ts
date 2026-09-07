@@ -234,8 +234,18 @@ describe("★ 6+7+8. first activation binds, and binding is idempotent", () => {
 describe("★ 15. the Teams confirmation says where it went", () => {
   const CARD = readFileSync("src/lib/bty/teams/trackDialogCard.ts", "utf8");
   it("★ names Today → Tracking", () => {
-    expect(CARD).toContain("Tracked in BTY. See it in Today");
+    /*
+      The DESTINATION is what this guard exists for — measured: a real Track succeeded and the Host
+      went looking for it and found nothing. It survived the 2026-09-07 lightening; only the
+      headline became a check mark and the "Tracked in BTY." preamble went, because Teams already
+      attributes the command to BTY and the sheet no longer carries a BTY header either.
+
+      Asserted on the FACT (where to look) rather than the sentence, so calm rewording stays
+      possible and losing the destination does not.
+    */
+    expect(CARD).toContain("See it in Today");
     expect(CARD).toContain("Tracking.");
+    expect(CARD, "and the headline confirms it started").toContain("Tracking started");
   });
 });
 

@@ -195,7 +195,7 @@ describe("Save to BTY is untouched", () => {
     );
     expect(ensureActionCapture).toHaveBeenCalledTimes(1);
     expect(rpc).not.toHaveBeenCalled();
-    expect(JSON.stringify(await res.json())).toContain("Saved to BTY.");
+    expect(JSON.stringify(await res.json())).toContain("\u2713 Saved");
   });
 
   it("an activity with NO commandId still behaves as Save — the historical wire", async () => {
@@ -299,7 +299,7 @@ describe("★ Track is a COLLABORATION action", () => {
     isActiveFoundryHost.mockResolvedValue(false);
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" }, { commandId: "saveToBty" })));
     expect(ensureActionCapture).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(await res.json())).toContain("Saved to BTY.");
+    expect(JSON.stringify(await res.json())).toContain("\u2713 Saved");
   });
 
   it("an unauthenticated caller never even reaches the Host gate", async () => {

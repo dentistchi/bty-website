@@ -84,9 +84,9 @@ export function trackDialogCard() {
 
 /** The one-line confirmation after a successful Track. Calm, and it states the denominator. */
 export function trackConfirmationCard(count: number) {
-  const people = count === 1 ? "1 person." : `${count} people.`;
+  const people = count === 1 ? "1 person" : `${count} people`;
   return {
-    title: "BTY",
+    // No `title` — see the note on the Save confirmation. Teams already attributes this to BTY.
     height: "small",
     width: "small",
     card: {
@@ -96,15 +96,17 @@ export function trackConfirmationCard(count: number) {
         type: "AdaptiveCard",
         version: "1.4",
         body: [
-          { type: "TextBlock", text: `Tracking. ${people}`, wrap: true, size: "Medium" },
+          { type: "TextBlock", text: "\u2713 Tracking started", wrap: true },
           /*
-            ★ SAY WHERE IT WENT. A confirmation that only says "done" leaves the person to guess
-            whether BTY kept anything and where to look -- measured: a real Track succeeded and the
-            Host went looking for it and found nothing. The destination is part of the receipt.
+            ★ SAY WHERE IT WENT, STILL. A confirmation that only says "done" leaves the person to
+            guess whether BTY kept anything and where to look -- measured: a real Track succeeded
+            and the Host went looking for it and found nothing. The destination is part of the
+            receipt, so it survives the 2026-09-07 lightening; only the HEADLINE became a check
+            mark, and the denominator moved down beside the destination instead of competing with it.
           */
           {
             type: "TextBlock",
-            text: "Tracked in BTY. See it in Today \u2192 Tracking.",
+            text: `${people} \u00b7 See it in Today \u2192 Tracking.`,
             wrap: true,
             isSubtle: true,
             spacing: "Small",

@@ -72,7 +72,18 @@ const ADAPTIVE_CARD = "application/vnd.microsoft.card.adaptive";
 
 function confirmationCard(text: string) {
   return {
-    title: "BTY",
+    /*
+      ★ NO `title`, DELIBERATELY (2026-09-07, Founder device observation).
+
+      It was "BTY", which Teams painted as the dialog's header — above a command Teams had ALREADY
+      attributed to BTY, inside a sheet the person opened from BTY. The brand appeared three times
+      to say one thing, and the header is what made a one-line acknowledgement read as the top of an
+      unfinished form.
+
+      `height`/`width: "small"` are kept because they are the only size request the platform takes;
+      Teams mobile still presents a task module as a sheet, so this asks for the smallest one rather
+      than pretending we control it.
+    */
     height: "small",
     width: "small",
     card: {
@@ -81,7 +92,8 @@ function confirmationCard(text: string) {
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
         type: "AdaptiveCard",
         version: "1.4",
-        body: [{ type: "TextBlock", text, wrap: true, size: "Medium" }],
+        // Default size, not "Medium": a receipt, not a headline.
+        body: [{ type: "TextBlock", text, wrap: true }],
       },
     },
   };
@@ -100,16 +112,27 @@ function dialog(value: unknown, invokeName?: TeamsInvokeName) {
     : NextResponse.json({ task: { type: "continue", value } });
 }
 
+/*
+  ★ SUCCESS IS AN ACKNOWLEDGEMENT, NOT A SENTENCE ABOUT THE BRAND.
+
+  "Saved to BTY." said BTY a third time — after Teams' own command attribution and after the
+  dialog header. The person invoked this FROM BTY; they know where it went. A check mark and one
+  word is the whole message.
+
+  Failures keep their words, because a failure has to say what did not happen, but they stop
+  leading with the brand too: "Couldn't save." is the same fact in fewer words, and none of them
+  exposes an internal code.
+*/
 const MSG = {
-  saved: "Saved to BTY.",
+  saved: "\u2713 Saved",
   trackNoFraming: "Add a line about what they should know or do.",
   trackNoPeople: "Choose at least one person.",
   trackNoSource: "BTY couldn't read the original message.",
-  trackFailed: "BTY couldn't start tracking this yet.",
+  trackFailed: "Couldn't start tracking.",
   notInOrg: "BTY isn't available for this account.",
   signIn: "Sign in to BTY with Microsoft first.",
-  cannotSave: "This message couldn't be saved to BTY.",
-  serverBusy: "BTY couldn't save this yet.",
+  cannotSave: "Couldn't save this message.",
+  serverBusy: "Couldn't save. Please go again in a moment.",
 } as const;
 
 export async function POST(req: NextRequest) {

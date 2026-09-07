@@ -118,7 +118,7 @@ describe("POST /api/bty/teams/invoke", () => {
       resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status });
       const res = await POST(req(activity()));
       expect(ensureActionCapture).not.toHaveBeenCalled();
-      expect(cardText(await res.json())).toBe("BTY couldn't save this yet.");
+      expect(cardText(await res.json())).toBe("Couldn't save. Please go again in a moment.");
     }
   });
 
@@ -126,7 +126,7 @@ describe("POST /api/bty/teams/invoke", () => {
     ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
     const res = await POST(req(activity()));
     const body = await res.json();
-    expect(cardText(body)).toBe("Saved to BTY.");
+    expect(cardText(body)).toBe("\u2713 Saved");
     expect(JSON.stringify(body)).not.toContain("Duplicate");
   });
 
@@ -138,20 +138,33 @@ describe("POST /api/bty/teams/invoke", () => {
 
   it("the reply envelope follows the invoke type", async () => {
     const fetchRes = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect(cardText(await fetchRes.json())).toBe("Saved to BTY.");
+    expect(cardText(await fetchRes.json())).toBe("\u2713 Saved");
     const submitRes = await POST(req(activity({ name: "composeExtension/submitAction" })));
-    expect((await submitRes.json()).composeExtension.text).toBe("Saved to BTY.");
+    expect((await submitRes.json()).composeExtension.text).toBe("\u2713 Saved");
   });
 
 
   it("RENDER CONTRACT — a successful fetchTask returns a Teams-renderable card, not a bare message", async () => {
+    /*
+      ★ THIS IS THE GUARD THAT MUST NOT BE TRADED FOR A LIGHTER-LOOKING RESPONSE.
+
+      `task.type: "message"` is documented for exactly this case and IS what this returned first.
+      On the Founder's iPhone it rendered NOTHING, twice, on invokes that were otherwise completely
+      successful — JWT valid, identity RESOLVED, capture written, HTTP 200. The save worked and the
+      person could not tell. The card is the repair, and it stays.
+
+      The 2026-09-07 lightening changed the card's CONTENT — no title, default text size, "✓ Saved"
+      — and deliberately not its TYPE. A confirmation nobody sees is worse than a heavy one.
+    */
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
     const body = await res.json();
     expect(body.task.type).toBe("continue");
+    expect(body.task.type, "never a bare message — it rendered nothing on device").not.toBe("message");
+    expect(body.task.value.title, "no redundant BTY header").toBeUndefined();
     const card = body.task.value.card;
     expect(card.contentType).toBe("application/vnd.microsoft.card.adaptive");
     expect(card.content.type).toBe("AdaptiveCard");
-    expect(cardText(body)).toBe("Saved to BTY.");
+    expect(cardText(body)).toBe("\u2713 Saved");
     // Confirmation, not a form: nothing to fill in and nothing to press.
     expect(card.content.body).toHaveLength(1);
     expect(card.content.actions).toBeUndefined();
@@ -162,7 +175,7 @@ describe("POST /api/bty/teams/invoke", () => {
     ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
     const body = await (await POST(req(activity()))).json();
     expect(body.task.type).toBe("continue");
-    expect(cardText(body)).toBe("Saved to BTY.");
+    expect(cardText(body)).toBe("\u2713 Saved");
     expect(JSON.stringify(body)).not.toContain("Duplicate");
   });
 
@@ -178,6 +191,61 @@ describe("POST /api/bty/teams/invoke", () => {
     const body = JSON.stringify(await res.json());
     for (const secret of [RESOLVED_USER, TID, OID, "c1", "29:addr"]) {
       expect(body).not.toContain(secret);
+    }
+  });
+});
+
+/**
+ * ★ SUCCESS IS AN ACKNOWLEDGEMENT (2026-09-07 Founder device observation).
+ *
+ * After a successful Save, Teams showed a large sheet titled "BTY" containing "Saved to BTY." —
+ * the brand three times, in a header that made a one-line receipt read as an unfinished form.
+ *
+ * What changed is the card's CONTENT. What deliberately did NOT change is its TYPE: `task.type:
+ * "message"` is documented for exactly this case, was what this returned first, and rendered
+ * NOTHING on the Founder's iPhone twice on otherwise completely successful invokes. A confirmation
+ * nobody sees is worse than a heavy one, so the mechanism stays and only the weight came off.
+ */
+describe("★ the success confirmation is light, and still visible", () => {
+  it("★ Save says '✓ Saved' — not the brand, a third time", async () => {
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(cardText(body)).toBe("✓ Saved");
+    expect(JSON.stringify(body), "the brand is not repeated in the payload").not.toContain("BTY");
+  });
+
+  it("★ no dialog header, and no headline-sized text", async () => {
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(body.task.value.title, "Teams already attributes the command to BTY").toBeUndefined();
+    expect(body.task.value.card.content.body[0].size, "a receipt, not a headline").toBeUndefined();
+    expect(body.task.value.height).toBe("small");
+    expect(body.task.value.width).toBe("small");
+  });
+
+  it("★ still not a form: nothing to fill in, nothing to press, one line only", async () => {
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    const card = body.task.value.card;
+    expect(card.content.body).toHaveLength(1);
+    expect(card.content.actions).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("Input.");
+  });
+
+  it("★ the submitAction envelope is unchanged — a different invoke, a different shape", async () => {
+    const body = await (await POST(req(activity({ name: "composeExtension/submitAction" })))).json();
+    expect(body.composeExtension.type).toBe("message");
+    expect(body.composeExtension.text).toBe("✓ Saved");
+    expect(body.task, "a submitAction never returns a task").toBeUndefined();
+  });
+
+  it("★ FAILURES ARE NOT DRESSED AS SUCCESS, and expose no internal code", async () => {
+    // The file's own mock, already wired at the top — no second import needed.
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
+    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    const text = cardText(body);
+    expect(text).not.toContain("✓");
+    expect(text).toBe("Sign in to BTY with Microsoft first.");
+    // No code, no status enum, no stack — the person gets a sentence they can act on.
+    for (const leak of ["NOT_LINKED", "500", "error", "code"]) {
+      expect(JSON.stringify(body), leak).not.toContain(leak);
     }
   });
 });
