@@ -126,7 +126,8 @@ describe("POST /api/bty/teams/invoke", () => {
     ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
     const res = await POST(req(activity()));
     const body = await res.json();
-    expect(cardText(body)).toBe("\u2713 Saved");
+    // Save success is now a message-extension reply, not a card — see the transport note below.
+    expect(body.composeExtension.text).toBe("\u2713 Saved");
     expect(JSON.stringify(body)).not.toContain("Duplicate");
   });
 
@@ -136,26 +137,35 @@ describe("POST /api/bty/teams/invoke", () => {
     expect(res.status).toBe(200);
   });
 
-  it("the reply envelope follows the invoke type", async () => {
-    const fetchRes = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect(cardText(await fetchRes.json())).toBe("\u2713 Saved");
-    const submitRes = await POST(req(activity({ name: "composeExtension/submitAction" })));
-    expect((await submitRes.json()).composeExtension.text).toBe("\u2713 Saved");
+  it("★ SAVE SUCCESS answers in ONE shape now, whichever invoke asked", async () => {
+    /*
+      It used to follow the invoke: a task reply to `fetchTask`, a composeExtension reply to
+      `submitAction`. The task reply is the giant sheet, so success now answers in the
+      message-extension family either way. Failures still follow the invoke.
+    */
+    for (const name of ["composeExtension/fetchTask", "composeExtension/submitAction"]) {
+      const body = await (await POST(req(activity({ name })))).json();
+      expect(body.composeExtension.type, name).toBe("message");
+      expect(body.composeExtension.text, name).toBe("\u2713 Saved");
+      expect(body.task, `${name} opens no dialog`).toBeUndefined();
+    }
   });
 
 
-  it("RENDER CONTRACT — a successful fetchTask returns a Teams-renderable card, not a bare message", async () => {
+  it("RENDER CONTRACT — a task-family reply is a renderable CARD, never a bare message", async () => {
     /*
-      ★ THIS IS THE GUARD THAT MUST NOT BE TRADED FOR A LIGHTER-LOOKING RESPONSE.
+      ★ THE LESSON THIS GUARD CARRIES, AND WHY IT MOVED TO THE FAILURE PATH.
 
-      `task.type: "message"` is documented for exactly this case and IS what this returned first.
-      On the Founder's iPhone it rendered NOTHING, twice, on invokes that were otherwise completely
-      successful — JWT valid, identity RESOLVED, capture written, HTTP 200. The save worked and the
-      person could not tell. The card is the repair, and it stays.
+      `task.type: "message"` is documented for exactly this case and IS what this endpoint returned
+      first. On the Founder's iPhone it rendered NOTHING, twice, on invokes that were otherwise
+      completely successful — JWT valid, identity RESOLVED, capture written, HTTP 200. The write
+      worked and the person could not tell.
 
-      The 2026-09-07 lightening changed the card's CONTENT — no title, default text size, "✓ Saved"
-      — and deliberately not its TYPE. A confirmation nobody sees is worse than a heavy one.
+      Save SUCCESS no longer uses the task family at all (2026-09-07 transport experiment), so this
+      now guards the failures, which still do — and failures are where an invisible reply would be
+      worst, because the message is the whole point.
     */
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
     const res = await POST(req(activity({ name: "composeExtension/fetchTask" })));
     const body = await res.json();
     expect(body.task.type).toBe("continue");
@@ -164,18 +174,16 @@ describe("POST /api/bty/teams/invoke", () => {
     const card = body.task.value.card;
     expect(card.contentType).toBe("application/vnd.microsoft.card.adaptive");
     expect(card.content.type).toBe("AdaptiveCard");
-    expect(cardText(body)).toBe("\u2713 Saved");
-    // Confirmation, not a form: nothing to fill in and nothing to press.
-    expect(card.content.body).toHaveLength(1);
+    expect(cardText(body)).toBe("Sign in to BTY with Microsoft first.");
     expect(card.content.actions).toBeUndefined();
     expect(JSON.stringify(body)).not.toContain("Input.");
   });
 
-  it("a duplicate save returns the SAME renderable confirmation", async () => {
+  it("a duplicate save returns the SAME confirmation — idempotency is unchanged", async () => {
     ensureActionCapture.mockResolvedValue({ ok: true, created: false, capture: { id: "c1" } });
     const body = await (await POST(req(activity()))).json();
-    expect(body.task.type).toBe("continue");
-    expect(cardText(body)).toBe("\u2713 Saved");
+    expect(body.composeExtension.type).toBe("message");
+    expect(body.composeExtension.text).toBe("\u2713 Saved");
     expect(JSON.stringify(body)).not.toContain("Duplicate");
   });
 
@@ -206,84 +214,72 @@ describe("POST /api/bty/teams/invoke", () => {
  * NOTHING on the Founder's iPhone twice on otherwise completely successful invokes. A confirmation
  * nobody sees is worse than a heavy one, so the mechanism stays and only the weight came off.
  */
-describe("★ the success confirmation is light, and still visible", () => {
-  it("★ Save says '✓ Saved' — not the brand, a third time", async () => {
+/**
+ * ★ SAVE SUCCESS — TRANSPORT EXPERIMENT (2026-09-07), device-gated.
+ *
+ * MEASURED AND SETTLED FIRST: `height: "small"` and `height: 130` produced the SAME nearly
+ * full-height white sheet on the Founder's iPhone. The remaining space is Teams iOS dialog chrome,
+ * so no card layout, padding, width or content change can reach it. Layout is exhausted.
+ *
+ * ★ THE DISTINCTION THAT MAKES THIS DIFFERENT FROM THE KNOWN FAILURE. Two response FAMILIES share
+ * the word "message":
+ *
+ *     task.type = "message"              TASK family. Tried. Rendered NOTHING, twice, on the
+ *                                        Founder's iPhone, on fully successful invokes.
+ *     composeExtension.type = "message"  MESSAGE-EXTENSION family. This experiment: the extension
+ *                                        answers without opening a dialog at all.
+ *
+ * These tests pin that distinction so the two can never be conflated in a later change.
+ */
+describe("★ Save success returns a message-extension reply, not a task module", () => {
+  it("★ 1+2+3. composeExtension.type = 'message', text '✓ Saved', and NO task property", async () => {
     const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
-    expect(cardText(body)).toBe("✓ Saved");
-    expect(JSON.stringify(body), "the brand is not repeated in the payload").not.toContain("BTY");
-  });
-
-  it("★ no dialog header, and no headline-sized text", async () => {
-    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
-    expect(body.task.value.title, "Teams already attributes the command to BTY").toBeUndefined();
-    expect(body.task.value.card.content.body[0].size, "a receipt, not a headline").toBeUndefined();
-    // The height moved to an explicit 130px in the device-gated experiment below; what this test
-    // guards is the absence of a header and headline sizing, which is unchanged.
-    expect(body.task.value.width).toBe("small");
-  });
-
-  it("★ still not a form: nothing to fill in, nothing to press, one line only", async () => {
-    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
-    const card = body.task.value.card;
-    expect(card.content.body).toHaveLength(1);
-    expect(card.content.actions).toBeUndefined();
-    expect(JSON.stringify(body)).not.toContain("Input.");
-  });
-
-  it("★ the submitAction envelope is unchanged — a different invoke, a different shape", async () => {
-    const body = await (await POST(req(activity({ name: "composeExtension/submitAction" })))).json();
     expect(body.composeExtension.type).toBe("message");
     expect(body.composeExtension.text).toBe("✓ Saved");
-    expect(body.task, "a submitAction never returns a task").toBeUndefined();
+    expect(body.task, "★ no dialog is opened at all").toBeUndefined();
   });
 
-  it("★ FAILURES ARE NOT DRESSED AS SUCCESS, and expose no internal code", async () => {
-    // The file's own mock, already wired at the top — no second import needed.
-    resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
+  it("★ 4. no Adaptive Card anywhere in a Save success", async () => {
+    const body = JSON.stringify(await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json());
+    expect(body).not.toContain("AdaptiveCard");
+    expect(body).not.toContain("application/vnd.microsoft.card.adaptive");
+    expect(body).not.toContain("TextBlock");
+    expect(body, "and the brand is not repeated").not.toContain("BTY");
+  });
+
+  it("★ IT IS NOT THE SHAPE THAT ALREADY FAILED — task family vs message-extension family", async () => {
     const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
-    const text = cardText(body);
-    expect(text).not.toContain("✓");
-    expect(text).toBe("Sign in to BTY with Microsoft first.");
-    // No code, no status enum, no stack — the person gets a sentence they can act on.
-    for (const leak of ["NOT_LINKED", "500", "error", "code"]) {
-      expect(JSON.stringify(body), leak).not.toContain(leak);
-    }
-  });
-});
-
-/**
- * ★ DEVICE-GATED HEIGHT EXPERIMENT (2026-09-07).
- *
- * The confirmation content is already one line, and the iPhone still renders it inside a nearly
- * full-height sheet — so the empty space is the Teams DIALOG CONTAINER, not Adaptive Card padding,
- * and no further trimming of the card can reach it. Teams documents numeric pixel heights for
- * message-extension dialogs; whether iOS honours them is unknown and cannot be feature-detected.
- *
- * These tests pin the numbers so the experiment is reproducible and so a later "tidy-up" cannot
- * silently revert it to "small" and lose the measurement.
- */
-describe("★ explicit pixel height on the terminal confirmations", () => {
-  it("★ Save success asks for 130px, small width, and is still one line", async () => {
-    const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
-    expect(body.task.type).toBe("continue");
-    expect(body.task.value.height).toBe(130);
-    expect(body.task.value.width).toBe("small");
-    expect(body.task.value.title).toBeUndefined();
-    const card = body.task.value.card;
-    expect(card.content.body).toHaveLength(1);
-    expect(card.content.body[0].text).toBe("✓ Saved");
-    expect(card.content.actions).toBeUndefined();
+    // The failed experiment was `task.type === "message"`. There is no `task` here at all.
+    expect(body.task).toBeUndefined();
+    expect(Object.keys(body)).toEqual(["composeExtension"]);
   });
 
-  it("★ A FAILURE KEEPS \"small\" — the number must not reach a message someone has to read", async () => {
+  it("★ 5+6. the backend write and its idempotency are untouched", async () => {
+    await POST(req(activity({ name: "composeExtension/fetchTask" })));
+    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(ensureActionCapture.mock.calls[0][1]).toMatchObject({ intent: "save" });
+    ensureActionCapture.mockResolvedValueOnce({ ok: true, created: false, capture: { id: "c1" } });
+    const dup = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(dup.composeExtension.text, "a repeat save is the same calm success").toBe("✓ Saved");
+  });
+
+  it("★ 7. FAILURES DID NOT MOVE — they keep the render-proven card path", async () => {
     /*
-      `say()` builds the same card for refusals, and those are longer sentences. A pixel height
-      pinned globally could clip the one message that actually matters, so only the success path
-      passes a number.
+      Moving failures onto an unproven transport would risk a person being unable to see WHY
+      something did not work — the one message they actually need. Success only.
     */
     resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
     const body = await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json();
+    expect(body.task.type).toBe("continue");
     expect(body.task.value.height).toBe("small");
     expect(cardText(body)).toBe("Sign in to BTY with Microsoft first.");
+    expect(body.composeExtension, "a failure is still a dialog").toBeUndefined();
+  });
+
+  it("★ a failure never wears the success mark", async () => {
+    resolveBtyUserFromMicrosoftIdentity.mockResolvedValueOnce({ status: "NOT_LINKED" });
+    const body = JSON.stringify(await (await POST(req(activity({ name: "composeExtension/fetchTask" })))).json());
+    expect(body).not.toContain("✓");
+    for (const leak of ["NOT_LINKED", "stack", "500"]) expect(body, leak).not.toContain(leak);
   });
 });
