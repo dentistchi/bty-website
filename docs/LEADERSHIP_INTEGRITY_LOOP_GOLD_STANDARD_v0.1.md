@@ -1,11 +1,11 @@
 # LEADERSHIP INTEGRITY LOOP — GOLD STANDARD v0.1
 
-**Status:** STRUCTURE RATIFIED · COPY UNRATIFIED · **Gate A PASS (structural, pass #3)**
-**Revision:** v0.1-r6 (Gate A pass #3 applied: `other_dependent_promise` = pre-contract HALT · non-event vs missed distinction · Gate A closed)
+**Status:** v0.2-r2 · STRUCTURE REOPENED (Commander play evidence 2026-09-08) · UNRATIFIED
+**Revision:** v0.2-r2 candidate amendment over ratified v0.1-r6
 **Author of structure:** dispatch chat (non-mutating)
 **Author of meaning:** Commander only
 **Location (confirmed):** `outer-root/docs/LEADERSHIP_INTEGRITY_LOOP_GOLD_STANDARD_v0.1.md`
-**Authority rule:** structure is authoritative in outer `main`. `[COMMANDER COPY REQUIRED]` blocks and candidate user-facing copy remain unratified until a separate Commander-reviewed copy commit.
+**Authority rule:** v0.1-r6 remains the last ratified structure. §13 v0.2-r2 is an UNRATIFIED pilot amendment and supersedes conflicting v0.1 language only for Gate A re-attack and Gate B/C testing. It becomes authority only after separate Commander ratification.
 **Track:** TRAINING RESCUE — single active track
 **Frozen while this is open:** Native Daily App (HALT at B2 LIVE) · Builder code · web shell
 
@@ -572,3 +572,284 @@ Inventory item: none of these event names are verified to exist. STEP 0 later.
 4. This file → `outer-root/docs/` → single outer commit → authority.
 5. Native HALT recorded in `docs/CURRENT_TASK.md` — separate outer-only prepend, single commit, dispatch authored after step 4.
 6. Read-only STEP 0 inventory dispatch (§2 "not yet verified" list + §7 Q4/Q6) — authored only after Gate A, never bundled with steps 4–5.
+
+
+---
+
+## 13. AMENDMENT v0.2-r2 — COMMANDER PLAY EVIDENCE 2026-09-08
+
+**Status:** UNRATIFIED PILOT AMENDMENT.
+
+**Why reopened:** actual Commander play produced structural defects. This satisfies the previously locked reopen condition: structure reopens only when a defect is demonstrated in real copy/play experience.
+
+### 13.1 Observed evidence
+
+Three real Commander cases produced three different outcomes:
+
+1. **Partner Botox expense**
+   - Mirror exposed a real self/standard gap.
+   - Outcome: **Integrity Action** — "나부터 돈을 낸다."
+   - This branch used Promise → Witness → Verify.
+
+2. **Clinical Director vacation rejection**
+   - Commander already practiced the same communication standard being demanded of others.
+   - Forcing another promise would manufacture a false integrity gap.
+   - Outcome: **Aligned → Shared Standard**.
+   - Observed need: reject should be the last action after direct communication and schedule-resolution steps.
+
+3. **Manager ↔ Lead Admin scheduling conflict**
+   - Role switching changed the Commander's interpretation from "authority challenge" toward understanding the Lead's legitimate role.
+   - Repeated role/pressure practice produced an observable next behavior:
+     "왜 그렇게 생각하는지 들어보고 결정한다."
+   - Outcome: **Capability Gap → Training + repeated Practice**.
+
+A fourth possible branch, **System / Process Fix**, remains conceptually valid but was NOT observed in these three plays. It is candidate-only until observed.
+
+### 13.2 Stage 1 — Mirror no longer requires proceed/decline
+
+The explicit `proceed / decline` choice is removed from the pilot core flow.
+
+Evidence:
+During Commander play, the choice produced "왜 이 문장이 있지?" friction and no downstream value.
+
+Reason:
+Mirror is no longer a toll gate requiring the leader to accept a separate leadership-training detour.
+It is part of understanding the original problem.
+
+Mirror remains mandatory as a perspective surface, but it does not block Training creation or BTY use.
+
+The old `mirror_declined` path is not used by the v0.2-r1 pilot.
+
+### 13.3 Stage 3 — Role Mirror remains core
+
+Role Mirror is retained.
+
+Purpose:
+Put the leader in the opposite seat so the same behavior can be experienced from the other side.
+
+Evidence:
+In the Manager–Lead case, repeated role switching materially changed interpretation and subsequent action.
+
+No-villain rule remains.
+No character judgment remains.
+
+Training-engine detail such as multi-scenario escalation belongs to a separate Training object/spec later. This document does not absorb that engine.
+
+### 13.4 Former Stage 4 — remove 5-family self-diagnosis questionnaire from core flow
+
+The user-facing 5-family self-classification questionnaire is removed from the pilot core flow.
+
+Evidence:
+Commander response: "왜 갑자기 이걸 묻지?"
+The selected family did not change the subsequent action path.
+
+The five canonical pattern families remain available as a BACK-END LENS over repeated real behavior/raw events.
+
+Signal ≠ Diagnosis remains locked.
+No single event receives a family verdict.
+
+### 13.5 Self-Check now has two valid outcomes
+
+After Role Mirror and Standard:
+
+#### A. GAP
+The leader is not currently living the same standard demanded of others.
+
+Route:
+Integrity Action → Promise → Opportunity → Witness → Verify.
+
+#### B. ALIGNED
+The leader claims they already live the same standard.
+
+Aligned may NOT pass on assertion alone.
+
+Minimum evidence:
+- one recent real case,
+- role/context,
+- what happened,
+- what the leader actually did.
+
+If directly relevant existing BTY behavior history exists, it may be juxtaposed with the claimed standard.
+Cold start: one concrete recent case is the evidence input.
+
+No AI semantic verdict is added.
+
+Raw event:
+`aligned_claimed`
+
+Repeated aligned claims may later become pattern evidence, but no single aligned claim is treated as diagnosis.
+
+Aligned does NOT:
+- award AIR,
+- increase authoring authority,
+- certify leadership,
+- count as completed behavior merely because it was claimed.
+
+If concrete evidence cannot be supplied, the Aligned branch is not established; remain in evidence check without forcing a Gap confession.
+
+### 13.6 Problem routing after Self-Check
+
+After Mirror + Standard + Self-Check/Evidence:
+
+#### A — Leader Integrity Gap
+Observed in Botox case.
+
+Route:
+Promise → Witness → Verify.
+
+#### B — Shared Standard Gap
+Observed in Vacation case.
+
+Route:
+produce / agree a Shared Standard.
+Do not manufacture Training if agreement and a common procedure are sufficient.
+
+#### C — Capability Gap
+Observed in Manager–Lead case.
+
+Route:
+Training + Practice candidate.
+
+Training need question:
+> "이 기준을 명확히 합의하면 충분한가, 아니면 여러 실제 상황에서 반복해서 판단 연습을 해야 하는가?"
+
+If agreement is sufficient → Shared Standard.
+If repeated judgment/application is needed → Training + Practice.
+
+#### D — System / Process Gap
+NOT YET OBSERVED in Commander play.
+
+Reserved candidate branch only.
+Do not treat as validated until real evidence demonstrates it.
+
+### 13.7 Witness / QR scope
+
+Witness / QR is mandatory only for the Integrity Action branch where a leader makes a real behavioral promise requiring external verification.
+
+Do not force Witness/QR onto Shared Standard or Training merely to reuse infrastructure.
+
+### 13.8 Training Authorship — candidate product judgment, not yet pilot-proven
+
+Observed product risk:
+blocking creation before the user receives Training value can create:
+"바빠 죽겠는데 왜 자꾸 막혀 있지? 이용하지 말자."
+
+v0.2-r1 pilot principle:
+
+**Use is never blocked. Authority is graduated.**
+
+Training creation: available.
+Training participation: available.
+
+Publishing authority:
+- Not Ready → review-required publishing
+- Developing → review-required publishing
+- Ready → independent publishing
+- Integrity Reset → review-required publishing
+
+This is a PRODUCT JUDGMENT, not yet external-pilot evidence.
+It must not be ratified as proven behavior until Gate B/C evidence is reviewed.
+
+Universal quality HALTs remain independent of readiness:
+- obedience goal
+- unobservable standard
+- complaint-only objective
+- undefined observable behavior
+
+### 13.9 Training Engine observation — note only
+
+Manager–Lead play suggests a promising Training mechanic:
+
+Role switching + escalating pressure + repeated application.
+
+This is NOT specified here.
+Training Engine / Practice object remains a separate future design after Gate B/C.
+
+### 13.10 Gate A re-attack required before ratification
+
+Primary new escape to attack:
+
+> "나는 이미 그렇게 하고 있어."
+
+Test the Aligned branch adversarially.
+
+PASS condition:
+Aligned cannot be established by assertion alone.
+The leader must supply one concrete recent case, or BTY must have directly relevant existing behavior evidence available.
+
+The system does not decide that the evidence "proves character."
+It only prevents an evidence-free Aligned exit.
+
+After Gate A re-attack:
+- if the Aligned escape remains easy, v0.2-r1 stays open;
+- if it holds, proceed to external Gate B/C with one real middle leader.
+
+No implementation before Gate B/C review.
+
+
+### 13.11 Aligned Self-Consistency Gate — r2
+
+**Defect demonstrated in Gate A re-attack:**
+
+A leader can provide a concrete recent example that is real but does not actually match the standard they claim to already live.
+
+Example:
+
+Demanded standard:
+> 휴가를 거절하기 전에 먼저 연락해서 이유를 설명한다.
+
+Recent real behavior:
+> 휴가를 거절한 뒤 그 의사에게 전화해서 이유를 설명했다.
+
+The evidence is concrete, but concreteness alone does not establish Aligned.
+
+**r2 rule:**
+
+When the leader claims Aligned, display side-by-side:
+
+1. `demanded_standard`
+2. the concrete recent behavior offered as evidence
+
+Then ask:
+
+> **이 행동만 놓고 봤을 때, 내가 위의 기준을 지켰다고 인정할 수 있습니까?**
+
+Answers:
+- `예`
+- `아니오`
+
+**아니오**
+- Aligned is not established from this example.
+- The leader may provide another concrete recent case or proceed through the Gap path.
+- No forced confession.
+- No AI semantic judgment.
+
+**예**
+- Aligned may proceed for routing purposes.
+- Store raw event: `aligned_self_consistency_yes`.
+- The evidence and answer remain factual inputs, not a character judgment.
+
+Optional raw event when `아니오`:
+- `aligned_self_consistency_no`
+
+**Boundary:**
+
+The system does not determine whether the example is semantically equivalent to the demanded standard.
+
+The leader applies to themselves the same standard they claim to apply to others.
+
+A dishonest `예` remains possible. This is intentional.
+
+BTY's boundary remains:
+
+> The goal is not to make lying impossible. The goal is to make self-rationalization difficult to pass through quietly.
+
+This gate:
+- does not award AIR,
+- does not certify leadership,
+- does not increase authoring authority,
+- does not attach a pattern family to a single response.
+
+No other v0.2-r1 routing or structure changes in r2.
+
+**Gate A re-attack required once more before external Gate B/C.**
