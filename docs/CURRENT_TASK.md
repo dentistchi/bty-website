@@ -1,3 +1,23 @@
+## 2026-09-11 — ARENA FULL-RETENTION 36-RUN FINDINGS
+
+**[GOV-ARENA-RETENTION-36]** Records the stable findings of the **Semantic Reviewer Single Authority Fix** and the **first FULL-RETENTION 36-run**, under the existing Arena generation-reliability exception `e837ead9c32ee8d073dfb8d58f03d92106754945`. **This checkpoint authorizes NO Arena code mutation** — only the next READ-ONLY detector-definition audit.
+
+**1. REVIEWER SINGLE AUTHORITY FIX — CONFIRMED.** Measured in the full-retention run: `review_verdict_contradicts_details` = **0**; `review_reject_without_defect` = **0**; semantic-review calls per reviewed draft = **exactly 1.00** (Legacy 10/10, PTR 5/5); **zero** runs consumed a duplicate same-draft review call; failures now resolve to named content or reviewer-integrity codes. The primary success criterion remains **SINGLE AUTHORITY + HONEST FAILURE IDENTITY**. **This does NOT assert higher yield.**
+
+**2. DETAIL TRUTH — MIXED.** From the 12 semantic-review rejected drafts: **7** carry only TRUE defects, **4** carry at least one FALSE defect, **1** is UNCLEAR. **All four FALSE packets include `cross_branch_axis_collapse`.** Three of the four are Plan→Render drafts whose sibling branches use genuinely different decision variables. Therefore the reviewer is now **structurally honest about WHY it rejects**, but **at least one defect definition is materially misaligned** with Commander-reviewed decision distinctness.
+
+**3. DEFINITION CONFLICT FOUND.** Plan-side sibling distinctness treats different decision variables as distinct — measured examples include dimensions such as **how much** / **who** versus **when** / **what**. The reviewer emitted `cross_branch_axis_collapse` against such cases because the branches remained about the same broad topic/object. Current finding: the **PLAN DISTINCTNESS DEFINITION** and the **REVIEWER AXIS-COLLAPSE DEFINITION** appear to disagree about what counts as *the same decision*. **This is a definition-alignment problem, not yet a tuning decision.**
+
+**4. PLAN→RENDER FIDELITY — MIXED.** 15 Plan/Render pairs retained, **13 assessable**: **6 FAITHFUL · 2 PARTIAL · 5 VIOLATED**. Measured genuine Render failures include sibling branches rendered **character-identically**, planned decision dimensions **replaced by another variable**, and **Plan dimension names emitted as learner-facing option labels**. Therefore **real Render defects exist independently of the reviewer false positives.**
+
+**5. END-TO-END YIELD — NOT A QUALITY AUTHORITY.** Measured: **Legacy 1/18 PASS, Plan→Render 0/18 PASS.** The sole automated PASS was Commander-reviewed as **COLLAPSED** (its tradeoff and action restate the same decision). Therefore **automated PASS rate is not currently a trustworthy proxy for learner quality**, and the immediate blocker is **evaluator-definition correctness**.
+
+**6. LATENCY — MIXED.** Measured provider timing: PTR **Plan stage ≈ 2.8 s**; PTR **Render carries a long tail, including 118.8 s**; PTR **median total was lower than Legacy** because three PTR runs ended early at Plan rejection. Plan therefore has **measured early-rejection latency value**, while **Render tail latency remains a separate problem**. **No timeout-policy change is authorized here.**
+
+**7. NEXT AUTHORIZED STEP — READ-ONLY ONLY.** **`CROSS_BRANCH_AXIS_COLLAPSE` DEFINITION AUDIT**, comparing reviewer "axis" semantics, Plan sibling-distinctness semantics, and the actual retained TRUE / FALSE cases. **No detector mutation. No Render mutation. No new provider calls.** After that audit Commander may decide whether to align the reviewer definition. The subsequent **deterministic sibling-identity gate remains a separate future decision.**
+
+**8. STATUS.** Runtime Graph v2: **NOT AUTHORIZED / UNMOTIVATED.** Reviewer detail truth: **measurable and currently MIXED.** Reviewer clean-accept detail truth: **still not measured**, because clean accepts do not retain a full review payload. Leadership Integrity Loop: **v0.1-r6 last ratified**, **v0.2-r2 UNRATIFIED**.
+
 ## 2026-09-11 — CHECKPOINT: ARENA EVIDENCE BASE READY / INNER SNAPSHOT AUTHORIZED
 
 **[GOV-ARENA-EVIDENCE-BASE]** Under the existing Arena generation-reliability exception `e837ead9c32ee8d073dfb8d58f03d92106754945`.
