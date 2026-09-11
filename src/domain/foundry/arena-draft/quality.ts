@@ -310,7 +310,16 @@ const NON_SCENE_OPENING: readonly RegExp[] = [
 const PLACEHOLDER = /\{\{|\}\}|\[[A-Za-z_]{2,}\]|<[a-z_]{2,}>|\bTODO\b|\bTBD\b|\{[a-z_]+\}/;
 
 /** A concrete actor / stakeholder the opening must reference (en + ko). */
-const ACTOR = /\b(teammate|colleague|co-?worker|client|customer|patient|manager|lead|team|the person|a peer|staff|assistant|nurse|doctor|someone|reviewer|supervisor|director|the group|the other|owner|vendor|partner|executive|employee)\b|팀원|동료|고객|환자|담당자|상사|직원|사람|리더|경영진/i;
+/*
+  `의사` is a person (a doctor) and also the first half of two very common abstract nouns —
+  의사결정 (decision-making) and 의사소통 (communication). A bare `의사` alternative would count
+  "의사결정이 어렵다" as a human being on stage. The negative lookahead keeps the occupation and
+  refuses the compound, so the token means the person or it does not match at all.
+
+  Measured (Slice: Founder practice, Korean): "다른 의사가 휴가를 요청했고 당신은 지금 결정해야 한다"
+  is a complete scene with a named actor and was failing `opening_no_actor` on vocabulary alone.
+*/
+const ACTOR = /\b(teammate|colleague|co-?worker|client|customer|patient|manager|lead|team|the person|a peer|staff|assistant|nurse|doctor|someone|reviewer|supervisor|director|the group|the other|owner|vendor|partner|executive|employee)\b|팀원|동료|고객|환자|담당자|상사|직원|사람|리더|경영진|의사(?!결정|소통)/i;
 
 /**
  * A choice that is abstract INTENT ("protect trust", "demonstrate accountability") rather

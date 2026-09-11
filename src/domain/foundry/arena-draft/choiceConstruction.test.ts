@@ -294,3 +294,52 @@ describe("construction metadata never leaves the generation boundary", () => {
     expect(Object.keys(draft.actionDecision.choices[0]).sort()).toEqual(["id", "isActionCommitment", "label"]);
   });
 });
+
+/*
+  ★ THE MEANING FLOOR COUNTS WHITESPACE, SO KOREAN PAID TWICE (Founder practice, measured).
+
+  `competentIntent` and `distinguishesFromSibling` required 3 whitespace units. In Korean those are
+  eojeol, and "이유를 설명한다" — object plus verb, a complete clause — is 2. The generation prompt
+  simultaneously demands "one short clause" and "BE CONCISE", so the model was being asked for the
+  exact shape the gate refused. The floor now moves by one unit for text containing Hangul.
+
+  The floor still exists, and still does its job: a bare 1-eojeol noun carries no meaning in any
+  language. English is deliberately untouched.
+*/
+describe("the construction meaning floor is language-aware", () => {
+  const draft = draftWith();
+  const intentIs = (text: string) => run(draft, withOverride(draft, "p1", { competentIntent: text })).errors;
+  const distinguishesIs = (text: string) =>
+    run(draft, withOverride(draft, "p1", { distinguishesFromSibling: text })).errors;
+
+  it("accepts a real 2-eojeol Korean clause", () => {
+    for (const ko of ["이유를 설명한다", "대안을 먼저 묻는다", "결정을 잠시 미룬다"]) {
+      expect(intentIs(ko), ko).not.toContain("construction_metadata_generic");
+      expect(distinguishesIs(ko), ko).not.toContain("construction_metadata_generic");
+    }
+  });
+
+  it("still refuses a bare 1-eojeol Korean label", () => {
+    for (const ko of ["설명", "대화", "조정"]) {
+      expect(intentIs(ko), ko).toContain("construction_metadata_generic");
+      expect(distinguishesIs(ko), ko).toContain("construction_metadata_generic");
+    }
+  });
+
+  it("leaves the English floor exactly where it was", () => {
+    expect(intentIs("clear ownership")).toContain("construction_metadata_generic");
+    expect(intentIs("speed")).toContain("construction_metadata_generic");
+    expect(intentIs("protects the schedule")).not.toContain("construction_metadata_generic");
+    expect(intentIs("keeps the relationship intact")).not.toContain("construction_metadata_generic");
+  });
+
+  /*
+    A mixed string counts as Korean the moment one Hangul syllable appears. That is the intended
+    reading: such a string is a Korean clause with a borrowed term inside it, not English.
+  */
+  it("treats a mixed string with Hangul as Korean, and says so", () => {
+    expect(intentIs("운영 우선")).not.toContain("construction_metadata_generic"); // 2 units, has Hangul
+    expect(intentIs("운영 priority")).not.toContain("construction_metadata_generic");
+    expect(intentIs("operational priority")).toContain("construction_metadata_generic"); // no Hangul → 3
+  });
+})

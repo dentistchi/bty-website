@@ -176,6 +176,26 @@ export function normalizeText(s: string): string {
 }
 const wordCount = (s: string) => (normalizeText(s) ? normalizeText(s).split(" ").length : 0);
 
+/*
+  ★ THE MEANING FLOOR IS A WHITESPACE COUNT, AND KOREAN PAYS TWICE FOR IT.
+
+  `wordCount` splits on spaces, so in Korean it counts eojeol, not words. "이유를 설명한다"
+  ("explains the reason") is a complete clause naming an object and a verb — and it is 2 units, so a
+  floor of 3 rejected it. Meanwhile the generation prompt instructs "each construction field is one
+  short clause" and "BE CONCISE", which is exactly the shape being refused.
+
+  Measured before the change: 이유를 설명한다 → 2 (rejected) · 설명 → 1 (rejected)
+  · protects the schedule → 3 (passes) · clear ownership → 2 (rejected).
+
+  So the floor moves by ONE unit for text that actually contains Hangul, and English is untouched.
+  A bare 1-eojeol label (설명 / 대화 / 조정) still fails, which is the case the floor exists for.
+  A mixed string counts as Hangul the moment one Hangul syllable appears — deliberate: such a
+  string is being written in Korean with a borrowed term inside it.
+*/
+const hasHangul = (s: string) => /[가-힣]/.test(s);
+/** True when the text is too thin to carry a meaning, in ITS OWN language. */
+const belowMeaningFloor = (s: string) => wordCount(s) < (hasHangul(s) ? 2 : 3);
+
 /** Values that carry no information wherever they appear. Not a morality list — a placeholder list. */
 const PLACEHOLDERS = new Set([
   "", "n a", "na", "none", "nil", "tbd", "unknown", "various", "general", "generic", "it depends",
@@ -329,9 +349,9 @@ export function validateChoiceConstructions(
     else if (wordCount(cost) < 2) errors.push("no_real_cost");
 
     // 2. Placeholder justifications defeat the whole contract.
-    if (!intent.trim() || isPlaceholder(intent) || wordCount(intent) < 3) errors.push("construction_metadata_generic");
+    if (!intent.trim() || isPlaceholder(intent) || belowMeaningFloor(intent)) errors.push("construction_metadata_generic");
     if (!action.trim() || isPlaceholder(action)) errors.push("construction_metadata_generic");
-    if (!distinguishes.trim() || isPlaceholder(distinguishes) || wordCount(distinguishes) < 3) errors.push("construction_metadata_generic");
+    if (!distinguishes.trim() || isPlaceholder(distinguishes) || belowMeaningFloor(distinguishes)) errors.push("construction_metadata_generic");
     // "Why not dominated" that merely echoes the label says nothing.
     if (!notDominated.trim() || isPlaceholder(notDominated)) errors.push("dominated_choice");
     else if (normalizeText(notDominated) === normalizeText(c.label)) errors.push("construction_metadata_generic");

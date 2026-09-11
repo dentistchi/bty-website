@@ -84,3 +84,47 @@ describe("validateConcreteScene — mandatory failing fixtures (must fail)", () 
     expect(validateConcreteScene(scene({ opening: "A teammate flags {{incident}} to you while the client waits." })).errors).toContain("placeholder_leak");
   });
 });
+
+/*
+  ★ A KOREAN OCCUPATION NOUN IS AN ACTOR (Founder practice, measured).
+
+  `의사` was absent from the ACTOR vocabulary, so a complete Korean scene naming a doctor failed
+  `opening_no_actor` — the gate could not see a person who was plainly on stage. The English list
+  already carried `doctor`, but an English word boundary cannot match Korean text.
+
+  The compound trap is the reason this is a lookahead and not a bare alternative: 의사결정 is
+  "decision-making" and 의사소통 is "communication". Neither is a human being.
+*/
+describe("the Korean actor vocabulary", () => {
+  const openingErrors = (opening: string) => validateConcreteScene(scene({ opening })).errors;
+
+  it("counts 의사 as an actor however the particle attaches", () => {
+    for (const opening of [
+      "다른 의사가 휴가를 요청했고 당신은 지금 결정해야 한다.",
+      "의사는 결정을 기다리고 있고 일정은 오늘 확정된다.",
+      "한 의사에게 요청을 받았고 지금 답을 해야 한다.",
+    ]) {
+      expect(openingErrors(opening), opening).not.toContain("opening_no_actor");
+    }
+  });
+
+  it("does NOT accept the abstract compounds that merely start with 의사", () => {
+    for (const opening of [
+      "의사결정이 어렵고 지금 판단을 내려야 하는 상황이다.",
+      "의사소통이 중요하고 오늘 안에 정리해야 하는 상황이다.",
+    ]) {
+      expect(openingErrors(opening), opening).toContain("opening_no_actor");
+    }
+  });
+
+  it("keeps every actor term that already worked", () => {
+    for (const opening of [
+      "동료가 문제를 알려왔고 지금 결정해야 한다.",
+      "환자들이 기다리고 있고 일정은 오늘 확정된다.",
+      "팀원이 이의를 제기했고 당신은 지금 답해야 한다.",
+      "A teammate flags a problem to you while the client is waiting.",
+    ]) {
+      expect(openingErrors(opening), opening).not.toContain("opening_no_actor");
+    }
+  });
+});

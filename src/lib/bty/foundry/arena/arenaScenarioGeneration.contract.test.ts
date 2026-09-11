@@ -130,7 +130,25 @@ beforeEach(() => {
 });
 afterEach(() => __setGenObserver(null));
 
-const lastCode = () => observed[observed.length - 1]?.code;
+/*
+  ★ SELECT OBSERVATIONS BY WHAT THEY MEAN, NEVER BY WHERE THEY SIT.
+
+  These assertions used `observed[0]` and `observed[length - 1]`. Both are proxies: the tests care
+  about "the gate that fired" and "the outcome that was reached", and absolute position happened to
+  coincide with those while the stream carried exactly one event per stage. Adding a provider-
+  boundary `stage_finished` observation broke that coincidence at both ends of the stream.
+
+  The selectors below ask for the SEMANTIC FIELDS each assertion actually needs — a gate event
+  carries `gate` and `level`; an outcome event carries `code`. They deliberately do NOT filter
+  `stage_finished` out by name: that would re-encode the same positional contract against one known
+  event and break again the next time an observation is added.
+*/
+const gateEvents = () => observed.filter((o) => o.gate !== undefined && o.level !== undefined);
+/** The first event that reports a gate verdict. */
+const firstGateEvent = () => gateEvents()[0]!;
+/** The last event that names an outcome code. */
+const lastOutcomeEvent = () => [...observed].reverse().find((o) => o.code !== undefined);
+const lastCode = () => lastOutcomeEvent()?.code;
 
 // ---------------------------------------------------------------------------
 describe("request contract — the model is constrained, not merely asked", () => {
@@ -685,7 +703,7 @@ describe("evaluation observability records the stage, never a secret", () => {
   it("captures the exact rejection code and finish reason", async () => {
     mockCreate.mockResolvedValue(envelope(providerJson(goodDraft).slice(0, 900), { finish_reason: "length" }));
     await generateArenaScenarioDraft(input);
-    const o = observed[observed.length - 1];
+    const o = lastOutcomeEvent()!;
     expect(o.code).toBe("truncated_output");
     expect(o.finishReason).toBe("length");
   });
@@ -761,8 +779,8 @@ describe("R2.21 — an ungrounded confirmed boundary is corrected, then terminat
     // R2.23 — the outcome now names the GATE LEVEL, and the boundary finding is Level 3.
     expect(observed.map((o) => o.outcome)).toContain("gate_level_3");
     expect(observed.map((o) => o.code)).toContain("confirmed_boundary_absent");
-    expect(observed[0].level).toBe(3);
-    expect(observed[0].gate).toBe("boundary_grounding");
+    expect(firstGateEvent().level).toBe(3);
+    expect(firstGateEvent().gate).toBe("boundary_grounding");
   });
 
   it("36. the strict generation schema still requires boundaryGrounding on every request", async () => {
@@ -882,8 +900,8 @@ describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
     // order: both codes now travel together in the aggregated defect list, and both reach the retry.
     expect(observed.map((o) => o.outcome)).toContain("gate_level_4");
     expect(observed.map((o) => o.code)).toContain("construction_contradicts_label");
-    expect(observed[0].defectCodes).toContain("construction_contradicts_label");
-    expect(observed[0].defectCodes).toContain("false_reassurance");
+    expect(firstGateEvent().defectCodes).toContain("construction_contradicts_label");
+    expect(firstGateEvent().defectCodes).toContain("false_reassurance");
     expect(mockCreate.mock.calls.filter(([p]) => isReviewRequest(p))).toHaveLength(0);
   });
 
@@ -910,8 +928,29 @@ describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
     // `repeated_choice_meaning_within_branch` never appeared anywhere — it was lost to gate order.
     // Both findings are now aggregated at Level 6 and both reach the artifact and the retry.
     expect(observed.map((o) => o.outcome)).toContain("gate_level_6");
-    expect(observed[0].defectCodes).toContain("repeated_choice_meaning_within_branch");
-    expect(observed[0].evidenceSources).toBeDefined();
+    expect(firstGateEvent().defectCodes).toContain("repeated_choice_meaning_within_branch");
+    expect(firstGateEvent().evidenceSources).toBeDefined();
+
+    /*
+      ★ THE GENERATION PROVIDER BOUNDARY COMES FIRST, ITS GATE VERDICT AFTER.
+
+      Deliberately NOT "some stage_finished precedes the first gate": a Plan-Then-Render run emits
+      an earlier `plan` stage event, and a run that reaches the reviewer emits later
+      `semantic_review` ones, so that weaker claim could pass while the ordering under test was
+      wrong. This pins the exact sequence that makes `stageDurationMs` mean provider time:
+
+          generation/render provider settles
+            -> generation/render stage_finished
+            -> deterministic gate evaluation
+            -> gate/outcome event
+    */
+    const genStageIdx = observed.findIndex(
+      (o) => (o.stageName === "generation" || o.stageName === "render") && o.stageDurationMs !== undefined,
+    );
+    const gateIdx = observed.findIndex((o) => o.gate !== undefined && o.level !== undefined);
+    expect(genStageIdx).toBeGreaterThanOrEqual(0);
+    expect(gateIdx).toBeGreaterThanOrEqual(0);
+    expect(genStageIdx).toBeLessThan(gateIdx);
     expect(detectMeasuredLabelDefects(looping, "").errors).toContain("repeated_choice_meaning_within_branch");
   });
 

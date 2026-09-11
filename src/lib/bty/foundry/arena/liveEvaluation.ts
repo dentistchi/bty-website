@@ -247,7 +247,18 @@ export async function runLiveCase(deps: LiveDeps, config: LiveConfig, passId: st
     }
   }
 
-  const last = attempts[attempts.length - 1];
+  /*
+    ★ SELECT BY MEANING, NOT BY POSITION.
+
+    This read `attempts[attempts.length - 1]` and took its `code`/`defectCodes` as the terminal
+    outcome. That held only while the stream carried one event per stage. The provider-boundary
+    `stage_finished` observation carries no `code`, so the old read would now report `primaryCode:
+    null` and an empty defect list for genuinely rejected runs — silently losing the very failure
+    identity this harness exists to record.
+
+    OBSERVATION STREAM CONTRACT: select by semantic kind/fields, never by absolute position.
+  */
+  const last = [...attempts].reverse().find((a) => a.code !== undefined);
   // Provenance is recorded once, from the frozen-subject observation, and carried to the terminal.
   const frozenObs = attempts.find((a) => a.outcome === "review_subject_frozen");
   const prov = (frozenObs?.boundaryProvenance ?? null) as { boundaryMode?: "none" | "bearing" } | null;

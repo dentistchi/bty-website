@@ -84,6 +84,13 @@ import {
 } from "@/domain/foundry/arena-draft/semanticReview";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
+import {
+  DECISION_PLAN_JSON_SCHEMA,
+  parseDecisionPlan,
+  renderPlanForPrompt,
+  validateDecisionPlan,
+  type DecisionPlan,
+} from "@/domain/foundry/arena-draft/decisionPlan";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
 /**
@@ -350,7 +357,68 @@ export type GenObservation = {
   boundaryMetrics?: BoundaryReviewMetrics;
   /** Whether the broad semantic reviewer was permitted to run after the boundary stage. */
   broadReviewStarted?: boolean;
+  /*
+    ★ STAGE TIMING — OBSERVER SIDE-CHANNEL ONLY, NEVER A RETURN VALUE.
+
+    Two postmortems were blocked because a failed run kept its reason code and nothing else: the
+    rejected candidate draft was discarded at the gate, and no stage duration existed anywhere, so
+    "PTR is twice as slow" could not be attributed to the render call rather than to reaching the
+    reviewer more often. These fields close that gap.
+
+    `...MonoMs` are readings from a MONOTONIC clock (`performance.now()`), NOT Unix timestamps —
+    they are meaningful only as a difference, and only within one process. The names say so on
+    purpose; an earlier measurement in this project read a wall clock after a whole call and
+    described it as stage latency, and that mistake must not be repeatable from the field name.
+
+    Every field here is OPTIONAL and additive. Nothing in a caller-visible result carries them.
+  */
+  stageName?: "plan" | "generation" | "render" | "semantic_review";
+  stageStartedMonoMs?: number;
+  stageFinishedMonoMs?: number;
+  stageDurationMs?: number;
+  /** True when the stage ended because its own abort deadline fired. */
+  timeout?: boolean;
 };
+
+/** Monotonic reading. Never a wall-clock timestamp — see the stage-timing note above. */
+const monoNow = (): number => performance.now();
+
+/**
+ * Emit ONE `stage_finished` observation at the PROVIDER BOUNDARY.
+ *
+ * ★ WHERE IT FIRES IS THE WHOLE POINT.
+ *
+ * The first cut emitted this from each stage's `finally`, which runs AFTER parsing, the
+ * deterministic gates and outcome classification. That put it last in the stream and broke ten
+ * contract assertions reading `observed[observed.length - 1]?.code`. It is now emitted the moment
+ * the provider call settles — before any local processing — so the existing terminal outcome
+ * remains the final event for the stage, and no consumer's positional reading moves.
+ *
+ * ★ AND IT MEASURES ONLY THE PROVIDER CALL.
+ *
+ * `stageDurationMs` therefore excludes JSON/schema parsing, quality gates, branch progression,
+ * defect derivation, contradiction checking and correction-packet construction. That separation is
+ * deliberate: the open latency question is provider time versus local processing time, and a
+ * duration that mixed them could not answer it.
+ *
+ * Side-channel only: returns nothing, changes no control flow, no-op with no observer installed.
+ */
+function logStage(
+  stageName: NonNullable<GenObservation["stageName"]>,
+  startedMonoMs: number,
+  finishedMonoMs: number,
+  opts: { timeout?: boolean } = {},
+): void {
+  logGenOutcome("stage_finished", undefined, {
+    stageName,
+    stageStartedMonoMs: startedMonoMs,
+    stageFinishedMonoMs: finishedMonoMs,
+    stageDurationMs: finishedMonoMs - startedMonoMs,
+    ...(opts.timeout ? { timeout: true } : {}),
+  });
+}
+
+
 let genObserver: ((o: GenObservation) => void) | null = null;
 /**
  * R2.19 — rejected-attempt CONTENT capture, off by default.
@@ -428,7 +496,7 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
 
   return [
     "You design ONE short leadership DECISION-PRACTICE scenario. Its purpose is NOT to find the right answer — it is to force a difficult choice: which legitimate value to protect, and what cost to accept, under pressure.",
-    "The scenario has EXACTLY three phases: PRIMARY (a realistic opening situation with strategic choices), TRADEOFF (a harder escalation that raises the stakes), and ACTION DECISION (a direct decision about a concrete next action).",
+    "The scenario has EXACTLY three phases, and each answers a DIFFERENT question: PRIMARY (a realistic opening situation with strategic choices) — what is your opening move? TRADEOFF (a harder escalation that raises the stakes) — WHICH LEGITIMATE PRIORITY DO YOU PROTECT, AND WHAT COST DO YOU ACCEPT? ACTION DECISION — GIVEN THAT TENSION, WHAT IS THE FIRST CONCRETE MOVE YOU MAKE NEXT?",
     "CONCRETE SCENE — the opening must read like an actual moment, not a training description. In 2-4 natural sentences establish: WHO (the learner's role/responsibility), WHAT specifically just happened (a concrete incident, request, failure, or risk), WHO is affected (a concrete stakeholder — a teammate, client, patient, the team…), WHY NOW (a deadline, a waiting person, a live decision), and that two legitimate values cannot both be fully protected. NEVER write 'A realistic moment', 'A difficult situation', 'Leadership is required', '<capability> is called for', 'you cannot protect both', or interpolate a raw capability phrase into a sentence. Do not invent named organizations, real people, or specific numbers. Use the training context, target role, and audience for a plausible concrete setting.",
     "Every choice (primary, tradeoff, action) must begin with or clearly contain a CONCRETE ACTION the learner performs (tell, pause, call, verify, escalate, meet, document, disclose, delay, narrow, proceed, ask…) — not abstract intent ('protect trust', 'demonstrate leadership', 'hold the standard'). Vary phrasing; do not repeat boilerplate like 'accepting that' or 'there isn't enough time' across the opening and every branch.",
     "",
@@ -444,9 +512,11 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
     "BRANCH COHERENCE: the runtime shows ONE shared escalation and ONE shared action decision to the learner, whichever Primary choice they picked. So the escalation must raise the cost in a way that is TRUE for EVERY Primary choice — it must NOT presuppose a specific prior action (never write 'your delay', 'your message', 'now that you've gone public', 'the commitment you made', 'because you waited'). Prefer a NEW independent pressure (a new stakeholder, deadline, or fact) that applies regardless of the path taken; never merely restate the opening.",
     "Tradeoff and Action choices must not reference an artifact a path may not have produced (never 'stand by your original message', 'continue the announcement you started'). Refer back only in branch-neutral terms ('your first move', 'your earlier call', 'the approach you took').",
     "PARITY: never pair legitimizing wording with condemning wording (e.g. 'uphold the complaint on its merits' vs 'partly discount the grievance', 'take responsibility' vs 'avoid responsibility'). Write both as competing strategies with real, comparable rationale.",
-    "ACTION DECISION: both options must be specific, realistic next actions that each carry a visible cost. Acting now must carry risk; verifying/narrowing must also give something up. It must NOT reduce to 'do the right thing now' vs 'avoid it'.",
+    "TRADEOFF CHOICES ARE A STANCE, NOT AN ERRAND. Each tradeoff option states which competing legitimate good it protects and what it gives up — priority, timing, how much transparency, how much flexibility, who owns it, what capacity it spends. A tradeoff option that is merely a concrete errand ('propose another date', 'call the supervisor', 'request extra staff') has skipped the judgment and left nothing for the action phase to decide.",
+    "ACTION DECISION: both options must be specific, realistic next actions that each carry a visible cost. Acting now must carry risk; verifying/narrowing must also give something up. It must NOT reduce to 'do the right thing now' vs 'avoid it'. It must also NOT restate the tradeoff you have already made — see the cross-phase rule below.",
     "FORBIDDEN in ALL learner-facing text: correct/incorrect, right/wrong answer, best/ideal/poor choice, 'the right thing', 'you should have', moral praise or blame, or any hint of a preferred answer. Do not write reflection or essay questions.",
     "Some behaviors have a fixed correct action (safety, privacy, compliance). Do NOT invent a fake wrong version of the fact. Instead make the tension the COST of upholding the standard under pressure (e.g. upholding the rule vs speed, relationship, or cost).",
+    "USE THE HOST'S PRESSURE ANSWER TO BUILD THE TRADEOFF TENSION. It names what is really at stake — the capacity, the cost, the exposure. Let it set the competing goods the tradeoff phase weighs. Do NOT convert it into a choice label, and do not turn either side of it into a villain: both tradeoff options must stay defensible enough that a competent person would have to think.",
     "Plan internally the value each option protects and the cost it accepts — but DO NOT write those labels into the learner-facing copy.",
     "PER-PRIMARY CAUSAL BRANCHING (required): the learner's PRIMARY choice must change what happens next. Produce EXACTLY TWO branches — one per primary choice, in the same order. Each branch's escalation, tradeoff choices, and action decision must follow causally from THAT primary choice — the action it took, the facts it created, the value it protected, the cost it accepted, and the NEW pressure that path creates. Do NOT reuse one shared escalation across branches, and never let a branch reference a fact or action from a DIFFERENT branch. Each branch's tradeoff and action decision must independently satisfy the difficult-choice contract above.",
     "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
@@ -458,6 +528,9 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
     "If you cannot state a legitimate value and a real cost for an option, it is not a choice — replace it. Siblings may not share the same value/cost/intent profile. NEVER justify an option by concealment, deflection, stalling or false reassurance.",
     "NO VAGUE REASSURANCE: never offer an option that promises progress with no owner, action, threshold or next step, that says 'as soon as possible' or 'trust the timeline' while withholding what is known, that pacifies or deflects instead of deciding, or that asserts something the situation contradicts (claiming work is on schedule when it has already slipped). A concise update with clear ownership and a next checkpoint, a limited disclosure required by privacy or incomplete verification, and a pause that protects accuracy are all fine — they name an action and a basis.",
     "BRANCH PROGRESSION: inside each branch the tradeoff must pose a NEW question the primary choice did not answer, and the action decision must commit on a FURTHER new dimension. Never offer the same option twice in one branch, however reworded, and never re-open the primary decision.",
+    "WITHIN A BRANCH, TRADEOFF AND ACTION MUST ANSWER DIFFERENT QUESTIONS. TRADEOFF = which priority you protect and which cost you accept. ACTION = the concrete, observable move you make AFTER facing that tradeoff. Rephrasing the same decision in different words is INVALID, and a shorter restatement is still a restatement. Test each pair before you return it: if the action could be swapped for the tradeoff without changing what the learner has decided, the action has decided nothing — replace it with a later move that opens a new question.",
+    `INVALID PAIR (do not produce this shape): TRADEOFF \"propose another date\" with ACTION \"propose another date\"; TRADEOFF \"request extra support to fix the staffing problem\" with ACTION \"request extra support\". ${isKo ? '한국어에서도 같은 규칙입니다. 한 분기 안에서 TRADEOFF와 ACTION은 서로 다른 질문에 답해야 합니다. TRADEOFF는 \"어떤 가치를 우선하고 무엇을 감수할지\", ACTION은 \"그 판단을 내린 뒤 실제로 먼저 무엇을 할지\"입니다. 잘못된 예: TRADEOFF \"다른 날짜를 제안하기\" / ACTION \"다른 날짜를 제안하기\", 그리고 TRADEOFF \"운영 문제 해결을 위해 지원을 요청한다\" / ACTION \"추가 지원을 요청한다\". 표현만 바꾼 반복은 무효입니다.' : ''}`.trim(),
+    "The examples above are shapes to AVOID. Never copy their wording, or any wording from these instructions, into the scenario you return — write from the training context in front of you.",
     "BRANCH DIVERSITY: each branch is the consequence of ITS OWN primary choice — a different resulting world, a different new pressure, a different next decision. If two branches could be swapped without becoming incoherent, the primary choice changed nothing. Do NOT make every branch about what to tell someone and when. A shared stakeholder is fine; a shared decision axis is not.",
     "BE CONCISE. Every field has a hard length limit and over-length output is REJECTED, never trimmed: a title is a short phrase, an opening is 2-4 sentences, a choice label is one readable line, an escalation is 1-3 sentences, and each `construction` field is one short clause. Write what a busy person would actually read.",
     "DO NOT invent any id field. You author the words; the server assigns every identifier.",
@@ -470,7 +543,13 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
 }
 
 /** Minimal, PII-free structured context for the provider. */
-function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"], retryFeedback = ""): LlmChatMessage[] {
+function buildLlmMessages(
+  input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
+  retryFeedback = "",
+  /** Plan-Then-Render v1: the APPROVED plan this call must render rather than redesign. */
+  plan?: DecisionPlan | null,
+): LlmChatMessage[] {
   const { locale, facts, guided } = input;
   const system = buildGenerationSystemPrompt(locale, constraints);
   const contextLines = [
@@ -482,9 +561,18 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     `Pressure that makes people avoid it (host answer 2): ${guided.avoidancePressure.text}`,
   ].filter(Boolean);
 
+  /*
+    The plan is appended AFTER the training context and carries its own instruction. The context
+    still travels because the renderer writes prose from it — it is the plan that fixes the
+    decisions, not the facts.
+  */
+  const planBlock = plan
+    ? `\n\n${renderPlanForPrompt(plan)}\n\nRender this approved decision structure. Do not redesign its semantic decisions. Every branch, its consequence, its tradeoff decision and its action decision are already settled above; write the learner-facing prose for them and nothing else.`
+    : "";
+
   const user = retryFeedback.trim()
-    ? `${contextLines.join("\n")}\n\n${retryFeedback.trim()}`
-    : contextLines.join("\n");
+    ? `${contextLines.join("\n")}${planBlock}\n\n${retryFeedback.trim()}`
+    : `${contextLines.join("\n")}${planBlock}`;
   return [
     { role: "system", content: system },
     { role: "user", content: user },
@@ -519,6 +607,8 @@ async function generateWithLlm(
   retryFeedback = "",
   /** R5C-2B — the submission's ONE accounting context. Absent for runner-only callers. */
   accounting?: GenerationAccounting | null,
+  /** Plan-Then-Render v1: the APPROVED plan, when this call is the render stage. */
+  plan: DecisionPlan | null = null,
 ): Promise<LlmOutcome> {
   // Built BEFORE the child row exists. A missing credential is not a provider call, and recording
   // one would corrupt the invocation count this whole table exists to make trustworthy.
@@ -541,7 +631,7 @@ async function generateWithLlm(
       structuredOutputMode: "json_schema_strict",
       locale: input.locale,
     },
-    async (call) => generateWithLlmCall(client, call, input, constraints, retryFeedback),
+    async (call) => generateWithLlmCall(client, call, input, constraints, retryFeedback, plan),
   );
 }
 
@@ -552,14 +642,18 @@ async function generateWithLlmCall(
   input: ScenarioGenInput,
   constraints: PracticeBoundary["constraints"],
   retryFeedback: string,
+  plan: DecisionPlan | null = null,
 ): Promise<LlmOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_GEN_TIMEOUT_MS);
+  /* The same call is the legacy generation and the Plan-Then-Render render; the plan tells them apart. */
+  const stageName = plan ? ("render" as const) : ("generation" as const);
+  const stageStarted = monoNow();
   try {
     const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
-        messages: buildLlmMessages(input, constraints, retryFeedback),
+        messages: buildLlmMessages(input, constraints, retryFeedback, plan),
         temperature: LLM_GEN_TEMPERATURE,
         top_p: LLM_GEN_TOP_P,
         max_tokens: LLM_GEN_MAX_TOKENS,
@@ -575,6 +669,8 @@ async function generateWithLlmCall(
       },
       { signal: controller.signal },
     );
+    // PROVIDER BOUNDARY: the call has returned. Nothing below this line is provider time.
+    logStage(stageName, stageStarted, monoNow());
     const choice = completion.choices[0];
     // ---- RESPONSE IDENTITY (R5C-2B Part 11) --------------------------------
     // Captured HERE: after extraction, before `stripJsonFences`, before `JSON.parse`, before any
@@ -685,12 +781,24 @@ async function generateWithLlmCall(
 
     const rejection = resolveRejection(findings);
     if (rejection) {
+      /*
+        ★ THE DRAFT SURVIVES ITS OWN REJECTION.
+
+        This is the site the retention postmortem located: `result.value` is a fully parsed
+        candidate scenario, and it was discarded here, so every deterministically-rejected run in
+        the 36-run experiment kept a reason code and no content. The post-review gate site already
+        captured `llm.draft`; this one did not, and the asymmetry is why render fidelity could be
+        judged for 2 runs out of 11.
+
+        Content still travels only under the existing `captured()` policy.
+      */
       logGenOutcome(`gate_level_${rejection.primaryLevel}`, rejection.primaryCode, {
         gate: rejection.primaryGate,
         level: rejection.primaryLevel,
         defectCodes: rejection.defectCodes,
         findings: rejection.findings,
         evidenceSources: rejection.evidenceSources,
+        ...captured({ scenario: result.value }),
       });
       return { ok: false, reason: "generation_rejected", rejection };
     }
@@ -700,6 +808,8 @@ async function generateWithLlmCall(
     // A telemetry failure is NOT a provider failure. It must never be classified as one, and it
     // must not be swallowed into a product result — the submission cannot be accounted for.
     if (isProviderCallTelemetryError(e)) throw e;
+    // PROVIDER BOUNDARY: the call failed or aborted. Emitted before the existing error paths.
+    logStage(stageName, stageStarted, monoNow(), { timeout: controller.signal.aborted });
     const cls = classifyThrownCall(e, controller.signal.aborted);
     await call.settle({
       outcome: cls.outcome,
@@ -900,7 +1010,11 @@ async function reviewConstraintComplianceCall(
 ): Promise<ReviewOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
-  const startedAt = Date.now();
+  /*
+      MONOTONIC. `latencyMs` keeps its name, type and meaning — elapsed milliseconds — but is no
+      longer derived from a wall clock, which can jump. Same field, trustworthy difference.
+    */
+    const startedAt = monoNow();
   const subjectSha = subject?.sha256 ?? "";
   const reviewAttempt = subject?.attempt ?? 1;
   try {
@@ -927,6 +1041,13 @@ async function reviewConstraintComplianceCall(
       },
       { signal: controller.signal },
     );
+    /*
+      PROVIDER BOUNDARY. `providerFinishedAt` is frozen here so `latencyMs` measures the reviewer's
+      CALL and not the contradiction checking that follows it — the same separation the stage event
+      makes. Emitted before any parsing, so the terminal review outcome stays the last event.
+    */
+    const providerFinishedAt = monoNow();
+    logStage("semantic_review", startedAt, providerFinishedAt);
     const rc = completion.choices[0];
     // R2.22 — the reviewer schema grew with the all-phase contract. A truncated verdict must be
     // named, not parsed and misreported as unstructured nonsense.
@@ -941,7 +1062,7 @@ async function reviewConstraintComplianceCall(
       consistency: "invalid",
       finishReason,
       truncated: finishReason === "length",
-      latencyMs: Date.now() - startedAt,
+      latencyMs: providerFinishedAt - startedAt,
       errors: [],
       ...over,
     });
@@ -1082,6 +1203,7 @@ async function reviewConstraintComplianceCall(
   } catch (e) {
     // A telemetry failure is not a transport failure and must not be reported as one.
     if (isProviderCallTelemetryError(e)) throw e;
+    logStage("semantic_review", startedAt, monoNow(), { timeout: controller.signal.aborted });
     const cls = classifyThrownCall(e, controller.signal.aborted);
     await call.settle({
       outcome: cls.outcome,
@@ -1182,6 +1304,249 @@ function resolveAuthority(
  * and proven by an independent semantic review. Bounded to `MAX_GENERATION_ATTEMPTS`
  * generation + review cycles. Never returns a generic deterministic scenario.
  */
+// ---------------------------------------------------------------------------
+// PLAN-THEN-RENDER v1 — CALL 1. Decide, then write.
+// ---------------------------------------------------------------------------
+
+const PLAN_SCHEMA_NAME = "arena_decision_plan_v1";
+/** The plan carries ids, one-line dimensions and consequences. It never carries prose. */
+const LLM_PLAN_MAX_TOKENS = 1_200;
+const LLM_PLAN_TIMEOUT_MS = 60_000;
+
+/**
+ * The plan request. Deliberately NOT the generation prompt with extra rules bolted on.
+ *
+ * The generation prompt teaches the model to write a scene; this one forbids writing entirely, so
+ * the only thing it can produce is the set of decisions. `dimensionId` is the load-bearing field:
+ * it is what makes "these two phases are the same decision" an equality rather than a judgement
+ * about Korean or English wording.
+ */
+function buildPlanMessages(input: ScenarioGenInput, locale: Locale): LlmChatMessage[] {
+  const isKo = locale === "ko";
+  const system = [
+    "You design the DECISION STRUCTURE of one leadership practice scenario. You do NOT write the scenario.",
+    "Return ids, one short line per decision, and one short line per consequence. No opening, no choice labels, no paragraphs, no explanation.",
+    "",
+    "THE STRUCTURE. A learner makes a PRIMARY choice. That choice produces a world. In that world they face a TRADEOFF decision, and after facing it they make an ACTION decision.",
+    /*
+      v1.2 — THE PHASE DEFINITIONS WERE THEMSELVES QUOTABLE.
+
+      Measured across 27 cross-fixture plans: every machine-valid plan separated its two branches as
+      `which_priority_to_protect` vs `which_cost_to_accept` — the two halves of the sentence that
+      used to sit here. Having removed the domain-id examples in v1.1, the model simply borrowed the
+      instruction instead. A definition that can be copied IS an example.
+
+      Each phase is now described by WHERE its decision must come from, never by what it is about.
+    */
+    "PRIMARY: the first fork in this situation. Name it from the situation itself.",
+    "TRADEOFF: after the primary choice has changed the situation, find a decision that STILL requires judgment in that new world. It must arise from that branch's own resulting world, involve legitimate competing pressures or consequences, and its decision variable must come from the scenario in front of you — never from the wording of these instructions.",
+    "ACTION: a later observable decision that remains once the tradeoff has been faced. It must arise from that same branch's situation, must not repeat the tradeoff's variable, and must be something the learner could actually choose or do next.",
+    "If you find yourself naming a decision in the words of this instruction rather than in the words of the situation, you have not read the situation closely enough.",
+    "",
+    /*
+      v1.1 — the three concrete example ids that used to sit here were copied verbatim into 9 of 9
+      live plans, collapsing the whole id space to three tokens and manufacturing the sibling
+      collisions this stage exists to prevent. The illustration is now purely schematic: it shows
+      the SYNTAX and carries no domain meaning to borrow.
+    */
+    "dimensionId IS A SEMANTIC IDENTITY, NOT A UNIQUE KEY. Lower_snake_case words naming what is being decided, drawn from THIS training context. If two decisions MEAN the same thing they MUST carry the SAME dimensionId — do not invent a fresh id, and never number ids apart, merely to look different.",
+    "SYNTAX ONLY, never output these literally: <snake_case_primary_decision>, <snake_case_tradeoff_decision>, <snake_case_action_decision>. They demonstrate the shape of an id and nothing about its content.",
+    "",
+    "WHAT MAKES A PLAN VALID. Within one branch the tradeoff and the action must be genuinely different decisions, so their dimensionIds differ, and the action must not re-open what the primary choice already settled. ACROSS the two branches: they must NOT share a tradeoff dimensionId, and they must NOT share an action dimensionId — if both branches face the same tradeoff the primary choice changed nothing, and if both end on the same action the paths have reconverged. Their resulting worlds must differ too.",
+    "If this training context genuinely does not contain two different downstream decisions, repeat a dimensionId and let the plan be refused. Do NOT invent a difference to satisfy the rule.",
+    /*
+      v1.1 — the validator requires each `dimension` to be phrased as a decision, and the first
+      probe showed the model answering with noun phrases instead ("leadership value"), so 9 of 9
+      plans were refused for form rather than for meaning. The instruction now asks for exactly the
+      shape the rule accepts.
+    */
+    "EVERY `dimension` is written as the QUESTION being decided, not as a topic. In English begin it with whether / when / how much / which / who / what to. In Korean end it with -(으)ㄹ지 (for example a phrase ending 할지, 알릴지, 맡을지) or use 얼마나 / 언제 / 누구에게 / 어느 정도. A bare noun phrase names nothing choosable and the plan is refused.",
+    "`tension` is different: it states what pulls in both directions, and stays ordinary prose.",
+    "",
+    "resultingWorldState is what is TRUE after that primary choice — a changed fact, not a feeling and not a restatement of the choice.",
+    "Ground everything in the training context given. Invent no names, organizations, numbers or private details.",
+    isKo ? "dimension, tension and resultingWorldState are written in Korean. dimensionId stays lower_snake_case ASCII." : "Write dimension, tension and resultingWorldState in English.",
+    "Return ONLY the JSON object of the given schema.",
+  ].join("\n");
+
+  const facts = input.facts;
+  const contextLines = [
+    facts.problem ? `Training problem: ${facts.problem}` : null,
+    facts.observableBehavior ? `Expected observable behavior: ${facts.observableBehavior}` : null,
+    facts.successEvidence ? `What success looks like: ${facts.successEvidence}` : null,
+    facts.learningNeeds.length ? `Learning needs: ${facts.learningNeeds.join(", ")}` : null,
+    `When it is hardest (host answer 1): ${hardestWhenPhrase(input.guided, input.locale)}`,
+    `Pressure that makes people avoid it (host answer 2): ${input.guided.avoidancePressure.text}`,
+  ].filter(Boolean);
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: contextLines.join("\n") },
+  ];
+}
+
+type PlanOutcome =
+  | { ok: true; plan: DecisionPlan }
+  | { ok: false; reason: "generation_failed" | "generation_rejected" | "structured_output_unavailable"; fault?: ProviderFault };
+
+/**
+ * CALL 1 — one provider call, through the SAME accounting wrapper as every other provider call.
+ *
+ * It declares `kind: "generation"` because that is what it is: a generation call. With accounting
+ * present it takes `kind_sequence` 1 and the render call takes 2, which is exactly the range the
+ * database CHECK already permits. No third generation call is possible in this architecture, which
+ * is why plan correction and render correction are both absent rather than merely unused.
+ */
+async function generatePlan(
+  input: ScenarioGenInput,
+  accounting?: GenerationAccounting | null,
+): Promise<PlanOutcome> {
+  let client: ReturnType<typeof getLlmClient>;
+  try {
+    client = getLlmClient();
+  } catch (e) {
+    logGenOutcome("plan_provider_error");
+    return { ok: false, reason: "generation_failed", fault: { kind: "transport", category: categorizeThrown(e, false) } };
+  }
+  return withProviderCall(
+    accounting,
+    {
+      kind: "generation",
+      model: getLlmModel(),
+      providerTimeoutMs: LLM_PLAN_TIMEOUT_MS,
+      maxTokens: LLM_PLAN_MAX_TOKENS,
+      temperature: LLM_GEN_TEMPERATURE,
+      topP: LLM_GEN_TOP_P,
+      structuredOutputMode: "json_schema_strict",
+      locale: input.locale,
+    },
+    async (call) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), LLM_PLAN_TIMEOUT_MS);
+      const stageStarted = monoNow();
+      try {
+        const completion = await client.chat.completions.create(
+          {
+            model: getLlmModel(),
+            messages: buildPlanMessages(input, input.locale),
+            temperature: LLM_GEN_TEMPERATURE,
+            top_p: LLM_GEN_TOP_P,
+            max_tokens: LLM_PLAN_MAX_TOKENS,
+            response_format: {
+              type: "json_schema",
+              json_schema: { name: PLAN_SCHEMA_NAME, strict: true, schema: DECISION_PLAN_JSON_SCHEMA },
+            },
+          },
+          { signal: controller.signal },
+        );
+        logStage("plan", stageStarted, monoNow());
+        const choice = completion.choices[0];
+        const raw = choice?.message?.content ?? null;
+        /*
+          The SAME settle contract as the render call: the wrapper derives the digest from
+          `modelContent`, so the plan's response identity and token counts are recorded exactly the
+          way every other provider call in this service records them.
+        */
+        const settleBase = {
+          modelContent: raw,
+          finishReason: choice?.finish_reason ?? null,
+          ...readCallUsage(completion),
+        };
+        if (!raw || !raw.trim()) {
+          await call.settle({ ...settleBase, outcome: "empty_output" });
+          logGenOutcome("plan_empty");
+          return { ok: false, reason: "generation_failed" } as PlanOutcome;
+        }
+
+        let parsedJson: unknown;
+        try {
+          parsedJson = JSON.parse(stripJsonFences(raw));
+        } catch {
+          await call.settle({ ...settleBase, outcome: "malformed_output" });
+          logGenOutcome("plan_malformed");
+          return { ok: false, reason: "generation_rejected" } as PlanOutcome;
+        }
+
+        const parsed = parseDecisionPlan(parsedJson);
+        if (!parsed.ok) {
+          await call.settle({ ...settleBase, outcome: "schema_invalid" });
+          logGenOutcome("plan_shape_invalid", parsed.errors[0], { defectCodes: parsed.errors });
+          return { ok: false, reason: "generation_rejected" } as PlanOutcome;
+        }
+
+        // The provider answered correctly; the plan's MEANING is judged next, and separately.
+        await call.settle({ ...settleBase, outcome: "success" });
+
+        const verdict = validateDecisionPlan(parsed.value);
+        if (!verdict.ok) {
+          const codes = verdict.findings.map((f) => `${f.branch ? `${f.branch}.` : ""}${f.field}=${f.problem}`);
+          logGenOutcome("plan_rejected", verdict.findings[0]?.problem, {
+            defectCodes: codes,
+            ...(genCaptureContent ? { scenario: parsed.value } : {}),
+          });
+          return { ok: false, reason: "generation_rejected" } as PlanOutcome;
+        }
+
+        logGenOutcome("plan_valid", undefined, genCaptureContent ? { scenario: parsed.value } : undefined);
+        return { ok: true, plan: parsed.value } as PlanOutcome;
+      } catch (e) {
+        logStage("plan", stageStarted, monoNow(), { timeout: controller.signal.aborted });
+        if (isStructuredOutputUnsupported(e)) {
+          await call.settle({ outcome: "http_error", providerErrorCategory: "bad_request" });
+          return { ok: false, reason: "structured_output_unavailable" } as PlanOutcome;
+        }
+        const aborted = controller.signal.aborted;
+        await call.settle({ outcome: aborted ? "timeout" : "transport_error", providerErrorCategory: categorizeThrown(e, aborted) });
+        logGenOutcome("plan_transport");
+        return { ok: false, reason: "generation_failed", fault: { kind: "transport", category: categorizeThrown(e, aborted) } } as PlanOutcome;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  );
+}
+
+/**
+ * HOW ONE GENERATION RUNS. Harness-scoped, default-off, never user-reachable.
+ *
+ * ★ WHY `correction: "disabled"` HAD TO EXIST BEFORE THE PLAN EXPERIMENT.
+ *
+ * Every earlier measurement compared "legacy generation + one correction" against a proposed
+ * "plan + render, no correction". Two variables moved at once, so no result could attribute a
+ * delta to the plan rather than to the removal of the repair pass. The accounting audit recorded
+ * that as NO COMPARABLE NO-CORRECTION BASELINE. This option exists to retire that limitation by
+ * holding correction at zero on BOTH sides.
+ *
+ * ★ IT IS NOT A PRODUCT SWITCH.
+ *
+ * There is no environment variable, no config entry and no HTTP field that reaches it. Omitting
+ * the argument reproduces today's behaviour exactly — `MAX_GENERATION_ATTEMPTS`,
+ * `PRACTICE_SAMPLING.retry.maxAttempts` and `contractManifest.retryPolicy` are all untouched, so
+ * the Builder keeps generation slot 1 plus its optional correction slot 2.
+ *
+ * ★ AND PLAN-THEN-RENDER CANNOT BE REACHED BY ACCIDENT.
+ *
+ * `architecture: "plan_render_v1"` requires `correction: "disabled"` in the type itself. Plan and
+ * Render consume generation positions 1 and 2, so a correction would be a THIRD generation call —
+ * which the sequence allocator refuses and the database CHECK forbids. Making that combination
+ * unrepresentable is cheaper than discovering it in production.
+ */
+export type ArenaGenerationExecutionOptions =
+  | { architecture?: "legacy"; correction?: "enabled" | "disabled" }
+  | { architecture: "plan_render_v1"; correction: "disabled" };
+
+const DEFAULT_EXECUTION = { architecture: "legacy", correction: "enabled" } as const;
+
+/** Resolve the policy. An omitted argument is today's behaviour, stated rather than implied. */
+function resolveExecution(opts?: ArenaGenerationExecutionOptions): {
+  architecture: "legacy" | "plan_render_v1";
+  correctionEnabled: boolean;
+} {
+  const architecture = opts?.architecture ?? DEFAULT_EXECUTION.architecture;
+  const correction = opts?.correction ?? DEFAULT_EXECUTION.correction;
+  return { architecture, correctionEnabled: correction === "enabled" };
+}
+
 export async function generateArenaScenarioDraft(
   input: ScenarioGenInput,
   /**
@@ -1191,7 +1556,10 @@ export async function generateArenaScenarioDraft(
    * review. Runner-only callers pass nothing and create no child rows.
    */
   accounting?: GenerationAccounting | null,
+  /** Harness-scoped execution policy. Omitted = today's Builder behaviour, unchanged. */
+  execution?: ArenaGenerationExecutionOptions,
 ): Promise<GenerationResult> {
+  const { architecture, correctionEnabled } = resolveExecution(execution);
   const authority = resolveAuthority(input);
   if (authority.kind === "decline") {
     logGenOutcome("declined", authority.reason);
@@ -1211,8 +1579,37 @@ export async function generateArenaScenarioDraft(
   /** R2.29 — narrow boundary-review counters, accumulated across generation attempts. */
   let boundaryMetrics: BoundaryReviewMetrics = emptyBoundaryMetrics();
 
-  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const llm = await generateWithLlm(input, constraints, retryFeedback, accounting);
+  /*
+    The constant is unchanged and still the ceiling; the policy may only lower it to 1. A harness
+    that disables correction must not be able to raise the number of provider calls.
+  */
+  const attemptCeiling = correctionEnabled ? MAX_GENERATION_ATTEMPTS : 1;
+
+  /*
+    ★ PLAN-THEN-RENDER v1 — CALL 1, BEFORE ANY PROSE EXISTS.
+
+    Measured cause of the collapse this addresses: asking for an opening, two primary choices, two
+    branches and eight downstream choices in ONE request never obliged the model to make more than
+    one decision, so it made one and wrote it repeatedly — in English (`c18`, accepted) and in
+    Korean (`run6`, accepted, tradeoff and action one verb ending apart).
+
+    A rejected plan is terminal HERE. There is no second plan call and no render call, so the
+    architecture can never reach a third generation call — the sequence allocator and the database
+    CHECK both cap `generation` at two, and this is what keeps that promise structurally rather
+    than by convention.
+  */
+  let approvedPlan: DecisionPlan | null = null;
+  if (architecture === "plan_render_v1") {
+    const planned = await generatePlan(input, accounting);
+    if (!planned.ok) {
+      logGenOutcome("declined", planned.reason);
+      return { ok: false, reason: planned.reason, fault: planned.fault };
+    }
+    approvedPlan = planned.plan;
+  }
+
+  for (let attempt = 1; attempt <= attemptCeiling; attempt++) {
+    const llm = await generateWithLlm(input, constraints, retryFeedback, accounting, approvedPlan);
     if (!llm.ok) {
       // Transport / no-safe-space are terminal; a correctable rejection may regenerate once.
       // A capability gap is terminal — retrying the same unsupported schema cannot succeed, and
@@ -1224,7 +1621,7 @@ export async function generateArenaScenarioDraft(
       ) {
         return { ok: false, reason: llm.reason, fault: llm.fault, rejectionCodes: llm.rejection?.findings?.map((f) => f.code) };
       }
-      if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+      if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected" };
       // R2.21 — a deterministic grounding failure carries actionable, boundary-specific correction
       // into the single retry. Without it the second request repeats the first, which is exactly how
       // an ungrounded scenario used to "recover" into another ungrounded one.
@@ -1378,7 +1775,7 @@ export async function generateArenaScenarioDraft(
           ...(genCaptureContent ? { correctionPacket: packet, violations: boundaryStage.violations } : {}),
         });
         // R5C-1 — name the gate; without it this is indistinguishable from a quality refusal.
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
+        if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
         retryFeedback = fb;
         continue;
       }
@@ -1520,7 +1917,7 @@ export async function generateArenaScenarioDraft(
           },
         );
         // R5C-1 — the SEMANTIC reviewer refused content. Its gate keeps it out of the boundary bucket.
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
+        if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
         retryFeedback = fb;
         continue;
       }

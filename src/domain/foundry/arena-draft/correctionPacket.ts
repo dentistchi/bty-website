@@ -114,7 +114,14 @@ const CORRECTIONS: Record<string, string> = {
   tradeoff_repeats_primary: "The primary choice is already made. Show the world it produced, then pose a genuinely new tradeoff.",
   action_repeats_tradeoff: "The tradeoff is already decided. The action phase must commit on a further new dimension.",
   action_reopens_primary: "No later phase may reverse the primary decision without a new causal event.",
-  repeated_choice_meaning_within_branch: "Two choices in this branch mean the same thing. Rewording is not a new decision — pose a different one.",
+  /*
+    Measured (Founder practice, Korean): the repetition is almost always the ACTION restating its
+    own branch's TRADEOFF — "상대방에게 다른 날짜를 제안하기" then "다른 날짜를 제안하기". The old text
+    said only "pose a different one", which the model answered by rewording again. This names WHICH
+    phase to leave alone and which to replace, without supplying the replacement or any new fact.
+  */
+  repeated_choice_meaning_within_branch:
+    "Two choices in this branch mean the same thing. Usually the ACTION is restating a decision already made in the TRADEOFF — a shorter restatement is still a restatement. Do not paraphrase it. Keep the TRADEOFF about the competing priority and the cost accepted, and replace the ACTION with a later, concrete, observable move that poses a NEW decision. If instead the two options within one phase mean the same, replace one of them with a genuinely different option.",
   branch_decision_loop: "This branch loops instead of progressing: primary made → resulting world → new tradeoff → action commitment.",
   no_new_decision_dimension: "The tradeoff and action phases name one dimension. Give the action phase its own.",
   cross_branch_axis_collapse: "Every branch poses the same next decision, so the primary choice changed nothing. Give each branch its own decision dimension.",
