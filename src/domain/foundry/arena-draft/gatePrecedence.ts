@@ -194,6 +194,7 @@ const REGISTRY_ORDER: Array<{ code: string; level: GateLevel; terminal?: boolean
   { code: "review_phase_choices_missing", level: 7 },
   { code: "review_phase_invalid", level: 7 },
   { code: "review_cross_branch_missing", level: 7 },
+  { code: "review_next_decision_dimension_invalid", level: 7 },
   { code: "review_no_safe_unsupported", level: 7 },
   { code: "review_no_safe_unsupported_by_boundary", level: 7 },
   { code: "review_urgency_fabricated", level: 7 },

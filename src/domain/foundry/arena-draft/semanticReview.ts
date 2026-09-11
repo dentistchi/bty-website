@@ -47,6 +47,7 @@ import {
   collectCrossBranchDefects,
   type BranchProgressionFields,
   type CrossBranchReview,
+  LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES,
 } from "./branchProgression";
 
 // ---------------------------------------------------------------------------
@@ -395,8 +396,8 @@ export type ReviewAdvisory = {
 };
 
 export type ReviewValidation =
-  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory }
-  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory }
+  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory; integritySignals?: string[] }
+  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory; integritySignals?: string[] }
   | { ok: true; value: SemanticReview; verdict: "no_safe"; reasonCode: NoSafeReasonCode }
   /**
    * R2.25 — a failed validation now carries what it saw.
@@ -668,8 +669,24 @@ export function validateSemanticReview(
   }
   for (const b of branchReviews) {
     if (b.repeatsPrimaryDecision) defects.push("branch_repeats_primary");
-    if (!b.branchDistinct || b.overlapsOtherBranchIndex >= 0) defects.push("branch_semantic_collapse");
-    defects.push(...b.defectCodes);
+    /*
+      DECISION B (R2.28) — A COMMITTED BEHAVIOUR CHANGE, NOT A CLEANUP.
+
+      Parent db9757de rejected a draft outright when the reviewer set `branchDistinct: false` or a
+      non-negative `overlapsOtherBranchIndex`. That is a model-authored paraphrase-identity veto, and
+      two measured prompt iterations showed it cannot be made reliable: asked implicitly it retained
+      1 of 6 known-collapsed cases, and asked as a forced side-by-side SAME/DIFFERENT question it
+      retained 0 of 6, answering DIFFERENT every time.
+
+      So the veto is removed. Both fields — and any collapse code the model tries to author — remain
+      in the payload as measurable reviewer OPINION for human review, with no power to reject. Some
+      legacy drafts the committed reviewer would have rejected for semantic paraphrase identity will
+      therefore no longer be rejected. That is the intended consequence.
+
+      What still rejects automatically is deterministic normalized identity in
+      `collectCrossBranchDefects`, which proves sameness rather than judging it.
+    */
+    defects.push(...b.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)));
   }
   if (!boundaryCompliant && ctx.constraintIds.length > 0) defects.push("boundary_violation");
   if (!value.twoValuesInTension) defects.push("no_value_tension");
@@ -700,12 +717,25 @@ export function validateSemanticReview(
   const progression = collectBranchProgressionDefects(branchReviews);
   defects.push(...progression.defects);
   const cross = collectCrossBranchDefects(branchReviews, ctx.branchCount >= 2 ? crossBranch : null);
-  defects.push(...cross.defects);
+  /*
+    DEBT C, WITH SEVERITY (R2.28).
 
-  // Part 8 rule 3 — identical next-decision axes cannot coexist with "every branch is distinct".
-  if (cross.defects.includes("cross_branch_axis_collapse") && branchReviews.every((b) => b.branchDistinct)) {
-    defects.push("branch_semantic_collapse");
-  }
+    Debt C is what makes these findings exist at all: `collectCrossBranchDefects` used to return them
+    and nobody read them, so a reviewer could return unusable cross-branch data invisibly. They still
+    never join `defects` — a draft is not defective for having been reviewed badly — but they are no
+    longer uniformly fatal.
+
+    TERMINAL: the required response contract cannot be interpreted, so the review fails as reviewer
+    integrity, exactly as before.
+
+    SIGNAL: a non-authoritative observation was unusable. The affected input has already been
+    withheld from the comparison that would have used it; the finding rides out on the result as
+    evidence and the review is interpreted normally. Making telemetry prose fatal is how removing one
+    model veto quietly installed another.
+  */
+  if (cross.terminalErrors.length) return { ok: false, errors: [...new Set(cross.terminalErrors)] };
+  const integritySignals = cross.signals;
+  defects.push(...cross.defects);
   // Part 8 rule 4 — repeated meaning inside a branch cannot coexist with valid progression.
   if (branchReviews.some((b) => b.progressionValid && b.repeatedMeaningPairs.length > 0)) {
     defects.push("repeated_choice_meaning_within_branch");
@@ -760,8 +790,8 @@ export function validateSemanticReview(
   };
 
   return unique.length
-    ? { ok: true, value, verdict: "reject", defects: unique, advisory }
-    : { ok: true, value, verdict: "accept", advisory };
+    ? { ok: true, value, verdict: "reject", defects: unique, advisory, integritySignals }
+    : { ok: true, value, verdict: "accept", advisory, integritySignals };
 }
 
 // ---------------------------------------------------------------------------

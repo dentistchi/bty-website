@@ -63,7 +63,7 @@ const progression = (i: number, over: Partial<SemanticReview["branches"][number]
   selectedPrimarySummary: `primary ${i + 1} already chosen`,
   resultingWorldState: `world after primary ${i + 1}`,
   newConstraintOrPressure: `new pressure ${i + 1}`,
-  nextDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
+  nextDecisionDimension: i === 0 ? "who owns the escalation" : "how much coverage to commit",
   repeatsPrimaryDecision: false,
   overlapsOtherBranchIndex: -1,
   overlapReason: "",
@@ -321,11 +321,24 @@ describe("branch consequence contract", () => {
     expect(r.ok && r.verdict === "reject" && r.defects).toContain("branch_repeats_primary");
   });
 
-  it("14/16. siblings that mean the same thing collapse, however they are worded", () => {
+  it("14/16. siblings posing a PROVABLY identical next decision still collapse", () => {
+    // Decision B — established by deterministic normalized identity, not by reviewer opinion.
+    const b = review().branches;
+    b[1] = { ...b[1], nextDecisionDimension: b[0].nextDecisionDimension };
+    const r = validateSemanticReview(review({ branches: b, overallVerdict: "reject" }), CTX);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("cross_branch_axis_collapse");
+  });
+
+  it("14c. a reviewer-authored collapse code is recorded but cannot reject", () => {
+    const r = validateSemanticReview(review({ crossBranch: crossOk({ defectCodes: ["cross_branch_axis_collapse"] }) }), CTX);
+    expect(r.ok && r.verdict === "reject" && r.defects).toBeFalsy();
+  });
+
+  it("14b. a per-branch 'not distinct' opinion no longer establishes collapse by itself", () => {
     const b = review().branches;
     b[1] = { ...b[1], overlapsOtherBranchIndex: 0, overlapReason: "same next decision", branchDistinct: false };
-    const r = validateSemanticReview(review({ branches: b, overallVerdict: "reject", defectCodes: ["branch_semantic_collapse"] }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("branch_semantic_collapse");
+    const r = validateSemanticReview(review({ branches: b }), CTX);
+    expect(r.ok && r.verdict === "reject" && r.defects).not.toContain("branch_semantic_collapse");
   });
 
   it("15/18. shared vocabulary but genuinely different causal states is ACCEPTED", () => {
@@ -334,8 +347,8 @@ describe("branch consequence contract", () => {
     // cross_branch_axis_collapse (see the cross-branch suite). The intent the test was written for
     // survives intact: branches may share words as long as the axes genuinely differ.
     const b = review().branches;
-    b[0] = { ...b[0], resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting", nextDecisionDimension: "escalation to the director", tradeoffDecisionDimension: "escalation to the director" };
-    b[1] = { ...b[1], resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap", nextDecisionDimension: "escalation of staffing cover", tradeoffDecisionDimension: "escalation of staffing cover" };
+    b[0] = { ...b[0], resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting", nextDecisionDimension: "whether to escalate to the director", tradeoffDecisionDimension: "whether to escalate to the director" };
+    b[1] = { ...b[1], resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap", nextDecisionDimension: "who should escalate the staffing gap", tradeoffDecisionDimension: "who should escalate the staffing gap" };
     expect(validateSemanticReview(review({ branches: b }), CTX).ok).toBe(true);
   });
 });
@@ -997,5 +1010,114 @@ describe("advisory invariance — overallVerdict has zero authority", () => {
         expect(errs).not.toContain("review_reject_without_defect");
       }
     }
+  });
+});
+
+/*
+  DEBT C — CROSS-BRANCH INTEGRITY FINDINGS REACH THE REAL VALIDATOR (R2.28).
+
+  Measured before this fix: `collectCrossBranchDefects` returned integrity findings and
+  `validateSemanticReview` read only its `defects`, so every one of them was computed and thrown
+  away. A reviewer could return unusable cross-branch data invisibly.
+
+  Debt C is what makes the severity split below possible at all — you cannot grade findings nobody
+  reads. These cover the TERMINAL half: the required response contract is missing, so the review
+  fails as reviewer integrity and never as a content defect.
+*/
+describe("cross-branch reviewer-integrity reaches validateSemanticReview (Debt C)", () => {
+  const errorsOf = (r: ReturnType<typeof validateSemanticReview>) => (r.ok ? [] : r.errors);
+
+  it("an absent cross-branch contract fails the review as reviewer integrity", () => {
+    const r = validateSemanticReview(review({ crossBranch: undefined as never }), CTX);
+    expect(r.ok).toBe(false);
+    expect(errorsOf(r)).toContain("review_cross_branch_missing");
+  });
+
+  it("the integrity error never becomes a content defect or correction feedback", () => {
+    const r = validateSemanticReview(review({ crossBranch: undefined as never }), CTX);
+    // `defects` does not exist on a failed validation, so nothing can reach the correction packet.
+    expect(r.ok && r.verdict === "reject" && r.defects).toBeFalsy();
+  });
+
+  it("a complete cross-branch contract passes integrity and still judges content", () => {
+    expect(validateSemanticReview(review(), CTX).ok).toBe(true);
+  });
+});
+
+/*
+  REVIEWER-INTEGRITY SEVERITY (R2.28, Decision C).
+
+  Debt C made cross-branch integrity findings reach the validator. Uniformly fatal, that combined
+  with the `nextDecisionDimension` form contract to kill 35 service tests and 1 of 10 live reviews on
+  `review_malformed` — because the reviewer wrote a topic label in a field that, under Decision B,
+  has no decision authority at all. Removing a model veto in one place and installing another in
+  another place is not progress.
+
+  The rule encoded here: a field with ZERO decision authority cannot terminate a review merely
+  because its observation is malformed. Severity comes from a declared table, never from a prefix.
+*/
+describe("reviewer-integrity severity: terminal vs signal", () => {
+  const errorsOf = (r: ReturnType<typeof validateSemanticReview>) => (r.ok ? [] : r.errors);
+  const signalsOf = (r: ReturnType<typeof validateSemanticReview>) => (r.ok ? (r.verdict === "no_safe" ? [] : r.integritySignals ?? []) : []);
+  const withDimension = (index: number, nextDecisionDimension: string) => {
+    const b = review().branches;
+    b[index] = { ...b[index], nextDecisionDimension };
+    return review({ branches: b });
+  };
+
+  it("A. malformed telemetry is a SIGNAL — the review stays interpretable", () => {
+    const r = validateSemanticReview(withDimension(0, "client communication"), CTX);
+    expect(r.ok).toBe(true);
+    expect(signalsOf(r)).toContain("review_next_decision_dimension_invalid");
+    // Not fatal, not a content defect, and nothing to feed back to the generator.
+    expect(errorsOf(r)).toEqual([]);
+    expect(r.ok && r.verdict === "reject" && r.defects).not.toContain("review_next_decision_dimension_invalid");
+  });
+
+  it("A2. …and the malformed dimension is withheld from the identity comparison", () => {
+    // Both branches carry the SAME topic label. Identical strings, but not a judgeable dimension,
+    // so the deterministic rule must not read them as a proven repeated decision variable.
+    const b = review().branches;
+    b[0] = { ...b[0], nextDecisionDimension: "client communication" };
+    b[1] = { ...b[1], nextDecisionDimension: "client communication" };
+    const r = validateSemanticReview(review({ branches: b }), CTX);
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.verdict === "reject" && r.defects).not.toContain("cross_branch_axis_collapse");
+  });
+
+  it("B. a missing cross-branch contract is still TERMINAL", () => {
+    const r = validateSemanticReview(review({ crossBranch: undefined as never }), CTX);
+    expect(r.ok).toBe(false);
+    expect(errorsOf(r)).toContain("review_cross_branch_missing");
+  });
+
+  it("C. signal + terminal together terminates, and the terminal cause is named", () => {
+    const b = review().branches;
+    b[0] = { ...b[0], nextDecisionDimension: "transparency" };
+    const r = validateSemanticReview(review({ branches: b, crossBranch: undefined as never }), CTX);
+    expect(r.ok).toBe(false);
+    expect(errorsOf(r)).toContain("review_cross_branch_missing");
+  });
+
+  it("D. valid telemetry raises no signal and participates in the identity rule", () => {
+    const clean = validateSemanticReview(review(), CTX);
+    expect(signalsOf(clean)).toEqual([]);
+    const b = review().branches;
+    b[1] = { ...b[1], nextDecisionDimension: b[0].nextDecisionDimension };
+    const proven = validateSemanticReview(review({ branches: b }), CTX);
+    expect(proven.ok && proven.verdict === "reject" && proven.defects).toContain("cross_branch_axis_collapse");
+  });
+
+  it("E. Decision B holds — a model-authored paraphrase verdict is still powerless", () => {
+    const b = review().branches;
+    b[1] = { ...b[1], branchDistinct: false, overlapsOtherBranchIndex: 0, overlapReason: "same decision" };
+    const r = validateSemanticReview(review({ branches: b }), CTX);
+    expect(r.ok && r.verdict === "reject" && r.defects).not.toContain("branch_semantic_collapse");
+  });
+
+  it("F. c18 — a boundary defect in the details still derives REJECT over an advisory accept", () => {
+    const bad = groundedAssessment({ presentInScenario: false, defectCodes: ["confirmed_boundary_absent"] });
+    const r = validateSemanticReview(review({ boundaryAssessments: [bad], overallVerdict: "accept" }), CTX);
+    expect(r.ok && r.verdict).toBe("reject");
   });
 });

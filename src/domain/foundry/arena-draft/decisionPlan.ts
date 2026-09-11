@@ -244,8 +244,15 @@ function hasRieulJiEnding(text: string): boolean {
 }
 const KO_CHOICE_FORMS = ["것인지", "는지", "얼마나", "언제", "어디", "어느 정도", "누구", "누가", "무엇", "선택", "우선순위"];
 const EN_CHOICE_FORM = /\b(whether|when|where|which|who|whom|how much|how many|how to|what to|versus|vs)\b/i;
-/** Does this read as a decision variable rather than a topic? */
-const namesADecision = (text: string) =>
+/**
+ * Does this read as a decision variable rather than a topic?
+ *
+ * EXPORTED so the semantic reviewer's `nextDecisionDimension` is held to the SAME form contract as a
+ * Plan dimension (R2.26). Measured before that: the reviewer was free to answer with a topic label
+ * ("client communication"), which the collapse comparison then treated as a decision variable. One
+ * implementation, two callers — never a second copy.
+ */
+export const namesADecision = (text: string) =>
   hasRieulJiEnding(text) || KO_CHOICE_FORMS.some((f) => text.includes(f)) || EN_CHOICE_FORM.test(text);
 
 const GENERIC_TEXT = new Set(["", "n/a", "na", "none", "tbd", "unknown", "various", "general", "generic", "decision", "the decision"]);

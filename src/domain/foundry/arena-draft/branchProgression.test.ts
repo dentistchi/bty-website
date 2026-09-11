@@ -31,7 +31,7 @@ const branch = (i: number, over: Partial<Branch> = {}): Branch => ({
   index: i,
   repeatsPrimaryDecision: false,
   resultingWorldState: `world after primary ${i + 1}`,
-  nextDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
+  nextDecisionDimension: i === 0 ? "who owns the escalation" : "how much coverage to commit",
   primaryDecisionPreserved: true,
   tradeoffDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
   actionDecisionDimension: i === 0 ? "who owns the recovery" : "what scope is committed",
@@ -115,12 +115,17 @@ describe("cross-branch causal diversity", () => {
   });
 
   it("28. the same next-decision axis in every branch is collapse", () => {
-    const same = [branch(0), branch(1, { nextDecisionDimension: "escalation order" })];
+    const same = [branch(0), branch(1, { nextDecisionDimension: "who owns the escalation" })];
     expect(diverse(same)).toContain("cross_branch_axis_collapse");
   });
 
-  it("28b. the reviewer reporting an axis-overlap pair is equally decisive", () => {
-    expect(diverse([branch(0), branch(1)], cross({ nextDecisionAxisOverlapPairs: ["0-1"] }))).toContain("cross_branch_axis_collapse");
+  it("28b. the reviewer's overlap opinion decides nothing (Decision B)", () => {
+    // Two measured prompt iterations could not make this judgment reliable, so it lost its veto.
+    expect(diverse([branch(0), branch(1)], cross({ nextDecisionAxisOverlapPairs: ["0-1"] }))).not.toContain("cross_branch_axis_collapse");
+  });
+
+  it("28c. nor can the reviewer assert the collapse code directly", () => {
+    expect(diverse([branch(0), branch(1)], cross({ defectCodes: ["cross_branch_axis_collapse"] }))).not.toContain("cross_branch_axis_collapse");
   });
 
   it("29/31. interchangeable consequences — branch content could be swapped and still cohere", () => {
@@ -167,16 +172,16 @@ describe("cross-branch causal diversity", () => {
   });
 
   it("32b. …but shared stakeholders AND one identical axis is interchangeable", () => {
-    const collapsed = [branch(0), branch(1, { nextDecisionDimension: "escalation order" })];
+    const collapsed = [branch(0), branch(1, { nextDecisionDimension: "who owns the escalation" })];
     expect(diverse(collapsed, cross({ stakeholderOverlapPairs: ["0-1"] }))).toContain("interchangeable_branch_consequence");
   });
 
   it("a missing cross-branch comparison is a broken review, not a pass", () => {
-    expect(collectCrossBranchDefects([branch(0), branch(1)], null).errors).toContain("review_cross_branch_missing");
+    expect(collectCrossBranchDefects([branch(0), branch(1)], null).terminalErrors).toContain("review_cross_branch_missing");
   });
 
   it("a single-branch scenario has nothing to compare", () => {
-    expect(collectCrossBranchDefects([branch(0)], null)).toEqual({ errors: [], defects: [] });
+    expect(collectCrossBranchDefects([branch(0)], null)).toEqual({ terminalErrors: [], signals: [], defects: [] });
   });
 
   it("the cross-branch schema names every field and forbids extras", () => {

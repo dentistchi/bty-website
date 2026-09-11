@@ -26,6 +26,7 @@
  */
 
 import { GEN_EXPLANATION_MAX, GEN_PAIRS_MAX_ITEMS, GEN_PAIR_MAX, GEN_REVIEW_TEXT_MAX } from "./types";
+import { namesADecision } from "./decisionPlan";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -50,6 +51,51 @@ export const CROSS_BRANCH_DEFECT_CODES = [
   "generic_communication_collapse",
 ] as const;
 export type CrossBranchDefectCode = (typeof CROSS_BRANCH_DEFECT_CODES)[number];
+
+/**
+ * DECISION B (R2.28) — codes the reviewer may no longer AUTHOR.
+ *
+ * Both name the same finding: "these two sibling branches are substantially the same decision
+ * variable". Two prompt iterations measured that this reviewer cannot make that judgment reliably —
+ * iteration 1 retained 1 of 6 known-collapsed cases, iteration 2 forced an explicit SAME/DIFFERENT
+ * answer per pair and retained 0 of 6, answering DIFFERENT every time, once while naming one
+ * branch's own dimension as the pair's shared variable.
+ *
+ * The definition direction was correct. What failed was asking THIS reviewer to decide it. So the
+ * veto is removed rather than retuned: these codes survive for artifact readability and for the
+ * deterministic rule below, but a model-authored occurrence is discarded.
+ */
+/**
+ * REVIEWER-INTEGRITY SEVERITY (R2.28, Decision C).
+ *
+ * THE RULE: a field with ZERO decision authority cannot terminate a review merely because its
+ * observation is malformed or low quality.
+ *
+ * Measured why: the `nextDecisionDimension` form contract and the Debt C fix were each reasonable
+ * alone, but together they made the reviewer's PROSE FORMATTING of a telemetry field fatal — 35
+ * service tests and 1 of 10 live diagnostic reviews died on `review_malformed`, with a topic label
+ * where a decision question was asked for. Removing a model veto in one place and creating a new
+ * one in another is not progress.
+ *
+ * TERMINAL means the required reviewer response contract is not safely interpretable at all.
+ * SIGNAL means a non-authoritative observation is unusable: the affected input is withheld from
+ * whatever consumed it, the finding is retained as evidence, and the review continues.
+ *
+ * This is a declared table, not a naming convention. Nothing infers severity from a prefix.
+ */
+export type IntegritySeverity = "terminal" | "signal";
+
+export const CROSS_BRANCH_INTEGRITY_SEVERITY: Readonly<Record<string, IntegritySeverity>> = {
+  // The whole cross-branch object is absent: there is no sibling comparison to interpret.
+  review_cross_branch_missing: "terminal",
+  // `nextDecisionDimension` is telemetry under Decision B. Badly written telemetry is not a crisis.
+  review_next_decision_dimension_invalid: "signal",
+};
+
+export const LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES: readonly string[] = [
+  "cross_branch_axis_collapse",
+  "branch_semantic_collapse",
+];
 
 // ---------------------------------------------------------------------------
 // Reviewer fields
@@ -101,6 +147,10 @@ export const BRANCH_PROGRESSION_REQUIRED = [
 export type CrossBranchReview = {
   /** "0-1" style pairs whose resulting world states mean the same thing. */
   resultingWorldOverlapPairs: string[];
+  /**
+   * TELEMETRY ONLY (R2.28, Decision B). The reviewer's opinion about which sibling pairs share a
+   * decision axis is recorded for human review and carries NO authority: it cannot reject a draft.
+   */
   nextDecisionAxisOverlapPairs: string[];
   stakeholderOverlapPairs: string[];
   repeatedActionMeaningPairs: string[];
@@ -183,22 +233,60 @@ export function collectBranchProgressionDefects(
 }
 
 /**
+ * Integrity findings are separated BY THE DECLARED TABLE, so no downstream caller has to know or
+ * guess a code's severity. An unlisted code is TERMINAL: a finding nobody classified must stop the
+ * review rather than be silently downgraded.
+ */
+export type CrossBranchOutcome = { terminalErrors: string[]; signals: string[]; defects: string[] };
+
+function split(errors: string[], defects: string[]): CrossBranchOutcome {
+  const unique = [...new Set(errors)];
+  return {
+    terminalErrors: unique.filter((c) => CROSS_BRANCH_INTEGRITY_SEVERITY[c] !== "signal"),
+    signals: unique.filter((c) => CROSS_BRANCH_INTEGRITY_SEVERITY[c] === "signal"),
+    defects: [...new Set(defects)],
+  };
+}
+
+/**
  * CROSS-BRANCH causal diversity. Compares the reviewer's own per-branch causal identity fields, so
  * a defect is established by the review's detail rather than by a similarity heuristic over prose.
  */
 export function collectCrossBranchDefects(
   branches: Array<BranchProgressionFields & { index: number; resultingWorldState: string; nextDecisionDimension: string }>,
   cross: CrossBranchReview | null,
-): { errors: string[]; defects: string[] } {
+): CrossBranchOutcome {
   const errors: string[] = [];
   const defects: string[] = [];
-  if (branches.length < 2) return { errors, defects };
-  if (!cross) return { errors: ["review_cross_branch_missing"], defects };
+  if (branches.length < 2) return split(errors, defects);
+  if (!cross) return split(["review_cross_branch_missing"], defects);
 
-  const axes = branches.map((b) => normalize(b.nextDecisionDimension));
+  // FORM BEFORE MEANING (R2.26). A dimension written as a topic label rather than as a decision is
+  // not a judgeable axis, so it is withheld from every collapse comparison below and reported as
+  // REVIEWER integrity — never as a content defect the generator is told to correct.
+  const wellFormed = branches.filter((b) => namesADecision(b.nextDecisionDimension));
+  if (wellFormed.length !== branches.length) errors.push("review_next_decision_dimension_invalid");
+  const malformedIndexes = new Set(branches.filter((b) => !namesADecision(b.nextDecisionDimension)).map((b) => b.index));
+  // A pair is unjudgeable when either side's dimension is malformed.
+  const judgeablePair = (pair: string) => {
+    const parts = pair.split("-").map((n) => Number.parseInt(n.trim(), 10));
+    return !parts.some((n) => Number.isInteger(n) && malformedIndexes.has(n));
+  };
+
+
+  const axes = wellFormed.map((b) => normalize(b.nextDecisionDimension));
   const worlds = branches.map((b) => normalize(b.resultingWorldState));
 
-  // Every branch posing the SAME next decision means the primary choice changed nothing.
+  /*
+    THE ONLY SURVIVING AXIS RULE (R2.28, Decision B).
+
+    EVIDENCE GRADE: deterministic over MODEL-AUTHORED OBSERVATIONS. The comparison is exact
+    normalized equality performed in code, but the strings compared were written by the reviewer, so
+    this is a narrower and weaker class than Plan `dimensionId` identity, which compares declared
+    structural identifiers. It rejects only the identity it can PROVE, and is deliberately not
+    broadened into similarity: two differently worded dimensions that may or may not mean one thing
+    are human-review evidence, not an automatic rejection.
+  */
   if (axes.length >= 2 && new Set(axes).size === 1) defects.push("cross_branch_axis_collapse");
   if (new Set(worlds).size !== worlds.length) defects.push("sibling_world_state_overlap");
   // The measured c18 shape: every branch reduced to "what do we tell people, and when".
@@ -209,14 +297,14 @@ export function collectCrossBranchDefects(
   if (cross.branchesInterchangeable) defects.push("interchangeable_branch_consequence");
   if (cross.allBranchesSameGenericAxis) defects.push("generic_communication_collapse");
   if (cross.resultingWorldOverlapPairs.length > 0) defects.push("sibling_world_state_overlap");
-  if (cross.nextDecisionAxisOverlapPairs.length > 0) defects.push("cross_branch_axis_collapse");
   if (cross.repeatedActionMeaningPairs.length > 0) defects.push("repeated_action_meaning");
-  defects.push(...cross.defectCodes);
+  // Decision B — a model-authored paraphrase-identity verdict is recorded upstream, never acted on.
+  defects.push(...cross.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)));
 
   // Shared stakeholders alone are NOT a defect — deliberately absent from the rules above, because a
   // client or a charge nurse can legitimately appear in every branch. Only a reviewer that reports
   // stakeholder overlap AND identical next decisions has actually shown a collapse.
-  if (cross.stakeholderOverlapPairs.length > 0 && new Set(axes).size === 1) defects.push("interchangeable_branch_consequence");
+  if (cross.stakeholderOverlapPairs.length > 0 && axes.length >= 2 && new Set(axes).size === 1) defects.push("interchangeable_branch_consequence");
 
-  return { errors, defects: [...new Set(defects)] };
+  return split(errors, defects);
 }
