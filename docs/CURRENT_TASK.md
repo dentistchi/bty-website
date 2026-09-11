@@ -1,3 +1,17 @@
+## 2026-09-10 — CHECKPOINT: ARENA DECISION-DENSITY FINDING
+
+**[GOV-ARENA-DENSITY] ARENA GENERATION RELIABILITY — WHERE THE EXCEPTION HAS ARRIVED.** Governance checkpoint under the narrow Arena generation reliability exception `e837ead9c32ee8d073dfb8d58f03d92106754945`. Records findings only; authorizes no new surface.
+
+**1. PLAN STAGE = ROUTING DIAGNOSTIC CANDIDATE.** The generation-only `DecisionPlan` stage has demonstrated value as a cheap pre-render diagnostic (~4 s, one provider call) for whether a situation can sustain multiple distinct judgment decisions. Its current product interpretation is a **ROUTING DIAGNOSTIC CANDIDATE** — **not** the final Plan-Then-Render generation architecture.
+
+**2. DECISION DENSITY VARIES BY SITUATION.** Measured plan-only, 9 samples per fixture, implementation frozen by hash across all probes: **c01 client-delivery / trust-recovery** — the authored capability names timing, scope and ownership — **Plan valid 7/9**. **Founder Vacation** — human read ≈ 2 natural decisions — **Plan valid 4/9**. **c07 limited staffing** — ≈ 2 strong decisions — **Plan valid 1/9**. **c09 transparency / verification** — a binary plus a follow-up — **Plan valid 0/9**. Therefore: **decision density is now a product-routing variable, not merely a generation-quality variable.**
+
+**3. GRAPH QUESTION REMAINS CLOSED PENDING CONFOUND REMOVAL.** The Plan prompt still contains a quotable phase-definition shape ("which priority to protect / which cost to accept") that can leak into dimension naming, and every machine-valid plan measured so far separated its two branches along exactly that phrase. The final c01/c09 Plan-only probe must remove that echo confound **before** any claim that the current three-phase Arena graph is itself defective. **Arena Runtime Graph v2 remains NOT AUTHORIZED.**
+
+**OUT OF SCOPE.** Low-decision-density routing — shorter Arena, Shared Standard, or Arena not recommended — is a **PRODUCT DECISION outside the current generation-only exception**. Also unauthorized here: persisted scenario changes, player changes, Builder changes, migrations, deploy, push.
+
+**AUTHORITY UNCHANGED.** Leadership Integrity Loop: **v0.1-r6 = last ratified**; **v0.2-r2 = UNRATIFIED**. This checkpoint does not ratify v0.2-r2.
+
 ## 2026-09-08 — ACTIVE TRACK: TRAINING RESCUE
 
 **Native Daily App: HALT at B2 LIVE.** Current behavior and the single-threshold rule (/start) are preserved. No Phase 3 implementation. Only bug / data-corruption / S1 changes permitted.
