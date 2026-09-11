@@ -1,3 +1,21 @@
+## 2026-09-10 — ARENA REVIEWER BOTTLENECK + RETENTION DEBT
+
+**[GOV-ARENA-REVIEWER]** Records the 36-run postmortem before the semantic-reviewer audit is opened. **This checkpoint authorizes no reviewer mutation** — only the next READ-ONLY audit.
+
+**1. REVIEWER BOTTLENECK — MEASURED.** Deterministic gates run inside the generation call, before semantic review, so a run carrying only `gate_level_*` never reached the reviewer. On that denominator: **Legacy** reached reviewer **6**, terminal failures **5** → **83%**. **Plan→Render** reached reviewer **11**, terminal failures **9** → **82%**. Therefore the raw **5 → 9** increase is explained by **reviewer exposure (6 → 11)**, not by an architecture-specific reviewer regression.
+
+**2. DOMINANT REVIEWER DEFECT CODE.** Across the retained reason streams the dominant semantic-review code is **`review_verdict_contradicts_details`** (Legacy 14, PTR 22 occurrences including reruns), present in **both** architectures and predating the Plan→Render path. Current interpretation: **SEMANTIC REVIEWER RELIABILITY IS AN OPEN GENERATION-QUALITY BOTTLENECK.** It is **not yet** claimed whether the reviewer LLM is internally inconsistent or the deterministic contradiction checker is over-strict; that is the next read-only audit.
+
+**3. YIELD STATUS.** **COLLAPSE REDUCTION remains CONFIRMED** (collapse-gate hits 9 → 2; `repeated_choice_meaning_within_branch` 4 → 0; c09 exposure 8/9 → 1). **END-TO-END YIELD remains NOT CONFIRMED** — automated pass **Legacy 1/18, Plan→Render 2/18**. Yield cannot be interpreted cleanly until reviewer behaviour is understood.
+
+**4. LATENCY STATUS.** **FOUNDER LATENCY remains a BLOCKER** (Legacy median 19.7 s, PTR median 49.5 s, PTR max 123.2 s). Cause remains **UNDETERMINED**: per-stage timestamps were not retained, so no claim may be made that prompt size, Render generation or semantic review is the dominant cause. The measured PTR render prompt is only **+11.0% / +6.7%** larger by character count — descriptive evidence, not causation.
+
+**5. RETENTION / HARNESS DEBT.** The completed 36-run experiment retained full draft/plan content **only for automated PASSes**. **Rejected PTR render drafts were NOT retained. Per-stage timestamps were NOT retained.** Therefore the full render-fidelity postmortem, the reviewer × fidelity cross-tab and the stage latency decomposition were all **unavailable**. This is a harness-evidence defect. Any next live experiment must retain, for EVERY run: Plan · rendered draft · quality-gate outcome · reviewer detail · per-stage timing. **The harness is not fixed in this checkpoint.**
+
+**6. NEXT AUTHORIZED STEP.** **READ-ONLY SEMANTIC REVIEWER AUDIT** — no provider calls, no reviewer mutation, no generation mutation. Commander will then decide whether reviewer work falls under the existing Arena generation-reliability exception.
+
+**7. STATUS CARRIED FORWARD.** Plan = clean generation-stage candidate / pre-render semantic structure. Runtime Graph v2 = **NOT AUTHORIZED / UNMOTIVATED**. Founder Vacation → Shared Standard = human Founder-play evidence only. Leadership Integrity Loop: **v0.1-r6 last ratified**, **v0.2-r2 UNRATIFIED**.
+
 ## 2026-09-10 — PLAN→RENDER: CURRENT VERDICT SPLIT
 
 **[GOV-ARENA-PTR-SPLIT]** Commander has directly reviewed the learner-facing packet from the matched Legacy-vs-Plan→Render experiment (correction disabled on both sides, 36 runs, 2 fixtures × 9 runs × 2 architectures). What is proven, what is not, and what remains open are recorded separately — no overall verdict is promoted.
