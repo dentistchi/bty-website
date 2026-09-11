@@ -1,3 +1,19 @@
+## 2026-09-10 — PLAN→RENDER: CURRENT VERDICT SPLIT
+
+**[GOV-ARENA-PTR-SPLIT]** Commander has directly reviewed the learner-facing packet from the matched Legacy-vs-Plan→Render experiment (correction disabled on both sides, 36 runs, 2 fixtures × 9 runs × 2 architectures). What is proven, what is not, and what remains open are recorded separately — no overall verdict is promoted.
+
+**1. COLLAPSE REDUCTION — CONFIRMED.** Measured: collapse-gate hits **9 → 2**; `repeated_choice_meaning_within_branch` **4 → 0**; `repeated_action_meaning` **5 → 2**; c09 collapse exposure **8/9 legacy → 1 PTR**. Commander-reviewed PASS packet: Legacy c01 run3 = **COLLAPSED**, PTR c01 run9 = **GOOD**, PTR c09 run9 = **AMBIGUOUS, render fidelity PARTIAL**. The intended narrow Plan benefit — reducing semantic decision collapse — therefore has measured support.
+
+**2. END-TO-END YIELD — NOT CONFIRMED.** Automated learner-facing PASS: **Legacy 1/18, PTR 2/18**. The experiment did not establish useful overall generation yield. **Quality promotion remains withheld.** The pre-locked Commander promotion threshold was not met: only one executor-GOOD scenario existed, so three GOOD scenarios were unavailable for human review.
+
+**3. FOUNDER LATENCY — BLOCKER.** Legacy median total **19.7 s**; PTR median total **49.5 s**; PTR max **123.2 s**. The Plan call itself is cheap (~3 s); the added wall-clock occurs downstream. Latency remains a separate blocker even if semantic quality later passes.
+
+**4. REVIEWER MIGRATION — OPEN.** `reviewer_terminal_failure` **Legacy 5 → PTR 9**. Current evidence cannot distinguish **(A) healthy failure migration** — Plan removes early collapse so more drafts reach a reviewer that exposes a different genuine defect — from **(B) reviewer mismatch** — the semantic reviewer is calibrated to legacy-shaped drafts and rejects otherwise good Plan-shaped output. This must be answered from the existing 36-run evidence **before** any further provider sampling.
+
+**5. CURRENT PLAN STATUS.** The Plan stage remains a **CLEAN GENERATION-STAGE CANDIDATE / PRE-RENDER SEMANTIC STRUCTURE** — **not yet** a production-ready generation architecture. **Arena Runtime Graph v2 remains NOT AUTHORIZED / UNMOTIVATED BY CURRENT EVIDENCE.**
+
+**6. HUMAN ROUTING EVIDENCE.** Founder Vacation → Shared Standard remains supported by **Founder human-play evidence only**; Arena metrics are evidence neither for nor against that routing judgment. Authority unchanged: **v0.1-r6 last ratified**, **v0.2-r2 UNRATIFIED**.
+
 ## 2026-09-10 — SUPERSEDE: ARENA DECISION-DENSITY INTERPRETATION
 
 **[GOV-ARENA-DENSITY-SUPERSEDE]** Supersedes the INTERPRETATION in findings #1 and #2 of checkpoint `f0a6986752f07e40348fc514971187bc35de77b2`. That checkpoint is left intact as history; only its reading is withdrawn.
