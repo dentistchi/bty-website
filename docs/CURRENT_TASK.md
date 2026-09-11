@@ -1,3 +1,23 @@
+## 2026-09-11 — CHECKPOINT: ARENA EVIDENCE BASE READY / INNER SNAPSHOT AUTHORIZED
+
+**[GOV-ARENA-EVIDENCE-BASE]** Under the existing Arena generation-reliability exception `e837ead9c32ee8d073dfb8d58f03d92106754945`.
+
+**1. OBSERVER EVIDENCE HOOK = READY.** Generation-only instrumentation now exposes rejected candidate drafts through `captureContent`, provider-boundary stage timing for Plan / generation / Render / semantic review, timeout evidence, and a monotonic `ReviewEvidence` latency. Instrumentation is **observer side-channel only**; production generation return objects are unchanged and byte-identical with the observer unset.
+
+**2. FULL RETENTION HARNESS = READY.** `evalArtifact.ts` remains the sole artifact authority. Full-retention evidence preserves Plan, rejected candidate draft, gate evidence, reviewer parsed details / derived defects / consistency on reporting paths, provider-stage timing, timeout evidence and failure outcomes. **Failure runs are first-class artifacts.** The retention namespace is isolated from the boundary-replay parity sweep by two independent measured facts (non-recursive sweep root; distinct filename prefix). **No parallel writer or artifact authority was introduced.**
+
+**3. OBSERVATION STREAM CONTRACT.** Consumers must select observations by **semantic kind / fields, never by absolute stream position.** Measured reason: adding provider-stage evidence exposed positional assumptions unrelated to the semantics consumers actually needed.
+
+**4. AUDIT MISS — CORRECTED IN RETENTION.** During the observer-hook audit `liveEvaluation.ts` was reported as not consuming observation semantics, because that audit relied on symbol/string search. The retention work then found a real positional data-flow dependency — `attempts[attempts.length - 1]` — which would have caused rejected runs to lose `primaryCode` / `defectCodes` once `stage_finished` existed. It was corrected to semantic code-bearing event selection. **Governance lesson: a "no impact" claim about observation or data-flow changes must trace the values actually consumed, not rely on symbol grep or on direct `GenObservation` references alone.**
+
+**5. MEASURED RETENTION LIMIT.** A clean semantic-review **ACCEPT** retains review stage timing but does **not** emit the structured review payload through the observer. Full retention can therefore investigate failed-review truth, but **cannot yet measure the false-accept half of reviewer-detail truth.** Recorded only — **no accept-path observer expansion is authorized here**; if later needed it requires its own additive evidence decision.
+
+**6. REVIEWER FIX EXPECTATION.** The next reviewer change is **not** justified by a promise to increase PASS rate. Primary intended result: **SINGLE DECISION AUTHORITY + HONEST FAILURE IDENTITY** — the model supplies structured observations/details, the code holds deterministic accept/reject authority. Separate future outcomes: retry churn / latency, and end-to-end yield. The `overallVerdict` advisory design **A–D remains UNIMPLEMENTED** at this checkpoint.
+
+**7. ONE LOCAL INNER SNAPSHOT COMMIT AUTHORIZED.** Exactly ONE local commit on `inner-main`, containing only work already authorized in this arc: the DecisionPlan / Plan→Render experimental stage; the authorized Plan-prompt cleanup and phase-echo removal; the previously authorized generation-locale repairs that share this dirty base; the observer evidence hook; the semantic-kind observation contract test correction; the full-retention harness; and the focused tests supporting the above. **This authorization does not retroactively change provenance:** `decisionPlan.ts` was created BEFORE the Arena generation-reliability exception was authorized, and the inner commit message must state that fact explicitly. The commit is a **local working-base snapshot only — no remote update is authorized.**
+
+**8. AUTHORITY UNCHANGED.** Leadership Integrity Loop: **v0.1-r6 = last ratified**, **v0.2-r2 = UNRATIFIED**. **Runtime Graph v2 remains NOT AUTHORIZED / UNMOTIVATED.**
+
 ## 2026-09-10 — ARENA REVIEWER BOTTLENECK + RETENTION DEBT
 
 **[GOV-ARENA-REVIEWER]** Records the 36-run postmortem before the semantic-reviewer audit is opened. **This checkpoint authorizes no reviewer mutation** — only the next READ-ONLY audit.
