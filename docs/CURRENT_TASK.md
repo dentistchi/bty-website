@@ -1,3 +1,19 @@
+## 2026-09-10 — SUPERSEDE: ARENA DECISION-DENSITY INTERPRETATION
+
+**[GOV-ARENA-DENSITY-SUPERSEDE]** Supersedes the INTERPRETATION in findings #1 and #2 of checkpoint `f0a6986752f07e40348fc514971187bc35de77b2`. That checkpoint is left intact as history; only its reading is withdrawn.
+
+**MEASURED — final phase-echo probe** (plan-only, 18 provider calls, validator frozen by SHA, fixtures imported by id from `EVAL_CORPUS`, only a sentence of prompt instruction removed): **c01 Plan valid 8/9** · **c09 Plan valid 7/9** (previously 0/9) · manual review of machine-valid plans **13/15 GENUINELY DISTINCT, 0/15 RELABELLED, 2/15 AMBIGUOUS** (previously 0/8 distinct). The prior c01-vs-c09 spread was substantially caused by a **prompt echo**: the Plan prompt exposed a quotable phase-definition phrase ("which priority to protect / which cost to accept") that the model reused as dimension names.
+
+**1. PLAN STAGE — CURRENT INTERPRETATION.** The Plan stage is **no longer classified as a routing diagnostic on decision density**. Current interpretation: **CLEAN GENERATION-STAGE CANDIDATE / PRE-RENDER SEMANTIC STRUCTURE**. Its value as a cheap (~2.7 s, one provider call) diagnostic remains technically useful, but the decision-density routing interpretation is **withdrawn**.
+
+**2. DECISION DENSITY ROUTING FINDING SUPERSEDED.** Decision density is **NOT established as a product-routing variable** by the Arena probe. Founder Vacation → Shared Standard remains supported **only** by the prior human Founder-play evidence; the Arena measurements **neither support nor refute** that human routing judgment.
+
+**3. THREE-PHASE GRAPH QUESTION.** The earlier "closed pending confound removal" status is superseded by **UNMOTIVATED BY CURRENT EVIDENCE** — c09, read by hand as a two-decision situation, produced distinct three-phase plans once the echo was removed. **Arena Runtime Graph v2 remains NOT AUTHORIZED.**
+
+**4. LOW-DENSITY ROUTING.** No low-density routing implementation is authorized. The unresolved routing question remains a separate **Leadership Integrity Loop product-authority decision**, outside this generation-only exception.
+
+**5. AUTHORITY.** Leadership Integrity Loop: **v0.1-r6 remains last ratified**; **v0.2-r2 remains UNRATIFIED**. This checkpoint ratifies neither.
+
 ## 2026-09-10 — CHECKPOINT: ARENA DECISION-DENSITY FINDING
 
 **[GOV-ARENA-DENSITY] ARENA GENERATION RELIABILITY — WHERE THE EXCEPTION HAS ARRIVED.** Governance checkpoint under the narrow Arena generation reliability exception `e837ead9c32ee8d073dfb8d58f03d92106754945`. Records findings only; authorizes no new surface.
