@@ -20,7 +20,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
   getLlmClient: () => ({ chat: { completions: { create: mockCreate } } }),
 }));
 
-type Observation = { outcome: string; code?: string; review?: unknown; scenario?: unknown; reviewSubjectSha256?: string; scenarioUnjudged?: boolean; boundaryProvenance?: unknown; boundaryProvenanceSha256?: string; boundaryCoverage?: { ok: boolean; codes: string[] } };
+type Observation = { outcome: string; code?: string; review?: unknown; scenario?: unknown; reviewSubjectSha256?: string; scenarioUnjudged?: boolean; boundaryProvenance?: unknown; boundaryProvenanceSha256?: string; boundaryCoverage?: { ok: boolean; codes: string[] }; gate?: string; level?: number; defectCodes?: string[]; correctionPacketSha256?: string };
 let observed: Observation[] = [];
 
 const envelope = (content: string, extra: Record<string, unknown> = {}) => ({ choices: [{ message: { content }, ...extra }] });
@@ -35,6 +35,7 @@ beforeEach(async () => {
   const mod = await import("./arenaScenarioGenerationService");
   generateArenaScenarioDraft = mod.generateArenaScenarioDraft;
   setObserver = mod.__setGenObserver;
+  MAX_ATTEMPTS = mod.PRACTICE_SAMPLING.retry.maxAttempts;
   setObserver((o) => observed.push(o as Observation), { captureContent: true });
 });
 afterEach(() => setObserver(null));
@@ -168,8 +169,26 @@ const withAssessments = () => {
   return JSON.stringify(wire);
 };
 
-describe("R2.25 — a reviewer contradiction reruns the REVIEWER, not the generator", () => {
-  it("15/16. both review attempts are captured in full, before any reduction to a code", async () => {
+/*
+  ★ SUPERSEDES THE R2.25 INVARIANT.
+
+  R2.25 held that an advisory `accept` beside its own derived defects was a REVIEWER fault: rerun
+  the reviewer over the frozen subject, spend no generation attempt, keep the original draft. That
+  invariant belonged to the duplicated-authority design, where the model's verdict and the derived
+  defect list were two authorities over one question — and it cost 82-83% of every reviewed draft.
+
+  NEW INVARIANT: a details-derived defect is a CONTENT REJECTION. It routes through the existing
+  generation correction path and may consume the next generation attempt, regardless of
+  `overallVerdict`. The advisory verdict has ZERO routing authority; it survives only as telemetry.
+
+  The tests below are rewritten, not deleted: each still proves what it always protected — evidence
+  capture, subject freezing, secret hygiene, and the spend contract — against the new routing.
+*/
+/** The generation ceiling this fix must not widen. Read from the module, never retyped. */
+let MAX_ATTEMPTS = 0;
+
+describe("R2.25 SUPERSEDED — a details-derived defect is a content rejection", () => {
+  it("15/16. each review is judged ONCE, and its derived defect drives the outcome", async () => {
     let reviews = 0;
     mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
       if (!isReview(p)) return envelope(providerDraft());
@@ -178,26 +197,14 @@ describe("R2.25 — a reviewer contradiction reruns the REVIEWER, not the genera
     });
 
     const r = await generateArenaScenarioDraft(input);
-    expect(reviews).toBe(2); // exactly two review calls, never three
-    expect(r).toMatchObject({ ok: false, reason: "reviewer_terminal_failure" });
-
-    const terminal = observed.find((o) => o.outcome === "reviewer_terminal_failure");
-    expect(terminal).toBeDefined();
-    const evidence = terminal?.review as Array<Record<string, unknown>>;
-    expect(evidence).toHaveLength(2);
-    for (const e of evidence) {
-      // 17. the exact contradictory fields are recoverable — not just the code.
-      expect(e.overallVerdict).toBe("accept");
-      expect(e.derivedDefects).toEqual(expect.arrayContaining(["bad_faith_option"]));
-      expect(e.consistency).toBe("verdict_contradicts_details");
-      expect(e.parsed).toBeTruthy();
-      expect(typeof e.latencyMs).toBe("number");
-      expect(e.reviewSubjectSha256).toMatch(/^[0-9a-f]{64}$/);
-    }
-    expect(evidence[0].reviewAttempt).toBe(1);
-    expect(evidence[1].reviewAttempt).toBe(2);
-    // Both attempts judged the SAME frozen subject.
-    expect(evidence[0].reviewSubjectSha256).toBe(evidence[1].reviewSubjectSha256);
+    // One review per generated draft — never a second identical review of the same subject.
+    expect(reviews).toBe(MAX_ATTEMPTS);
+    expect(observed.map((o) => o.outcome)).not.toContain("review_rerun");
+    // The defect the details named is what refuses the run, not a reviewer-integrity code.
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(observed.map((o) => o.code)).not.toContain("review_verdict_contradicts_details");
+    const gate = observed.find((o) => o.outcome.startsWith("gate_level_"));
+    expect(gate?.defectCodes).toEqual(expect.arrayContaining(["bad_faith_option"]));
   });
 
   it("18/19. the draft is captured before the terminal decision, and the subject is frozen first", async () => {
@@ -209,13 +216,50 @@ describe("R2.25 — a reviewer contradiction reruns the REVIEWER, not the genera
     expect(frozen).toBeDefined();
     expect(frozen?.scenario).toMatchObject({ title: goodDraft.title });
     expect(frozen?.reviewSubjectSha256).toMatch(/^[0-9a-f]{64}$/);
-    // Freezing happens before any review outcome is recorded.
-    expect(observed.findIndex((o) => o.outcome === "review_subject_frozen")).toBeLessThan(
-      observed.findIndex((o) => o.outcome === "reviewer_terminal_failure"),
-    );
-    const terminal = observed.find((o) => o.outcome === "reviewer_terminal_failure");
-    expect(terminal?.scenario).toMatchObject({ title: goodDraft.title });
-    expect(terminal?.scenarioUnjudged).toBe(true);
+    /*
+      Freezing still precedes the review outcome. What follows it is now a CONTENT gate rather than
+      a reviewer-integrity terminal: the scenario was judged, and judged on its details.
+    */
+    const frozenIdx = observed.findIndex((o) => o.outcome === "review_subject_frozen");
+    const gateIdx = observed.findIndex((o) => o.outcome.startsWith("gate_level_"));
+    expect(frozenIdx).toBeGreaterThanOrEqual(0);
+    expect(gateIdx).toBeGreaterThan(frozenIdx);
+    // The draft still rides the rejection, so the rejected content remains recoverable.
+    expect(observed.find((o) => o.outcome.startsWith("gate_level_"))?.scenario).toMatchObject({ title: goodDraft.title });
+    expect(observed.map((o) => o.outcome)).not.toContain("reviewer_terminal_failure");
+  });
+
+  /*
+    ★ STEP 3A — THE SPEND CONTRACT, MEASURED.
+
+    Four counts, asserted explicitly, for the exact case that used to end in
+    `reviewer_terminal_failure`: draft #1 reviewed, its details derive a defect, the existing
+    correction path produces draft #2, and draft #2 is reviewed normally.
+
+    This proves the spend SHAPE moved inside the unchanged ceiling. It is NOT a latency claim.
+  */
+  it("3A. contradiction-shaped: 2 generations, 2 reviews, 0 reruns, no third attempt", async () => {
+    let generations = 0;
+    let reviews = 0;
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      if (isReview(p)) {
+        reviews += 1;
+        return envelope(reviews === 1 ? contradictoryReview() : cleanReview());
+      }
+      generations += 1;
+      return envelope(providerDraft());
+    });
+    const r = await generateArenaScenarioDraft(input);
+
+    expect(generations).toBe(2);              // GENERATION CALLS = 2
+    expect(reviews).toBe(2);                  // SEMANTIC REVIEW CALLS = 2
+    expect(observed.filter((o) => o.outcome === "review_rerun")).toHaveLength(0); // REVIEW RERUNS = 0
+    expect(generations).toBeLessThanOrEqual(MAX_ATTEMPTS);                        // NO THIRD GENERATION
+    expect(MAX_ATTEMPTS).toBe(2);             // the ceiling itself is unchanged
+
+    // The sequence, in order: gen → review → derived reject → correction → gen → review → terminal.
+    expect(observed.map((o) => o.outcome)).not.toContain("reviewer_terminal_failure");
+    expect(r.ok).toBe(true);
   });
 
   it("20. no credential, header or provider metadata is captured", async () => {
@@ -241,26 +285,49 @@ describe("R2.25 — a reviewer contradiction reruns the REVIEWER, not the genera
       return envelope(providerDraft());
     });
     await generateArenaScenarioDraft(input);
-    // ONE generation. Before R2.25 a contradiction burned the retry and asked for a new scenario.
-    expect(generations).toBe(1);
-    expect(reviews).toBe(2);
-    // A reviewer defect never produces a generator correction packet.
-    expect(observed.map((o) => o.outcome)).not.toContain("correction_packet");
+    /*
+      ★ THE SPEND CONTRACT, RESHAPED — NOT WIDENED.
+
+      OLD: review → rerun the SAME subject → reviewer_terminal_failure, no generation spent.
+      NEW: review → details-derived content rejection → existing correction path → next generation
+      attempt if budget remains.
+
+      The ceiling is untouched: generations never exceed MAX_ATTEMPTS, and no third attempt exists.
+      This is a different spend SHAPE inside the same budget, and it is not a latency claim.
+    */
+    expect(generations).toBe(MAX_ATTEMPTS);
+    expect(reviews).toBe(MAX_ATTEMPTS);
+    expect(generations).toBeLessThanOrEqual(MAX_ATTEMPTS);
+    /*
+      The defect now DOES author a correction packet, because it describes the content. The
+      reviewer's finding gate carries its digest — measured, rather than assumed to be a separate
+      `correction_packet` event, which only the deterministic-gate path emits.
+    */
+    expect(observed.some((o) => o.outcome.startsWith("gate_level_") && !!o.correctionPacketSha256)).toBe(true);
+    expect(observed.map((o) => o.outcome)).not.toContain("review_rerun");
   });
 
-  it("3. a contradiction followed by a clean review accepts the ORIGINAL scenario", async () => {
+  it("3. a derived rejection followed by a clean review accepts the CORRECTED scenario", async () => {
     let reviews = 0;
+    let generations = 0;
     mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
-      if (!isReview(p)) return envelope(providerDraft());
+      if (!isReview(p)) {
+        generations += 1;
+        return envelope(providerDraft());
+      }
       reviews += 1;
       return envelope(reviews === 1 ? contradictoryReview() : cleanReview());
     });
     const r = await generateArenaScenarioDraft(input);
+    /*
+      The original draft is no longer protected by an advisory `accept`. Its own details named a
+      defect, so it was corrected and re-reviewed — which is what a content rejection means.
+    */
     expect(reviews).toBe(2);
+    expect(generations).toBe(2);
     expect(r.ok).toBe(true);
-    // The accepted draft is the one that was frozen — not a regenerated replacement.
-    if (r.ok) expect(r.value.draft.title).toBe(goodDraft.title);
-    expect(observed.map((o) => o.outcome)).toContain("review_rerun");
+    expect(observed.map((o) => o.outcome)).not.toContain("review_rerun");
+    expect(observed.some((o) => o.outcome.startsWith("gate_level_") && !!o.correctionPacketSha256)).toBe(true);
   });
 
   it("21. an evidence-write failure in the observer surfaces rather than being swallowed", async () => {

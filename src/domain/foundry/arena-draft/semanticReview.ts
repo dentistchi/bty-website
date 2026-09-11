@@ -372,9 +372,31 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
 // Consistency gates — fail closed on a contradictory review
 // ---------------------------------------------------------------------------
 
+/**
+ * ★ WHAT THE MODEL SAYS vs WHAT THE DETAILS SHOW.
+ *
+ * `overallVerdict` stays in the provider schema and is now ADVISORY ONLY: it has zero authority
+ * over accept, reject, repair, rerun, terminal failure or correction. `advisoryConsistency` records
+ * whether it agreed with the verdict the server derived from the reviewer's own structured details.
+ * It is observation, never a veto.
+ */
+export type AdvisoryConsistency = "agrees" | "disagrees";
+
+/** Advisory telemetry that rides every successful validation. Never an input to any decision. */
+export type ReviewAdvisory = {
+  advisoryVerdict: string | null;
+  advisoryConsistency: AdvisoryConsistency;
+  /**
+   * The model said "reject" while its own details derived NO fatal defect. Signal, not diagnosis:
+   * it never enters the defect set, never reruns, never corrects, never changes accept/reject. A
+   * high rate later would suggest the structured detail schema is missing a defect category.
+   */
+  unspecifiedConcern: boolean;
+};
+
 export type ReviewValidation =
-  | { ok: true; value: SemanticReview; verdict: "accept" }
-  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[] }
+  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory }
+  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory }
   | { ok: true; value: SemanticReview; verdict: "no_safe"; reasonCode: NoSafeReasonCode }
   /**
    * R2.25 — a failed validation now carries what it saw.
@@ -706,18 +728,40 @@ export function validateSemanticReview(
 
   const unique = [...new Set(defects)];
 
-  // A verdict that contradicts its own detail is not trustworthy in either direction.
-  // A verdict that contradicts its own detail is not trustworthy in EITHER direction. Both branches
-  // return the parsed response and the derived defect list, so the contradicting field is
-  // identifiable from evidence instead of being reduced to a single code.
-  if (value.overallVerdict === "accept" && unique.length > 0) {
-    return { ok: false, errors: ["review_verdict_contradicts_details"], value, derivedDefects: unique };
-  }
-  if (value.overallVerdict === "reject" && unique.length === 0) {
-    return { ok: false, errors: ["review_reject_without_defect"], value, derivedDefects: [] };
-  }
+  /*
+    ★ ONE AUTHORITY. THE DETAILS DECIDE.
 
-  return unique.length ? { ok: true, value, verdict: "reject", defects: unique } : { ok: true, value, verdict: "accept" };
+    This used to ask the model for a verdict AND derive one from its details, then kill the run when
+    they disagreed — `review_verdict_contradicts_details` (accept + defects) and
+    `review_reject_without_defect` (reject + none). Measured: 82-83% of every reviewed draft failed
+    terminally, in BOTH architectures, overwhelmingly on the first of those codes. Two authorities
+    existed for one question and only one of them ever decided: the success path below already
+    derived the verdict from `unique` and never consulted `overallVerdict`.
+
+    So the redundant authority is removed rather than the disagreement suppressed. `unique` — the
+    defect set derived from the reviewer's own structured details — is now the sole verdict. The
+    model's `overallVerdict` is retained as advisory telemetry so the disagreement stays MEASURABLE,
+    which is the point: the goal is an honest failure identity, not a higher pass rate.
+
+    ★ THE c18 PROTECTION IS INHERITED, NOT LOST.
+
+    The old gate once stopped a scenario the reviewer voted to accept while its own text left a
+    patient unverified against a confirmed boundary. That protection lives here now and is stronger:
+    a boundary defect in the details derives REJECT whatever the advisory verdict says.
+  */
+  const advisory: ReviewAdvisory = {
+    advisoryVerdict: typeof value.overallVerdict === "string" ? value.overallVerdict : null,
+    advisoryConsistency:
+      (value.overallVerdict === "accept" && unique.length === 0) || (value.overallVerdict === "reject" && unique.length > 0)
+        ? "agrees"
+        : "disagrees",
+    // Advisory reject with nothing to point at. Recorded, never acted on.
+    unspecifiedConcern: value.overallVerdict === "reject" && unique.length === 0,
+  };
+
+  return unique.length
+    ? { ok: true, value, verdict: "reject", defects: unique, advisory }
+    : { ok: true, value, verdict: "accept", advisory };
 }
 
 // ---------------------------------------------------------------------------

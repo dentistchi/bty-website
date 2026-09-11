@@ -340,19 +340,33 @@ describe("branch consequence contract", () => {
   });
 });
 
+/*
+  ★ ONE AUTHORITY: THE DETAILS DECIDE, THE ADVISORY VERDICT IS RECORDED.
+
+  These cases used to fail the whole run as `review_verdict_contradicts_details` /
+  `review_reject_without_defect` — 82-83% of every reviewed draft died that way, in BOTH
+  architectures. The defect the details describe is now the verdict; the model's disagreement is
+  kept as telemetry so it stays measurable. The SAFETY meaning of each case is unchanged: a draft
+  whose details carry a defect is still rejected.
+*/
 describe("reviewer consistency gates", () => {
-  it("a verdict of accept that contradicts its own defects is rejected", () => {
+  it("an advisory accept beside its own defects still REJECTS, and records the disagreement", () => {
     const b = review().branches;
     b[0] = { ...b[0], repeatsPrimaryDecision: true };
     const r = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.verdict).toBe("reject");
+    expect(r.ok && r.verdict === "reject" && r.defects.length).toBeGreaterThan(0);
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryVerdict).toBe("accept");
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryConsistency).toBe("disagrees");
   });
 
-  it("a verdict of reject with no defect at all is rejected", () => {
+  it("an advisory reject with no defect at all ACCEPTS, and flags an unspecified concern", () => {
     const r = validateSemanticReview(review({ overallVerdict: "reject" }), CTX);
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.errors).toContain("review_reject_without_defect");
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.unspecifiedConcern).toBe(true);
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryConsistency).toBe("disagrees");
   });
 
   it("choice and branch counts must match the scenario reviewed", () => {
@@ -583,8 +597,9 @@ describe("urgency safety (R2.21)", () => {
       }),
       overallVerdict: "accept",
     }), CTX);
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+    // SAFETY UNCHANGED: an unsafe delay still rejects — now by its own derived defect.
+    expect(r.ok && r.verdict).toBe("reject");
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_delay");
   });
 
   it("the urgency block must cover every primary choice", () => {
@@ -672,23 +687,23 @@ describe("reviewer false-negative resistance (R2.22)", () => {
       phaseChoices: withPhaseDefect("branch_action", 0, 0, { badFaith: true, defectCodes: ["bad_faith_option"] }),
       overallVerdict: "accept",
     }), CTX);
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+    expect(r.ok && r.verdict).toBe("reject");
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("bad_faith_option");
   });
 
   it("36. 'defensible' with no legitimate value or no real cost is contradictory", () => {
     const noValue = validateSemanticReview(review({ phaseChoices: withPhaseDefect("primary", -1, 1, { legitimateValue: "" }), overallVerdict: "accept" }), CTX);
-    expect(!noValue.ok && noValue.errors).toContain("review_verdict_contradicts_details");
+    expect(noValue.ok && noValue.verdict).toBe("reject");
     const noCost = validateSemanticReview(review({ phaseChoices: withPhaseDefect("flat_action", -1, 0, { acceptedCost: "  " }), overallVerdict: "accept" }), CTX);
-    expect(!noCost.ok && noCost.errors).toContain("review_verdict_contradicts_details");
+    expect(noCost.ok && noCost.verdict).toBe("reject");
   });
 
   it("37. an ACCEPT verdict while every branch shares one decision axis is contradictory", () => {
     const b = review().branches;
     b[1] = { ...b[1], nextDecisionDimension: b[0].nextDecisionDimension, tradeoffDecisionDimension: b[0].nextDecisionDimension };
     const r = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+    expect(r.ok && r.verdict).toBe("reject");
+    expect(r.ok && r.verdict === "reject" && r.defects.length).toBeGreaterThan(0);
   });
 
   it("38. an ACCEPT verdict from a review that skipped a phase is rejected before the verdict is read", () => {
@@ -717,9 +732,10 @@ describe("reviewer false-negative resistance (R2.22)", () => {
     expect(r.ok && r.verdict === "reject" && r.defects).toContain("review_contradictory");
   });
 
-  it("40. a REJECT verdict with no defect anywhere is still rejected", () => {
+  it("40. an advisory REJECT with no defect anywhere ACCEPTS and signals only", () => {
     const r = validateSemanticReview(review({ overallVerdict: "reject" }), CTX);
-    expect(!r.ok && r.errors).toContain("review_reject_without_defect");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.unspecifiedConcern).toBe(true);
   });
 
   it("a competence claim over a measurably bad-faith label is a broken review", () => {
@@ -907,5 +923,79 @@ describe("defect-specific retry feedback", () => {
     const m = buildRetryFeedback({ attempt: 1, defects: ["moral_decoy"], choiceDefects: [{ index: 0, codes: ["moral_decoy"] }], branchDefects: [], reviewerInstruction: "Replace option 1." });
     expect(m).not.toMatch(/sk-|Authorization|Bearer /);
     expect(m).toContain("Reviewer note: Replace option 1.");
+  });
+});
+
+/*
+  ★ THE ADVISORY VERDICT CANNOT MOVE THE OUTCOME.
+
+  This is the load-bearing proof of the single-authority fix: the same structured details, reviewed
+  twice with the model's `overallVerdict` flipped, must produce the SAME derived verdict, the SAME
+  derived defects and the SAME caller-visible result. Only the advisory telemetry may differ —
+  `advisoryConsistency` and `unspecifiedConcern` exist precisely to record that difference.
+*/
+describe("advisory invariance — overallVerdict has zero authority", () => {
+  /** The caller-visible half of the result, with advisory telemetry deliberately excluded. */
+  const decisionOf = (r: ReturnType<typeof validateSemanticReview>) =>
+    JSON.stringify({
+      ok: r.ok,
+      verdict: r.ok ? r.verdict : null,
+      defects: r.ok && r.verdict === "reject" ? r.defects : null,
+      errors: r.ok ? null : r.errors,
+    });
+
+  it("A — with defects present, accept and reject decide identically", () => {
+    const b = review().branches;
+    b[0] = { ...b[0], repeatsPrimaryDecision: true };
+    const asAccept = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
+    const asReject = validateSemanticReview(review({ branches: b, overallVerdict: "reject" }), CTX);
+    expect(decisionOf(asAccept)).toBe(decisionOf(asReject));
+    expect(asAccept.ok && asAccept.verdict).toBe("reject");
+    // …and only the telemetry differs.
+    expect(asAccept.ok && asAccept.verdict !== "no_safe" && asAccept.advisory.advisoryConsistency).toBe("disagrees");
+    expect(asReject.ok && asReject.verdict !== "no_safe" && asReject.advisory.advisoryConsistency).toBe("agrees");
+  });
+
+  it("B — with no defects, accept and reject decide identically", () => {
+    const asAccept = validateSemanticReview(review({ overallVerdict: "accept" }), CTX);
+    const asReject = validateSemanticReview(review({ overallVerdict: "reject" }), CTX);
+    expect(decisionOf(asAccept)).toBe(decisionOf(asReject));
+    expect(asAccept.ok && asAccept.verdict).toBe("accept");
+    expect(asAccept.ok && asAccept.verdict !== "no_safe" && asAccept.advisory.unspecifiedConcern).toBe(false);
+    expect(asReject.ok && asReject.verdict !== "no_safe" && asReject.advisory.unspecifiedConcern).toBe(true);
+  });
+
+  /*
+    ★ c18 — THE SAFETY THE OLD CONTRADICTION GATE PROTECTED, INHERITED.
+
+    The gate once stopped a scenario the reviewer voted to ACCEPT while its own text left a patient
+    unverified against a confirmed two-identifier boundary. With the redundant authority gone, that
+    protection has to come from the details themselves — and it does, whichever way the model votes.
+  */
+  it("c18 — a boundary defect in the details rejects under BOTH advisory verdicts", () => {
+    const withBoundaryDefect = () => {
+      const bs = review().boundaryAssessments;
+      return review({
+        boundaryAssessments: bs.map((a, i) => (i === 0 ? { ...a, compliant: false, defectCodes: ["boundary_violation"] } : a)),
+      });
+    };
+    const asAccept = validateSemanticReview({ ...withBoundaryDefect(), overallVerdict: "accept" }, CTX);
+    const asReject = validateSemanticReview({ ...withBoundaryDefect(), overallVerdict: "reject" }, CTX);
+    expect(asAccept.ok && asAccept.verdict).toBe("reject");
+    expect(asReject.ok && asReject.verdict).toBe("reject");
+    expect(decisionOf(asAccept)).toBe(decisionOf(asReject));
+  });
+
+  /* The removed failure class is never produced again, in either direction. */
+  it("neither contradiction code is emitted any more", () => {
+    for (const v of ["accept", "reject"] as const) {
+      const b = review().branches;
+      b[0] = { ...b[0], repeatsPrimaryDecision: true };
+      for (const r of [validateSemanticReview(review({ overallVerdict: v }), CTX), validateSemanticReview(review({ branches: b, overallVerdict: v }), CTX)]) {
+        const errs = r.ok ? [] : r.errors;
+        expect(errs).not.toContain("review_verdict_contradicts_details");
+        expect(errs).not.toContain("review_reject_without_defect");
+      }
+    }
   });
 });

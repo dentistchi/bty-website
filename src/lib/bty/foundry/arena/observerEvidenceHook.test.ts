@@ -190,3 +190,66 @@ describe("backward compatibility of the event shape", () => {
     expect(oldShape.some((e) => e.outcome === "generated_valid")).toBe(true);
   });
 });
+
+
+/*
+  ★ DETERMINISTIC CHURN PROOF — ONE REVIEW CALL, NOT TWO.
+
+  Contradiction was the ONLY reason `decideAfterReview` ever granted a second review call, and it
+  granted one on ~60% of reviewed drafts, re-asking the identical question with no feedback. With
+  the verdict derived from details, a contradiction-shaped response is no longer a failure at all,
+  so the second call has nothing to trigger it.
+
+  This proves the CALL COUNT, not a wall-clock improvement in production.
+*/
+describe("contradiction no longer buys a second review call", () => {
+  const reviewCalls = () => mockCreate.mock.calls.filter((c) => isReviewRequest(c[0] as never)).length;
+
+  /** A review whose details carry a defect while the model votes accept — the old killer shape. */
+  function contradictionShaped(draft: ArenaScenarioDraft) {
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      if (isBoundaryReviewRequest(p)) return { choices: [{ message: { content: compliantBoundaryReview(p) } }] };
+      if (isReviewRequest(p)) {
+        const r = acceptReview(draft, {}, []) as Record<string, unknown> & { branches: Array<Record<string, unknown>> };
+        r.overallVerdict = "accept";
+        r.branches = r.branches.map((b, i) => (i === 0 ? { ...b, repeatsPrimaryDecision: true, progressionValid: false } : b));
+        return { choices: [{ message: { content: JSON.stringify(r) } }] };
+      }
+      return { choices: [{ message: { content: providerJson(draft, undefined, []) } }] };
+    });
+  }
+
+  it("J — an accept-with-defects response consumes ONE review call and derives a rejection", async () => {
+    contradictionShaped(GOOD);
+    const seen = collect();
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided }, null, { architecture: "legacy", correction: "disabled" });
+    __setGenObserver(null);
+    expect(reviewCalls()).toBe(1);
+    expect(r.ok).toBe(false);
+    const outcomes = seen.map((o) => o.outcome);
+    expect(outcomes).not.toContain("review_rerun");
+    expect(outcomes).not.toContain("reviewer_terminal_failure");
+    expect(seen.map((o) => o.code)).not.toContain("review_verdict_contradicts_details");
+  });
+
+  it("K — an advisory reject with no defect consumes ONE call, accepts, and signals the concern", async () => {
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      if (isBoundaryReviewRequest(p)) return { choices: [{ message: { content: compliantBoundaryReview(p) } }] };
+      if (isReviewRequest(p)) {
+        const r = acceptReview(GOOD, {}, []) as Record<string, unknown>;
+        r.overallVerdict = "reject";
+        return { choices: [{ message: { content: JSON.stringify(r) } }] };
+      }
+      return { choices: [{ message: { content: providerJson(GOOD, undefined, []) } }] };
+    });
+    const seen = collect();
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided }, null, { architecture: "legacy", correction: "disabled" });
+    __setGenObserver(null);
+    expect(reviewCalls()).toBe(1);
+    expect(r.ok).toBe(true);                                  // the unsupported reject does NOT veto
+    const valid = seen.find((o) => o.outcome === "generated_valid");
+    expect(valid?.reviewerUnspecifiedConcern).toBe(true);      // signal only
+    expect(valid?.advisoryConsistency).toBe("disagrees");
+    expect(seen.map((o) => o.outcome)).not.toContain("review_rerun");
+  });
+});

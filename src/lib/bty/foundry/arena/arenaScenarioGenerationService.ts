@@ -78,6 +78,7 @@ import {
   SEMANTIC_REVIEW_SCHEMA_NAME,
   buildRetryFeedback,
   validateSemanticReview,
+  type ReviewAdvisory,
   type BoundaryAssessment as BoundaryEvidence,
   type BranchDefectCode,
   type ChoiceDefectCode,
@@ -378,6 +379,14 @@ export type GenObservation = {
   stageDurationMs?: number;
   /** True when the stage ended because its own abort deadline fired. */
   timeout?: boolean;
+  /*
+    Advisory reviewer telemetry. ZERO authority: the verdict is derived from the reviewer's
+    structured details, and these fields only record what the model additionally said about it.
+  */
+  advisoryVerdict?: string | null;
+  advisoryConsistency?: "agrees" | "disagrees";
+  /** Advisory reject with no derived fatal defect — signal, never a defect and never a veto. */
+  reviewerUnspecifiedConcern?: boolean;
 };
 
 /** Monotonic reading. Never a wall-clock timestamp — see the stage-timing note above. */
@@ -848,7 +857,7 @@ export type SemanticReview = {
   noSafeJudgmentSpace: boolean;
 };
 type ReviewOutcome =
-  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[] }
+  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[]; advisory?: ReviewAdvisory }
   | {
       kind: "reject";
       defects: string[];
@@ -891,6 +900,11 @@ export type ReviewEvidence = {
   overallVerdict: string | null;
   /** The defect list the server DERIVED from the reviewer's own detail fields. */
   derivedDefects: string[];
+  /*
+    LEGACY-READABLE. `verdict_contradicts_details` / `reject_without_defect` are no longer PRODUCED
+    — the verdict now derives from the reviewer's details alone — but four retained
+    `.eval-artifacts` records carry them, so the union keeps parsing historical evidence.
+  */
   consistency: "consistent" | "verdict_contradicts_details" | "reject_without_defect" | "invalid";
   finishReason: string | null;
   truncated: boolean;
@@ -1199,7 +1213,7 @@ async function reviewConstraintComplianceCall(
         instruction: v.value.retryInstruction ?? "",
       };
     }
-    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments };
+    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments, advisory: v.advisory };
   } catch (e) {
     // A telemetry failure is not a transport failure and must not be reported as one.
     if (isProviderCallTelemetryError(e)) throw e;
@@ -1645,6 +1659,8 @@ export async function generateArenaScenarioDraft(
     // semantically reviewed — the deterministic gates passed both. That gap, not model luck, is
     // why defective content reached a green run.
     let reviewEvidence: BoundaryEvidence[] = [];
+    /** Advisory telemetry from an ACCEPTED review, surfaced on the existing terminal emission. */
+    let acceptedAdvisory: ReviewAdvisory | null = null;
     {
       // ---------------------------------------------------------------------
       // R2.25 — FREEZE THE SUBJECT, THEN REVIEW IT (at most twice).
@@ -1879,7 +1895,10 @@ export async function generateArenaScenarioDraft(
         logGenOutcome("review_no_safe_space", review.reasonCode);
         return { ok: false, reason: "no_safe_judgment_space" };
       }
-      if (review.kind === "ok") reviewEvidence = review.boundaryEvidence;
+      if (review.kind === "ok") {
+        reviewEvidence = review.boundaryEvidence;
+        acceptedAdvisory = review.advisory ?? null;
+      }
       if (review.kind === "reject") {
         // R2.23 — the reviewer's findings go through the SAME precedence authority as the
         // deterministic gates, so a boundary or unsafe-delay finding from the review outranks an
@@ -1937,7 +1956,21 @@ export async function generateArenaScenarioDraft(
         return { ok: false, reason: "generation_rejected" };
       }
     }
-    logGenOutcome("generated_valid");
+    /*
+      The advisory rides the emission this path ALREADY makes. No accept-path review capture is
+      opened here — that remains the recorded retention limit, deliberately untouched.
+    */
+    logGenOutcome(
+      "generated_valid",
+      undefined,
+      acceptedAdvisory
+        ? {
+            advisoryVerdict: acceptedAdvisory.advisoryVerdict,
+            advisoryConsistency: acceptedAdvisory.advisoryConsistency,
+            reviewerUnspecifiedConcern: acceptedAdvisory.unspecifiedConcern,
+          }
+        : undefined,
+    );
     return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings, constraintEvidence: projected.assessmentsByChoiceId } };
   }
   return { ok: false, reason: "generation_rejected" };
