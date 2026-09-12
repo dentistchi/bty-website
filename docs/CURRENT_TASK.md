@@ -1,3 +1,33 @@
+## 2026-09-12 — CHECKPOINT: FIRST TRACKED STRICT-PARITY ARENA RUN
+
+**[GOV-ARENA-STRICT36]** Records the Commander-reviewed result of the first reproducible, tracked-runner, construction-aware STRICT-PARITY full-retention 36-run, and authorizes the next narrow work order. **No inner code mutation in this checkpoint.**
+
+**1. STRICT REVIEW PARITY — CONFIRMED.** Tracked runner **`scripts/practice-full-retention.ts`**, runner SHA **`72e2738a`**. **Configured = Executed = Durable = 36.** **Reviewed-draft parity = 18 / 18 STRICT.** Whole-run strict artifacts = **31 / 36**; the five non-strict records terminated BEFORE semantic review (four PTR Plan rejections, one truncated output) and therefore **do not represent a reviewer-parity failure**.
+
+**2. FAILURE CLASSIFICATION INTEGRITY — CONFIRMED.** `review_verdict_contradicts_details` = **0**. `review_reject_without_defect` = **0**. Semantic-review calls per reviewed draft = **exactly 1.00** (18/18, correction disabled). **No duplicate same-draft review churn returned.**
+
+**3. DETAIL TRUTH — MIXED.** Four semantic-review content rejections: **TRUE = 2, FALSE = 2.** Measured FALSE — **(A)** `generic_communication_collapse` on LEG/c01#5: the branches decide different variables (update cadence vs commitment firmness), but the detector is structurally attracted to the fixture's communication topic, so any faithful c01 scenario trips it. **(B)** `unsafe_delay` on LEG/c09#3: the reviewer inferred time-sensitive harm the scenario did not contain — an unverified code error under deadline pressure is not safety urgency, and the prompt forbids fabricating it. These remain **separate detector-quality questions**.
+
+**4. DECISION B CHANGED THE FAILURE DIRECTION.** Before Decision B the reviewer frequently killed usable drafts. In the strict-parity run: **18 drafts reached review · 4 content rejections · 12 clean accepts · 2 reviewer-integrity terminal outcomes.** The dominant risk has therefore shifted toward **FALSE ACCEPT / UNDER-DETECTION** rather than broad semantic over-rejection. Clean-accept structured review payload remains unavailable, so **false-accept detail truth is still a measured evidence gap**.
+
+**5. PLAN→RENDER FIDELITY — MIXED.** Assessable PTR renders (13 of 18; four lacked a Plan, one lacked a draft): **FAITHFUL = 6 · PARTIAL = 2 · VIOLATED = 5.** Measured VIOLATED include sibling rendered choice identity, Plan decision-variable drift (a planned "who" rendered as "how much"), and Plan dimension text emitted as a learner-facing choice.
+
+**6. DETERMINISTIC RENDER GATES — LIVE EVIDENCE.** Hard-gate activation: **A — exact normalized sibling identity = 8 · B — unordered-reversal-only identity = 0 · C — Plan dimension leakage = 1.** **Gate 1 is now empirically proven in live evidence** (7 runs, 8 activations, six Korean and two English, caught on pure text identity with no morphology rule). **All observed Gate-1 catches were exact normalized identity.** The unordered comparison remains **DESIGN RULE — NOT YET EMPIRICALLY EXERCISED**, and its first future activation remains **NEW MEASURED EVIDENCE**.
+
+**7. GATE 2 RECALL GAP — MEASURED.** Gate 2 catches exact normalized Plan-dimension-question leakage. It **missed** cases where the full declared Plan dimension text was rendered INSIDE a longer learner-facing choice — for example the dimension question followed by wording such as `결정한다`. PTR/c09#9 was caught (verbatim), while PTR/c09#3 and PTR/c09#6 were missed (same text plus a suffix). **This is not semantic similarity: it is literal declared Plan text embedded in a longer rendered label.** Next authorized implementation: extend Gate 2 to reject **literal containment of the FULL declared Plan dimension text** inside a learner-facing label, with a **measured** minimum-length safety guard. **No stemming, no morphology normalization, no synonym matching, no semantic similarity.** The guard threshold must be derived from the measured Plan-dimension length distribution and retained evidence — **if no safe threshold is measurable, HALT rather than invent one**.
+
+**8. FIRST FALSE-ACCEPT BLIND SPOT.** **PTR/c09#3 passed the reviewer** while presenting a Plan dimension question as a learner choice (`문제에 대해 얼마나 알릴지 결정한다`). Therefore the next evidence need after Gate 2 is **CLEAN-ACCEPT REVIEW PAYLOAD CAPTURE**, using the existing additive observer/`captureContent` rules. The goal is to measure **WHY accepted drafts were accepted**, not only why rejected drafts failed.
+
+**9. HUMAN-REVIEW PARAPHRASE AUTHORITY.** No c09#1-style semantic paraphrase reuse was observed in this run. **Decision B remains unchanged**: paraphrase identity that deterministic code cannot prove stays human-review evidence.
+
+**10. LATENCY — MIXED / RENDER TAIL REMAINS.** PTR Plan ≈ **2.3 s** (N=18). PTR Render median ≈ **14.0 s**, max **96.4 s** (N=14). Legacy generation ≈ 14.8 s, semantic review ≈ 16 s both architectures. Total wall clock: legacy median 22.6 s, PTR median 30.5 s, PTR max 98.8 s. **No real 120-second timeout occurred.** The Plan stage again demonstrated practical value by cheaply stopping four PTR cases before Render. **The Render tail remains a separate latency blocker.**
+
+**11. YIELD — MEASURE ONLY, NOT QUALITY AUTHORITY.** Legacy **4 / 18**, PTR **8 / 18**, overall **12 / 36**. Commander review of the automated passes found **GOOD = 8 · AMBIGUOUS = 3 · COLLAPSED = 1**. Therefore **automated PASS remains unsuitable as a standalone quality authority.**
+
+**12. NEXT ORDER.** **A.** Gate 2 literal full-dimension containment recall. **B.** Clean-accept review evidence capture. **C.** `generic_communication_collapse` definition audit. **D.** `unsafe_delay` reviewer audit. **E.** `--case-deadline-ms` wire-or-remove cleanup. **No combined broad reviewer tuning.**
+
+**13. INNER BRANCH.** `inner-main` currently contains **6 locally validated commits**. A separate push gate is authorized after this checkpoint. Push must explicitly target **`inner-main:inner-main`**; outer `main` must remain untouched, since both repositories share one Git remote.
+
 ## 2026-09-12 — CHECKPOINT: TRACKED STRICT-PARITY ARENA HARNESS READY
 
 **[GOV-ARENA-STRICT-HARNESS]** Records the corrected Arena experiment authority after construction-evidence retention, replay construction parity, and tracked full-retention runner restoration. **Authorizes ONLY the next fresh STRICT-PARITY FULL-RETENTION 36-RUN.** No inner mutation, no inner push.
