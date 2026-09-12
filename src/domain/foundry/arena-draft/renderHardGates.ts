@@ -31,7 +31,21 @@ import type { ArenaScenarioDraft } from "./types";
 export const RENDER_HARD_GATE_CODES = ["sibling_choice_pair_identical", "plan_dimension_label_leakage"] as const;
 export type RenderHardGateCode = (typeof RENDER_HARD_GATE_CODES)[number];
 
-export type RenderGateResult = { ok: boolean; errors: string[]; warnings: string[] };
+export type RenderGateResult = { ok: boolean; errors: string[]; warnings: string[]; reasons?: string[] };
+
+/**
+ * WHY a Gate 2 firing happened. One defect code, three distinguishable causes.
+ *
+ * Collapsing these into one opaque count is how the R2.29 recall gap stayed invisible: the live
+ * strict-parity run recorded a single `plan_dimension_label_leakage` and nothing said whether the
+ * label WAS the dimension or merely CONTAINED it. All applicable reasons are recorded, never just
+ * the first one, so past and future evidence can be compared on the same axis.
+ */
+export const GATE2_REASONS = {
+  exactEquality: "EXACT_DIMENSION_EQUALITY",
+  fullContainment: "FULL_DIMENSION_CONTAINMENT",
+  idLiteral: "DIMENSION_ID_LITERAL",
+} as const;
 
 /** The two phases a branch renders. Tradeoff is compared with tradeoff, action with action. */
 const BRANCH_PHASES = ["tradeoff", "action"] as const;
@@ -98,22 +112,55 @@ function planDimensions(plan: DecisionPlan): Array<{ id: string; text: string }>
  * is a metadata token that escaped; a one-word id like `timing` is an ordinary English word, and
  * matching it would reject natural options for using normal vocabulary. Narrow recall is the point:
  * this gate proves leakage, it does not hunt for it.
+ *
+ * R2.32 — FULL-DIMENSION CONTAINMENT. Exact equality alone missed the measured shape: the live
+ * strict-parity run rendered `문제에 대해 얼마나 알릴지 결정한다` from the declared dimension
+ * `문제에 대해 얼마나 알릴지`, and the reviewer ACCEPTED it — the first measured false accept. The
+ * complete declared question is literally present; only trailing wording differs.
+ *
+ * ONE-WAY ONLY: `label ⊇ dimension`. The reverse is not this defect — a short label like `시간`
+ * sitting inside a longer dimension is ordinary vocabulary, not leaked metadata.
+ *
+ * NO LENGTH GUARD. Measured over 26 retained Plan/Render pairs: 15 literal containments, every one
+ * of them inside a VIOLATED render, and ZERO incidental containment among the 12 known FAITHFUL
+ * renders — even for the shortest declared dimension (10 normalized characters). Requiring the
+ * COMPLETE declared question IS the guard, so none was invented.
+ *
+ * Still no morphology: `결정한다` is not stripped. The rule fires because the whole dimension is
+ * present inside a longer string, never because a suffix was removed.
  */
 export function validatePlanDimensionLeakage(draft: ArenaScenarioDraft, plan: DecisionPlan | null): RenderGateResult {
   if (!plan) return { ok: true, errors: [], warnings: [] };
   const dims = planDimensions(plan);
   const errors: string[] = [];
 
+  const reasons: string[] = [];
+
   for (const choice of enumerateChoices(draft)) {
     const raw = String(choice.label ?? "");
     if (!raw.trim()) continue;
-    const normalized = flat(raw);
+    // SYMMETRIC NORMALIZATION: both sides travel the SAME `flat` path before either comparison, so a
+    // miss can never be an artefact of comparing a normalized string against a raw one.
+    const normalizedLabel = flat(raw);
     for (const d of dims) {
-      // A. the dimension QUESTION offered as if it were something to choose.
-      if (d.text.trim() && normalized === flat(d.text)) errors.push("plan_dimension_label_leakage");
-      // B. the literal metadata token printed into learner-facing text.
-      if (d.id.includes("_") && raw.includes(d.id)) errors.push("plan_dimension_label_leakage");
+      const normalizedDimension = flat(d.text);
+      if (normalizedDimension) {
+        // C1 — the dimension QUESTION offered as if it were something to choose.
+        if (normalizedLabel === normalizedDimension) {
+          errors.push("plan_dimension_label_leakage");
+          reasons.push(GATE2_REASONS.exactEquality);
+        } else if (normalizedLabel.includes(normalizedDimension)) {
+          // C2 — the complete question, carried inside a longer learner-facing label.
+          errors.push("plan_dimension_label_leakage");
+          reasons.push(GATE2_REASONS.fullContainment);
+        }
+      }
+      // C3 — the literal metadata token printed into learner-facing text.
+      if (d.id.includes("_") && raw.includes(d.id)) {
+        errors.push("plan_dimension_label_leakage");
+        reasons.push(GATE2_REASONS.idLiteral);
+      }
     }
   }
-  return { ok: errors.length === 0, errors: [...new Set(errors)], warnings: [] };
+  return { ok: errors.length === 0, errors: [...new Set(errors)], warnings: [], reasons: [...new Set(reasons)] };
 }

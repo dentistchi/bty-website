@@ -165,19 +165,39 @@ describe("HISTORICAL COMPATIBILITY — the 2026-09-11 evidence still parses", ()
     const files = readdirSync(historical).filter((f) => f.endsWith(".json"));
     expect(files.length).toBeGreaterThan(0);
 
+    /*
+      R2.32 — this used to assert `strict === 0` across the whole directory, which described the
+      ENVIRONMENT (only pre-construction records existed) rather than the code. The first
+      construction-aware evidence run broke it by doing exactly what it was built to do. The real
+      backward-compatibility contract is per record: everything parses, and the grade follows the
+      evidence each record actually carries.
+    */
     const failures: string[] = [];
-    let strict = 0;
-    let nonStrict = 0;
+    const misgraded: string[] = [];
     for (const f of files) {
-      const parsed = parseRetentionRecord(JSON.parse(readFileSync(join(historical, f), "utf8")));
-      if (!parsed.ok) failures.push(`${f}: ${parsed.errors.join(",")}`);
-      else if (parsed.value.parityGrade === "strict") strict++;
-      else nonStrict++;
+      const raw = JSON.parse(readFileSync(join(historical, f), "utf8")) as { constructions?: { present?: boolean; parsed?: Record<string, unknown> } };
+      const parsed = parseRetentionRecord(raw);
+      if (!parsed.ok) {
+        failures.push(`${f}: ${parsed.errors.join(",")}`);
+        continue;
+      }
+      const hasEvidence = raw.constructions?.present === true && Object.keys(raw.constructions.parsed ?? {}).length > 0;
+      const expected = hasEvidence ? "strict" : "non-strict";
+      if (parsed.value.parityGrade !== expected) misgraded.push(`${f}: expected ${expected}, got ${parsed.value.parityGrade}`);
     }
     expect(failures).toEqual([]);
-    // They predate construction retention, so every one of them is honestly NON-STRICT.
-    expect(strict).toBe(0);
-    expect(nonStrict).toBe(files.length);
+    expect(misgraded).toEqual([]);
+  });
+
+  it("records predating construction retention still grade NON-STRICT", () => {
+    if (!existsSync(historical)) return;
+    const pre = readdirSync(historical).filter((f) => f.includes("fullret36") && f.endsWith(".json"));
+    expect(pre.length).toBeGreaterThan(0);
+    for (const f of pre) {
+      const parsed = parseRetentionRecord(JSON.parse(readFileSync(join(historical, f), "utf8")));
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) expect(parsed.value.parityGrade).toBe("non-strict");
+    }
   });
 
   it("schemaVersion is unchanged, so no historical file needed rewriting", () => {

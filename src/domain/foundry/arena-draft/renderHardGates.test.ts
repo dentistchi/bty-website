@@ -182,3 +182,112 @@ describe("Gate 2 — Plan dimension leakage", () => {
     expect(G2(draftWith(), plan())).toEqual([]);
   });
 });
+
+/*
+  GATE 2 — FULL-DIMENSION LITERAL CONTAINMENT (R2.32).
+
+  MEASURED CAUSE. The live strict-parity 36-run rendered `문제에 대해 얼마나 알릴지 결정한다` from
+  the declared Plan dimension `문제에 대해 얼마나 알릴지`, and the semantic reviewer ACCEPTED it —
+  the first measured false accept of the whole arc. Exact equality missed it by four characters.
+
+  MEASURED GUARD DECISION. Over 26 retained Plan/Render pairs there are 15 literal containments, and
+  every single one sits inside a VIOLATED render. Zero of the 12 known FAITHFUL renders contain a
+  complete declared dimension — including the shortest one measured, 10 normalized characters. So no
+  length guard was invented: requiring the COMPLETE declared question is itself the guard.
+
+  The reverse direction is deliberately absent, and no suffix is ever stripped.
+*/
+describe("Gate 2 — full-dimension literal containment", () => {
+  const KO_DIM = "문제에 대해 얼마나 알릴지";
+  const EN_DIM = "How much detail to provide in the update?";
+
+  const koPlan = (): DecisionPlan =>
+    ({
+      primary: { dimensionId: "ko_primary_dim", dimension: KO_DIM, tension: "t", choices: [] },
+      branches: [],
+    }) as unknown as DecisionPlan;
+
+  const enPlan = (): DecisionPlan =>
+    ({
+      primary: { dimensionId: "en_primary_dim", dimension: EN_DIM, tension: "t", choices: [] },
+      branches: [],
+    }) as unknown as DecisionPlan;
+
+  const fire = (label: string, p: DecisionPlan) => validatePlanDimensionLeakage(draftWith({ p1Tradeoff: [label, "Wait for the estimate"] }), p);
+
+  it("1. exact full-dimension equality still rejects, as EXACT_DIMENSION_EQUALITY", () => {
+    const r = fire(KO_DIM, koPlan());
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("EXACT_DIMENSION_EQUALITY");
+  });
+
+  it("2. the measured case — full Korean dimension plus 결정한다 — rejects by containment", () => {
+    const r = fire(`${KO_DIM} 결정한다`, koPlan());
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("FULL_DIMENSION_CONTAINMENT");
+    // The suffix is never stripped; the whole dimension is simply present inside a longer string.
+    expect(r.reasons).not.toContain("EXACT_DIMENSION_EQUALITY");
+  });
+
+  it("3. a full English dimension inside a longer learner label rejects", () => {
+    const r = fire(`Decide ${EN_DIM} before the call`, enPlan());
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("FULL_DIMENSION_CONTAINMENT");
+  });
+
+  it("4. the REVERSE direction is not this defect — a short label inside a long dimension passes", () => {
+    const p = {
+      primary: { dimensionId: "ko_time_dim", dimension: "검증에 얼마나 많은 시간을 쏟을지", tension: "t", choices: [] },
+      branches: [],
+    } as unknown as DecisionPlan;
+    expect(fire("시간", p).errors).toEqual([]);
+  });
+
+  it("5. sharing only some dimension words passes", () => {
+    expect(fire("문제에 대해 팀과 상의한다", koPlan()).errors).toEqual([]);
+  });
+
+  it("6. sharing topic vocabulary passes", () => {
+    expect(fire("How much support the client needs right now", enPlan()).errors).toEqual([]);
+  });
+
+  it("7. a morphological change INSIDE the dimension removes it literally — containment does NOT fire", () => {
+    // `알릴지` -> `알리는지` breaks the literal run, so the complete dimension is simply not present.
+    // No stemming rescues it, and none is wanted: this gate matches text, not meaning.
+    expect(fire("문제에 대해 얼마나 알리는지 결정한다", koPlan()).errors).toEqual([]);
+  });
+
+  it("7b. a particle ATTACHED to the dimension's last word does not break containment", () => {
+    // `알릴지를` still starts with `알릴지`, so the complete declared question is literally present.
+    // Recorded because it is the opposite of stripping: nothing was removed to make this match.
+    const r = fire("문제에 대해 얼마나 알릴지를 결정한다", koPlan());
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("FULL_DIMENSION_CONTAINMENT");
+  });
+
+  it("8. no length guard — even the shortest measured dimension (10 chars) fires on containment", () => {
+    const p = {
+      primary: { dimensionId: "ko_when_dim", dimension: "결과를 언제 알릴지", tension: "t", choices: [] },
+      branches: [],
+    } as unknown as DecisionPlan;
+    const r = fire("결과를 언제 알릴지 결정하기", p);
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("FULL_DIMENSION_CONTAINMENT");
+  });
+
+  it("9. snake_case dimensionId leakage keeps its own reason", () => {
+    const r = fire("Follow ko_primary_dim and decide", koPlan());
+    expect(r.errors).toContain("plan_dimension_label_leakage");
+    expect(r.reasons).toContain("DIMENSION_ID_LITERAL");
+  });
+
+  it("10. Legacy with no Plan is still not applicable", () => {
+    expect(validatePlanDimensionLeakage(draftWith({ p1Tradeoff: [`${KO_DIM} 결정한다`, "Wait"] }), null).errors).toEqual([]);
+  });
+
+  it("11. a PTR render with real options and no literal leakage passes", () => {
+    const r = validatePlanDimensionLeakage(draftWith(), koPlan());
+    expect(r.errors).toEqual([]);
+    expect(r.reasons).toEqual([]);
+  });
+});
