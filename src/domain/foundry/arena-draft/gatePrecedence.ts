@@ -157,6 +157,7 @@ const REGISTRY_ORDER: Array<{ code: string; level: GateLevel; terminal?: boolean
   { code: "moral_label_language", level: 5 },
   { code: "choice_no_concrete_action", level: 5 },
   { code: "placeholder_leak", level: 5 },
+  { code: "plan_dimension_label_leakage", level: 5 },
 
   // --- LEVEL 6 — branch progression / causal diversity -----------------------
   { code: "branch_repeats_primary", level: 6 },
@@ -174,6 +175,7 @@ const REGISTRY_ORDER: Array<{ code: string; level: GateLevel; terminal?: boolean
   { code: "repeated_action_meaning", level: 6 },
   { code: "primary_choice_has_no_causal_effect", level: 6 },
   { code: "branch_paraphrase", level: 6 },
+  { code: "sibling_choice_pair_identical", level: 6 },
   { code: "branch_incoherent_escalation", level: 6 },
   { code: "branch_incoherent_reference", level: 6 },
   { code: "generic_branch_reaction", level: 6 },

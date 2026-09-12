@@ -6,6 +6,7 @@ import {
   validateConcreteScene,
   validateIncidentSpecific,
 } from "@/domain/foundry/arena-draft/quality";
+import { validatePlanDimensionLeakage, validateSiblingChoicePairs } from "@/domain/foundry/arena-draft/renderHardGates";
 import {
   classifyPracticeEligibility,
   validateConstraintCompliance,
@@ -771,6 +772,14 @@ async function generateWithLlmCall(
       ["concrete_scene", validateConcreteScene(result.value)],
       ["incident_specific", validateIncidentSpecific(result.value)],
       ["constraint_compliance", validateConstraintCompliance(result.value)],
+      /*
+        R2.29 — DETERMINISTIC RENDER HARD GATES. Placed here, they run after the draft parses and
+        BEFORE the semantic reviewer is called, so a render that hands both siblings the same pair,
+        or prints Plan metadata at the learner, never spends a review call to discover it.
+        `validatePlanDimensionLeakage` is PTR-only and no-ops when `plan` is null.
+      */
+      ["sibling_choice_pairs", validateSiblingChoicePairs(result.value)],
+      ["plan_dimension_leakage", validatePlanDimensionLeakage(result.value, plan)],
     ] as const) {
       if (!gate.ok) push(gateName, gate.errors);
     }

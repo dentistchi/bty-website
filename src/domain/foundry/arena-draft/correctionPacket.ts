@@ -150,6 +150,10 @@ const CORRECTIONS: Record<string, string> = {
   choice_no_concrete_action: "An option names no concrete action. State what the person actually does.",
   placeholder_leak: "Learner-facing text contains scaffolding or placeholder wording. Write the real scene.",
   branch_paraphrase: "A branch only rewords another. Give it its own causal state and its own next decision.",
+  sibling_choice_pair_identical:
+    "Sibling branches offer the same learner choice pair, in either order. Each branch follows a DIFFERENT primary choice, so give each branch its own two options.",
+  plan_dimension_label_leakage:
+    "A learner-facing choice carries planning metadata - a decision-dimension question, or a raw dimension identifier - instead of a concrete option. Learners read these labels: write what the person actually does.",
   branch_incoherent_escalation: "The shared escalation presupposes one particular primary choice. Raise the stakes in a way that is true whichever option was taken.",
   branch_incoherent_reference: "A later phase refers to an artifact a path may never have produced. Refer back only in branch-neutral terms.",
   generic_branch_reaction: "A branch consequence is generic. Name the concrete new fact or pressure this path created.",

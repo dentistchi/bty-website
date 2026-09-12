@@ -258,8 +258,16 @@ export const namesADecision = (text: string) =>
 const GENERIC_TEXT = new Set(["", "n/a", "na", "none", "tbd", "unknown", "various", "general", "generic", "decision", "the decision"]);
 const isGenericText = (s: string) => GENERIC_TEXT.has(s.trim().toLowerCase());
 
-/** Whitespace-collapsed comparison. Used ONLY for the byte-identical sibling rule. */
-const flat = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+/**
+ * Whitespace-collapsed comparison. Used ONLY for byte-identical sibling rules.
+ *
+ * EXPORTED for the deterministic Render hard gates (R2.29), which need the SAME equality this file
+ * already uses - one normalizer, not a second one that drifts. It is representation-level only:
+ * trim, collapse internal whitespace, case-fold. No stemming, no particle stripping, no synonym
+ * folding, and deliberately nothing that could fold Korean morphology: an identity gate has no
+ * authority to decide that two different strings mean the same thing.
+ */
+export const flat = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 
 function checkId(id: string, branch: PlanPrimaryId | undefined, field: string, out: PlanFinding[]): void {
   if (!id) return void out.push({ ...(branch ? { branch } : {}), field, problem: "dimension_id_missing" });
