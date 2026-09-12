@@ -58,6 +58,14 @@ export type ReviewSubject = {
   deterministicGateResult: unknown;
   /** Digest over the review prompt + schema + sampling. */
   reviewContractSha256: string;
+  /**
+   * R2.30 — the generator's per-choice construction records, recovered from retained evidence.
+   *
+   * Production passes this map into the review payload. A subject rebuilt from an artifact that
+   * predates construction retention has none, and `{}` there is not "no constructions" — it means
+   * the evidence was never captured, so that replay is NON-STRICT and must be reported as such.
+   */
+  constructions?: Record<string, unknown>;
 };
 
 export const canonicalJson = (v: unknown): string => {

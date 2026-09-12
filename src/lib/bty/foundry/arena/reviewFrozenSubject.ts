@@ -24,7 +24,17 @@ export async function reviewFrozenSubject(subject: ReviewSubject): Promise<Repla
   // `boundaryComplianceScope`, the only place in the contract that names resulting world states as a
   // compliance surface. The replay therefore asked a WEAKER question than production and its verdict
   // could not be attributed to the production contract. Both callers now build the same projection.
-  const payload = buildBroadReviewRequest(draft, subject.confirmedBoundaries);
+  /*
+    R2.30 — THE THIRD ARGUMENT. Measured before this: the replay omitted `constructions`, so every
+    `visibleChoices[].construction` reached the reviewer as `null` while production sent the
+    generator's real record. The reviewer is explicitly told to CONFIRM or DISPUTE that record, so
+    the replay was asking a weaker question than production and its verdict could not be attributed
+    to the production contract — the same defect class R2.28 fixed for the boundary projection.
+
+    An artifact that predates construction retention still yields `{}` here, which is honest: the
+    evidence does not exist. Such a replay is NON-STRICT and must be reported that way.
+  */
+  const payload = buildBroadReviewRequest(draft, subject.confirmedBoundaries, subject.constructions ?? {});
 
   try {
     const completion = await getLlmClient().chat.completions.create({

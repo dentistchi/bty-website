@@ -118,6 +118,12 @@ export type AttemptRecord = {
   boundaryProvenanceSha256?: string;
   boundaryProvenance?: unknown;
   reviewRequestBoundaries?: Array<{ id: string; statement: string }>;
+  /**
+   * R2.30 — per-choice construction evidence, present only when the observer opted into content
+   * capture. Declared so the durable artifact's construction field is part of the read contract
+   * rather than an undeclared runtime extra.
+   */
+  constructions?: Record<string, unknown>;
   boundaryCoverage?: { ok: boolean; codes: string[]; boundaryIdsConsidered: string[]; assessmentIds: string[] };
 };
 

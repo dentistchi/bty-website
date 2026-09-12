@@ -329,6 +329,18 @@ export type GenObservation = {
   scenario?: unknown;
   review?: unknown;
   retryFeedback?: string;
+  /**
+   * R2.30 — the generator's per-choice `construction` records, keyed by canonical choice id.
+   *
+   * Production review receives these; they are deliberately kept OFF the draft, so the sanitized
+   * scenario that reaches an artifact no longer contains them. Measured consequence: every frozen
+   * replay had to call the reviewer with `constructions: {}` and therefore asked a weaker question
+   * than production, which is why all axis evidence to date carries CONSTRUCTIONS ABSENT.
+   *
+   * Captured here, on the same observation as the scenario it belongs to, so a replay can rebuild
+   * the exact map. Content-derived evidence: it obeys `captureContent` like scenario and review.
+   */
+  constructions?: Record<string, unknown>;
   /** R2.25 — frozen-subject identity, carried by every review-related observation. */
   reviewSubjectSha256?: string;
   scenarioSha256?: string;
@@ -445,7 +457,7 @@ export function __setGenObserver(fn: ((o: GenObservation) => void) | null, opts?
   genCaptureContent = fn ? opts?.captureContent === true : false;
 }
 /** Evidence is attached only when the harness explicitly opted in. */
-function captured(payload: Pick<GenObservation, "scenario" | "review" | "retryFeedback">): Partial<GenObservation> {
+function captured(payload: Pick<GenObservation, "scenario" | "review" | "retryFeedback" | "constructions">): Partial<GenObservation> {
   return genCaptureContent ? payload : {};
 }
 
@@ -816,7 +828,7 @@ async function generateWithLlmCall(
         defectCodes: rejection.defectCodes,
         findings: rejection.findings,
         evidenceSources: rejection.evidenceSources,
-        ...captured({ scenario: result.value }),
+        ...captured({ scenario: result.value, constructions: canonical.constructionsByChoiceId }),
       });
       return { ok: false, reason: "generation_rejected", rejection };
     }
@@ -1707,7 +1719,9 @@ export async function generateArenaScenarioDraft(
         reviewContractSha256: contract.sha256,
         boundaryProvenanceSha256: provenanceSha,
         boundaryProvenance,
-        ...captured({ scenario: llm.draft }),
+        // The construction map rides the SAME observation as the scenario it describes, so a replay
+        // pairs them by construction rather than by guessing which attempt they belonged to.
+        ...captured({ scenario: llm.draft, constructions: llm.constructions }),
       });
 
       // ---------------------------------------------------------------------

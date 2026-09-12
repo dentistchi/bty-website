@@ -72,14 +72,17 @@ function buildSubjects(useMock: boolean, evidenceDir: string): ReplaySubject[] {
 
   return doc.subjects.map((f) => {
     let scenario: unknown = f.redactedScenarioStructure;
+    let constructions: Record<string, unknown> | undefined;
     if (!useMock) {
       const raw = readFileSync(join(evidenceDir, f.sourceArtifactFile), "utf8");
       const artifactSha = createHash("sha256").update(raw).digest("hex");
       if (artifactSha !== f.sourceArtifactSha256) {
         throw new Error(`source artifact digest mismatch for ${f.sourceArtifactFile}`);
       }
-      const body = JSON.parse(raw) as { attempts: Array<{ scenario?: unknown }> };
+      const body = JSON.parse(raw) as { attempts: Array<{ scenario?: unknown; constructions?: Record<string, unknown> }> };
       scenario = body.attempts[f.sourceAttemptIndex]?.scenario;
+      // R2.30 — read from the SAME attempt as the scenario, so the map always belongs to this draft.
+      constructions = body.attempts[f.sourceAttemptIndex]?.constructions;
       if (scenario === undefined) throw new Error(`no captured scenario at ${f.sourcePassId}/${f.sourceCaseId}#${f.sourceAttemptIndex}`);
       if (scenarioDigest(scenario) !== f.liveScenarioSha256) {
         throw new Error(`frozen scenario digest mismatch for ${f.sourcePassId}/${f.sourceCaseId}#${f.sourceAttemptIndex}`);
@@ -107,6 +110,7 @@ function buildSubjects(useMock: boolean, evidenceDir: string): ReplaySubject[] {
       canonicalValidatorResult: null,
       deterministicGateResult: null,
       reviewContractSha256: contract.sha256,
+      ...(constructions ? { constructions } : {}),
     };
     return {
       sourceRunId: f.sourceRunId,
