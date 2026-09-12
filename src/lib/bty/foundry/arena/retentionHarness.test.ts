@@ -15,6 +15,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
 
 import { __setGenObserver, generateArenaScenarioDraft, type GenObservation } from "./arenaScenarioGenerationService";
 import { RETENTION_SUBDIR, retentionPath, retentionRecords, writeRetentionRecord, type RetentionIdentity } from "./evalArtifact";
+import { createRetentionCollector, RETENTION_SCHEMA_VERSION } from "./retentionRecord";
 import { EVAL_CORPUS } from "./practice-generation.eval";
 
 let dir: string;
@@ -60,30 +61,19 @@ function fakeProvider(kind: Fake, draft: ArenaScenarioDraft) {
   stream position — and rewrites the run record after every evidence-bearing event, so a process
   killed mid-run still leaves what was already observed.
 */
-function runWithRetention(id: RetentionIdentity, input: unknown) {
-  const record: Record<string, unknown> = {
-    schemaVersion: "arena_experiment_retention_v1",
-    ...id, terminalOutcome: null,
-    plan: { present: false, parsed: null },
-    draft: { present: false, parsed: null },
-    gates: [] as unknown[], reviewCalls: [] as unknown[], stages: [] as unknown[],
-  };
-  const flush = () => writeRetentionRecord(dir, id, JSON.stringify(record, null, 1));
-  flush();                                         // identity exists BEFORE any provider call
-  __setGenObserver((o: GenObservation) => {
-    if (o.stageName !== undefined && o.stageDurationMs !== undefined) {
-      (record.stages as unknown[]).push({ stageName: o.stageName, stageStartedMonoMs: o.stageStartedMonoMs, stageFinishedMonoMs: o.stageFinishedMonoMs, stageDurationMs: o.stageDurationMs, timeout: o.timeout ?? false });
-    }
-    if (o.gate !== undefined && o.level !== undefined) {
-      (record.gates as unknown[]).push({ gate: o.gate, level: o.level, codes: o.defectCodes ?? [], findings: o.findings ?? null });
-      if (o.scenario) record.draft = { present: true, parsed: o.scenario };
-    }
-    if (o.outcome === "plan_valid" && o.scenario) record.plan = { present: true, parsed: o.scenario };
-    if (o.review !== undefined) (record.reviewCalls as unknown[]).push(o.review);
-    if (o.scenario && !(record.draft as { present: boolean }).present) record.draft = { present: true, parsed: o.scenario };
-    flush();                                       // crash-safe: after EVERY evidence event
-  }, { captureContent: true });
-  return { record, flush };
+function runWithRetention(id: RetentionIdentity, _input: unknown) {
+  /*
+    R2.31 — RESPONSIBILITY INVERSION. This helper used to DEFINE the retention-v1 record shape, which
+    made a test the only tracked description of the evidence format while the code that actually
+    produced it was untracked and later disappeared. The shape and the fold now live in
+    `retentionRecord.ts`; this test verifies that module instead of imitating it.
+  */
+  const collector = createRetentionCollector(
+    { ...id, correctionEnabled: false },
+    (r) => writeRetentionRecord(dir, id, JSON.stringify(r, null, 1)),
+  );
+  __setGenObserver((o: GenObservation) => collector.observe(o), { captureContent: true });
+  return { record: collector.record, flush: () => writeRetentionRecord(dir, id, JSON.stringify(collector.record, null, 1)), collector };
 }
 
 const read = (id: RetentionIdentity) => JSON.parse(readFileSync(join(dir, RETENTION_SUBDIR, retentionPath(id)), "utf8"));
