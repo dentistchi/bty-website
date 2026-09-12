@@ -1,3 +1,39 @@
+## 2026-09-12 — CHECKPOINT: TRACKED STRICT-PARITY ARENA HARNESS READY
+
+**[GOV-ARENA-STRICT-HARNESS]** Records the corrected Arena experiment authority after construction-evidence retention, replay construction parity, and tracked full-retention runner restoration. **Authorizes ONLY the next fresh STRICT-PARITY FULL-RETENTION 36-RUN.** No inner mutation, no inner push.
+
+**1. GIT INSPECTION RULE.** Outer/inner repository inspection uses `git -C <absolute path>`. **Ambient cwd must not be used as repository authority.** Reason: prior reporting errors occurred when the shell cwd drifted between the outer and inner repos, and an "inner" measurement was actually outer read twice.
+
+**2. READY DEFINITION — CORRECTED.** Arena experiment READY now requires ALL THREE: **A. a TRACKED executable entry point. B. a TRACKED evidence schema / assembler. C. a TESTED durable evidence path.** Tests proving schema/writer behaviour alone are **NOT** sufficient evidence that a reproducible experiment harness exists.
+
+**3. 2026-09-11 AUDIT MISS — RECORDED.** The prior full-retention 36-run used an untracked temporary runner that later disappeared, and the retention-v1 record shape was assembled inside `retentionHarness.test.ts`. The previous FULL RETENTION HARNESS READY verdict was therefore **TEST-PROVEN but NOT RUNNER-PROVEN**. That was an audit miss; the corrected governance rule is the READY definition above.
+
+**4. TRACKED FULL-RETENTION RUNNER — RESTORED.** Inner commit `72e2738a`. Tracked entry point: **`scripts/practice-full-retention.ts`**. Tracked retention schema/assembler: **`src/lib/bty/foundry/arena/retentionRecord.ts`**. Durable writer authority remains **`writeRetentionRecord`** in `evalArtifact.ts`; **no second writer exists** and the runner touches the filesystem only through it. `retentionHarness.test.ts` now imports and verifies the tracked assembler instead of defining the record shape itself.
+
+**5. DEBT A — CLOSED.** Per-choice provider `construction` is captured BEFORE sanitize through the existing `captureContent` observer policy, on the same observation as the scenario it describes. Measured: observer unset → caller result byte-identical; `captureContent=false` → construction hidden, on disk too; `captureContent=true` → construction retained; **durable stability-artifact disk round-trip preserves construction exactly**, key for key, compared against the original provider value rather than an in-memory object.
+
+**6. DEBT B — CLOSED FOR NEW ARTIFACTS.** New construction-aware stability artifacts reconstruct `constructionsByChoiceId`, and replay passes that populated map to semantic review instead of `{}`. Historical construction-less artifacts remain **NON-STRICT / CONSTRUCTIONS ABSENT** and remain readable — all 36 retained 2026-09-11 records parse through the tracked reader unchanged, with `schemaVersion` unchanged and no historical file rewritten.
+
+**7. STRICT REVIEW PARITY — AVAILABLE.** For NEW eligible evidence, production semantic-review arguments and frozen-replay semantic-review arguments match on every behaviourally relevant field **including `constructions`**. Strict eligibility is **derived, never caller-asserted**: a record is strict only when the evidence proves the construction-aware requirements, and an empty construction map means "never captured", which grades NON-STRICT.
+
+**8. TRACKED RUNNER DURABILITY — PROVEN.** The tracked runner was executed through its actual CLI in provider-fake mode — a local HTTP endpoint the real client talks to, so the faked surface is the provider adapter and everything below it is real. Measured across success, deterministic-gate and malformed plans: **CONFIGURED == EXECUTED == DURABLE ARTIFACTS**, with every artifact reopened from disk. For transport-failure testing, **run identity existed durably BEFORE provider invocation**, proven by reading the artifact from disk at the moment the provider fake was first entered.
+
+**9. KNOWN RUNNER LIMITATION.** The tracked runner accepts `--case-deadline-ms` but the argument is **not wired into the live execution path**. It is a **dead CLI option** and must not be interpreted as active timeout control. It does not block the next strict-parity run: production timeout behaviour is unchanged, timeout observer evidence is already implemented, and the live run may naturally exercise the real production deadline. **After the evidence run, either wire the flag correctly or remove it** — do not silently leave a misleading option indefinitely.
+
+**10. NEXT AUTHORIZED EXPERIMENT.** A fresh **STRICT-PARITY FULL-RETENTION 36-RUN** using `scripts/practice-full-retention.ts` from inner commit `72e2738a`.
+
+**Strict parity is judged on TWO denominators, because it is only meaningful for records that actually reached semantic review.** A run that terminates before reviewer input exists — provider malformed before a usable draft, infrastructure failure, generation timeout before review, Plan rejection before Render — may correctly be NON-STRICT **without indicating a parity defect**. Counting those as parity failures would mix an evidence-path question with a provider/runtime one.
+
+**A. REVIEWED-DRAFT PARITY (the criterion).** Of the drafts that reached semantic review, strict must be **100%**. One non-strict reviewed draft ⇒ **PARTIAL STRICT-PARITY EVIDENCE**, naming the exact run.
+
+**B. WHOLE-RUN ARTIFACT PARITY (descriptive only).** `strict records / 36`. This reflects both evidence-path eligibility and how many runs reached construction/reviewer-capable stages, and is **NOT** the criterion for whether reviewer parity was correctly configured.
+
+The headline may read STRICT-PARITY FULL-RETENTION 36-RUN only when every reviewed draft was strict, and must state **WHOLE-RUN STRICT RECORDS = X / 36** prominently alongside it.
+
+**11. LOCKED INTERPRETATION ORDER.** The fresh run is analysed in this order: **(1) FAILURE IDENTITY · (2) DETAIL TRUTH · (3) RENDER FIDELITY · (4) LATENCY · (5) HARD-GATE ACTIVATION DISTRIBUTION.** The hard-gate distribution must distinguish **A. exact normalized sibling identity · B. unordered-reversal-only sibling identity · C. Plan dimension leakage**. **B activations in prior retained evidence = 0**, so its first activation is **NEW MEASURED EVIDENCE** and must be reported separately.
+
+**12. INNER PUSH STATUS.** `inner-main` remains local-only at **6 commits ahead** of `origin/inner-main`. **No push decision until after the fresh strict-parity evidence run.**
+
 ## 2026-09-12 — CHECKPOINT: ARENA REVIEW AUTHORITY + DETERMINISTIC RENDER GATES LOCKED
 
 **[GOV-ARENA-AUTHORITY-LOCK]** Records the stable Arena architecture after Semantic Reviewer Single Authority, Commander Decision B, the reviewer-integrity TERMINAL/SIGNAL split, the deterministic Render Hard Gates, and the retained-evidence reclassification. **Authorizes ONLY Debt A next.** No inner code mutation in this checkpoint.
