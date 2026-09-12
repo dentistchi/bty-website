@@ -83,6 +83,7 @@ import {
   type BoundaryAssessment as BoundaryEvidence,
   type BranchDefectCode,
   type ChoiceDefectCode,
+  type SemanticReview as ReviewerDetails,
 } from "@/domain/foundry/arena-draft/semanticReview";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
@@ -878,7 +879,17 @@ export type SemanticReview = {
   noSafeJudgmentSpace: boolean;
 };
 type ReviewOutcome =
-  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[]; advisory?: ReviewAdvisory }
+  /**
+   * R2.33 — `parsed` is the reviewer's own structured response, carried on BOTH decided outcomes as
+   * EVIDENCE. Nothing decides on it; the verdict is still derived exactly where it was.
+   *
+   * It exists because the accept path had no structured evidence at all. Every clean accept retained
+   * `reviewCalls: 0` — not because no provider call happened, but because only the reject path ever
+   * captured one. After Decision B the reviewer mostly accepts, so the un-measurable half became the
+   * larger half, and the first measured false accept (a Plan dimension question offered as a learner
+   * choice, accepted) could not be explained from retained evidence at all.
+   */
+  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[]; advisory?: ReviewAdvisory; parsed: ReviewerDetails }
   | {
       kind: "reject";
       defects: string[];
@@ -889,6 +900,7 @@ type ReviewOutcome =
       /** R2.22 — exact phase/branch/choice coordinates for every all-phase defect. */
       phaseDefects: Array<{ phase: string; branchIndex: number; choiceIndex: number; codes: string[] }>;
       instruction: string;
+      parsed: ReviewerDetails;
     }
   | { kind: "no_safe_space"; reasonCode: string }
   /**
@@ -1234,9 +1246,10 @@ async function reviewConstraintComplianceCall(
           })
           .filter((c) => c.codes.length > 0),
         instruction: v.value.retryInstruction ?? "",
+        parsed: v.value,
       };
     }
-    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments, advisory: v.advisory };
+    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments, advisory: v.advisory, parsed: v.value };
   } catch (e) {
     // A telemetry failure is not a transport failure and must not be reported as one.
     if (isProviderCallTelemetryError(e)) throw e;
@@ -1684,6 +1697,8 @@ export async function generateArenaScenarioDraft(
     let reviewEvidence: BoundaryEvidence[] = [];
     /** Advisory telemetry from an ACCEPTED review, surfaced on the existing terminal emission. */
     let acceptedAdvisory: ReviewAdvisory | null = null;
+    /** The structured review that ACCEPTED this draft, held by value rather than found by position. */
+    let acceptedReview: ReviewerDetails | null = null;
     {
       // ---------------------------------------------------------------------
       // R2.25 — FREEZE THE SUBJECT, THEN REVIEW IT (at most twice).
@@ -1923,6 +1938,7 @@ export async function generateArenaScenarioDraft(
       if (review.kind === "ok") {
         reviewEvidence = review.boundaryEvidence;
         acceptedAdvisory = review.advisory ?? null;
+        acceptedReview = review.parsed;
       }
       if (review.kind === "reject") {
         // R2.23 — the reviewer's findings go through the SAME precedence authority as the
@@ -1954,7 +1970,7 @@ export async function generateArenaScenarioDraft(
             correctionPacketSha256: packetDigest(packet),
             ...captured({
               scenario: llm.draft,
-              review: { defects: resolved.defectCodes, instruction: review.instruction },
+              review: { defects: resolved.defectCodes, instruction: review.instruction, parsed: review.parsed },
               retryFeedback: fb,
             }),
             ...(genCaptureContent ? { correctionPacket: packet } : {}),
@@ -1982,19 +1998,26 @@ export async function generateArenaScenarioDraft(
       }
     }
     /*
-      The advisory rides the emission this path ALREADY makes. No accept-path review capture is
-      opened here — that remains the recorded retention limit, deliberately untouched.
+      R2.33 — THE ACCEPT IS NOW EVIDENCE TOO.
+      
+      The review captured here is the one that AUTHORIZED this outcome: it is the review whose
+      `kind === "ok"` let control reach this line, held in `acceptedReview` rather than looked up by
+      position in any event list. An accept carries no defects and no retry instruction, so those
+      fields are empty by nature — the same contract the reject path uses, not a second schema.
     */
     logGenOutcome(
       "generated_valid",
       undefined,
-      acceptedAdvisory
-        ? {
-            advisoryVerdict: acceptedAdvisory.advisoryVerdict,
-            advisoryConsistency: acceptedAdvisory.advisoryConsistency,
-            reviewerUnspecifiedConcern: acceptedAdvisory.unspecifiedConcern,
-          }
-        : undefined,
+      {
+        ...(acceptedReview ? captured({ review: { defects: [], instruction: "", parsed: acceptedReview } }) : {}),
+        ...(acceptedAdvisory
+          ? {
+              advisoryVerdict: acceptedAdvisory.advisoryVerdict,
+              advisoryConsistency: acceptedAdvisory.advisoryConsistency,
+              reviewerUnspecifiedConcern: acceptedAdvisory.unspecifiedConcern,
+            }
+          : {}),
+      },
     );
     return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings, constraintEvidence: projected.assessmentsByChoiceId } };
   }

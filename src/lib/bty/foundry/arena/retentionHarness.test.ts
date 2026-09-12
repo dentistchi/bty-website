@@ -174,7 +174,14 @@ describe("every run leaves a durable record, whatever its outcome", () => {
     and every failing review path carries its evidence — but it is a real limit and is asserted here
     rather than assumed away.
   */
-  it("I — a clean accept retains review TIMING; the structured verdict rides only failure paths", async () => {
+  it("I — a clean accept retains review timing AND the review that authorized it", async () => {
+    /*
+      R2.33 — this used to assert `reviewCalls` was EMPTY on a clean accept, which encoded the blind
+      spot as though it were a contract: "the structured verdict rides only failure paths". It was
+      never a property of the reviewer, only of which path bothered to capture. After Decision B most
+      reviewed drafts are accepts, so the un-measurable half became the larger half, and the first
+      measured false accept could not be explained from retained evidence at all.
+    */
     const id: RetentionIdentity = { experimentId: "e", fixtureId: c01.id, architecture: "legacy", runNumber: 4 };
     fakeProvider("success", GOOD);
     const { record, flush } = runWithRetention(id, c01.input);
@@ -185,8 +192,11 @@ describe("every run leaves a durable record, whatever its outcome", () => {
     const saved = read(id);
     expect(saved.terminalOutcome).toBe("PASS");
     // The reviewer ran and was timed…
-    expect(saved.stages.some((s: { stageName: string }) => s.stageName === "semantic_review")).toBe(true);
-    // …and on an accept it reported no structured payload to retain.
-    expect(saved.reviewCalls).toHaveLength(0);
+    const reviewStages = saved.stages.filter((s: { stageName: string }) => s.stageName === "semantic_review").length;
+    expect(reviewStages).toBeGreaterThan(0);
+    // …and the review that authorized the accept is retained, one record per actual call.
+    expect(saved.reviewCalls).toHaveLength(reviewStages);
+    expect(saved.reviewCalls[0].defects).toEqual([]);
+    expect(saved.reviewCalls[0].parsed).toBeTruthy();
   });
 });
