@@ -368,6 +368,16 @@ describe("branch consequence contract", () => {
     b[1] = { ...b[1], overlapsOtherBranchIndex: 0, overlapReason: "same next decision", branchDistinct: false };
     const r = validateSemanticReview(review({ branches: b }), CTX);
     expect(r.ok && r.verdict === "reject" && r.defects).not.toContain("branch_semantic_collapse");
+    /*
+      R2.35 — AND IT IS STILL OBSERVED.
+
+      This opinion used to become a finding in the SERVICE, which re-read the reviewer DTO to rebuild
+      per-coordinate defect lists. Removing that rebuild — the same machinery that let a model-written
+      boundary code reclaim terminal authority — would have deleted the observation outright instead
+      of downgrading it. Losing evidence is not the same as withdrawing authority, so the observation
+      is made where the boolean is READ, and lands in telemetry.
+    */
+    expect(observed(r)).toContain("branch_semantic_collapse");
   });
 
   it("15/18. shared vocabulary but genuinely different causal states is ACCEPTED", () => {

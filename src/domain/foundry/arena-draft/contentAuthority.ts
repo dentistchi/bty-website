@@ -49,12 +49,36 @@ export type ContentProvenance = (typeof CONTENT_PROVENANCE)[keyof typeof CONTENT
 
 export type ContentAuthority = "terminal" | "telemetry";
 
+/**
+ * WHERE the finding was observed. Carried with the finding so a downstream layer never has to
+ * rebuild it by re-running the reviewer's own conditions — rebuilding is how provenance gets lost.
+ */
+export type ContentCoordinate = {
+  phase?: string;
+  branchIndex?: number;
+  choiceIndex?: number;
+  boundaryId?: string;
+};
+
 export type ContentFinding = {
   code: string;
   provenance: ContentProvenance;
+  /** Which observation produced it. Set at creation, never inferred from the code. */
+  gate?: string;
+  coordinate?: ContentCoordinate;
   /** Optional human-readable note about what established (or failed to establish) the finding. */
   evidence?: string;
 };
+
+/**
+ * A finding that has been through `classifyContentAuthority`, carrying the ANSWER with it.
+ *
+ * This field is why the type exists. A downstream consumer must be able to ask "may this reject?"
+ * without re-deriving anything — the measured failure was a service layer that received bare code
+ * strings, matched them against the provisional list, and handed a model-authored finding back its
+ * terminal authority. Disposition travels so that question is never asked of a string again.
+ */
+export type ClassifiedFinding = ContentFinding & { disposition: ContentAuthority };
 
 /**
  * PROVEN AUTHORITY — the only two paths where code proves the defect concept rather than relaying an
@@ -115,18 +139,25 @@ export function classifyContentAuthority(finding: ContentFinding): ContentAuthor
   return "telemetry";
 }
 
-export type ContentSplit = { terminalFindings: ContentFinding[]; telemetryFindings: ContentFinding[] };
+export type ContentSplit = { terminalFindings: ClassifiedFinding[]; telemetryFindings: ClassifiedFinding[] };
 
-/** Split once, keep both halves. The telemetry half is evidence, not waste. */
+/**
+ * Split once, keep both halves, and stamp the answer onto each finding.
+ *
+ * Deduplication is by code + provenance — the authority unit — so ONE string arriving through TWO
+ * origins stays two findings. Collapsing them by code is exactly what let a model-written boundary
+ * code hide behind a boolean-derived one of the same name.
+ */
 export function splitContentFindings(findings: ContentFinding[]): ContentSplit {
-  const terminalFindings: ContentFinding[] = [];
-  const telemetryFindings: ContentFinding[] = [];
+  const terminalFindings: ClassifiedFinding[] = [];
+  const telemetryFindings: ClassifiedFinding[] = [];
   const seen = new Set<string>();
   for (const f of findings) {
     const key = `${f.code}|${f.provenance}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    (classifyContentAuthority(f) === "terminal" ? terminalFindings : telemetryFindings).push(f);
+    const disposition = classifyContentAuthority(f);
+    (disposition === "terminal" ? terminalFindings : telemetryFindings).push({ ...f, disposition });
   }
   return { terminalFindings, telemetryFindings };
 }

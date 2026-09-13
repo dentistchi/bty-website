@@ -6,7 +6,7 @@ import {
   classifyContentAuthority,
   splitContentFindings,
 } from "./contentAuthority";
-import { hasRejectionAuthority, resolveRejection } from "./gatePrecedence";
+import { findingHasAuthority, hasRejectionAuthority, resolveRejection } from "./gatePrecedence";
 
 /*
   THE DECISIVE TEST is not "which defect string rejects". It is whether the SAME string changes
@@ -78,10 +78,12 @@ describe("splitting keeps both halves", () => {
       { code: "generic_communication_collapse", provenance: CONTENT_PROVENANCE.modelBoolean },
     ]);
     expect(split.terminalFindings.map((f) => f.code)).toEqual(["cross_branch_axis_collapse"]);
+    // The split STAMPS its answer onto each finding, so no later layer has to re-derive it.
     expect(split.telemetryFindings).toEqual([
-      { code: "cross_branch_axis_collapse", provenance: "MODEL_DEFECT_CODE" },
-      { code: "generic_communication_collapse", provenance: "MODEL_BOOLEAN" },
+      { code: "cross_branch_axis_collapse", provenance: "MODEL_DEFECT_CODE", disposition: "telemetry" },
+      { code: "generic_communication_collapse", provenance: "MODEL_BOOLEAN", disposition: "telemetry" },
     ]);
+    expect(split.terminalFindings[0].disposition).toBe("terminal");
   });
 
   it("dedupes by the AUTHORITY UNIT, so one string on two paths stays two findings", () => {
@@ -134,5 +136,60 @@ describe("15. channel-aware precedence default", () => {
   it("omitting the channel keeps the old fail-closed behaviour, so no caller changes by silence", () => {
     const out = resolveRejection([{ code: "reviewer_thinks_it_is_weak", gate: "semantic_review" }]);
     expect(out?.primaryCode).toBe("reviewer_thinks_it_is_weak");
+  });
+});
+
+/*
+  4B — DOWNSTREAM CONSUMERS READ DISPOSITION, NOT THE CODE.
+
+  The measured R2.34 leak was a service layer that received bare code strings, matched them against
+  the provisional boundary list, and handed a model-authored finding back its terminal authority.
+  Disposition is the repair: it is decided where provenance is known and travels with the finding, so
+  no downstream layer has to ask a string what it is worth.
+*/
+describe("4B. disposition is decisive wherever authority is decided", () => {
+  it("a telemetry disposition is refused even when its code is registered and ranks HIGHER", () => {
+    const out = resolveRejection([
+      // level 3 — it would win on precedence alone.
+      { code: "confirmed_boundary_absent", gate: "boundary_review", channel: "content", disposition: "telemetry", boundaryId: "c1" },
+      // level 6 — but this is the one that was actually proven.
+      { code: "cross_branch_axis_collapse", gate: "cross_branch_review", channel: "content", disposition: "terminal" },
+    ]);
+    expect(out?.primaryCode).toBe("cross_branch_axis_collapse");
+    expect(out?.primaryLevel).toBe(6);
+    expect(out?.defectCodes).not.toContain("confirmed_boundary_absent");
+    expect(out?.nonAuthoritativeCodes).toEqual(["confirmed_boundary_absent"]);
+  });
+
+  it("an all-telemetry set rejects nothing, however its codes rank", () => {
+    expect(
+      resolveRejection([
+        { code: "boundary_violation", gate: "boundary_review", channel: "content", disposition: "telemetry" },
+        { code: "unsafe_delay", gate: "urgency_review", channel: "content", disposition: "telemetry" },
+      ]),
+    ).toBeNull();
+  });
+
+  it("a terminal disposition carries authority even for a code the registry does not know", () => {
+    // Disposition was decided from provenance. A registry gap must not silently overrule it.
+    const out = resolveRejection([
+      { code: "some_future_proven_code", gate: "cross_branch_review", channel: "content", disposition: "terminal" },
+    ]);
+    expect(out?.primaryCode).toBe("some_future_proven_code");
+  });
+
+  it("findings carrying NO disposition still fall back to the channel rule, never to promotion", () => {
+    expect(findingHasAuthority({ code: "reviewer_thinks_it_is_weak", gate: "semantic_review", channel: "content" })).toBe(false);
+    expect(findingHasAuthority({ code: "review_future_integrity_failure", gate: "semantic_review" })).toBe(true);
+  });
+
+  it("the same string on two dispositions keeps exactly one of them authoritative", () => {
+    const out = resolveRejection([
+      { code: "confirmed_boundary_absent", gate: "boundary_review", channel: "content", disposition: "terminal", boundaryId: "c1" },
+      { code: "confirmed_boundary_absent", gate: "boundary_review", channel: "content", disposition: "telemetry", boundaryId: "c1" },
+    ]);
+    expect(out?.primaryCode).toBe("confirmed_boundary_absent");
+    expect(out?.findings).toHaveLength(1);
+    expect(out?.nonAuthoritativeCodes).toEqual(["confirmed_boundary_absent"]);
   });
 });

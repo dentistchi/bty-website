@@ -52,6 +52,8 @@ import {
 import {
   CONTENT_PROVENANCE,
   splitContentFindings,
+  type ClassifiedFinding,
+  type ContentCoordinate,
   type ContentFinding,
   type ContentProvenance,
 } from "./contentAuthority";
@@ -402,8 +404,8 @@ export type ReviewAdvisory = {
 };
 
 export type ReviewValidation =
-  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ContentFinding[]; telemetryFindings?: ContentFinding[] }
-  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ContentFinding[]; telemetryFindings?: ContentFinding[] }
+  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ClassifiedFinding[]; telemetryFindings?: ClassifiedFinding[] }
+  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ClassifiedFinding[]; telemetryFindings?: ClassifiedFinding[] }
   | { ok: true; value: SemanticReview; verdict: "no_safe"; reasonCode: NoSafeReasonCode }
   /**
    * R2.25 — a failed validation now carries what it saw.
@@ -674,20 +676,36 @@ export function validateSemanticReview(
     moment it is created, and the authority split happens once at the end.
   */
   const contentFindings: ContentFinding[] = [];
-  const push = (code: string, provenance: ContentProvenance, evidence?: string) => {
-    contentFindings.push({ code, provenance, ...(evidence ? { evidence } : {}) });
+  /*
+    GATE AND COORDINATE ARE STAMPED HERE, WHERE THE OBSERVATION HAPPENS.
+
+    Both used to be rebuilt downstream by re-running the reviewer's own conditions over the DTO. That
+    rebuild is what lost provenance: a service loop that re-derives `confirmed_boundary_absent` from
+    booleans and then appends the model's own `defectCodes` into the same string array cannot tell
+    the two apart afterwards, and matching the string against the provisional list handed the model
+    back its authority. Nothing downstream needs to guess if the finding carries its own origin.
+  */
+  const push = (code: string, provenance: ContentProvenance, evidence?: string, gate?: string, coordinate?: ContentCoordinate) => {
+    contentFindings.push({
+      code,
+      provenance,
+      ...(gate ? { gate } : {}),
+      ...(coordinate ? { coordinate } : {}),
+      ...(evidence ? { evidence } : {}),
+    });
   };
-  const pushAll = (codes: string[], provenance: ContentProvenance, evidence?: string) => {
-    for (const c of codes) push(c, provenance, evidence);
+  const pushAll = (codes: string[], provenance: ContentProvenance, evidence?: string, gate?: string, coordinate?: ContentCoordinate) => {
+    for (const c of codes) push(c, provenance, evidence, gate, coordinate);
   };
   for (const c of choiceReviews) {
-    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["bad_faith_option"], CONTENT_PROVENANCE.modelDefectCode, "primary choice defensible=false");
-    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "primary choice defectCodes");
-    if (!c.legitimateValue.trim() && c.defensible) push("no_legitimate_value", CONTENT_PROVENANCE.modelBoolean, "empty legitimateValue");
-    if (!c.acceptedCost.trim() && c.defensible) push("dominated_choice", CONTENT_PROVENANCE.modelBoolean, "empty acceptedCost");
+    const at = { phase: "primary", choiceIndex: c.index };
+    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["bad_faith_option"], CONTENT_PROVENANCE.modelDefectCode, "primary choice defensible=false", "primary_choice_review", at);
+    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "primary choice defectCodes", "primary_choice_review", at);
+    if (!c.legitimateValue.trim() && c.defensible) push("no_legitimate_value", CONTENT_PROVENANCE.modelBoolean, "empty legitimateValue", "primary_choice_review", at);
+    if (!c.acceptedCost.trim() && c.defensible) push("dominated_choice", CONTENT_PROVENANCE.modelBoolean, "empty acceptedCost", "primary_choice_review", at);
   }
   for (const b of branchReviews) {
-    if (b.repeatsPrimaryDecision) push("branch_repeats_primary", CONTENT_PROVENANCE.modelBoolean, "repeatsPrimaryDecision");
+    if (b.repeatsPrimaryDecision) push("branch_repeats_primary", CONTENT_PROVENANCE.modelBoolean, "repeatsPrimaryDecision", "branch_review", { branchIndex: b.index });
     /*
       DECISION B (R2.28) — A COMMITTED BEHAVIOUR CHANGE, NOT A CLEANUP.
 
@@ -705,33 +723,52 @@ export function validateSemanticReview(
       What still rejects automatically is deterministic normalized identity in
       `collectCrossBranchDefects`, which proves sameness rather than judging it.
     */
-    pushAll(b.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)), CONTENT_PROVENANCE.modelDefectCode, "branch defectCodes");
+    pushAll(b.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)), CONTENT_PROVENANCE.modelDefectCode, "branch defectCodes", "branch_review", { branchIndex: b.index });
+    if (!b.branchDistinct || b.overlapsOtherBranchIndex >= 0) {
+      push("branch_semantic_collapse", CONTENT_PROVENANCE.modelBoolean, "branchDistinct/overlapsOtherBranchIndex", "branch_review", { branchIndex: b.index });
+    }
   }
-  if (!boundaryCompliant && ctx.constraintIds.length > 0) push("boundary_violation", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "boundaryCompliant=false");
+  if (!boundaryCompliant && ctx.constraintIds.length > 0) push("boundary_violation", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "boundaryCompliant=false", "boundary_review");
   if (!value.twoValuesInTension) push("no_value_tension", CONTENT_PROVENANCE.modelBoolean, "twoValuesInTension=false");
 
   // BOUNDARY GROUNDING — silence about a rule is not compliance.
   for (const b of boundaryAssessments) {
-    if (!b.presentInScenario) push("confirmed_boundary_absent", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "presentInScenario=false");
-    if (!b.operationalized) push("boundary_not_operationalized", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "operationalized=false");
+    const at = { boundaryId: b.boundaryId };
+    if (!b.presentInScenario) push("confirmed_boundary_absent", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "presentInScenario=false", "boundary_review", at);
+    if (!b.operationalized) push("boundary_not_operationalized", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "operationalized=false", "boundary_review", at);
     // Present, claimed operational, yet biting no DECISION stage: deleting the rule would leave the
     // scenario unchanged. That is the exact c18 shape.
     if (b.presentInScenario && b.operationalized && !b.affectedStages.some((s) => OPERATIVE_STAGES.includes(s))) {
-      push("vacuous_boundary_compliance", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "no operative affectedStages");
+      push("vacuous_boundary_compliance", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "no operative affectedStages", "boundary_review", at);
     }
     if (!b.allPrimaryChoicesComply || !b.allTradeoffChoicesComply || b.violatedChoiceReferences.length > 0) {
-      push("choice_bypasses_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "choice compliance booleans");
+      push("choice_bypasses_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "choice compliance booleans", "boundary_review", at);
     }
-    if (!b.allActionChoicesComply) push("action_reopens_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "allActionChoicesComply=false");
-    if (!b.allBranchesPreserve || b.violatedBranchReferences.length > 0) push("branch_drops_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "branch preservation booleans");
-    if (!b.prohibitedAlternativeExcluded) push("boundary_treated_as_optional", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "prohibitedAlternativeExcluded=false");
-    // A model-written boundary code earns nothing from sharing a family with the booleans above.
-    pushAll(b.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "boundaryAssessments defectCodes");
+    if (!b.allActionChoicesComply) push("action_reopens_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "allActionChoicesComply=false", "boundary_review", at);
+    if (!b.allBranchesPreserve || b.violatedBranchReferences.length > 0) push("branch_drops_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "branch preservation booleans", "boundary_review", at);
+    if (!b.prohibitedAlternativeExcluded) push("boundary_treated_as_optional", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "prohibitedAlternativeExcluded=false", "boundary_review", at);
+    /*
+      A model-written boundary code earns nothing from sharing a family — or a gate, or a coordinate
+      — with the booleans above. SIX of these strings are also in `BOUNDARY_DEFECT_CODES`, so the
+      model can author the very same word the derivations produce. The two stay distinguishable only
+      because provenance is stamped here, on separate findings that are never merged into one list.
+    */
+    pushAll(b.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "boundaryAssessments defectCodes", "boundary_review", at);
   }
 
   // ALL-PHASE CHOICE QUALITY — the same standard at every phase. A good primary choice does not
   // license a defective tradeoff or action.
-  pushAll(phase.defects, CONTENT_PROVENANCE.modelDefectCode, "phaseChoices defectCodes");
+  for (const r of phase.reviews) {
+    const at = { phase: r.phase, branchIndex: r.branchIndex, choiceIndex: r.choiceIndex };
+    pushAll(r.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "phaseChoices defectCodes", "phase_choice_review", at);
+  }
+  // Codes the phase collector derived itself, which carry no single choice coordinate.
+  pushAll(
+    phase.defects.filter((c) => !phase.reviews.some((r) => r.defectCodes.includes(c))),
+    CONTENT_PROVENANCE.modelBoolean,
+    "phaseChoices derived",
+    "phase_choice_review",
+  );
 
   // SAME-BRANCH PROGRESSION (c09) and CROSS-BRANCH CAUSAL DIVERSITY (c18).
   const progression = collectBranchProgressionDefects(branchReviews);
@@ -760,22 +797,23 @@ export function validateSemanticReview(
   contentFindings.push(...cross.contentFindings);
   // Part 8 rule 4 — repeated meaning inside a branch cannot coexist with valid progression.
   if (branchReviews.some((b) => b.progressionValid && b.repeatedMeaningPairs.length > 0)) {
-    push("repeated_choice_meaning_within_branch", CONTENT_PROVENANCE.modelBoolean, "repeatedMeaningPairs non-empty");
+    push("repeated_choice_meaning_within_branch", CONTENT_PROVENANCE.modelBoolean, "repeatedMeaningPairs non-empty", "branch_review");
   }
   // Part 8 rule 1 (primary cross-check) — the two per-choice contracts must agree about primary.
   for (const c of choiceReviews) {
     const p = phase.reviews.find((x) => x.phase === "primary" && x.choiceIndex === c.index);
-    if (p && p.defensible !== c.defensible) push("review_contradictory", CONTENT_PROVENANCE.modelBoolean, "primary defensible disagreement");
+    if (p && p.defensible !== c.defensible) push("review_contradictory", CONTENT_PROVENANCE.modelBoolean, "primary defensible disagreement", "primary_choice_review", { phase: "primary", choiceIndex: c.index });
   }
 
   // URGENCY SAFETY — a pause to satisfy a safety rule is legitimate; a pause for convenience is not.
-  if (urgency.overallUrgencyVerdict === "unsafe") push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "overallUrgencyVerdict=unsafe");
+  if (urgency.overallUrgencyVerdict === "unsafe") push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "overallUrgencyVerdict=unsafe", "urgency_review");
   for (const c of urgency.choices) {
+    const at = { phase: "primary", choiceIndex: c.index };
     // A delay with no stated safety basis is not defensible however it is described.
-    if (c.introducesDelay && !c.safetyBasis.trim()) push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "delay without safetyBasis");
-    if (c.foreseeableHarm.trim() && !c.safetyBasis.trim()) push("avoidable_foreseeable_harm", CONTENT_PROVENANCE.modelBoolean, "harm without safetyBasis");
-    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["unsafe_delay"], CONTENT_PROVENANCE.modelDefectCode, "urgency choice defensible=false");
-    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "urgency defectCodes");
+    if (c.introducesDelay && !c.safetyBasis.trim()) push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "delay without safetyBasis", "urgency_review", at);
+    if (c.foreseeableHarm.trim() && !c.safetyBasis.trim()) push("avoidable_foreseeable_harm", CONTENT_PROVENANCE.modelBoolean, "harm without safetyBasis", "urgency_review", at);
+    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["unsafe_delay"], CONTENT_PROVENANCE.modelDefectCode, "urgency choice defensible=false", "urgency_review", at);
+    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "urgency defectCodes", "urgency_review", at);
   }
 
   /*

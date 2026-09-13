@@ -56,13 +56,7 @@ import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRe
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
-import {
-  CONTENT_PROVENANCE,
-  PROVISIONAL_BOUNDARY_AUTHORITY,
-  classifyContentAuthority,
-  type ContentFinding,
-  type ContentProvenance,
-} from "@/domain/foundry/arena-draft/contentAuthority";
+import type { ClassifiedFinding } from "@/domain/foundry/arena-draft/contentAuthority";
 import {
   buildCorrectionPacket,
   canonicalPacketJson,
@@ -341,7 +335,7 @@ export type GenObservation = {
     after the run. `contentTelemetry` carries each finding with its provenance; `contentTelemetryCodes`
     is the flattened, sorted code list for the outcome line.
   */
-  contentTelemetry?: ContentFinding[];
+  contentTelemetry?: ClassifiedFinding[];
   contentTelemetryCodes?: string[];
   /** R2.19 — captured ONLY when the harness opts in. See `__setGenObserver`. */
   scenario?: unknown;
@@ -912,7 +906,7 @@ type ReviewOutcome =
       advisory?: ReviewAdvisory;
       parsed: ReviewerDetails;
       /** R2.34 — content findings the authority model refused to act on. Evidence, never a verdict. */
-      telemetryFindings?: ContentFinding[];
+      telemetryFindings?: ClassifiedFinding[];
     }
   | {
       kind: "reject";
@@ -925,8 +919,8 @@ type ReviewOutcome =
       phaseDefects: Array<{ phase: string; branchIndex: number; choiceIndex: number; codes: string[] }>;
       instruction: string;
       parsed: ReviewerDetails;
-      terminalFindings?: ContentFinding[];
-      telemetryFindings?: ContentFinding[];
+      terminalFindings?: ClassifiedFinding[];
+      telemetryFindings?: ClassifiedFinding[];
     }
   | { kind: "no_safe_space"; reasonCode: string }
   /**
@@ -1734,7 +1728,7 @@ export async function generateArenaScenarioDraft(
     /** The structured review that ACCEPTED this draft, held by value rather than found by position. */
     let acceptedReview: ReviewerDetails | null = null;
     /** R2.34 — reviewer content the authority model refused to act on. Retained with the outcome. */
-    let contentTelemetry: ContentFinding[] = [];
+    let contentTelemetry: ClassifiedFinding[] = [];
     {
       // ---------------------------------------------------------------------
       // R2.25 — FREEZE THE SUBJECT, THEN REVIEW IT (at most twice).
@@ -1982,48 +1976,36 @@ export async function generateArenaScenarioDraft(
         // deterministic gates, so a boundary or unsafe-delay finding from the review outranks an
         // ordinary quality one regardless of the order the reviewer happened to report them in.
         /*
-          THE FOUR UNFILTERED INGEST SITES, CLOSED (R2.34).
+          AUTHORITY IS TRANSPORTED, NOT RECONSTRUCTED (R2.35).
 
-          `review.defects` arrives already filtered by the authority model. These per-coordinate
-          lists did NOT: they are rebuilt straight from the reviewer DTO, so before this change a
-          single genuine boundary rejection dragged every model-written choice/branch/urgency/phase
-          code into precedence with it — and a model-authored level-3 code could take `primaryCode`
-          away from the finding that actually had authority. That is telemetry writing the headline.
+          R2.34 introduced the provenance model and then undid part of it right here. This block used
+          to rebuild findings from the reviewer DTO — re-running the same boolean conditions, merging
+          the model's own `defectCodes` into the same string array, and recovering "provenance" by
+          testing the resulting STRING against the provisional boundary list.
 
-          Provenance is assigned BY ORIGIN, never by reading the string: a boundary code derived from
-          the reviewer's own booleans is the named PROVISIONAL exception, while the same string
-          written directly into `defectCodes` is not. Everything denied authority is kept below as
-          telemetry, coordinates intact — downgraded is not deleted.
+          That reconstruction leaked. Six of the eight provisional boundary strings are also in
+          `BOUNDARY_DEFECT_CODES`, so the model can author the exact word a derivation produces. A
+          model-written `confirmed_boundary_absent` was measured taking level 3 and stealing
+          `primaryCode` from a genuinely proven level-6 finding — while the SAME instance also sat in
+          telemetry, which is itself the proof the two layers disagreed.
+
+          The domain already answered this question where the answer was knowable. So the service now
+          carries that answer instead of re-deriving it: each finding arrives with its gate, its
+          coordinate, its provenance and its disposition, and nothing here looks at a code string to
+          decide what a finding is worth.
         */
-        const provenanceFor = (gate: string, code: string): ContentProvenance =>
-          gate === "boundary_review" && PROVISIONAL_BOUNDARY_AUTHORITY.includes(code)
-            ? CONTENT_PROVENANCE.provisionalBoundaryBoolean
-            : CONTENT_PROVENANCE.modelDefectCode;
-        const candidateFindings: Finding[] = [
-          ...review.phaseDefects.flatMap((d) =>
-            d.codes.map((code) => ({ code, gate: "phase_choice_review", phase: d.phase, branchIndex: d.branchIndex, choiceIndex: d.choiceIndex })),
-          ),
-          ...review.choiceDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "primary_choice_review", phase: "primary", choiceIndex: d.index }))),
-          ...review.branchDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "branch_review", branchIndex: d.index }))),
-          ...review.urgencyDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "urgency_review", phase: "primary", choiceIndex: d.index }))),
-          ...review.boundaryDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "boundary_review", boundaryId: d.boundaryId }))),
-        ];
-        const authorizedHere = (f: Finding) =>
-          classifyContentAuthority({ code: f.code, provenance: provenanceFor(f.gate, f.code) }) === "terminal";
-        const reviewFindings: Finding[] = [
-          ...review.defects.map((code) => ({ code, gate: "semantic_review", channel: "content" as const })),
-          ...candidateFindings.filter(authorizedHere).map((f) => ({ ...f, channel: "content" as const })),
-        ];
-        contentTelemetry = [
-          ...(review.telemetryFindings ?? []),
-          ...candidateFindings
-            .filter((f) => !authorizedHere(f))
-            .map((f) => ({
-              code: f.code,
-              provenance: provenanceFor(f.gate, f.code),
-              evidence: `${f.gate} (denied rejection authority)`,
-            })),
-        ];
+        const asFinding = (f: ClassifiedFinding): Finding => ({
+          code: f.code,
+          gate: f.gate ?? "semantic_review",
+          channel: "content",
+          disposition: f.disposition,
+          ...(f.coordinate?.phase !== undefined ? { phase: f.coordinate.phase } : {}),
+          ...(f.coordinate?.branchIndex !== undefined ? { branchIndex: f.coordinate.branchIndex } : {}),
+          ...(f.coordinate?.choiceIndex !== undefined ? { choiceIndex: f.coordinate.choiceIndex } : {}),
+          ...(f.coordinate?.boundaryId !== undefined ? { boundaryId: f.coordinate.boundaryId } : {}),
+        });
+        const reviewFindings: Finding[] = (review.terminalFindings ?? []).map(asFinding);
+        contentTelemetry = review.telemetryFindings ?? [];
         const resolved = resolveRejection(reviewFindings);
         /*
           NOTHING SURVIVED THE AUTHORITY FILTER, so there is nothing left to reject FOR. Control falls

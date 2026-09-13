@@ -44,6 +44,8 @@ export const GATE_LEVELS = {
   /** Anything the registry does not know. Never silently treated as harmless. */
   8: "unclassified",
 } as const;
+import type { ContentAuthority } from "./contentAuthority";
+
 export type GateLevel = keyof typeof GATE_LEVELS;
 
 export type CodeClass = {
@@ -263,6 +265,16 @@ export const isRegisteredCode = (code: string): boolean => REGISTRY.has(code);
  */
 export const hasRejectionAuthority = (code: string, channel: FindingChannel = "integrity"): boolean =>
   channel !== "content" || REGISTRY.has(code);
+
+/**
+ * May this finding select a rejection?
+ *
+ * Disposition is consulted FIRST and is decisive when present, because it was decided where the
+ * finding's origin was known. Only when a finding carries no disposition do we fall back to the
+ * channel rule — and that fallback never promotes: it can still only deny.
+ */
+export const findingHasAuthority = (f: Finding): boolean =>
+  f.disposition !== undefined ? f.disposition === "terminal" : hasRejectionAuthority(f.code, f.channel);
 export const registeredCodes = (): string[] => REGISTRY_ORDER.map((e) => e.code);
 
 // ---------------------------------------------------------------------------
@@ -276,6 +288,15 @@ export type Finding = {
   gate: string;
   /** Defaults to `"integrity"` (fail closed). Set `"content"` where the finding judges the draft. */
   channel?: FindingChannel;
+  /**
+   * THE ANSWER, CARRIED — not a hint to re-check.
+   *
+   * A finding already classified where its provenance was known says so here, and `"telemetry"` is
+   * refused entry to every authority decision below REGARDLESS of how its code ranks. Disposition
+   * outranks raw code precedence, which is the whole repair: a level-3 model-authored string can no
+   * longer outrank a level-6 finding that was actually proven.
+   */
+  disposition?: ContentAuthority;
   phase?: string;
   branchIndex?: number;
   choiceIndex?: number;
@@ -320,8 +341,8 @@ export function resolveRejection(findings: Finding[]): RejectionOutcome | null {
     cannot make an otherwise clean draft reject. It is reported back in `nonAuthoritativeCodes` so
     the caller can retain it as telemetry; dropped from AUTHORITY is not dropped from EVIDENCE.
   */
-  const authoritative = findings.filter((f) => hasRejectionAuthority(f.code, f.channel));
-  const nonAuthoritativeCodes = [...new Set(findings.filter((f) => !hasRejectionAuthority(f.code, f.channel)).map((f) => f.code))].sort();
+  const authoritative = findings.filter(findingHasAuthority);
+  const nonAuthoritativeCodes = [...new Set(findings.filter((f) => !findingHasAuthority(f)).map((f) => f.code))].sort();
   if (authoritative.length === 0) return null;
 
   const bySource: Record<string, string[]> = {};

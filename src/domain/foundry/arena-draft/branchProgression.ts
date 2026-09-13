@@ -235,6 +235,8 @@ export function collectBranchProgressionDefects(
       provenance.set("no_new_decision_dimension", {
         code: "no_new_decision_dimension",
         provenance: CONTENT_PROVENANCE.provenExactIdentity,
+        gate: "branch_review",
+        coordinate: { branchIndex: b.index },
         evidence: "tradeoffDecisionDimension === actionDecisionDimension (normalized)",
       });
     }
@@ -249,7 +251,13 @@ export function collectBranchProgressionDefects(
     if (codes.size) {
       for (const code of codes) {
         contentFindings.push(
-          provenance.get(code) ?? { code, provenance: CONTENT_PROVENANCE.modelBoolean, evidence: "branch progression booleans" },
+          provenance.get(code) ?? {
+            code,
+            provenance: CONTENT_PROVENANCE.modelBoolean,
+            gate: "branch_review",
+            coordinate: { branchIndex: b.index },
+            evidence: "branch progression booleans",
+          },
         );
       }
       perBranch.push({ index: b.index, codes: [...codes] });
@@ -284,8 +292,10 @@ export function collectCrossBranchDefects(
 ): CrossBranchOutcome {
   const errors: string[] = [];
   const contentFindings: ContentFinding[] = [];
+  // Cross-branch findings compare EVERY branch, so no single branch index owns them. The gate is
+  // still stamped here, at the observation, rather than guessed downstream from the code string.
   const found = (code: string, provenance: ContentFinding["provenance"], evidence: string) =>
-    contentFindings.push({ code, provenance, evidence });
+    contentFindings.push({ code, provenance, gate: "cross_branch_review", evidence });
   if (branches.length < 2) return split(errors, contentFindings);
   if (!cross) return split(["review_cross_branch_missing"], contentFindings);
 
