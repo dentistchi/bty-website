@@ -59,8 +59,12 @@ const cross = (over: Partial<CrossBranchReview> = {}): CrossBranchReview => ({
   ...over,
 });
 
-const run = (dims: [string, string], c: CrossBranchReview = cross()) =>
-  collectCrossBranchDefects([branch(0, dims[0]), branch(1, dims[1])], c);
+const run = (dims: [string, string], c: CrossBranchReview = cross()) => {
+  const out = collectCrossBranchDefects([branch(0, dims[0]), branch(1, dims[1])], c);
+  // The collector now emits provenance-carrying findings. These cases ask WHICH defect was
+  // established, so they read codes; `findings` stays available for the provenance assertions.
+  return { ...out, defects: out.contentFindings.map((f) => f.code) };
+};
 
 // --- the four measured dimensions, verbatim ---------------------------------
 const HOW_MUCH = "How much detail to provide about the next steps?";
@@ -100,7 +104,7 @@ describe("decision-variable distinctness", () => {
       ],
       cross(),
     );
-    expect(r.defects).toContain("cross_branch_axis_collapse");
+    expect(r.contentFindings.map((f) => f.code)).toContain("cross_branch_axis_collapse");
   });
 });
 
@@ -158,17 +162,26 @@ describe("one form implementation, two callers", () => {
 });
 
 /*
-  NOT CHANGED HERE, AND DELIBERATELY VISIBLE.
+  THE LATENT MISALIGNMENT, NOW REPAIRED (R2.34).
 
-  `generic_communication_collapse` still fires from `isCommunicationAxis`, a TOPIC regex, when every
-  branch dimension merely mentions communication vocabulary. The measured pair WHO / WHAT are
-  different decision variables, yet both contain "update", so the topic rule alone would call them
-  one generic axis. That code did NOT appear in any of the ten retained cases, so it is recorded as a
-  latent misalignment rather than silently weakened to improve a replay number.
+  This block used to RECORD a defect rather than fix it: WHO and WHAT are different decision
+  variables, yet both mention "update", so the topic regex called them one generic axis. It was left
+  visible at the time because no retained case had exercised it and weakening a rule to improve a
+  replay number would have been dishonest.
+
+  The audit later measured the same shape firing for real (PTR c01#3) AND staying silent on genuine
+  repetition (LEG c01#1), which settled it: vocabulary cannot establish variable repetition. The rule
+  is removed rather than retuned, and this test now pins the corrected behaviour.
 */
-describe("latent topic-level rule, recorded not repaired", () => {
-  it("7. two different variables that both mention updating still trip the TOPIC regex", () => {
-    expect(run([WHO, WHAT]).defects).toContain("generic_communication_collapse");
+describe("the topic-level rule is gone, not retuned", () => {
+  it("7. two different variables that both mention updating no longer collapse", () => {
+    expect(run([WHO, WHAT]).defects).not.toContain("generic_communication_collapse");
+  });
+
+  it("7b. …and the same pair still establishes nothing else by accident", () => {
+    const r = run([WHO, WHAT]);
+    expect(r.defects).toEqual([]);
+    expect(r.terminalErrors).toEqual([]);
   });
 });
 

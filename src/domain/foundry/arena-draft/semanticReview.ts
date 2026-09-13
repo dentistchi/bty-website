@@ -49,6 +49,12 @@ import {
   type CrossBranchReview,
   LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES,
 } from "./branchProgression";
+import {
+  CONTENT_PROVENANCE,
+  splitContentFindings,
+  type ContentFinding,
+  type ContentProvenance,
+} from "./contentAuthority";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -396,8 +402,8 @@ export type ReviewAdvisory = {
 };
 
 export type ReviewValidation =
-  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory; integritySignals?: string[] }
-  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory; integritySignals?: string[] }
+  | { ok: true; value: SemanticReview; verdict: "accept"; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ContentFinding[]; telemetryFindings?: ContentFinding[] }
+  | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[]; advisory: ReviewAdvisory; integritySignals?: string[]; terminalFindings?: ContentFinding[]; telemetryFindings?: ContentFinding[] }
   | { ok: true; value: SemanticReview; verdict: "no_safe"; reasonCode: NoSafeReasonCode }
   /**
    * R2.25 — a failed validation now carries what it saw.
@@ -659,16 +665,29 @@ export function validateSemanticReview(
 
   if (value.noSafeJudgmentSpace) return { ok: true, value, verdict: "no_safe", reasonCode: value.noSafeReasonCode };
 
-  // Collect the defects the detail fields actually establish.
-  const defects: string[] = [];
+  /*
+    R2.34 — CONTENT FINDINGS CARRY THEIR ORIGIN.
+
+    These used to be plain strings, so by the time anything asked "should this reject?" the answer
+    could only come from the string itself — which is how a model-written defect code and a
+    code-proved one became indistinguishable. `push` records WHERE each finding came from, at the
+    moment it is created, and the authority split happens once at the end.
+  */
+  const contentFindings: ContentFinding[] = [];
+  const push = (code: string, provenance: ContentProvenance, evidence?: string) => {
+    contentFindings.push({ code, provenance, ...(evidence ? { evidence } : {}) });
+  };
+  const pushAll = (codes: string[], provenance: ContentProvenance, evidence?: string) => {
+    for (const c of codes) push(c, provenance, evidence);
+  };
   for (const c of choiceReviews) {
-    if (!c.defensible) defects.push(...(c.defectCodes.length ? c.defectCodes : ["bad_faith_option"]));
-    else defects.push(...c.defectCodes);
-    if (!c.legitimateValue.trim() && c.defensible) defects.push("no_legitimate_value");
-    if (!c.acceptedCost.trim() && c.defensible) defects.push("dominated_choice");
+    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["bad_faith_option"], CONTENT_PROVENANCE.modelDefectCode, "primary choice defensible=false");
+    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "primary choice defectCodes");
+    if (!c.legitimateValue.trim() && c.defensible) push("no_legitimate_value", CONTENT_PROVENANCE.modelBoolean, "empty legitimateValue");
+    if (!c.acceptedCost.trim() && c.defensible) push("dominated_choice", CONTENT_PROVENANCE.modelBoolean, "empty acceptedCost");
   }
   for (const b of branchReviews) {
-    if (b.repeatsPrimaryDecision) defects.push("branch_repeats_primary");
+    if (b.repeatsPrimaryDecision) push("branch_repeats_primary", CONTENT_PROVENANCE.modelBoolean, "repeatsPrimaryDecision");
     /*
       DECISION B (R2.28) — A COMMITTED BEHAVIOUR CHANGE, NOT A CLEANUP.
 
@@ -686,36 +705,39 @@ export function validateSemanticReview(
       What still rejects automatically is deterministic normalized identity in
       `collectCrossBranchDefects`, which proves sameness rather than judging it.
     */
-    defects.push(...b.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)));
+    pushAll(b.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)), CONTENT_PROVENANCE.modelDefectCode, "branch defectCodes");
   }
-  if (!boundaryCompliant && ctx.constraintIds.length > 0) defects.push("boundary_violation");
-  if (!value.twoValuesInTension) defects.push("no_value_tension");
+  if (!boundaryCompliant && ctx.constraintIds.length > 0) push("boundary_violation", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "boundaryCompliant=false");
+  if (!value.twoValuesInTension) push("no_value_tension", CONTENT_PROVENANCE.modelBoolean, "twoValuesInTension=false");
 
   // BOUNDARY GROUNDING — silence about a rule is not compliance.
   for (const b of boundaryAssessments) {
-    if (!b.presentInScenario) defects.push("confirmed_boundary_absent");
-    if (!b.operationalized) defects.push("boundary_not_operationalized");
+    if (!b.presentInScenario) push("confirmed_boundary_absent", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "presentInScenario=false");
+    if (!b.operationalized) push("boundary_not_operationalized", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "operationalized=false");
     // Present, claimed operational, yet biting no DECISION stage: deleting the rule would leave the
     // scenario unchanged. That is the exact c18 shape.
     if (b.presentInScenario && b.operationalized && !b.affectedStages.some((s) => OPERATIVE_STAGES.includes(s))) {
-      defects.push("vacuous_boundary_compliance");
+      push("vacuous_boundary_compliance", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "no operative affectedStages");
     }
     if (!b.allPrimaryChoicesComply || !b.allTradeoffChoicesComply || b.violatedChoiceReferences.length > 0) {
-      defects.push("choice_bypasses_boundary");
+      push("choice_bypasses_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "choice compliance booleans");
     }
-    if (!b.allActionChoicesComply) defects.push("action_reopens_boundary");
-    if (!b.allBranchesPreserve || b.violatedBranchReferences.length > 0) defects.push("branch_drops_boundary");
-    if (!b.prohibitedAlternativeExcluded) defects.push("boundary_treated_as_optional");
-    defects.push(...b.defectCodes);
+    if (!b.allActionChoicesComply) push("action_reopens_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "allActionChoicesComply=false");
+    if (!b.allBranchesPreserve || b.violatedBranchReferences.length > 0) push("branch_drops_boundary", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "branch preservation booleans");
+    if (!b.prohibitedAlternativeExcluded) push("boundary_treated_as_optional", CONTENT_PROVENANCE.provisionalBoundaryBoolean, "prohibitedAlternativeExcluded=false");
+    // A model-written boundary code earns nothing from sharing a family with the booleans above.
+    pushAll(b.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "boundaryAssessments defectCodes");
   }
 
   // ALL-PHASE CHOICE QUALITY — the same standard at every phase. A good primary choice does not
   // license a defective tradeoff or action.
-  defects.push(...phase.defects);
+  pushAll(phase.defects, CONTENT_PROVENANCE.modelDefectCode, "phaseChoices defectCodes");
 
   // SAME-BRANCH PROGRESSION (c09) and CROSS-BRANCH CAUSAL DIVERSITY (c18).
   const progression = collectBranchProgressionDefects(branchReviews);
-  defects.push(...progression.defects);
+  // Provenance travels WITH the finding from where it was established. Re-tagging everything here
+  // would erase the one exact-identity proof the same-branch collector actually performs.
+  contentFindings.push(...progression.contentFindings);
   const cross = collectCrossBranchDefects(branchReviews, ctx.branchCount >= 2 ? crossBranch : null);
   /*
     DEBT C, WITH SEVERITY (R2.28).
@@ -735,28 +757,38 @@ export function validateSemanticReview(
   */
   if (cross.terminalErrors.length) return { ok: false, errors: [...new Set(cross.terminalErrors)] };
   const integritySignals = cross.signals;
-  defects.push(...cross.defects);
+  contentFindings.push(...cross.contentFindings);
   // Part 8 rule 4 — repeated meaning inside a branch cannot coexist with valid progression.
   if (branchReviews.some((b) => b.progressionValid && b.repeatedMeaningPairs.length > 0)) {
-    defects.push("repeated_choice_meaning_within_branch");
+    push("repeated_choice_meaning_within_branch", CONTENT_PROVENANCE.modelBoolean, "repeatedMeaningPairs non-empty");
   }
   // Part 8 rule 1 (primary cross-check) — the two per-choice contracts must agree about primary.
   for (const c of choiceReviews) {
     const p = phase.reviews.find((x) => x.phase === "primary" && x.choiceIndex === c.index);
-    if (p && p.defensible !== c.defensible) defects.push("review_contradictory");
+    if (p && p.defensible !== c.defensible) push("review_contradictory", CONTENT_PROVENANCE.modelBoolean, "primary defensible disagreement");
   }
 
   // URGENCY SAFETY — a pause to satisfy a safety rule is legitimate; a pause for convenience is not.
-  if (urgency.overallUrgencyVerdict === "unsafe") defects.push("unsafe_delay");
+  if (urgency.overallUrgencyVerdict === "unsafe") push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "overallUrgencyVerdict=unsafe");
   for (const c of urgency.choices) {
     // A delay with no stated safety basis is not defensible however it is described.
-    if (c.introducesDelay && !c.safetyBasis.trim()) defects.push("unsafe_delay");
-    if (c.foreseeableHarm.trim() && !c.safetyBasis.trim()) defects.push("avoidable_foreseeable_harm");
-    if (!c.defensible) defects.push(...(c.defectCodes.length ? c.defectCodes : ["unsafe_delay"]));
-    else defects.push(...c.defectCodes);
+    if (c.introducesDelay && !c.safetyBasis.trim()) push("unsafe_delay", CONTENT_PROVENANCE.modelBoolean, "delay without safetyBasis");
+    if (c.foreseeableHarm.trim() && !c.safetyBasis.trim()) push("avoidable_foreseeable_harm", CONTENT_PROVENANCE.modelBoolean, "harm without safetyBasis");
+    if (!c.defensible) pushAll(c.defectCodes.length ? c.defectCodes : ["unsafe_delay"], CONTENT_PROVENANCE.modelDefectCode, "urgency choice defensible=false");
+    else pushAll(c.defectCodes, CONTENT_PROVENANCE.modelDefectCode, "urgency defectCodes");
   }
 
-  const unique = [...new Set(defects)];
+  /*
+    R2.34 — LEG 1 OF DEFAULT-TERMINAL, REMOVED.
+
+    `unique` used to be every defect the details mentioned, so a non-empty set was a rejection by
+    construction and the reviewer's opinion was the product's verdict. It now holds ONLY findings
+    whose provenance earns authority. Everything else survives in `telemetryFindings`: downgraded,
+    not deleted, because the question "what did the reviewer see that we refused to trust?" has to
+    stay answerable.
+  */
+  const { terminalFindings, telemetryFindings } = splitContentFindings(contentFindings);
+  const unique = [...new Set(terminalFindings.map((f) => f.code))];
 
   /*
     ★ ONE AUTHORITY. THE DETAILS DECIDE.
@@ -790,8 +822,8 @@ export function validateSemanticReview(
   };
 
   return unique.length
-    ? { ok: true, value, verdict: "reject", defects: unique, advisory, integritySignals }
-    : { ok: true, value, verdict: "accept", advisory, integritySignals };
+    ? { ok: true, value, verdict: "reject", defects: unique, advisory, integritySignals, terminalFindings, telemetryFindings }
+    : { ok: true, value, verdict: "accept", advisory, integritySignals, terminalFindings, telemetryFindings };
 }
 
 // ---------------------------------------------------------------------------

@@ -212,7 +212,21 @@ describe("contradiction no longer buys a second review call", () => {
       if (isReviewRequest(p)) {
         const r = acceptReview(draft, {}, []) as Record<string, unknown> & { branches: Array<Record<string, unknown>> };
         r.overallVerdict = "accept";
-        r.branches = r.branches.map((b, i) => (i === 0 ? { ...b, repeatsPrimaryDecision: true, progressionValid: false } : b));
+        /*
+          R2.34 — THE TRIGGER MOVED, THE SHAPE DID NOT.
+
+          This fixture needs an accept verdict standing beside a finding that actually DECIDES, and
+          `repeatsPrimaryDecision` no longer does: it is a reviewer boolean, so the authority model
+          routes it to telemetry and the draft would be accepted. The case is about CALL ACCOUNTING —
+          one review call, no rerun, no contradiction code — so the trigger is swapped for one that
+          still holds authority: two branches whose decision dimensions are byte-identical, which
+          code proves rather than the reviewer asserts.
+        */
+        r.branches = r.branches.map((b, i) => ({
+          ...b,
+          nextDecisionDimension: "who owns the escalation",
+          ...(i === 0 ? { repeatsPrimaryDecision: true, progressionValid: false } : {}),
+        }));
         return { choices: [{ message: { content: JSON.stringify(r) } }] };
       }
       return { choices: [{ message: { content: providerJson(draft, undefined, []) } }] };
@@ -230,6 +244,8 @@ describe("contradiction no longer buys a second review call", () => {
     expect(outcomes).not.toContain("review_rerun");
     expect(outcomes).not.toContain("reviewer_terminal_failure");
     expect(seen.map((o) => o.code)).not.toContain("review_verdict_contradicts_details");
+    // The rejection is the PROVEN one; the reviewer's own boolean rode along as telemetry.
+    expect(seen.flatMap((o) => o.defectCodes ?? [])).toContain("cross_branch_axis_collapse");
   });
 
   it("K — an advisory reject with no defect consumes ONE call, accepts, and signals the concern", async () => {

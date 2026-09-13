@@ -69,6 +69,15 @@ export type RetentionRecord = {
   totalMs: number | null;
   /** R2.30 — per-choice construction evidence, present only when the observer captured content. */
   constructions?: RetentionPresence<Record<string, unknown>>;
+  /*
+    R2.34 — CONTENT FINDINGS THAT WERE DENIED AUTHORITY.
+
+    Additive and OPTIONAL, so `schemaVersion` does not move and every historical artifact still
+    parses: absent means "this record predates the authority split", never "the reviewer was silent".
+    Each entry keeps its provenance, because the answerable question is not *what did the reviewer
+    say* but *through which path did it say it, and why did that path earn nothing*.
+  */
+  contentTelemetry?: Array<{ code: string; provenance: string; evidence?: string }>;
   /** Derived by `deriveParityGrade`. Never supplied by a caller. */
   parityGrade?: ParityGrade;
 };
@@ -122,6 +131,21 @@ export function applyObservation(record: RetentionRecord, o: GenObservation): Re
   else if (o.scenario && !record.draft.present) record.draft = { present: true, parsed: o.scenario };
 
   if (o.review !== undefined) record.reviewCalls.push(o.review);
+  // Telemetry ACCUMULATES across attempts — a later accept must not erase what an earlier attempt
+  // reported and we declined to act on. Deduped by code+provenance, the authority unit itself.
+  if (o.contentTelemetry !== undefined && o.contentTelemetry.length > 0) {
+    const existing = record.contentTelemetry ?? [];
+    const seen = new Set(existing.map((f) => `${f.code}|${f.provenance}`));
+    record.contentTelemetry = [
+      ...existing,
+      ...o.contentTelemetry.filter((f) => {
+        const key = `${f.code}|${f.provenance}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }),
+    ];
+  }
   // R2.30 — construction rides the same observation as the scenario it describes.
   if (o.constructions !== undefined) record.constructions = { present: true, parsed: o.constructions };
   if (o.code !== undefined && record.primaryCode === null) record.primaryCode = o.code;
@@ -195,6 +219,9 @@ export function parseRetentionRecord(raw: unknown): { ok: true; value: Retention
     defectCodes: arr<string>(r.defectCodes),
     totalMs: typeof r.totalMs === "number" ? r.totalMs : null,
     ...(r.constructions !== undefined ? { constructions: presence<Record<string, unknown>>(r.constructions) } : {}),
+    ...(r.contentTelemetry !== undefined
+      ? { contentTelemetry: arr<{ code: string; provenance: string; evidence?: string }>(r.contentTelemetry) }
+      : {}),
   };
   value.parityGrade = deriveParityGrade(value);
   return { ok: true, value };

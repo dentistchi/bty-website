@@ -43,6 +43,20 @@ const guided: GuidedAnswers = {
 };
 const input = { locale: "en" as const, facts, guided };
 
+/*
+  R2.34 — A REJECTION THAT STILL HOLDS AUTHORITY.
+
+  These cases exercise retry MECHANICS — packet contents, call accounting, sampling reuse — so they
+  need a review that genuinely rejects. Model-authored defect codes no longer do: they are telemetry
+  under the authority model. This helper adds the one thing that still decides, byte-identical next
+  decision dimensions across siblings, which code proves rather than the reviewer asserts. The
+  model's own codes are left in place, so what each test was actually looking at is unchanged.
+*/
+const withProvenCollapse = <T extends { branches: Array<Record<string, unknown>> }>(r: T): T => ({
+  ...r,
+  branches: r.branches.map((b) => ({ ...b, nextDecisionDimension: "who owns the escalation" })),
+});
+
 const goodDraft: ArenaScenarioDraft = {
   title: "Raising a risk under a deadline",
   opening:
@@ -517,7 +531,7 @@ describe("R2.17 — every reviewer outcome is observable", () => {
   });
 
   it("a reviewer rejection is recorded with its defect code", async () => {
-    routeReview(groundedReview({
+    routeReview(withProvenCollapse(groundedReview({
       primaryChoices: [
         { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
         { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
@@ -525,15 +539,22 @@ describe("R2.17 — every reviewer outcome is observable", () => {
       overallVerdict: "reject",
       defectCodes: ["moral_decoy"],
       retryInstruction: "Replace the concealment option.",
-    }));
+    })));
     await generateArenaScenarioDraft(constrained);
-    // R2.23 — the reviewer's findings now go through the SAME precedence authority as the
-    // deterministic gates, so the outcome names the gate level. moral_decoy is Level 5.
-    expect(observed.map((o) => o.outcome)).toContain("gate_level_5");
-    expect(observed.map((o) => o.code)).toContain("moral_decoy");
+    /*
+      R2.23 — the reviewer's findings go through the SAME precedence authority as the deterministic
+      gates, so the outcome names the gate level. R2.34 narrowed WHICH findings get there: the
+      rejection is the level-6 proven axis collapse, and `moral_decoy` — which used to name this
+      outcome at level 5 — is retained beside it without deciding anything.
+    */
+    expect(observed.map((o) => o.outcome)).toContain("gate_level_6");
+    expect(observed.map((o) => o.code)).toContain("cross_branch_axis_collapse");
+    expect(observed.map((o) => o.code)).not.toContain("moral_decoy");
+    const gate6 = observed.find((o) => o.outcome === "gate_level_6");
+    expect((gate6?.contentTelemetry ?? []).map((f) => f.code)).toContain("moral_decoy");
     // R2.25 — the first observation is now `review_subject_frozen`, so the packet digest is read
     // from the rejection observation itself rather than from position 0.
-    expect(observed.find((o) => o.outcome === "gate_level_5")?.correctionPacketSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(gate6?.correctionPacketSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("a malformed reviewer response is recorded", async () => {
@@ -558,6 +579,8 @@ describe("R2.17 — every reviewer outcome is observable", () => {
 });
 
 describe("R2.18 — defect-specific retry feedback reaches the model", () => {
+
+
   const rejectThenAccept = (rejectReview: unknown) => {
     let gen = 0, rev = 0;
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) => {
@@ -569,13 +592,13 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
       return envelope(providerJson(goodDraft));
     });
   };
-  const decoyReview = acceptReview(goodDraft, {
+  const decoyReview = withProvenCollapse(acceptReview(goodDraft, {
     primaryChoices: [
       { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
       { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
     ],
     overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace the concealment option.",
-  });
+  }));
 
   it("the SECOND request carries the exact defect codes — it is no longer identical to the first", async () => {
     rejectThenAccept(decoyReview);
@@ -587,8 +610,15 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
     const second = genCalls[1][0].messages.map((m: { content: string }) => m.content).join("\n");
     expect(second).not.toBe(first); // the measured R2.17 defect was a byte-identical retry
     expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
-    expect(second).toContain("moral_decoy");
-    expect(second).toMatch(/primary choice 2/i); // R2.23 correction-packet coordinate wording
+    expect(second).toContain("cross_branch_axis_collapse");
+    /*
+      AND IT MUST NOT CARRY WHAT WE CANNOT DEMAND.
+
+      `moral_decoy` was denied authority, so instructing the generator to fix it would spend a real
+      retry on an opinion the product declined to act on — telemetry consuming correction budget
+      through the back door. Its absence here is a contract, not an accident.
+    */
+    expect(second).not.toContain("moral_decoy");
   });
 
   it("21. the retry preserves the original facts and boundaries verbatim", async () => {
@@ -641,13 +671,13 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
 });
 
 describe("R2.19 — rejected-attempt content capture is opt-in", () => {
-  const decoyReview = acceptReview(goodDraft, {
+  const decoyReview = withProvenCollapse(acceptReview(goodDraft, {
     primaryChoices: [
       { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
       { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
     ],
     overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace the concealment option.",
-  });
+  }));
   const routeReject = () =>
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
       isReviewRequest(params) ? envelope(JSON.stringify(decoyReview)) : envelope(providerJson(goodDraft)),
@@ -657,7 +687,7 @@ describe("R2.19 — rejected-attempt content capture is opt-in", () => {
     __setGenObserver((o) => observed.push(o)); // no captureContent
     routeReject();
     await generateArenaScenarioDraft(input);
-    const rej = observed.filter((o) => o.code === "moral_decoy"); // R2.23: outcome is now gate_level_5
+    const rej = observed.filter((o) => o.code === "cross_branch_axis_collapse"); // R2.34: the authoritative code
     expect(rej.length).toBeGreaterThan(0);
     for (const o of rej) {
       expect(o.scenario).toBeUndefined();
@@ -670,13 +700,15 @@ describe("R2.19 — rejected-attempt content capture is opt-in", () => {
     __setGenObserver((o) => observed.push(o), { captureContent: true });
     routeReject();
     await generateArenaScenarioDraft(input);
-    const first = observed.find((o) => o.code === "moral_decoy"); // R2.23: outcome is now gate_level_5
+    const first = observed.find((o) => o.code === "cross_branch_axis_collapse"); // R2.34: the authoritative code
     expect(first).toBeDefined();
     // the rejected scenario itself — the evidence missing from the R2.18 c01 artifact
     expect((first!.scenario as ArenaScenarioDraft).primary.choices).toHaveLength(2);
+    // The CAPTURED review still holds everything the reviewer said, authority or not — that is what
+    // capture is for. The retry feedback, which spends budget, holds only what has authority.
     expect(JSON.stringify(first!.review)).toContain("moral_decoy");
     expect(first!.retryFeedback).toMatch(/ATTEMPT 1 CORRECTION/);
-    expect(first!.retryFeedback).toMatch(/primary choice 2/i); // R2.23 packet coordinate wording
+    expect(first!.retryFeedback).toContain("cross_branch_axis_collapse");
   });
 
   it("captured evidence carries no credential, header or account metadata", async () => {
@@ -818,13 +850,13 @@ describe("R2.22 — sampling configuration is explicit and environment-independe
   });
 
   it("48. the retry reuses the generation settings — there is no second sampling path", async () => {
-    const reject = acceptReview(goodDraft, {
+    const reject = withProvenCollapse(acceptReview(goodDraft, {
       primaryChoices: [
         { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
         { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
       ],
       overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace it.",
-    });
+    }));
     let rev = 0;
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) => {
       if (isReviewRequest(params)) {

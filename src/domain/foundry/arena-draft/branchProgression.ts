@@ -27,6 +27,7 @@
 
 import { GEN_EXPLANATION_MAX, GEN_PAIRS_MAX_ITEMS, GEN_PAIR_MAX, GEN_REVIEW_TEXT_MAX } from "./types";
 import { namesADecision } from "./decisionPlan";
+import { CONTENT_PROVENANCE, type ContentFinding } from "./contentAuthority";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -188,15 +189,23 @@ export const CROSS_BRANCH_REVIEW_JSON_SCHEMA = {
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, " ").replace(/\s+/g, " ").trim();
 
-/**
- * The measured c18 collapse axis. All-branch convergence on "what do we tell people, and when" is
- * the one generic axis observed in accepted output, so it is named explicitly rather than inferred
- * from a general similarity score.
- */
-const COMMUNICATION_AXIS = /\b(communicat|tell|telling|inform|notify|notification|announce|message|messaging|update|updating|disclos|timeline|timing|when to say|what to say|report to)/;
-export const isCommunicationAxis = (dimension: string): boolean => COMMUNICATION_AXIS.test(dimension.toLowerCase());
+/*
+  REMOVED (R2.34): the communication-vocabulary axis detector and its `isCommunicationAxis` helper.
 
-export type BranchDefects = { defects: string[]; perBranch: Array<{ index: number; codes: string[] }> };
+  It matched topic words — communicat/tell/inform/notify/timing — across every branch dimension and
+  called the result a collapsed decision variable. The audit measured it failing in BOTH directions:
+  PTR c01#3 fired on branches deciding WHAT to communicate versus WHEN (different variables, shared
+  vocabulary), and LEG c01#1 stayed silent on two branches that genuinely repeated one balancing
+  variable in different words. The regex is also English-only, so a Korean dimension could never
+  reach it at all — non-firing Korean evidence never meant the detector was healthy.
+
+  It is NOT being translated, extended, or swapped for another word list. Vocabulary presence cannot
+  establish decision-variable repetition; the exact-identity rule below is the only axis comparison
+  that proves what it claims. The remaining `generic_communication_collapse` sources are model
+  booleans and model-written codes, which now carry their own provenance and land in telemetry.
+*/
+
+export type BranchDefects = { contentFindings: ContentFinding[]; perBranch: Array<{ index: number; codes: string[] }> };
 
 /**
  * SAME-BRANCH progression. A branch that re-asks a settled question, repeats a choice one phase
@@ -205,19 +214,32 @@ export type BranchDefects = { defects: string[]; perBranch: Array<{ index: numbe
 export function collectBranchProgressionDefects(
   branches: Array<BranchProgressionFields & { index: number; repeatsPrimaryDecision: boolean }>,
 ): BranchDefects {
-  const defects: string[] = [];
+  const contentFindings: ContentFinding[] = [];
   const perBranch: BranchDefects["perBranch"] = [];
 
   for (const b of branches) {
     const codes = new Set<string>();
+    // PROVEN only where code proved it. Everything else here relays a reviewer boolean.
+    const provenance = new Map<string, ContentFinding>();
     if (b.repeatsPrimaryDecision || !b.tradeoffAdvancesScenario) codes.add("tradeoff_repeats_primary");
     if (!b.primaryDecisionPreserved) codes.add("action_reopens_primary");
     if (!b.actionAdvancesScenario) codes.add("action_repeats_tradeoff");
     if (b.repeatedMeaningPairs.length > 0) codes.add("repeated_choice_meaning_within_branch");
-    // Two decision phases naming ONE dimension is a loop with two labels on it.
+    /*
+      Two decision phases naming ONE dimension is a loop with two labels on it — and this is one of
+      the two paths where code PROVES the defect: exact normalized equality of two reviewer-authored
+      dimension strings, computed here, never asserted by the model.
+    */
     if (normalize(b.tradeoffDecisionDimension) && normalize(b.tradeoffDecisionDimension) === normalize(b.actionDecisionDimension)) {
       codes.add("no_new_decision_dimension");
+      provenance.set("no_new_decision_dimension", {
+        code: "no_new_decision_dimension",
+        provenance: CONTENT_PROVENANCE.provenExactIdentity,
+        evidence: "tradeoffDecisionDimension === actionDecisionDimension (normalized)",
+      });
     }
+    // A BLANK dimension is an absence, not a proven repetition — it does not inherit the authority
+    // of the equality above, so it keeps the same code with weaker provenance.
     if (!b.tradeoffDecisionDimension.trim() || !b.actionDecisionDimension.trim()) codes.add("no_new_decision_dimension");
     // A branch the reviewer itself calls invalid, with nothing else established, is a loop.
     if (!b.progressionValid && codes.size === 0) codes.add("branch_decision_loop");
@@ -225,11 +247,15 @@ export function collectBranchProgressionDefects(
     if (b.progressionValid && codes.size > 0) codes.add("branch_decision_loop");
 
     if (codes.size) {
-      defects.push(...codes);
+      for (const code of codes) {
+        contentFindings.push(
+          provenance.get(code) ?? { code, provenance: CONTENT_PROVENANCE.modelBoolean, evidence: "branch progression booleans" },
+        );
+      }
       perBranch.push({ index: b.index, codes: [...codes] });
     }
   }
-  return { defects: [...new Set(defects)], perBranch };
+  return { contentFindings, perBranch };
 }
 
 /**
@@ -237,14 +263,14 @@ export function collectBranchProgressionDefects(
  * guess a code's severity. An unlisted code is TERMINAL: a finding nobody classified must stop the
  * review rather than be silently downgraded.
  */
-export type CrossBranchOutcome = { terminalErrors: string[]; signals: string[]; defects: string[] };
+export type CrossBranchOutcome = { terminalErrors: string[]; signals: string[]; contentFindings: ContentFinding[] };
 
-function split(errors: string[], defects: string[]): CrossBranchOutcome {
+function split(errors: string[], contentFindings: ContentFinding[]): CrossBranchOutcome {
   const unique = [...new Set(errors)];
   return {
     terminalErrors: unique.filter((c) => CROSS_BRANCH_INTEGRITY_SEVERITY[c] !== "signal"),
     signals: unique.filter((c) => CROSS_BRANCH_INTEGRITY_SEVERITY[c] === "signal"),
-    defects: [...new Set(defects)],
+    contentFindings,
   };
 }
 
@@ -257,9 +283,11 @@ export function collectCrossBranchDefects(
   cross: CrossBranchReview | null,
 ): CrossBranchOutcome {
   const errors: string[] = [];
-  const defects: string[] = [];
-  if (branches.length < 2) return split(errors, defects);
-  if (!cross) return split(["review_cross_branch_missing"], defects);
+  const contentFindings: ContentFinding[] = [];
+  const found = (code: string, provenance: ContentFinding["provenance"], evidence: string) =>
+    contentFindings.push({ code, provenance, evidence });
+  if (branches.length < 2) return split(errors, contentFindings);
+  if (!cross) return split(["review_cross_branch_missing"], contentFindings);
 
   // FORM BEFORE MEANING (R2.26). A dimension written as a topic label rather than as a decision is
   // not a judgeable axis, so it is withheld from every collapse comparison below and reported as
@@ -287,24 +315,40 @@ export function collectCrossBranchDefects(
     broadened into similarity: two differently worded dimensions that may or may not mean one thing
     are human-review evidence, not an automatic rejection.
   */
-  if (axes.length >= 2 && new Set(axes).size === 1) defects.push("cross_branch_axis_collapse");
-  if (new Set(worlds).size !== worlds.length) defects.push("sibling_world_state_overlap");
-  // The measured c18 shape: every branch reduced to "what do we tell people, and when".
-  if (axes.length >= 2 && axes.every((a) => isCommunicationAxis(a))) defects.push("generic_communication_collapse");
+  if (axes.length >= 2 && new Set(axes).size === 1) {
+    found("cross_branch_axis_collapse", CONTENT_PROVENANCE.provenExactIdentity, "all nextDecisionDimension values normalize equal");
+  }
+  if (new Set(worlds).size !== worlds.length) {
+    found("sibling_world_state_overlap", CONTENT_PROVENANCE.modelBoolean, "duplicate normalized resultingWorldState");
+  }
   // A branch whose causal link to its own primary choice is unstated has not established one.
-  if (branches.some((b) => !b.selectedPrimaryEffect.trim() || !b.causalLink.trim())) defects.push("primary_choice_has_no_causal_effect");
+  if (branches.some((b) => !b.selectedPrimaryEffect.trim() || !b.causalLink.trim())) {
+    found("primary_choice_has_no_causal_effect", CONTENT_PROVENANCE.modelBoolean, "empty selectedPrimaryEffect or causalLink");
+  }
 
-  if (cross.branchesInterchangeable) defects.push("interchangeable_branch_consequence");
-  if (cross.allBranchesSameGenericAxis) defects.push("generic_communication_collapse");
-  if (cross.resultingWorldOverlapPairs.length > 0) defects.push("sibling_world_state_overlap");
-  if (cross.repeatedActionMeaningPairs.length > 0) defects.push("repeated_action_meaning");
+  if (cross.branchesInterchangeable) {
+    found("interchangeable_branch_consequence", CONTENT_PROVENANCE.modelBoolean, "branchesInterchangeable=true");
+  }
+  if (cross.allBranchesSameGenericAxis) {
+    found("generic_communication_collapse", CONTENT_PROVENANCE.modelBoolean, "allBranchesSameGenericAxis=true");
+  }
+  if (cross.resultingWorldOverlapPairs.length > 0) {
+    found("sibling_world_state_overlap", CONTENT_PROVENANCE.modelBoolean, "resultingWorldOverlapPairs non-empty");
+  }
+  if (cross.repeatedActionMeaningPairs.length > 0) {
+    found("repeated_action_meaning", CONTENT_PROVENANCE.modelBoolean, "repeatedActionMeaningPairs non-empty");
+  }
   // Decision B — a model-authored paraphrase-identity verdict is recorded upstream, never acted on.
-  defects.push(...cross.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c)));
+  for (const c of cross.defectCodes.filter((c) => !LLM_NON_AUTHORITATIVE_CROSS_BRANCH_CODES.includes(c))) {
+    found(c, CONTENT_PROVENANCE.modelDefectCode, "crossBranch defectCodes");
+  }
 
   // Shared stakeholders alone are NOT a defect — deliberately absent from the rules above, because a
   // client or a charge nurse can legitimately appear in every branch. Only a reviewer that reports
   // stakeholder overlap AND identical next decisions has actually shown a collapse.
-  if (cross.stakeholderOverlapPairs.length > 0 && axes.length >= 2 && new Set(axes).size === 1) defects.push("interchangeable_branch_consequence");
+  if (cross.stakeholderOverlapPairs.length > 0 && axes.length >= 2 && new Set(axes).size === 1) {
+    found("interchangeable_branch_consequence", CONTENT_PROVENANCE.modelBoolean, "stakeholder overlap plus identical axes");
+  }
 
-  return split(errors, defects);
+  return split(errors, contentFindings);
 }

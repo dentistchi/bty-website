@@ -217,9 +217,18 @@ describe("clean accept retains the review that authorized it", () => {
 
 describe("reject evidence is unchanged by the accept capture", () => {
   it("a rejected review still retains its defects and instruction", async () => {
-    // One detail flipped, so the reviewer's OWN contract derives a rejection. The verdict still
-    // comes from the details exactly where it did before; nothing here asserts a verdict directly.
-    const reject = () => JSON.stringify(acceptReview(GOOD, { twoValuesInTension: false }));
+    /*
+      R2.34 — the flipped detail had to change, because `twoValuesInTension: false` is a reviewer
+      BOOLEAN and now derives telemetry rather than a rejection. This case is about what a rejected
+      review RETAINS, so it needs a rejection that still holds authority: two branches naming the
+      byte-identical next decision, which code proves by exact normalized identity.
+    */
+    const reject = () =>
+      JSON.stringify(
+        acceptReview(GOOD, {
+          branches: acceptReview(GOOD).branches.map((b) => ({ ...b, nextDecisionDimension: "who owns the escalation" })),
+        }),
+      );
     const { fake, counts } = await fakeProvider(reject);
     let outcome: string | null = null;
     try {

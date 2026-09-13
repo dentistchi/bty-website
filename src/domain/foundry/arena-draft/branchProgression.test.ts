@@ -3,7 +3,6 @@ import {
   CROSS_BRANCH_REVIEW_JSON_SCHEMA,
   collectBranchProgressionDefects,
   collectCrossBranchDefects,
-  isCommunicationAxis,
   type BranchProgressionFields,
   type CrossBranchReview,
 } from "./branchProgression";
@@ -60,8 +59,12 @@ const cross = (over: Partial<CrossBranchReview> = {}): CrossBranchReview => ({
   ...over,
 });
 
-const prog = (...b: Branch[]) => collectBranchProgressionDefects(b).defects;
-const diverse = (b: Branch[], c: CrossBranchReview | null = cross()) => collectCrossBranchDefects(b, c).defects;
+// These collectors now emit findings CARRYING PROVENANCE. Most assertions here are about which
+// defect was established at all, so they read the codes; the provenance-specific expectations live
+// in `contentAuthority.test.ts` and in the end-to-end pair.
+const prog = (...b: Branch[]) => collectBranchProgressionDefects(b).contentFindings.map((f) => f.code);
+const diverse = (b: Branch[], c: CrossBranchReview | null = cross()) =>
+  collectCrossBranchDefects(b, c).contentFindings.map((f) => f.code);
 
 // ---------------------------------------------------------------------------
 // 22-27. SAME-BRANCH PROGRESSION
@@ -141,19 +144,46 @@ describe("cross-branch causal diversity", () => {
     expect(diverse([branch(0), branch(1)], cross({ resultingWorldOverlapPairs: ["0-1"] }))).toContain("sibling_world_state_overlap");
   });
 
-  it("34. THE c18 DEFECT — every branch reduced to what to tell people and when", () => {
+  /*
+    34 — REPLACES the old vocabulary-detector test (R2.34).
+
+    The previous version asserted that two DIFFERENT decision variables — WHAT to tell the client vs
+    HOW to communicate a timeline — collapse, because both contain communication words. The audit
+    measured that exact shape as a FALSE POSITIVE in PTR c01#3. The detector is gone, so the
+    expectation inverts: shared topic vocabulary establishes nothing.
+
+    The model boolean survives and still produces the code, but as MODEL_BOOLEAN provenance — which
+    the authority model routes to telemetry. That routing is asserted where it is decided.
+  */
+  it("34. shared communication VOCABULARY across two different decision variables is not a collapse", () => {
     const comms = [
       branch(0, { nextDecisionDimension: "what to tell the client about timing" }),
       branch(1, { nextDecisionDimension: "how to communicate the revised timeline" }),
     ];
-    expect(diverse(comms)).toContain("generic_communication_collapse");
-    expect(diverse([branch(0), branch(1)], cross({ allBranchesSameGenericAxis: true }))).toContain("generic_communication_collapse");
+    expect(diverse(comms)).not.toContain("generic_communication_collapse");
   });
 
-  it("34b. NEGATIVE — ONE communication branch beside an operational one is not a collapse", () => {
-    const mixed = [branch(0, { nextDecisionDimension: "what to tell the client about timing" }), branch(1, { nextDecisionDimension: "who covers the staffing gap" })];
-    expect(diverse(mixed)).toEqual([]);
-    expect(isCommunicationAxis("who covers the staffing gap")).toBe(false);
+  it("34a. the model boolean still REPORTS the code — carrying model provenance, not proof", () => {
+    const out = collectCrossBranchDefects([branch(0), branch(1)], cross({ allBranchesSameGenericAxis: true }));
+    const gcc = out.contentFindings.find((f) => f.code === "generic_communication_collapse");
+    expect(gcc?.provenance).toBe("MODEL_BOOLEAN");
+  });
+
+  it("34b. the removed detector's FALSE NEGATIVE is also gone — neither wording now decides anything", () => {
+    // LEG c01#1: two branches repeating ONE balancing variable in different words, which the
+    // vocabulary rule never matched. It does not fire now either — but nothing else silently does.
+    const paraphrased = [
+      branch(0, { nextDecisionDimension: "how to manage team workload against client expectations" }),
+      branch(1, { nextDecisionDimension: "how to balance client expectations with team readiness" }),
+    ];
+    expect(diverse(paraphrased)).toEqual([]);
+  });
+
+  it("34c. EXACT identity still collapses, and carries PROVEN provenance", () => {
+    const same = [branch(0, { nextDecisionDimension: "who owns the escalation" }), branch(1, { nextDecisionDimension: "who owns the escalation" })];
+    const out = collectCrossBranchDefects(same, cross());
+    const axis = out.contentFindings.find((f) => f.code === "cross_branch_axis_collapse");
+    expect(axis?.provenance).toBe("PROVEN_EXACT_IDENTITY");
   });
 
   it("a branch with no stated causal link to its own primary choice has not established one", () => {
@@ -181,7 +211,7 @@ describe("cross-branch causal diversity", () => {
   });
 
   it("a single-branch scenario has nothing to compare", () => {
-    expect(collectCrossBranchDefects([branch(0)], null)).toEqual({ terminalErrors: [], signals: [], defects: [] });
+    expect(collectCrossBranchDefects([branch(0)], null)).toEqual({ terminalErrors: [], signals: [], contentFindings: [] });
   });
 
   it("the cross-branch schema names every field and forbids extras", () => {

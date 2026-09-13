@@ -124,6 +124,13 @@ const contradictoryReview = () => {
   // ONE detail field says the second primary choice is not defensible. That alone is the contradiction.
   r.primaryChoices[1].defensible = false;
   r.primaryChoices[1].defectCodes = ["bad_faith_option"];
+  /*
+    R2.34 — the contradiction SHAPE is the subject; the rejection is what makes it observable. A
+    model-authored `bad_faith_option` is telemetry now, so these cases would never reach the paths
+    they exist to measure. Byte-identical sibling dimensions restore an authoritative rejection —
+    proved by code — without touching the contradiction the fixture is named for.
+  */
+  r.branches = r.branches.map((b: Record<string, unknown>) => ({ ...b, nextDecisionDimension: "who owns the escalation" }));
   return JSON.stringify(r);
 };
 
@@ -204,7 +211,16 @@ describe("R2.25 SUPERSEDED — a details-derived defect is a content rejection",
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(observed.map((o) => o.code)).not.toContain("review_verdict_contradicts_details");
     const gate = observed.find((o) => o.outcome.startsWith("gate_level_"));
-    expect(gate?.defectCodes).toEqual(expect.arrayContaining(["bad_faith_option"]));
+    /*
+      The claim holds and sharpens: the refusal comes from the DETAILS, not from a reviewer-integrity
+      code. It is now specifically the detail code that could be PROVEN. `bad_faith_option` — the
+      reviewer's own judgment about a choice — rides the same observation as telemetry, which is the
+      distinction this whole change exists to make visible.
+    */
+    expect(gate?.defectCodes).toEqual(expect.arrayContaining(["cross_branch_axis_collapse"]));
+    expect(gate?.defectCodes).not.toContain("bad_faith_option");
+    const telemetry = (gate as { contentTelemetry?: Array<{ code: string }> })?.contentTelemetry ?? [];
+    expect(telemetry.map((f) => f.code)).toContain("bad_faith_option");
   });
 
   it("18/19. the draft is captured before the terminal decision, and the subject is frozen first", async () => {

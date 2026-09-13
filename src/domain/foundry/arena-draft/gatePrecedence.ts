@@ -221,6 +221,22 @@ const PREFIX_RULES: Array<{ prefix: string; level: GateLevel }> = [
 ];
 
 /**
+ * WHICH CHANNEL A FINDING SPEAKS FOR (R2.34).
+ *
+ * INTEGRITY — the review contract itself is broken: malformed, missing or self-contradictory
+ * evidence. An unknown integrity code FAILS CLOSED, because we cannot trust a review we cannot read.
+ *
+ * CONTENT — a claim about the draft's quality. An unknown content code gets NO rejection authority,
+ * because unclassified semantic opinion must not become a product veto by default.
+ *
+ * The two defaults point in opposite directions on purpose; they share one rule: UNCLASSIFIED THINGS
+ * MUST NOT RECEIVE SILENT AUTHORITY. Absent a channel the finding is treated as INTEGRITY — the
+ * conservative side — so no existing caller changes behaviour by omission, and the content path
+ * declares itself where it is actually known to be content.
+ */
+export type FindingChannel = "content" | "integrity";
+
+/**
  * Classify one rejection code. An unknown code is reported at level 8 rather than assumed harmless —
  * a code nobody classified must be visible, not silently outranked.
  */
@@ -240,6 +256,13 @@ function hashRank(s: string): number {
 }
 
 export const isRegisteredCode = (code: string): boolean => REGISTRY.has(code);
+
+/**
+ * Does this finding get to select a rejection? Only the CONTENT channel can lose that right, and
+ * only when nobody classified the code. A registered content code keeps its declared precedence.
+ */
+export const hasRejectionAuthority = (code: string, channel: FindingChannel = "integrity"): boolean =>
+  channel !== "content" || REGISTRY.has(code);
 export const registeredCodes = (): string[] => REGISTRY_ORDER.map((e) => e.code);
 
 // ---------------------------------------------------------------------------
@@ -251,6 +274,8 @@ export type Finding = {
   code: string;
   /** Which gate detected it — kept even when another gate found the same code. */
   gate: string;
+  /** Defaults to `"integrity"` (fail closed). Set `"content"` where the finding judges the draft. */
+  channel?: FindingChannel;
   phase?: string;
   branchIndex?: number;
   choiceIndex?: number;
@@ -272,6 +297,8 @@ export type RejectionOutcome = {
   findings: ResolvedFinding[];
   /** Codes seen more than once, with every gate that reported them — evidence is never dropped. */
   evidenceSources: Record<string, string[]>;
+  /** Unclassified CONTENT codes that were denied rejection authority. Retained, never acted on. */
+  nonAuthoritativeCodes: string[];
 };
 
 const coordinateKey = (f: Finding) => `${f.code}|${f.phase ?? ""}|${f.branchIndex ?? ""}|${f.choiceIndex ?? ""}|${f.boundaryId ?? ""}`;
@@ -286,9 +313,20 @@ const coordinateKey = (f: Finding) => `${f.code}|${f.phase ?? ""}|${f.branchInde
 export function resolveRejection(findings: Finding[]): RejectionOutcome | null {
   if (findings.length === 0) return null;
 
+  /*
+    CHANNEL-AWARE DEFAULT (R2.34). Previously any finding reaching here rejected, and an unregistered
+    code still took level 8 — the third leg of default-terminal. An unknown CONTENT code is now
+    dropped from precedence entirely: it cannot be `primaryCode`, cannot set the rejection level, and
+    cannot make an otherwise clean draft reject. It is reported back in `nonAuthoritativeCodes` so
+    the caller can retain it as telemetry; dropped from AUTHORITY is not dropped from EVIDENCE.
+  */
+  const authoritative = findings.filter((f) => hasRejectionAuthority(f.code, f.channel));
+  const nonAuthoritativeCodes = [...new Set(findings.filter((f) => !hasRejectionAuthority(f.code, f.channel)).map((f) => f.code))].sort();
+  if (authoritative.length === 0) return null;
+
   const bySource: Record<string, string[]> = {};
   const deduped = new Map<string, ResolvedFinding>();
-  for (const f of findings) {
+  for (const f of authoritative) {
     const cls = classifyCode(f.code);
     (bySource[f.code] ??= []).push(f.gate);
     const key = coordinateKey(f);
@@ -319,6 +357,7 @@ export function resolveRejection(findings: Finding[]): RejectionOutcome | null {
         .filter(([, gates]) => new Set(gates).size > 1)
         .map(([code, gates]) => [code, [...new Set(gates)].sort()]),
     ),
+    nonAuthoritativeCodes,
   };
 }
 

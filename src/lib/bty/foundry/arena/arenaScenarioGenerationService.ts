@@ -57,6 +57,13 @@ import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/const
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
 import {
+  CONTENT_PROVENANCE,
+  PROVISIONAL_BOUNDARY_AUTHORITY,
+  classifyContentAuthority,
+  type ContentFinding,
+  type ContentProvenance,
+} from "@/domain/foundry/arena-draft/contentAuthority";
+import {
   buildCorrectionPacket,
   canonicalPacketJson,
   renderCorrectionPacket,
@@ -326,6 +333,16 @@ export type GenObservation = {
   evidenceSources?: Record<string, string[]>;
   correctionPacket?: unknown;
   correctionPacketSha256?: string;
+  /*
+    R2.34 — REVIEWER CONTENT THE PRODUCT REFUSED TO ACT ON.
+
+    Additive, and deliberately NOT gated behind `captureContent`: the codes are the reviewer's own
+    vocabulary, not learner-facing scenario text, and their whole purpose is to stay answerable long
+    after the run. `contentTelemetry` carries each finding with its provenance; `contentTelemetryCodes`
+    is the flattened, sorted code list for the outcome line.
+  */
+  contentTelemetry?: ContentFinding[];
+  contentTelemetryCodes?: string[];
   /** R2.19 — captured ONLY when the harness opts in. See `__setGenObserver`. */
   scenario?: unknown;
   review?: unknown;
@@ -889,7 +906,14 @@ type ReviewOutcome =
    * larger half, and the first measured false accept (a Plan dimension question offered as a learner
    * choice, accepted) could not be explained from retained evidence at all.
    */
-  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[]; advisory?: ReviewAdvisory; parsed: ReviewerDetails }
+  | {
+      kind: "ok";
+      boundaryEvidence: BoundaryEvidence[];
+      advisory?: ReviewAdvisory;
+      parsed: ReviewerDetails;
+      /** R2.34 — content findings the authority model refused to act on. Evidence, never a verdict. */
+      telemetryFindings?: ContentFinding[];
+    }
   | {
       kind: "reject";
       defects: string[];
@@ -901,6 +925,8 @@ type ReviewOutcome =
       phaseDefects: Array<{ phase: string; branchIndex: number; choiceIndex: number; codes: string[] }>;
       instruction: string;
       parsed: ReviewerDetails;
+      terminalFindings?: ContentFinding[];
+      telemetryFindings?: ContentFinding[];
     }
   | { kind: "no_safe_space"; reasonCode: string }
   /**
@@ -1247,9 +1273,17 @@ async function reviewConstraintComplianceCall(
           .filter((c) => c.codes.length > 0),
         instruction: v.value.retryInstruction ?? "",
         parsed: v.value,
+        terminalFindings: v.terminalFindings,
+        telemetryFindings: v.telemetryFindings,
       };
     }
-    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments, advisory: v.advisory, parsed: v.value };
+    return {
+      kind: "ok",
+      boundaryEvidence: v.value.boundaryAssessments,
+      advisory: v.advisory,
+      parsed: v.value,
+      telemetryFindings: v.telemetryFindings,
+    };
   } catch (e) {
     // A telemetry failure is not a transport failure and must not be reported as one.
     if (isProviderCallTelemetryError(e)) throw e;
@@ -1699,6 +1733,8 @@ export async function generateArenaScenarioDraft(
     let acceptedAdvisory: ReviewAdvisory | null = null;
     /** The structured review that ACCEPTED this draft, held by value rather than found by position. */
     let acceptedReview: ReviewerDetails | null = null;
+    /** R2.34 — reviewer content the authority model refused to act on. Retained with the outcome. */
+    let contentTelemetry: ContentFinding[] = [];
     {
       // ---------------------------------------------------------------------
       // R2.25 — FREEZE THE SUBJECT, THEN REVIEW IT (at most twice).
@@ -1939,13 +1975,31 @@ export async function generateArenaScenarioDraft(
         reviewEvidence = review.boundaryEvidence;
         acceptedAdvisory = review.advisory ?? null;
         acceptedReview = review.parsed;
+        contentTelemetry = review.telemetryFindings ?? [];
       }
       if (review.kind === "reject") {
         // R2.23 — the reviewer's findings go through the SAME precedence authority as the
         // deterministic gates, so a boundary or unsafe-delay finding from the review outranks an
         // ordinary quality one regardless of the order the reviewer happened to report them in.
-        const reviewFindings: Finding[] = [
-          ...review.defects.map((code) => ({ code, gate: "semantic_review" })),
+        /*
+          THE FOUR UNFILTERED INGEST SITES, CLOSED (R2.34).
+
+          `review.defects` arrives already filtered by the authority model. These per-coordinate
+          lists did NOT: they are rebuilt straight from the reviewer DTO, so before this change a
+          single genuine boundary rejection dragged every model-written choice/branch/urgency/phase
+          code into precedence with it — and a model-authored level-3 code could take `primaryCode`
+          away from the finding that actually had authority. That is telemetry writing the headline.
+
+          Provenance is assigned BY ORIGIN, never by reading the string: a boundary code derived from
+          the reviewer's own booleans is the named PROVISIONAL exception, while the same string
+          written directly into `defectCodes` is not. Everything denied authority is kept below as
+          telemetry, coordinates intact — downgraded is not deleted.
+        */
+        const provenanceFor = (gate: string, code: string): ContentProvenance =>
+          gate === "boundary_review" && PROVISIONAL_BOUNDARY_AUTHORITY.includes(code)
+            ? CONTENT_PROVENANCE.provisionalBoundaryBoolean
+            : CONTENT_PROVENANCE.modelDefectCode;
+        const candidateFindings: Finding[] = [
           ...review.phaseDefects.flatMap((d) =>
             d.codes.map((code) => ({ code, gate: "phase_choice_review", phase: d.phase, branchIndex: d.branchIndex, choiceIndex: d.choiceIndex })),
           ),
@@ -1954,7 +2008,39 @@ export async function generateArenaScenarioDraft(
           ...review.urgencyDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "urgency_review", phase: "primary", choiceIndex: d.index }))),
           ...review.boundaryDefects.flatMap((d) => d.codes.map((code) => ({ code, gate: "boundary_review", boundaryId: d.boundaryId }))),
         ];
-        const resolved = resolveRejection(reviewFindings)!;
+        const authorizedHere = (f: Finding) =>
+          classifyContentAuthority({ code: f.code, provenance: provenanceFor(f.gate, f.code) }) === "terminal";
+        const reviewFindings: Finding[] = [
+          ...review.defects.map((code) => ({ code, gate: "semantic_review", channel: "content" as const })),
+          ...candidateFindings.filter(authorizedHere).map((f) => ({ ...f, channel: "content" as const })),
+        ];
+        contentTelemetry = [
+          ...(review.telemetryFindings ?? []),
+          ...candidateFindings
+            .filter((f) => !authorizedHere(f))
+            .map((f) => ({
+              code: f.code,
+              provenance: provenanceFor(f.gate, f.code),
+              evidence: `${f.gate} (denied rejection authority)`,
+            })),
+        ];
+        const resolved = resolveRejection(reviewFindings);
+        /*
+          NOTHING SURVIVED THE AUTHORITY FILTER, so there is nothing left to reject FOR. Control falls
+          through to the SAME accept path an `ok` review takes — deterministic projection gates
+          included, since none of this touches them. This is the inversion working as designed, not a
+          gate failing open: every claim the reviewer made is still here, in `contentTelemetry`.
+        */
+        if (!resolved) {
+          reviewEvidence = review.parsed.boundaryAssessments;
+          acceptedAdvisory = null;
+          acceptedReview = review.parsed;
+          logGenOutcome("review_content_telemetry_only", "no_terminal_content_authority", {
+            reviewSubjectSha256: subjectSha,
+            contentTelemetry,
+            contentTelemetryCodes: [...new Set(contentTelemetry.map((f) => f.code))].sort(),
+          });
+        } else {
         const packet = buildCorrectionPacket(attempt, resolved.primaryCode, resolved.findings, immutableContext(input, constraints));
         const fb = renderCorrectionPacket(packet);
         lastPacket = packet;
@@ -1968,6 +2054,9 @@ export async function generateArenaScenarioDraft(
             findings: resolved.findings,
             evidenceSources: resolved.evidenceSources,
             correctionPacketSha256: packetDigest(packet),
+            // A rejection that DID hold authority still records the claims that did not — otherwise
+            // the surviving code looks like the reviewer's whole opinion.
+            ...(contentTelemetry.length ? { contentTelemetry } : {}),
             ...captured({
               scenario: llm.draft,
               review: { defects: resolved.defectCodes, instruction: review.instruction, parsed: review.parsed },
@@ -1980,6 +2069,7 @@ export async function generateArenaScenarioDraft(
         if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
         retryFeedback = fb;
         continue;
+        }
       }
     }
     // R2.23C — ONLY now, after an accepted review, is per-choice constraint evidence materialized.
@@ -2010,6 +2100,8 @@ export async function generateArenaScenarioDraft(
       undefined,
       {
         ...(acceptedReview ? captured({ review: { defects: [], instruction: "", parsed: acceptedReview } }) : {}),
+        // Downgraded is not deleted: an accept now records what the reviewer claimed and we refused.
+        ...(contentTelemetry.length ? { contentTelemetry } : {}),
         ...(acceptedAdvisory
           ? {
               advisoryVerdict: acceptedAdvisory.advisoryVerdict,

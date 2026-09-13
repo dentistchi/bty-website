@@ -32,6 +32,28 @@ const CHOICES: ChoiceRef[] = [
 ];
 const CTX = { primaryCount: 2, branchCount: 2, constraintIds: ["c1_verify"], choices: CHOICES };
 
+/*
+  R2.34 — WHAT THESE ASSERTIONS MEAN NOW.
+
+  Most cases below reproduce a measured defect and used to end in `verdict === "reject"`, because any
+  finding the reviewer mentioned rejected by construction. After the authority inversion that is no
+  longer true, and the Commander decision grandfathered nothing: a content finding rejects ONLY when
+  it arrived through an approved provenance.
+
+  So the cases keep their subject and change their question. `observed()` asserts the reviewer's
+  report was CAPTURED — retained, with the provenance that denied it authority — while the verdict
+  assertion records whether it decided anything. The distinction these helpers draw is the point of
+  the change: a test that only asked "did it reject" cannot tell a LOST observation from a
+  DOWNGRADED one, and the difference between those two is the whole product question.
+*/
+type Validated = ReturnType<typeof validateSemanticReview>;
+/** Codes the reviewer reported that were DENIED authority — retained as evidence. */
+const observed = (r: Validated): string[] =>
+  (r.ok && "telemetryFindings" in r ? (r.telemetryFindings ?? []) : []).map((f) => f.code);
+/** Codes that held authority and decided the verdict. */
+const authoritative = (r: Validated): string[] =>
+  (r.ok && "terminalFindings" in r ? (r.terminalFindings ?? []) : []).map((f) => f.code);
+
 /** A defensible all-phase review entry for one visible choice. */
 const phaseChoice = (c: ChoiceRef, over: Partial<SemanticReview["phaseChoices"][number]> = {}): SemanticReview["phaseChoices"][number] => ({
   phase: c.phase,
@@ -257,7 +279,7 @@ describe("no-safe contract", () => {
 });
 
 describe("difficult-choice contract", () => {
-  it("6. c01 shape — honesty versus concealment is a moral decoy", () => {
+  it("6. c01 shape — a moral decoy is REPORTED, and the report alone no longer rejects", () => {
     const r = validateSemanticReview(review({
       primaryChoices: [
         { index: 0, legitimateValue: "transparency", acceptedCost: "loses face", defensible: true, defectCodes: [] },
@@ -266,11 +288,11 @@ describe("difficult-choice contract", () => {
       overallVerdict: "reject",
       defectCodes: ["moral_decoy"],
     }), CTX);
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("moral_decoy");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("moral_decoy");
   });
 
-  it("7. vague evasion is rejected", () => {
+  it("7. vague evasion is reported as telemetry, not acted on", () => {
     const r = validateSemanticReview(review({
       primaryChoices: [
         { index: 0, legitimateValue: "accountability", acceptedCost: "exposes error", defensible: true, defectCodes: [] },
@@ -278,14 +300,15 @@ describe("difficult-choice contract", () => {
       ],
       overallVerdict: "reject", defectCodes: ["vague_evasion"],
     }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("vague_evasion");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("vague_evasion");
   });
 
   it("8/9. two genuinely defensible options are ACCEPTED", () => {
     expect(validateSemanticReview(review(), CTX).ok && validateSemanticReview(review(), CTX)).toMatchObject({ verdict: "accept" });
   });
 
-  it("10. a choice with no legitimate value is rejected", () => {
+  it("10. a choice with no legitimate value is reported as telemetry", () => {
     const r = validateSemanticReview(review({
       primaryChoices: [
         { index: 0, legitimateValue: "speed", acceptedCost: "less certainty", defensible: true, defectCodes: [] },
@@ -293,10 +316,11 @@ describe("difficult-choice contract", () => {
       ],
       overallVerdict: "reject", defectCodes: ["no_legitimate_value"],
     }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("no_legitimate_value");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("no_legitimate_value");
   });
 
-  it("11. a choice accepting no cost dominates and is rejected", () => {
+  it("11. a dominated choice is reported as telemetry", () => {
     const r = validateSemanticReview(review({
       primaryChoices: [
         { index: 0, legitimateValue: "speed", acceptedCost: "", defensible: true, defectCodes: [] },
@@ -304,21 +328,24 @@ describe("difficult-choice contract", () => {
       ],
       overallVerdict: "reject", defectCodes: ["dominated_choice"],
     }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("dominated_choice");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("dominated_choice");
   });
 
-  it("options with no value tension are rejected", () => {
+  it("options with no value tension are reported as telemetry", () => {
     const r = validateSemanticReview(review({ twoValuesInTension: false, overallVerdict: "reject", defectCodes: ["no_value_tension"] }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("no_value_tension");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("no_value_tension");
   });
 });
 
 describe("branch consequence contract", () => {
-  it("13. c09 shape — a branch that re-asks the primary question is rejected", () => {
+  it("13. c09 shape — a branch re-asking the primary question is reported as telemetry", () => {
     const b = review().branches;
     b[0] = { ...b[0], repeatsPrimaryDecision: true };
     const r = validateSemanticReview(review({ branches: b, overallVerdict: "reject", defectCodes: ["branch_repeats_primary"] }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("branch_repeats_primary");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("branch_repeats_primary");
   });
 
   it("14/16. siblings posing a PROVABLY identical next decision still collapse", () => {
@@ -327,11 +354,13 @@ describe("branch consequence contract", () => {
     b[1] = { ...b[1], nextDecisionDimension: b[0].nextDecisionDimension };
     const r = validateSemanticReview(review({ branches: b, overallVerdict: "reject" }), CTX);
     expect(r.ok && r.verdict === "reject" && r.defects).toContain("cross_branch_axis_collapse");
+    // …and it holds authority because CODE proved the identity, not because the reviewer said so.
+    expect(authoritative(r)).toContain("cross_branch_axis_collapse");
   });
 
   it("14c. a reviewer-authored collapse code is recorded but cannot reject", () => {
     const r = validateSemanticReview(review({ crossBranch: crossOk({ defectCodes: ["cross_branch_axis_collapse"] }) }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toBeFalsy();
+    expect(r.ok && r.verdict).toBe("accept");
   });
 
   it("14b. a per-branch 'not distinct' opinion no longer establishes collapse by itself", () => {
@@ -363,15 +392,21 @@ describe("branch consequence contract", () => {
   whose details carry a defect is still rejected.
 */
 describe("reviewer consistency gates", () => {
-  it("an advisory accept beside its own defects still REJECTS, and records the disagreement", () => {
+  it("an advisory verdict has no authority in EITHER direction, and the disagreement is recorded", () => {
     const b = review().branches;
     b[0] = { ...b[0], repeatsPrimaryDecision: true };
     const r = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
     expect(r.ok).toBe(true);
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects.length).toBeGreaterThan(0);
+    /*
+      The original point stands and has simply changed direction. `overallVerdict` never decided
+      anything, and still does not — but the reviewer's own `repeatsPrimaryDecision` boolean does not
+      decide either, so here BOTH the advisory accept and the observation are non-authoritative and
+      the draft is accepted. The observation is retained, and the disagreement stays measurable.
+    */
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("branch_repeats_primary");
     expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryVerdict).toBe("accept");
-    expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryConsistency).toBe("disagrees");
+    expect(r.ok && r.verdict !== "no_safe" && r.advisory.advisoryConsistency).toBe("agrees");
   });
 
   it("an advisory reject with no defect at all ACCEPTS, and flags an unspecified concern", () => {
@@ -501,7 +536,7 @@ describe("urgency safety (R2.21)", () => {
     ...over,
   });
 
-  it("23. THE c18 DEFECT — urgent action delayed for convenience is rejected", () => {
+  it("23. THE c18 DEFECT — urgency findings are now reported, not enforced", () => {
     const r = validateSemanticReview(review({
       urgency: urgent({
         overallUrgencyVerdict: "unsafe",
@@ -513,12 +548,20 @@ describe("urgency safety (R2.21)", () => {
       overallVerdict: "reject",
       defectCodes: ["convenience_over_safety"],
     }), CTX);
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("convenience_over_safety");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_delay");
+    /*
+      A DELIBERATE REDUCTION IN WHAT THE REVIEWER CAN BLOCK, recorded rather than hidden.
+
+      Code does not establish that a delay is unsafe: the reviewer decides urgency, decides harm, and
+      the only deterministic step is a whitespace check on the `safetyBasis` string IT wrote. Under
+      the authority model that is model opinion, so it is telemetry. The CONFIRMED-BOUNDARY path is
+      what still blocks unsafe content, and it is unchanged — see the boundary cases above.
+    */
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("convenience_over_safety");
+    expect(observed(r)).toContain("unsafe_delay");
   });
 
-  it("24. a choice that creates avoidable foreseeable deterioration is rejected", () => {
+  it("24. avoidable foreseeable deterioration is reported as telemetry", () => {
     const r = validateSemanticReview(review({
       urgency: urgent({
         overallUrgencyVerdict: "unsafe",
@@ -530,7 +573,8 @@ describe("urgency safety (R2.21)", () => {
       overallVerdict: "reject",
       defectCodes: ["avoidable_foreseeable_harm"],
     }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("avoidable_foreseeable_harm");
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("avoidable_foreseeable_harm");
   });
 
   it("25. a pause REQUIRED by a confirmed safety rule is ACCEPTED — time cost is not a defect", () => {
@@ -570,7 +614,7 @@ describe("urgency safety (R2.21)", () => {
     expect(r.ok && r.verdict).toBe("accept");
   });
 
-  it("a delay with NO stated safety basis is rejected however it is described", () => {
+  it("a delay with NO stated safety basis is still DETECTED, however it is described", () => {
     const r = validateSemanticReview(review({
       urgency: urgent({
         overallUrgencyVerdict: "unsafe",
@@ -579,7 +623,8 @@ describe("urgency safety (R2.21)", () => {
       overallVerdict: "reject",
       defectCodes: ["unsafe_delay"],
     }), CTX);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_delay");
+    // The detection is unchanged; only its authority is. It must not quietly stop being observed.
+    expect(observed(r)).toContain("unsafe_delay");
   });
 
   it("28. urgency FABRICATED where the situation has none is a broken review, not a finding", () => {
@@ -602,7 +647,7 @@ describe("urgency safety (R2.21)", () => {
     expect(!r.ok && r.errors).toContain("review_urgency_contradictory");
   });
 
-  it("29. an unsafe delay can NEVER coexist with an accept verdict", () => {
+  it("29. an unsafe delay is recorded beside an accept, and the pairing stays visible", () => {
     const r = validateSemanticReview(review({
       urgency: urgent({
         overallUrgencyVerdict: "unsafe",
@@ -610,9 +655,16 @@ describe("urgency safety (R2.21)", () => {
       }),
       overallVerdict: "accept",
     }), CTX);
-    // SAFETY UNCHANGED: an unsafe delay still rejects — now by its own derived defect.
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_delay");
+    /*
+      This test's original claim — that an unsafe delay can never coexist with an accept — is no
+      longer true, and saying so plainly matters more than keeping a reassuring assertion. The
+      Commander decision made `unsafe_delay` telemetry on every path because nothing in the code
+      establishes the underlying safety fact. The obligation that replaces the old guarantee is that
+      the pairing remains VISIBLE: an accept carrying an unsafe-delay observation is exactly the
+      artifact a human review needs to find.
+    */
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("unsafe_delay");
   });
 
   it("the urgency block must cover every primary choice", () => {
@@ -634,42 +686,48 @@ describe("all-phase defensibility (R2.22)", () => {
   const rejecting = (phaseChoices: SemanticReview["phaseChoices"], codes: string[]) =>
     validateSemanticReview(review({ phaseChoices, overallVerdict: "reject", defectCodes: codes }), CTX);
 
-  it("18. a valid primary with a defective FLAT TRADEOFF is rejected", () => {
+  it("18. a defective FLAT TRADEOFF is still REACHED and reported — coverage, not authority", () => {
     const r = rejecting(withPhaseDefect("flat_tradeoff", -1, 0, { defensible: false, vagueReassurance: true, defectCodes: ["vague_reassurance"] }), ["vague_reassurance"]);
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("vague_reassurance");
+    /*
+      R2.22's achievement is untouched: the reviewer now REACHES every visible choice, including the
+      later phases that once went unreviewed. What changed is what a finding there is worth. Coverage
+      and authority were always separate questions; before the inversion they were indistinguishable
+      because coverage automatically produced a veto.
+    */
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("vague_reassurance");
   });
 
-  it("19. a valid primary and tradeoff with a defective BRANCH ACTION is rejected", () => {
+  it("19. a defective BRANCH ACTION is reached and reported", () => {
     // The measured c01 shape: the decoy sat in a branch's later phase, which was never reviewed.
     const r = rejecting(withPhaseDefect("branch_action", 1, 1, { defensible: false, badFaith: true, defectCodes: ["bad_faith_option"] }), ["bad_faith_option"]);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("bad_faith_option");
+    expect(observed(r)).toContain("bad_faith_option");
   });
 
-  it("19b. a defective FLAT ACTION and a defective BRANCH TRADEOFF are each rejected", () => {
+  it("19b. a defective FLAT ACTION and a defective BRANCH TRADEOFF are each reported", () => {
     expect(rejecting(withPhaseDefect("flat_action", -1, 1, { dominatedBySibling: true, defectCodes: ["dominated_choice"] }), ["dominated_choice"]).ok && true).toBe(true);
     const r = rejecting(withPhaseDefect("branch_tradeoff", 0, 0, { unsafe: true, defectCodes: ["unsafe_option"] }), ["unsafe_option"]);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_option");
+    expect(observed(r)).toContain("unsafe_option");
   });
 
-  it("20. a non-commitment decoy at the action phase is rejected", () => {
+  it("20. a non-commitment decoy at the action phase is reported", () => {
     const r = rejecting(withPhaseDefect("branch_action", 0, 1, { nonCommitmentDecoy: true, defectCodes: ["non_commitment_decoy"] }), ["non_commitment_decoy"]);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("non_commitment_decoy");
+    expect(observed(r)).toContain("non_commitment_decoy");
   });
 
-  it("20b. a choice with no concrete action is vague evasion whatever else it claims", () => {
+  it("20b. a choice with no concrete action is reported as vague evasion whatever else it claims", () => {
     const r = rejecting(withPhaseDefect("primary", -1, 0, { actionable: false, defectCodes: ["vague_evasion"] }), ["vague_evasion"]);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("vague_evasion");
+    expect(observed(r)).toContain("vague_evasion");
   });
 
-  it("14/17. the SAME decoy recurring in two branches is named as a pattern", () => {
+  it("14/17. the SAME decoy recurring in two branches is still NAMED as a pattern", () => {
     const pc = allPhaseChoices().map((c) =>
       c.phase === "branch_action" && c.choiceIndex === 1
         ? { ...c, defensible: false, vagueReassurance: true, defectCodes: ["vague_reassurance"] }
         : c,
     );
     const r = rejecting(pc, ["vague_reassurance"]);
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("repeated_decoy_across_branches");
+    expect(observed(r)).toContain("repeated_decoy_across_branches");
   });
 
   it("21. every visible choice must be reviewed exactly once", () => {
@@ -695,20 +753,23 @@ describe("all-phase defensibility (R2.22)", () => {
 });
 
 describe("reviewer false-negative resistance (R2.22)", () => {
-  it("35. an ACCEPT verdict beside a bad-faith choice is contradictory", () => {
+  it("35. an ACCEPT verdict beside a bad-faith choice keeps BOTH on the record", () => {
     const r = validateSemanticReview(review({
       phaseChoices: withPhaseDefect("branch_action", 0, 0, { badFaith: true, defectCodes: ["bad_faith_option"] }),
       overallVerdict: "accept",
     }), CTX);
-    expect(r.ok && r.verdict).toBe("reject");
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("bad_faith_option");
+    // The reviewer contradicting itself is still worth seeing; it is no longer worth rejecting for.
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("bad_faith_option");
   });
 
-  it("36. 'defensible' with no legitimate value or no real cost is contradictory", () => {
+  it("36. 'defensible' with no legitimate value or no real cost is recorded, not enforced", () => {
     const noValue = validateSemanticReview(review({ phaseChoices: withPhaseDefect("primary", -1, 1, { legitimateValue: "" }), overallVerdict: "accept" }), CTX);
-    expect(noValue.ok && noValue.verdict).toBe("reject");
+    expect(noValue.ok && noValue.verdict).toBe("accept");
+    expect(observed(noValue)).toContain("no_legitimate_value");
     const noCost = validateSemanticReview(review({ phaseChoices: withPhaseDefect("flat_action", -1, 0, { acceptedCost: "  " }), overallVerdict: "accept" }), CTX);
-    expect(noCost.ok && noCost.verdict).toBe("reject");
+    expect(noCost.ok && noCost.verdict).toBe("accept");
+    expect(observed(noCost)).toContain("dominated_choice");
   });
 
   it("37. an ACCEPT verdict while every branch shares one decision axis is contradictory", () => {
@@ -735,14 +796,14 @@ describe("reviewer false-negative resistance (R2.22)", () => {
     expect(!empty.ok && empty.errors).toContain("review_construction_dispute_empty");
   });
 
-  it("39b. the two primary-choice contracts must agree with each other", () => {
+  it("39b. the two primary-choice contracts disagreeing is recorded as telemetry", () => {
     const r = validateSemanticReview(review({
       phaseChoices: withPhaseDefect("primary", -1, 0, { defensible: false, defectCodes: ["moral_decoy"] }),
       overallVerdict: "reject",
       defectCodes: ["moral_decoy"],
     }), CTX);
     // primaryChoices still says index 0 is defensible — the disagreement is recorded, not ignored.
-    expect(r.ok && r.verdict === "reject" && r.defects).toContain("review_contradictory");
+    expect(observed(r)).toContain("review_contradictory");
   });
 
   it("40. an advisory REJECT with no defect anywhere ACCEPTS and signals only", () => {
@@ -957,16 +1018,18 @@ describe("advisory invariance — overallVerdict has zero authority", () => {
       errors: r.ok ? null : r.errors,
     });
 
-  it("A — with defects present, accept and reject decide identically", () => {
+  it("A — with findings present, accept and reject decide identically", () => {
     const b = review().branches;
     b[0] = { ...b[0], repeatsPrimaryDecision: true };
     const asAccept = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
     const asReject = validateSemanticReview(review({ branches: b, overallVerdict: "reject" }), CTX);
     expect(decisionOf(asAccept)).toBe(decisionOf(asReject));
-    expect(asAccept.ok && asAccept.verdict).toBe("reject");
-    // …and only the telemetry differs.
-    expect(asAccept.ok && asAccept.verdict !== "no_safe" && asAccept.advisory.advisoryConsistency).toBe("disagrees");
-    expect(asReject.ok && asReject.verdict !== "no_safe" && asReject.advisory.advisoryConsistency).toBe("agrees");
+    // The invariance is the claim, and it holds in the new direction too: the advisory verdict moves
+    // and the decision does not. Both accept now, because the finding is a model boolean.
+    expect(asAccept.ok && asAccept.verdict).toBe("accept");
+    expect(observed(asAccept)).toContain("branch_repeats_primary");
+    expect(asAccept.ok && asAccept.verdict !== "no_safe" && asAccept.advisory.advisoryConsistency).toBe("agrees");
+    expect(asReject.ok && asReject.verdict !== "no_safe" && asReject.advisory.advisoryConsistency).toBe("disagrees");
   });
 
   it("B — with no defects, accept and reject decide identically", () => {
@@ -986,10 +1049,20 @@ describe("advisory invariance — overallVerdict has zero authority", () => {
     protection has to come from the details themselves — and it does, whichever way the model votes.
   */
   it("c18 — a boundary defect in the details rejects under BOTH advisory verdicts", () => {
+    /*
+      THE FIXTURE CHANGED; THE PROTECTION DID NOT.
+
+      This case used to assert the boundary defect through a model-WRITTEN `defectCodes` entry, which
+      the Commander decision named as telemetry: a reviewer typing a boundary code establishes no
+      boundary fact. The c18 protection it exists to pin lives on the DERIVED path — a compliance
+      boolean the reviewer answered, transformed by code — which keeps terminal authority under the
+      explicitly PROVISIONAL exception. So the fixture now exercises that path, which is the one the
+      product actually relies on.
+    */
     const withBoundaryDefect = () => {
       const bs = review().boundaryAssessments;
       return review({
-        boundaryAssessments: bs.map((a, i) => (i === 0 ? { ...a, compliant: false, defectCodes: ["boundary_violation"] } : a)),
+        boundaryAssessments: bs.map((a, i) => (i === 0 ? { ...a, allPrimaryChoicesComply: false } : a)),
       });
     };
     const asAccept = validateSemanticReview({ ...withBoundaryDefect(), overallVerdict: "accept" }, CTX);
@@ -997,6 +1070,19 @@ describe("advisory invariance — overallVerdict has zero authority", () => {
     expect(asAccept.ok && asAccept.verdict).toBe("reject");
     expect(asReject.ok && asReject.verdict).toBe("reject");
     expect(decisionOf(asAccept)).toBe(decisionOf(asReject));
+    expect(authoritative(asAccept)).toContain("choice_bypasses_boundary");
+  });
+
+  it("c18b — the model WRITING a boundary code does not reach the same authority", () => {
+    // The other half of the pair, and the reason the fixture above had to change: a boundary-shaped
+    // string the reviewer typed is retained as evidence and decides nothing.
+    const bs = review().boundaryAssessments;
+    const r = validateSemanticReview(
+      review({ boundaryAssessments: bs.map((a, i) => (i === 0 ? { ...a, defectCodes: ["boundary_violation"] } : a)) }),
+      CTX,
+    );
+    expect(r.ok && r.verdict).toBe("accept");
+    expect(observed(r)).toContain("boundary_violation");
   });
 
   /* The removed failure class is never produced again, in either direction. */
