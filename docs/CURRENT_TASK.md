@@ -1,3 +1,226 @@
+## 2026-09-14 — AMENDMENT 2: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATION
+
+**[GOV-ARENA-OBSERVER-RUN-1-AMENDMENT-2] COMMANDER CORRECTION TO AMENDMENT-1.**
+This amendment corrects a measurement error in
+[GOV-ARENA-OBSERVER-RUN-1-AMENDMENT-1] and supersedes its §§2, 3, 4 and 7.
+
+§§1, 5 and 6 of AMENDMENT-1 remain in force
+(P1' definition, P6 withdrawal, P3 disposition).
+
+It changes no runtime code, reviewer authority, rejection policy, or
+provider-run authorization.
+
+**1. THE PRIOR SURFACE CLAIM WAS FALSE.**
+
+The prior claim that the semantic reviewer did not receive
+`isActionCommitment` was false.
+
+The error came from treating the loose declared request type as evidence of
+serialized absence.
+
+Tracked source proves that raw action-choice objects are included under
+`branches[*].action` and `flatAction`, and those objects contain
+`isActionCommitment`.
+
+`serializeBroadReviewRequest` serializes the request object directly.
+
+A faithful reconstruction using the retained Cell B draft and constructions,
+the same tracked serializer and runtime source closure, and the measured
+zero-boundary c01 input proves that the resulting serialized review request
+contains the `isActionCommitment=false` value for `p2-a2`.
+
+This is a reconstruction of what the tracked serializer produces from the
+retained Cell B inputs. It is NOT a capture or proof of the live network bytes
+sent during Run 1.
+
+However, `visibleChoices[]` — the prompt-defined per-choice review unit — does
+not contain the flag, and the reviewer prompt does not instruct the model to
+inspect or compare `isActionCommitment`.
+
+Therefore P1' is IN THE SERIALIZED REVIEW PAYLOAD produced by the tracked
+review projection, but OUT OF THE REVIEWER'S DEFINED SCHEMA / INSTRUCTION
+CONTRACT.
+
+Classification:
+
+`REVIEWER NEGATIVE / HUMAN POSITIVE`
+`negative_basis = OUT_OF_SCHEMA`
+
+No third classification such as `IN_PAYLOAD_UNINSTRUCTED` is created.
+That phrase describes the mechanism of this OUT_OF_SCHEMA finding; it is not a
+new adjudication category.
+
+**2. MEASUREMENT — INNER 56d41357.**
+
+Measured source:
+
+- `reviewRequestProjection.ts:36,38` — `action: unknown`,
+  `flatAction: unknown`; these loose declarations were the source of the
+  mistaken absence inference.
+- `reviewRequestProjection.ts:58-64` — `visibleChoices[]` contains
+  `phase`, `branchIndex`, `choiceIndex`, `label`, `construction`;
+  it contains neither `isActionCommitment` nor `id`.
+- `reviewRequestProjection.ts:70` — branch projection assigns
+  `action: b.actionDecision.choices`.
+- `reviewRequestProjection.ts:74` — flat projection assigns
+  `flatAction: draft.actionDecision.choices`.
+- `reviewRequestProjection.ts:79` —
+  `serializeBroadReviewRequest` uses `JSON.stringify(r)` with no subsequent
+  field selection.
+- `types.ts:84-91` — `ActionDecisionChoice` extends the scenario choice shape
+  with `isActionCommitment: boolean`, defined as marking a real observable
+  action commitment as opposed to waiting, preparing, observing, or deferring.
+- `arenaScenarioGenerationService.ts:972-1029` —
+  `REVIEW_SYSTEM_PROMPT` contains zero mentions of
+  `isActionCommitment`, `flatAction`, or `branches[`.
+
+Faithful reconstruction measurement:
+
+- Cell B retained artifact SHA:
+  `3603fe5d4af3099d3af62458bbff574c924d3eebc17113002cbdc842560db1e2`
+- tracked serializer worktree bytes == HEAD
+- runtime dependency closure used by the serializer == HEAD
+- retained Cell B draft + constructions
+- c01 active boundaries = `[]`
+- no provider call
+- serialized bytes = 13,946
+- `"isActionCommitment"` occurrences = 6
+- `p2-a2` false literal present = YES
+- `branches[].action` carries flag = YES
+- `flatAction` carries flag = YES
+- `visibleChoices[]` carries flag = NO
+
+The reconstruction proves what the tracked review serializer produces from the
+retained Cell B inputs; it does not claim capture of the original live network
+request.
+
+**3. RUN-1 2×2 — RESTORED.**
+
+The corrected Run-1 matrix is:
+
+REVIEWER POSITIVE / HUMAN POSITIVE = 0
+REVIEWER POSITIVE / HUMAN NEGATIVE = 0
+REVIEWER NEGATIVE / HUMAN POSITIVE = 1
+REVIEWER NEGATIVE / HUMAN NEGATIVE = 57
+
+RN/HP breakdown:
+
+EXPLICIT = 0
+OMISSION = 0
+OUT_OF_SCHEMA = 1
+
+The single RN/HP is P1'.
+
+The secondary distinct learner-facing-text sensitivity remains:
+
+RN/HN distinct-text = 45
+
+AMENDMENT-1 §3's `0 / 0 / 0 / 57` matrix is superseded.
+
+**4. FINAL RUN-1 REVIEWER SIGNAL — CORRECTED.**
+
+Within the 57 scored concepts already defined by the reviewer schema, every
+reviewer-negative judgment matched HUMAN NEGATIVE.
+
+Separately, human review identified one valid defect, P1'.
+
+The machine fact required to establish P1' was present in the serialized review
+payload produced by the tracked request projection, but the reviewer contract
+did not define that fact as something to inspect or compare.
+
+P1' is therefore an OUT_OF_SCHEMA miss.
+
+Run 1 remains one scored cell and MUST NOT be generalized into a population
+accuracy rate.
+
+**5. PERMANENT MEASUREMENT RULE.**
+
+Observation-surface claims must be proven from serialized provider-payload
+bytes, or from a faithful reconstruction of those bytes using the applicable
+tracked serializer and inputs.
+
+Declared TypeScript types are not evidence of absence.
+
+Loose or `unknown` typing is a trigger to inspect serialization, not permission
+to infer omission.
+
+This rule may be mirrored into engineering-principles by a separate docs
+mutation. No such additional file mutation is authorized here.
+
+**6. NO NEW AUTHORITY.**
+
+This amendment grants no implementation authority beyond the separately
+authorized Commitment Flag Observation scope.
+
+It grants no reviewer rejection authority, provider-run authorization, deploy,
+DB, or migration authority.
+
+
+## 2026-09-14 — AMENDMENT 1: COMMITMENT FLAG OBSERVATION AUTHORIZATION
+
+**[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-1] RE-SCOPE OF §2.**
+This amendment supersedes §2 of [GOV-ARENA-COMMITMENT-FLAG-OBS].
+
+§§1 and 3–16 of that authorization remain in force except for the regression
+clarification stated below.
+
+The previously authorized change described as exposing
+`isActionCommitment` to the reviewer payload is superseded.
+
+The flag is already present elsewhere in the serialized review payload through
+the existing raw action-choice projection.
+
+The authorized implementation is now limited to:
+
+1. add the existing `isActionCommitment` value directly to each relevant
+   action-choice entry in `visibleChoices[]`;
+
+2. instruct the reviewer to use that field only to evaluate semantic
+   consistency between the machine flag and that same visible
+   choice/construction;
+
+3. explicitly prohibit using `isActionCommitment=true` as evidence that an
+   option is correct, preferred, safer, more ethical, more competent, or
+   otherwise superior for any other reviewer finding;
+
+4. leave the existing raw `branches[].action` and `flatAction` projection
+   unchanged.
+
+No new choice `id` projection is authorized.
+
+The existing `phase`, `branchIndex`, and `choiceIndex` coordinates remain the
+authorized per-choice identity for this observation.
+
+Basis:
+
+- `reviewRequestProjection.ts:58-64` —
+  `visibleChoices[]` lacks `isActionCommitment`
+- `reviewRequestProjection.ts:70,74` —
+  raw action projections already contain the underlying action-choice objects
+- `reviewRequestProjection.ts:79` —
+  direct JSON serialization
+- AMENDMENT-2 §2 faithful reconstruction —
+  raw action projection contains the flag while `visibleChoices[]` does not
+
+**REGRESSION CLARIFICATION TO §13.**
+
+Existing §13(A) is to be read precisely as:
+
+the reviewer projection must prove that each relevant
+`visibleChoices[]` action entry carries the correct existing
+`isActionCommitment` boolean for that same choice.
+
+Existing §13(J) remains in force unchanged:
+
+exposing the flag must not repurpose it as a correctness signal for other
+reviewer findings, and equivalent non-mismatch fixtures must retain their prior
+pre-existing defect-code behavior.
+
+No additional rejection authority follows from this amendment.
+
+All prohibitions and closure conditions in
+[GOV-ARENA-COMMITMENT-FLAG-OBS] remain in force.
+
 ## 2026-09-14 — AMENDMENT: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATION
 
 **[GOV-ARENA-OBSERVER-RUN-1-AMENDMENT-1] COMMANDER CORRECTION TO RUN-1 ADJUDICATION.**
