@@ -1,3 +1,187 @@
+## 2026-09-14 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 1
+
+**[GOV-ARENA-OBSERVER-RUN-1] ONE-TIME LIVE PROVIDER AUTHORIZATION.**
+Commander-authorized narrow exception for one Reviewer-as-Observer evidence run.
+This is separate from GOV-ARENA-GEN, does NOT widen that exception, and does NOT
+reopen the 2026-09-08 product HALT.
+
+**1. PURPOSE.**
+The sole experiment axis is SEMANTIC REVIEWER OBSERVATION QUALITY.
+
+The unit of adjudication is the independently enumerable concept slot, not the
+whole record and not the provider call.
+
+This run does NOT evaluate or restore broad reviewer authority.
+Its results may NOT by themselves authorize a content rejection policy.
+
+Human adjudication authority remains COMMANDER.
+
+**2. RUNNER AUTHORITY.**
+Tracked runner:
+
+`scripts/practice-full-retention.ts`
+
+Inner authority:
+
+`56d413570291da5a6fee938fd3d26ad46b125ef3`
+
+The current runtime slice was measured against all 24 existing dirty inner paths.
+All 24 were OFF-PATH or proven NOT REACHABLE.
+No dirty runtime byte participates in the authorized execution path.
+
+**3. EXACT LIVE SAMPLE.**
+Exactly TWO one-cell invocations are authorized:
+
+A.
+fixture = `c01-missed-commitment`
+architecture = `legacy`
+runs = `1`
+correction = `disabled`
+
+B.
+fixture = `c01-missed-commitment`
+architecture = `plan_render_v1`
+runs = `1`
+correction = `disabled`
+
+Each cell may execute ONCE.
+
+No automatic rerun is authorized.
+A rerun of either cell requires a new Commander authorization.
+
+**4. PROVIDER-CALL BOUNDARY.**
+The runner passes `accounting = null`.
+
+Therefore the shared GenerationAccounting call-sequence enforcement is inert on
+this path. `MAX_CALLS_PER_SUBMISSION = 14` MUST NOT be represented as a runner
+ceiling.
+
+No shared total-call ceiling is enforced on this runner path.
+
+Execution scope is bounded by exactly the two authorized one-cell invocations.
+Existing measured per-site loop bounds remain unchanged, but they are not
+converted into or represented as a proven total-call ceiling.
+
+The local provider-fake probe exposed no native request-count surface, so no
+fake-derived live call-count estimate is authorized.
+
+**5. REVIEWER EVIDENCE MODEL.**
+Adjudication uses:
+
+T = reviewer CONTENT finding projected into terminal gate evidence
+Y = reviewer CONTENT telemetry
+R = raw parsed reviewer assertion
+HUMAN_ONLY = Commander-detected concept outside reviewer schema
+
+Deterministic integrity/hard-gate findings are CONTEXT ONLY and are not scored as
+reviewer observations.
+
+If a deterministic gate prevents semantic review entirely, the cell is recorded:
+
+`REVIEWER_NOT_REACHED`
+
+and is excluded from the reviewer 2×2 denominator.
+
+**6. PACKET SEMANTICS.**
+`finding.terminal` means retry-policy terminality only.
+It MUST NOT be interpreted as authority disposition or as "this finding ended
+the run."
+
+`primaryCode` is the stable primary rejection pointer selected by precedence.
+It MUST NOT be interpreted as a unique terminator.
+
+`finding.gate` is the finding's originating detector.
+
+The container gate is the run-level primary rejection gate
+(`primaryGate`, belonging to the `primaryCode` winner).
+
+Absent provenance or disposition MUST NOT be inferred.
+
+Terminal reviewer CONTENT projection currently loses provenance at the
+`asFinding` boundary; telemetry provenance is retained through
+`contentTelemetry`.
+
+**7. OVERALL VERDICT.**
+Reviewer `overallVerdict` remains ADVISORY ONLY and has zero independent
+rejection authority.
+
+**8. LIVE-FIRST SHAPES.**
+The local fake provider can exercise deterministic terminal-gate shape but cannot
+produce reviewer CONTENT telemetry or reviewer-originated terminal CONTENT
+findings.
+
+If Y-channel or reviewer-originated T evidence occurs, this live run is its first
+authorized live observation.
+
+Their absence is a measured result, not a failed run.
+
+**9. ARTIFACTS.**
+Artifacts are written only under:
+
+`.eval-artifacts/reviewer-observer-live-01/`
+
+They remain ignored/untracked and MUST NOT be committed.
+
+The Commander packet preserves:
+- full learner-facing draft
+- full constructions
+- full Plan where present
+- raw retained `reviewCalls[]`
+- projected findings/telemetry
+- artifact SHA256
+
+CallKind, kindSequence, stable call identity, and exact reviewer-call count are
+NOT retained and MUST NOT be reconstructed or claimed.
+
+**10. FORBIDDEN.**
+This authorization does NOT permit:
+
+- source mutation
+- Builder mutation
+- web-shell mutation
+- DB write
+- migration
+- deploy
+- production push
+- new instrumentation
+- fake-provider modification
+- automatic rerun
+- expansion to another fixture
+- expansion beyond the two named architecture cells
+
+**11. EXECUTION STOP RULE.**
+The two cells are executed serially.
+
+A process-level failure, authority mismatch, runtime-slice cleanliness failure,
+repo-integrity hash mismatch, unexpected artifact identity/path, or any evidence
+of non-authorized mutation STOPS execution before the second cell.
+
+A normal product outcome such as `generated` or `generation_rejected` does NOT
+by itself stop the second authorized cell.
+
+If both cells are `REVIEWER_NOT_REACHED`, the experiment yields no reviewer
+observation evidence and HALTS with no automatic rerun.
+
+**12. AFTER THE RUN.**
+Commander adjudicates each scored concept slot as HUMAN POSITIVE or HUMAN
+NEGATIVE.
+
+The required matrix is:
+
+REVIEWER POSITIVE / HUMAN POSITIVE
+REVIEWER POSITIVE / HUMAN NEGATIVE
+REVIEWER NEGATIVE / HUMAN POSITIVE
+REVIEWER NEGATIVE / HUMAN NEGATIVE
+
+RN/HP must additionally preserve whether the miss was:
+
+EXPLICIT
+OMISSION
+OUT_OF_SCHEMA
+
+No authority change follows automatically from this experiment.
+Any instrumentation or authority change requires a separate Commander decision.
+
 ## 2026-09-13 — CHECKPOINT: BOUNDARY PROVENANCE LEAK CLOSED
 
 **[GOV-ARENA-BOUNDARY-PROVENANCE]** Records the provenance-aware content authority implementation, the measured service-layer provenance leak inside it, and that leak's closure. **OUTER ONLY** — no inner mutation, no inner push, no provider calls, no deploy, no DB.
