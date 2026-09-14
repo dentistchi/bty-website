@@ -1,3 +1,233 @@
+## 2026-09-14 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATED
+
+**[GOV-ARENA-OBSERVER-RUN-1-RESULT] LIVE RUN 1 COMPLETE / COMMANDER ADJUDICATED.**
+This records the one-time Reviewer-as-Observer live run authorized by
+[GOV-ARENA-OBSERVER-RUN-1]. It changes no reviewer authority and authorizes no
+new rejection policy.
+
+**1. AUTHORITY.**
+Inner runtime authority:
+`56d413570291da5a6fee938fd3d26ad46b125ef3`
+
+Outer authorization authority:
+`74eb77e25cf671c5b871e4162ebbc8e5cf37ee08`
+
+Repository integrity remained unchanged across the run.
+
+**2. AUTHORIZED EXECUTION COMPLETED EXACTLY ONCE.**
+Exactly two authorized one-cell invocations executed:
+
+A. `c01-missed-commitment × legacy × runs=1 × correction=disabled`
+B. `c01-missed-commitment × plan_render_v1 × runs=1 × correction=disabled`
+
+No automatic rerun occurred.
+
+External provider request count was NOT measured and is not reconstructed from
+cell count, reviewCalls, gates, stages, or artifacts.
+
+**3. LIVE CONFIGURATION.**
+`LLM_BASE_URL` was UNSET.
+`LLM_MODEL` was UNSET.
+
+The tracked defaults were therefore used:
+
+endpoint:
+`https://api.openai.com/v1/chat/completions`
+
+model:
+`gpt-4o-mini`
+
+Credential values were never read or recorded.
+
+Pre-execution credential gating blocked earlier attempts before Cell A; zero
+authorized cell invocations were consumed by those blocks.
+
+**4. CELL A — CONTEXT ONLY.**
+Architecture:
+`legacy`
+
+Outcome:
+`generation_rejected`
+
+Primary rejection:
+`choice_no_concrete_action`
+
+Primary gate:
+`concrete_scene`
+
+Tracked control flow proves the deterministic concrete_scene rejection returned
+before semantic review was reachable.
+
+Therefore:
+
+`REVIEWER_REACHED = NO`
+`exclusion_reason = PRE_REVIEW_DETERMINISTIC_GATE`
+
+Cell A is excluded from the reviewer 2×2 denominator.
+
+Measured live-vs-fake deltas are retained as CONTEXT ONLY:
+
+- legacy Plan presence: fake ABSENT → live PRESENT
+- legacy stages length: fake 2 → live 1
+
+No cause is inferred.
+
+**5. CELL B — SCORED REVIEWER OBSERVATION.**
+Architecture:
+`plan_render_v1`
+
+Outcome:
+`generated`
+
+Parity:
+`strict`
+
+Raw structured semantic-review evidence was durably retained.
+
+Therefore:
+
+`REVIEWER_REACHED = YES`
+
+No reviewer CONTENT telemetry was observed.
+No reviewer-originated terminal CONTENT finding was observed.
+
+Their absence is a measured result, not an execution failure.
+
+**6. OBSERVATION SURFACE.**
+The semantic reviewer receives the learner-facing draft choices and
+constructions, but does NOT receive the Plan.
+
+Specifically, Plan action dimension identifiers, Plan action dimension text,
+and Plan action tension are outside the semantic reviewer's observation surface.
+
+The reviewer also does not receive the actionDecision prompt text; action
+decision dimensions are inferred from visible choice labels/constructions.
+
+**7. COMMANDER FINDING — P1.**
+HUMAN POSITIVE:
+
+The p2 action phase is expressed as a content-depth decision rather than an
+action-vs-avoidance decision. Both choices describe performing the client
+update.
+
+The reviewer had learner-facing choice/construction evidence from which this
+semantic shape could be observed, but the reviewer schema contains no rule
+evaluating whether an action-phase dimension is the correct kind of decision
+axis.
+
+Classification:
+
+`REVIEWER NEGATIVE / HUMAN POSITIVE`
+`negative_basis = OUT_OF_SCHEMA`
+
+This is the single scored HUMAN POSITIVE in Run 1.
+
+No authority change follows automatically.
+
+**8. P3 — REJECTED AS HUMAN DEFECT / CONTEXT ONLY.**
+Flat tradeoff/action content is string-equivalent to the p1 branch content.
+
+However, tracked learner-path semantics prove that for this branch-aware draft
+the flat tradeoff/action fields are unreachable compatibility projections.
+
+Therefore the string identity is retained as a projection observation, not a
+learner-facing product defect and not a reviewer miss.
+
+This candidate had also been exposed to Commander in executor measurement before
+blind adjudication and is marked:
+
+`ANCHORED_BY_EXECUTOR_MEASUREMENT`
+
+It contributes no 2×2 row.
+
+**9. P6 — OUT OF REVIEWER OBSERVATION SURFACE.**
+Both Plan branch action tensions are empty.
+
+This remains a Plan-Then-Render quality observation.
+
+However, the semantic reviewer never receives the Plan or these tension fields.
+
+Therefore:
+
+`OUT_OF_OBSERVATION_SURFACE`
+
+It is excluded from the reviewer 2×2 matrix and is not classified as a reviewer
+false negative.
+
+**10. COMMANDER 2×2 — RUN 1.**
+
+Raw concept-slot counts:
+
+REVIEWER POSITIVE / HUMAN POSITIVE = 0
+REVIEWER POSITIVE / HUMAN NEGATIVE = 0
+REVIEWER NEGATIVE / HUMAN POSITIVE = 1
+REVIEWER NEGATIVE / HUMAN NEGATIVE = 57
+
+RN/HP breakdown:
+
+EXPLICIT = 0
+OMISSION = 0
+OUT_OF_SCHEMA = 1
+
+The single RN/HP is P1.
+
+All remaining 57 reviewer-schema concept slots were adjudicated HUMAN NEGATIVE.
+
+A secondary distinct learner-facing-text sensitivity count is retained:
+
+RN/HN distinct-text = 45
+
+This does not replace or retroactively modify the frozen 57-slot Run 1 matrix.
+
+**11. WHAT RUN 1 DOES NOT PROVE.**
+Run 1 does NOT establish a general reviewer false-positive rate.
+
+The scored cell contained no reviewer-positive observation, so RP/HP and RP/HN
+behavior was not exercised.
+
+Run 1 is one scored cell and its counts MUST NOT be generalized as population
+rates.
+
+Run 1 does NOT justify restoring broad semantic reviewer veto authority.
+
+**12. PRODUCT SIGNAL.**
+The primary measured signal is not "the reviewer is broadly wrong."
+
+Within its current 57 scored schema concepts, Commander found no HUMAN POSITIVE
+defect.
+
+The one valid HUMAN POSITIVE was outside the reviewer schema:
+
+the action phase lacked a rule requiring the decision dimension itself to be an
+action-vs-avoidance / commitment-relevant axis rather than another content-detail
+tradeoff.
+
+Whether to add such a concept to the reviewer schema is a separate Commander
+decision.
+
+**13. FUTURE PACKET GOVERNANCE.**
+For future branch-aware drafts, learner-unreachable flat compatibility-projection
+slots should be treated as CONTEXT ONLY rather than primary scored reviewer
+concepts.
+
+This is a future packet-design note only; Run 1's frozen matrix is not rewritten.
+
+**14. RUN 2 DESIGN NOTE.**
+Run 1 fixture `c01-missed-commitment` declares zero boundary constraints.
+
+A future Reviewer-as-Observer run should use a declared-boundary fixture such as
+`c18-constrained-clinical` (`c1_verify`) or `c19-indirect-violation`
+(`c1_priv`) if Commander wants to observe boundary-related reviewer behavior.
+
+That future run requires separate authorization.
+
+**15. NO AUTOMATIC NEXT AUTHORITY.**
+No instrumentation change, reviewer-schema expansion, content-authority change,
+new live run, deploy, DB change, migration, or production mutation is authorized
+by this checkpoint.
+
+Any such next step requires a separate Commander decision.
+
 ## 2026-09-14 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 1
 
 **[GOV-ARENA-OBSERVER-RUN-1] ONE-TIME LIVE PROVIDER AUTHORIZATION.**
