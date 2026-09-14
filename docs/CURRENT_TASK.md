@@ -1,3 +1,563 @@
+## 2026-09-14 — AMENDMENT: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATION
+
+**[GOV-ARENA-OBSERVER-RUN-1-AMENDMENT-1] COMMANDER CORRECTION TO RUN-1 ADJUDICATION.**
+This amendment corrects the interpretation of the Run-1 Commander findings after
+the Action-Axis read-only inventory. It changes no runtime code, reviewer
+authority, rejection policy, or provider-run authorization.
+
+It supersedes §§7, 9, 10, and 12 of
+[GOV-ARENA-OBSERVER-RUN-1-RESULT].
+
+All other sections of that checkpoint remain in force unless explicitly changed
+below.
+
+**1. P1 IS RECONSTRUCTED AS P1'.**
+
+The previous P1 framing said that the p2 action phase should have been an
+action-vs-avoidance decision axis.
+
+That framing was incorrect.
+
+Tracked generation quality rules explicitly require the Action Decision NOT to
+collapse into a hollow act-vs-avoidance structure. Non-commitment options may be
+concrete, cost-bearing strategies.
+
+The actual defect is the meaning of the machine flag.
+
+Tracked contract:
+
+`isActionCommitment`
+
+marks a real observable action commitment, as opposed to
+waiting / preparing / observing / deferring.
+
+In the p2 action phase, `p2-a2` describes an observable client-facing action:
+
+providing the client a brief update that the recovery plan is in progress.
+
+Yet that choice is marked:
+
+`isActionCommitment = false`
+
+The flag is therefore inconsistent with the rendered/construction meaning of the
+choice.
+
+This matters operationally because the flag is not descriptive metadata only.
+It controls runtime consequence:
+
+`isActionCommitment = true`
+→ `ACTION_REQUIRED`
+→ action-contract candidacy
+
+`isActionCommitment = false`
+→ `NEXT_SCENARIO_READY`
+
+Therefore a learner can select an observable client-facing action while the
+runtime treats that selection as a non-commitment path.
+
+**2. P1' IS OUTSIDE THE REVIEWER OBSERVATION SURFACE.**
+
+The semantic reviewer receives:
+
+- learner-facing action choice labels
+- constructions including `concreteAction`, legitimate value, and accepted cost
+
+but does NOT receive:
+
+- `isActionCommitment`
+- the actionDecision prompt
+- Plan action dimension id
+- Plan action dimension text
+- Plan action tension
+
+The fact that makes P1' defective is the mismatch between the semantic meaning of
+the option and its machine `isActionCommitment` value.
+
+Because the reviewer never receives that flag, it cannot establish the mismatch
+from its authorized observation surface.
+
+Therefore P1' is classified:
+
+`HUMAN POSITIVE`
+`OUT_OF_OBSERVATION_SURFACE`
+`2×2 = EXCLUDED`
+
+It is NOT a reviewer false negative.
+
+**3. RUN-1 2×2 IS CORRECTED.**
+
+The previously recorded Run-1 matrix:
+
+REVIEWER POSITIVE / HUMAN POSITIVE = 0
+REVIEWER POSITIVE / HUMAN NEGATIVE = 0
+REVIEWER NEGATIVE / HUMAN POSITIVE = 1
+REVIEWER NEGATIVE / HUMAN NEGATIVE = 57
+
+is superseded by:
+
+REVIEWER POSITIVE / HUMAN POSITIVE = 0
+REVIEWER POSITIVE / HUMAN NEGATIVE = 0
+REVIEWER NEGATIVE / HUMAN POSITIVE = 0
+REVIEWER NEGATIVE / HUMAN NEGATIVE = 57
+
+The previous RN/HP OUT_OF_SCHEMA count of 1 is removed.
+
+Corrected RN/HP breakdown:
+
+EXPLICIT = 0
+OMISSION = 0
+OUT_OF_SCHEMA = 0
+
+The secondary distinct learner-facing-text sensitivity remains:
+
+RN/HN distinct-text = 45
+
+This amendment does not rewrite the underlying packet or artifact. It corrects
+the Commander interpretation of what belongs inside the reviewer observation
+denominator.
+
+**4. FINAL RUN-1 REVIEWER SIGNAL.**
+
+Within the 57 scored concepts that were actually inside the semantic reviewer's
+observation surface, Commander found no HUMAN POSITIVE disagreement.
+
+Therefore the scored Run-1 reviewer result is:
+
+57 reviewer-negative concepts
+→ 57 HUMAN NEGATIVE adjudications
+
+This is one scored cell and MUST NOT be generalized into a population accuracy
+rate.
+
+The valid product defect found during human review was P1', but the machine fact
+required to establish that defect was outside the reviewer's input surface.
+
+Run 1 therefore does NOT prove reviewer coverage of commitment-flag correctness.
+
+**5. P6 IS WITHDRAWN AS A DEFECT.**
+
+The prior checkpoint described empty Plan action tensions as a
+Plan-Then-Render quality observation.
+
+That interpretation is withdrawn.
+
+Tracked Plan design explicitly makes action-stage `tension` optional because the
+action stage follows an already-established tension.
+
+Plan validation requires tension on earlier decision stages but does not require
+action-stage tension.
+
+Therefore:
+
+`p1.action.tension = ""`
+`p2.action.tension = ""`
+
+are schema-conformant by design.
+
+P6 is:
+
+`NOT A DEFECT`
+
+It creates:
+
+- no reviewer 2×2 row
+- no Plan-Then-Render backlog item
+- no implementation obligation
+
+**6. P3 REMAINS UNCHANGED.**
+
+The prior disposition of P3 remains:
+
+- rejected as a learner-facing HUMAN defect
+- retained only as a compatibility-projection observation
+- marked `ANCHORED_BY_EXECUTOR_MEASUREMENT`
+- excluded from the reviewer 2×2
+
+**7. CORRECTED PRODUCT SIGNAL.**
+
+Run 1 does NOT establish that the reviewer missed an in-surface semantic defect.
+
+The measured product signal is narrower:
+
+a meaningful machine fact affecting learner runtime behavior,
+`isActionCommitment`,
+is currently absent from the semantic reviewer's observation surface.
+
+Whether to expose that fact to the reviewer as telemetry-only observation is a
+separate Commander decision.
+
+This amendment itself grants no implementation or authority.
+
+
+## 2026-09-14 — COMMANDER AUTHORIZATION: COMMITMENT FLAG OBSERVATION
+
+**[GOV-ARENA-COMMITMENT-FLAG-OBS] NARROW IMPLEMENTATION AUTHORIZATION — OBSERVATION ONLY.**
+Commander authorizes a narrowly bounded implementation to make
+`isActionCommitment` meaning consistency observable to the semantic reviewer
+without adding rejection authority.
+
+This is a separate authorization.
+
+It does NOT widen GOV-ARENA-GEN.
+It does NOT restore broad semantic reviewer veto authority.
+It does NOT authorize Run 2.
+It does NOT authorize deploy, DB, migration, or production mutation.
+
+**1. PURPOSE.**
+
+Close the exact observation-surface gap exposed by Run 1 P1'.
+
+The target condition is:
+
+a choice marked `isActionCommitment = false`
+whose learner-facing label/construction nevertheless describes an immediate,
+observable committed external action rather than waiting, preparing, observing,
+or deferring.
+
+This condition is named:
+
+`commitment_flag_mismatch`
+
+This is an OBSERVATION concept only.
+
+**2. REVIEWER PROJECTION AUTHORIZED.**
+
+The semantic-review request projection may be extended so each relevant action
+choice includes its existing:
+
+`isActionCommitment`
+
+boolean.
+
+The reviewer already receives the choice label and construction.
+
+The new projection exposes the machine flag needed to compare:
+
+semantic meaning of the choice
+↔
+machine commitment classification.
+
+No learner-facing copy changes are authorized by this projection change.
+
+No Plan field is added to the reviewer payload by this authorization.
+
+**3. REVIEWER OBSERVATION CONTRACT AUTHORIZED.**
+
+The reviewer may be instructed to report:
+
+`commitment_flag_mismatch`
+
+ONLY when:
+
+- `isActionCommitment = false`, AND
+- the visible choice/construction itself describes an immediate observable
+  committed external action rather than waiting, preparing, observing, or
+  deferring.
+
+The flag is exposed for consistency comparison only; the reviewer MUST NOT be
+instructed or permitted to treat `isActionCommitment = true` as the "correct"
+option for any other finding.
+
+The new observation MUST be emitted through the existing:
+
+`defectCodes[]`
+
+array.
+
+Do NOT implement this as a new standalone boolean schema field.
+
+Reason:
+
+the existing `defectCodes[]` path is already proven to create a
+`ContentFinding` with `MODEL_DEFECT_CODE` provenance and to flow through the
+default-deny content-authority path into structured telemetry.
+
+A bare schema field without an explicit collector would survive only in the raw
+review payload and would not constitute structured telemetry.
+
+**4. AUTHORITY IS TELEMETRY ONLY.**
+
+`commitment_flag_mismatch` MUST NOT be added to:
+
+- `PROVEN_CONTENT_AUTHORITY`
+- `PROVISIONAL_BOUNDARY_AUTHORITY`
+- any boundary authority set
+- any integrity fail-closed registry
+- any terminal reviewer-authority list
+
+It MUST NOT gain rejection authority.
+
+As an unregistered reviewer model defect code, current default-deny content
+authority classifies it:
+
+`telemetry`
+
+Its provenance is:
+
+`MODEL_DEFECT_CODE`
+
+No code or provenance pair for this observation is authorized as PROVEN or
+PROVISIONAL authority.
+
+**5. STRUCTURED DURABLE RETENTION IS REQUIRED.**
+
+The currently measured path is:
+
+reviewer `defectCodes[]`
+→ `MODEL_DEFECT_CODE`
+→ default-deny telemetry classification
+→ `telemetryFindings`
+→ `GenObservation.contentTelemetry`
+→ runner observer
+→ retention `applyObservation`
+→ finalized retention record
+→ full-retention JSON artifact
+
+This path is proven to preserve at least:
+
+- code
+- provenance
+- optional evidence
+
+and to deduplicate by:
+
+`code + provenance`
+
+Telemetry accumulates across attempts.
+
+A later clean attempt MUST NOT be interpreted as erasing telemetry observed in an
+earlier attempt.
+
+Attempt-level attribution is not retained and MUST NOT be reconstructed.
+
+**6. RETENTION DISPOSITION CONTRACT — CONDITIONAL AUTHORIZATION.**
+
+Current runtime objects carry classified `disposition` into
+`contentTelemetry`, but the declared retention-record type does not currently
+name that property.
+
+Implementation STEP 0 MUST inspect the current retention schema-version and
+compatibility contract before changing the declared retention type.
+
+If adding an optional:
+
+`disposition?: "terminal" | "telemetry"`
+
+field to the retention `contentTelemetry` item type is explicitly
+backward-compatible under the existing schema-version policy and requires no
+schema-version change, it is authorized.
+
+If that cannot be proven:
+
+DO NOT change the retention schema/type for disposition.
+
+HALT that sub-scope and report the compatibility issue for a separate Commander
+decision.
+
+The observation implementation itself must not depend on a disposition schema
+change; code + provenance remain the required durable identifiers.
+
+**7. GENERATION GUIDANCE AUTHORIZED.**
+
+Generation guidance may be clarified around the existing
+`isActionCommitment` contract.
+
+The guidance must preserve BOTH existing requirements:
+
+A commitment-false option must remain:
+
+- concrete
+- competent
+- cost-bearing
+- a legitimate strategy
+
+It must NOT be reduced to a hollow or obviously inferior "do nothing" choice.
+
+At the same time, a commitment-false option must NOT itself semantically complete
+the immediate observable external commitment that the flag is intended to
+distinguish.
+
+The intended boundary is:
+
+concrete strategy
+but
+not itself the immediate committed external action.
+
+This clarification MUST NOT reintroduce a simplistic
+"good action vs bad avoidance" choice structure.
+
+**8. DETERMINISTIC SEMANTIC GATE IS NOT AUTHORIZED.**
+
+No deterministic hard gate for `commitment_flag_mismatch` is authorized.
+
+The mismatch requires semantic interpretation of free-text choice meaning.
+
+The following are explicitly forbidden as authority mechanisms:
+
+- regex classification
+- English keyword matching
+- dimensionId vocabulary
+- lexical category matching
+- hardcoded wording detectors
+
+`DETECTOR MEASURES VOCABULARY`
+
+remains governing doctrine.
+
+**9. PLAN VALIDATOR CHANGE IS NOT AUTHORIZED FOR P1'.**
+
+Plan validators may continue enforcing their current structural/form rules.
+
+This authorization does NOT permit a Plan validator to decide whether the action
+axis is semantically the "correct kind" using dimension names or wording.
+
+No P1'-specific Plan-validator authority is granted.
+
+**10. RUNTIME BINDING SEMANTICS MUST NOT CHANGE.**
+
+The existing meaning and consequence of:
+
+`isActionCommitment`
+
+must remain unchanged.
+
+No modification is authorized to:
+
+- `ACTION_REQUIRED`
+- `NEXT_SCENARIO_READY`
+- action-contract candidacy
+- persistence meaning
+- QR eligibility
+- binding-layer state transitions
+
+The implementation observes the existing flag; it does not redefine it.
+
+**11. IMPLEMENTATION SCOPE.**
+
+Authorized inner-code scope is limited to what is necessary for:
+
+1. reviewer request projection of `isActionCommitment`
+2. reviewer prompt/response contract for `commitment_flag_mismatch`
+3. collection through existing `defectCodes[]`
+4. structured telemetry preservation tests
+5. generation-guidance clarification
+6. the conditional retention-type contract in §6 only if STEP 0 proves it
+   backward-compatible without schema-version change
+7. focused regression tests required to prove the above
+
+No broader product or architecture change is authorized.
+
+**12. REQUIRED PRE-IMPLEMENTATION INVENTORY.**
+
+Before mutation, measure from current INNER HEAD:
+
+- complete `reviewRequestProjection.ts`
+- semanticReview parser/collector path for `defectCodes[]`
+- whether reviewer defect-code strings are allowlisted or open strings
+- REVIEW_SYSTEM_PROMPT / semantic-review instruction location
+- generation instruction adjacent to the current `isActionCommitment` guidance
+- retentionRecord schemaVersion and compatibility policy
+- exact tests already covering projection, semantic review, authority,
+  retention, and generation guidance
+- current full-suite baseline
+- current terminology baseline
+- current build baseline
+- intersection between intended implementation files and all pre-existing dirty
+  inner paths
+
+If an intended implementation file is already dirty and the existing dirty work
+is unrelated:
+
+HALT before mutation and return the conflict.
+
+Do not overwrite or absorb unrelated WIP.
+
+**13. REQUIRED REGRESSION PROOF.**
+
+Focused tests must prove at minimum:
+
+A. reviewer projection carries the correct `isActionCommitment` boolean for
+   action choices
+
+B. reviewer observation can emit `commitment_flag_mismatch` through
+   `defectCodes[]`
+
+C. the new code is classified as:
+   `MODEL_DEFECT_CODE`
+   + `telemetry`
+
+D. it cannot become `primaryCode`
+
+E. it cannot cause an otherwise clean draft to reject
+
+F. structured telemetry retains:
+   code + provenance
+   through the full-retention path
+
+G. a non-mismatch case remains clean
+
+H. generation guidance preserves a concrete/cost-bearing commitment-false option
+   rather than creating a hollow avoidance decoy
+
+J. exposing `isActionCommitment` does not repurpose the flag as a correctness
+   signal for pre-existing reviewer findings: the reviewer prompt/contract must
+   explicitly preserve the restriction that `true` is not the "correct" option,
+   and equivalent non-mismatch test fixtures must retain their prior
+   pre-existing `defectCodes` behavior.
+
+Where applicable, regression tests for the discovered defect must FAIL on the
+buggy parent and PASS on the implementation.
+
+**14. REQUIRED GLOBAL GATES.**
+
+Before any implementation commit:
+
+- TypeScript clean
+- terminology count equals measured baseline
+- Cloudflare/build gate clean
+- full-suite failure set equals the measured pre-implementation baseline
+- no new attributable failures
+- no unrelated formatter churn
+- no unrelated dirty-path mutation
+
+The previously observed historical baseline values MUST NOT be trusted from
+memory.
+
+STEP 0 must re-measure them from the current fixture/artifact environment before
+implementation and freeze those measured values.
+
+**15. FORBIDDEN.**
+
+This authorization does NOT permit:
+
+- reviewer rejection authority for the new concept
+- authority-list expansion
+- provisional-boundary expansion
+- integrity-channel reassignment
+- deterministic semantic gate
+- runtime-binding change
+- DB change
+- migration
+- deploy
+- production push
+- Run 2
+- additional live provider experiment
+- instrumentation beyond the authorized observation path
+- unrelated cleanup or refactor
+
+**16. CLOSURE CONDITION.**
+
+Successful implementation means only:
+
+the existing machine commitment flag becomes visible to the semantic reviewer,
+a semantic mismatch can be reported as durable structured telemetry, and
+generation guidance is clarified without changing runtime or rejection
+authority.
+
+No further authority follows automatically.
+
+Run 2, if desired, requires separate Commander authorization.
+
 ## 2026-09-14 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATED
 
 **[GOV-ARENA-OBSERVER-RUN-1-RESULT] LIVE RUN 1 COMPLETE / COMMANDER ADJUDICATED.**
