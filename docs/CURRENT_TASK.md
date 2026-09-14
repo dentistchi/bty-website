@@ -1,3 +1,394 @@
+## 2026-09-14 — AMENDMENT 2: COMMITMENT FLAG OBSERVATION AUTHORIZATION
+
+**[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-2] CORRECTION OF §3 AND §5 — RESPONSE-SCHEMA ENUM EXTENSION.**
+This amendment supersedes §§3 and 5 of
+[GOV-ARENA-COMMITMENT-FLAG-OBS].
+
+§§1, 4, 6–16 and
+[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-1]
+remain in force except as explicitly stated below.
+
+It grants no rejection authority, provider-run authorization, deploy authority,
+DB authority, or migration authority.
+
+**1. THE PRIOR §3 PREMISE WAS FALSE.**
+
+The prior §3 assumed that one open existing `defectCodes[]` path had already
+been proven to create a `ContentFinding` with `MODEL_DEFECT_CODE` provenance.
+
+That premise was false.
+
+Measured at INNER authority:
+
+`56d413570291da5a6fee938fd3d26ad46b125ef3`
+
+the response paths are split:
+
+- top-level `defectCodes`
+  - open `string[]`
+  - parsed
+  - no collector reads it into `ContentFinding`
+  - survives only in raw parsed reviewer evidence
+
+- `phaseChoices[].defectCodes`
+  - closed enum under strict structured output
+  - collected into `ContentFinding`
+  - carries the exact:
+    `{ phase, branchIndex, choiceIndex }`
+    coordinate
+  - provenance:
+    `MODEL_DEFECT_CODE`
+  - gate:
+    `phase_choice_review`
+
+The STEP 0b conclusion:
+
+`structured durable telemetry path for unregistered model defect code = YES`
+
+is therefore corrected to:
+
+`structured durable telemetry is proven for admitted / registered response-schema enum members only`
+
+An arbitrary unregistered string cannot enter the coordinate-bearing collector
+under the strict response schema.
+
+**2. ONE RESPONSE-SCHEMA ENUM MEMBER IS AUTHORIZED.**
+
+Commander authorizes exactly one addition to:
+
+`PHASE_CHOICE_DEFECT_CODES`
+
+The new member is:
+
+`commitment_flag_mismatch`
+
+No other response enum is authorized to change.
+
+This is a response-schema extension, not an authority-list extension.
+
+The new code MUST NOT be added to:
+
+- `PROVEN_CONTENT_AUTHORITY`
+- `PROVISIONAL_BOUNDARY_AUTHORITY`
+- any terminal authority registry
+- any integrity fail-closed registry
+- `REGISTRY_ORDER`
+- any primary-code precedence registry
+
+Measured authority behavior remains:
+
+`MODEL_DEFECT_CODE`
++
+unregistered content-authority code
+→ default-deny
+→ `telemetry`
+
+No authority-registry or `gatePrecedence` edit is required or authorized.
+
+Measured exhaustiveness impact:
+
+- no `Record<PhaseChoiceDefectCode, ...>`
+- no exhaustive switch
+- no `never` witness
+- no fixed enum-cardinality assertion
+
+The enum is consumed by existing spread/schema/digest mechanisms.
+
+`contractManifest.ts` digests the enum, so its contract-manifest digest is
+expected to change.
+
+That digest movement is an expected consequence of the response-contract change.
+
+The existing `artifactSchemaVersion` is not authorized to change solely because
+of this enum addition.
+
+**3. RETRYABLE_CODES LATENT COUPLING — CURRENTLY INERT.**
+
+Adding the new phase-choice enum member also causes it to enter
+`RETRYABLE_CODES` automatically through the existing spread of
+`PHASE_CHOICE_DEFECT_CODES`.
+
+Measured at INNER authority:
+
+`semanticReview.ts:122-133`
+
+defines `RETRYABLE_CODES`, including the phase-choice enum spread.
+
+However, repo-wide measurement proves:
+
+`RETRYABLE_CODES`
+and
+`isRetryableCode`
+
+have ZERO production consumers at this authority.
+
+Their only current behavioral exercise is test-only.
+
+The real generation retry path is disposition-derived:
+
+- the generation service constructs `reviewFindings` from
+  `review.terminalFindings` only
+- `telemetryFindings` are routed separately to `contentTelemetry`
+- only terminal findings can reach `resolveRejection`
+- only a resolved rejection can enter the correction / retry loop
+
+Therefore a:
+
+`commitment_flag_mismatch`
+with
+`disposition = telemetry`
+
+cannot, at this authority:
+
+- cause an additional semantic-review provider call
+- cause regeneration
+- increment generation attempts
+- set retry feedback
+- change `retryInstruction`
+- change `terminalOutcome`
+- reject an otherwise accepted draft
+- become `primaryCode`
+
+Its automatic membership in `RETRYABLE_CODES` is behaviorally inert today.
+
+**LATENT COUPLING RULE:**
+
+If any future slice wires `RETRYABLE_CODES` or `isRetryableCode` into production
+control flow, that change MUST explicitly decide the retry semantics of
+`commitment_flag_mismatch`.
+
+This authorization does NOT pre-authorize that code as retryable.
+
+**4. EMISSION PATH — REPLACES PRIOR §3.**
+
+The authorized structured emission path for this observation is:
+
+`phaseChoices[].defectCodes`
+→ existing phase-choice collector
+→ `ContentFinding`
+→ `MODEL_DEFECT_CODE`
+→ default-deny telemetry classification
+→ `telemetryFindings`
+→ `contentTelemetry`
+→ retention artifact
+
+The existing collector already supplies:
+
+`phase`
+`branchIndex`
+`choiceIndex`
+
+No semantic-review collector change is authorized or required solely to carry
+the new enum member.
+
+Top-level open `defectCodes` MUST NOT be used for
+`commitment_flag_mismatch`.
+
+It has no structured `ContentFinding` collector and therefore cannot satisfy the
+required durable coordinate-bearing telemetry contract.
+
+**5. REVIEWER PROMPT DEFINITION IS REQUIRED.**
+
+Adding the enum member without reviewer instruction would be structurally valid
+but operationally inert.
+
+`REVIEW_SYSTEM_PROMPT` must define when the model may emit:
+
+`commitment_flag_mismatch`
+
+The observation may be emitted for an action-phase `visibleChoices[]` entry ONLY
+when:
+
+- `isActionCommitment = false`, AND
+- that same visible choice / construction semantically describes an immediate,
+  observable committed external action rather than waiting, preparing,
+  observing, or deferring.
+
+The existing Commitment Flag Observation restriction remains:
+
+`isActionCommitment = true`
+
+must NOT be treated as evidence that an option is:
+
+- correct
+- preferred
+- safer
+- more ethical
+- more competent
+- or otherwise superior
+
+for this or any other reviewer finding.
+
+The flag is a consistency fact, not an answer key.
+
+**6. RETENTION CONTRACT — COORDINATE AND DISPOSITION.**
+
+Measured runtime behavior currently carries the complete classified finding
+objects through:
+
+`splitContentFindings`
+→ `telemetryFindings`
+→ `GenObservation.contentTelemetry`
+→ retention `applyObservation`
+→ JSON serialization
+
+The following fields therefore reach the artifact at runtime:
+
+- code
+- provenance
+- coordinate
+- disposition
+- optional evidence when present
+
+However, the declared retention `contentTelemetry` item type names only:
+
+- code
+- provenance
+- optional evidence
+
+Therefore:
+
+`coordinate`
+and
+`disposition`
+
+are currently carried by object identity / spread behavior but are not both
+declared as contractual retention fields.
+
+The conditional compatibility rule from the prior authorization applies to BOTH:
+
+- `coordinate?`
+- `disposition?`
+
+Implementation STEP 0 must determine whether adding those optional fields to the
+declared retention item type is backward-compatible without a schema-version
+change.
+
+If compatibility is proven:
+
+the optional type declarations are authorized.
+
+If compatibility is NOT proven:
+
+do NOT change the retention schema/type.
+
+The observation implementation may still proceed using the already-proven
+runtime retention path, and the packet must explicitly state that coordinate /
+disposition are spread-carried rather than contractually declared.
+
+Required durable identity remains at minimum:
+
+`code + provenance`
+
+**7. REGRESSION REQUIREMENTS — ADDITIONS TO §13.**
+
+In addition to the existing §13 requirements, implementation must prove:
+
+**K.**
+The strict semantic-review response schema accepts:
+
+`commitment_flag_mismatch`
+
+inside `phaseChoices[].defectCodes`.
+
+**L.**
+The existing collector converts that response into a `ContentFinding` with:
+
+- `MODEL_DEFECT_CODE`
+- gate `phase_choice_review`
+- full `{ phase, branchIndex, choiceIndex }` coordinate
+
+and classification:
+
+`telemetry`
+
+It must not become `primaryCode` and must not reject an otherwise clean draft.
+
+**M.**
+All 14 pre-existing `PHASE_CHOICE_DEFECT_CODES` retain their prior behavior.
+
+**N.**
+The response-contract manifest digest changes as expected while
+`artifactSchemaVersion` remains unchanged unless a separately proven retention
+compatibility requirement explicitly demands otherwise.
+
+**O.**
+A string placed only in top-level open `defectCodes` continues to produce no
+structured `ContentFinding`.
+
+This test documents the measured non-path and prevents future confusion between
+the two identically named response fields.
+
+**P.**
+A finding whose disposition is:
+
+`telemetry`
+
+must never enter the service's terminal `reviewFindings` path and therefore must
+not:
+
+- set retry feedback
+- trigger regeneration
+- increment attempt count
+- alter terminal outcome
+
+in either correction-disabled or correction-enabled mode.
+
+This applies to `commitment_flag_mismatch` and to telemetry findings generally.
+
+**Q.**
+`isRetryableCode` must continue to have no production control-flow caller at this
+authority.
+
+If implementation or intervening code causes that fact to change, this
+authorization is insufficient and implementation MUST HALT for a new Commander
+decision on retry semantics.
+
+**8. PREMISE AUDIT RULE.**
+
+Any authorization entry that asserts a concrete code-path fact — including that:
+
+- a field exists
+- a response path is open or closed
+- a collector consumes a field
+- a code reaches a particular authority or retention layer
+- a runtime branch is or is not reachable
+
+must cite measured source path:line evidence from the applicable authority.
+
+The first execution dispatch under such an authorization MUST re-read each cited
+premise from current HEAD before inventory or mutation begins.
+
+A failed premise returns:
+
+`AUTHORIZATION GAP`
+
+The executor MUST NOT widen or reinterpret authorization scope to accommodate
+the discrepancy.
+
+**9. NO NEW AUTHORITY.**
+
+This amendment authorizes only the response-schema enum extension and associated
+observation plumbing already bounded by the Commitment Flag Observation
+authorization and its prior amendment.
+
+It grants no:
+
+- reviewer rejection authority
+- new terminal content authority
+- boundary authority
+- retry authority
+- runtime binding change
+- Plan semantic gate
+- deterministic vocabulary gate
+- provider experiment
+- Run 2
+- deploy
+- DB change
+- migration
+
+All other prohibitions remain in force.
+
 ## 2026-09-14 — AMENDMENT 2: REVIEWER AS OBSERVER — LIVE RUN 1 ADJUDICATION
 
 **[GOV-ARENA-OBSERVER-RUN-1-AMENDMENT-2] COMMANDER CORRECTION TO AMENDMENT-1.**
