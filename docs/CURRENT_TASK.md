@@ -1,3 +1,227 @@
+## 2026-09-15 — CHECKPOINT: c18 PLAN→RENDER BOUNDARY REGRESSION ATTRIBUTION
+
+**[GOV-ARENA-C18-PTR-REGRESSION-1] CELL-A IMPLEMENTATION CAUSE ISOLATED TO PLAN-THEN-RENDER BOUNDARY BLINDNESS.**
+
+Authority:
+
+OUTER =
+`17219c64ec37ca7a089f5229fb500228f11064aa`
+
+INNER =
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+Historical c18 runtime authority is directly bound by the retained artifact:
+
+`341c20e95a5e5ddae35a13105f447e49debf36df`
+
+Historical artifact SHA:
+
+`7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb`
+
+Run-2 c18 artifact SHA:
+
+`8d1957d0430c8c47a800384108488a3db09b3328628b9a40ba22daef44d29410`
+
+### 1. FIXTURE DRIFT IS CLOSED
+
+The c18 fixture is unchanged between historical authority
+`341c20e95a5e5ddae35a13105f447e49debf36df`
+and current authority
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`.
+
+The same fixture carries:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+with the same problem, observable behavior, host-pressure values, confirmed
+state and "generate only inside it" note.
+
+Therefore:
+
+`FIXTURE DRIFT = NO`
+
+### 2. RUN-2 FIRST LOSS POINT IS PLAN
+
+Run-2 c18 Plan is notification-centered.
+
+Its primary decision is about sequencing notifications during a ward backup.
+
+The retained Plan does not contain:
+
+- `c1_verify`
+- two-identifier verification
+- verification before treatment
+- an equivalent boundary-centered semantic decision
+
+Constructions and learner-facing Draft remain notification-centered downstream.
+
+Therefore:
+
+`FIRST PROVEN LOSS POINT = PLAN`
+
+The Draft is not the first layer to lose the boundary.
+
+### 3. CURRENT PLAN STAGE IS BOUNDARY-BLIND
+
+Current `buildPlanMessages` constructs Plan context from the problem,
+observable behavior and host-pressure facts.
+
+Confirmed boundary constraints are not supplied to the Plan message builder.
+
+The current `generatePlan` call does not pass the confirmed constraint set.
+
+Therefore the Plan can finalize a semantic decision structure without knowing
+the Manager-confirmed non-negotiable boundary.
+
+### 4. RENDER RECEIVES A CONFLICTING CONTRACT AFTER PLAN IS FROZEN
+
+The Render stage DOES receive the confirmed boundary text and is told to:
+
+`GROUND EVERY CONSTRAINT`
+
+However, Render is also told to render the approved decision structure without
+redesigning its semantic decisions.
+
+When Plan has already selected a non-boundary semantic decision, these two
+requirements conflict:
+
+- make the confirmed rule operative in the decision
+- do not redesign the already-approved decision
+
+Run-2 c18 resolved that conflict by preserving the notification Plan while
+failing boundary grounding.
+
+### 5. HISTORICAL ARCHITECTURE DID NOT HAVE THIS FAILURE SURFACE
+
+Historical c18 authority predates the current Plan-Then-Render architecture.
+
+The historical generation path could design the scenario while already holding
+the confirmed boundary in the same generation call.
+
+That historical frozen subject explicitly operationalizes two-identifier
+verification in its opening and choices.
+
+The Plan-Then-Render architecture was later introduced by commit:
+
+`5eb68b0b`
+
+and created the new intermediate Plan stage.
+
+### 6. IMPLEMENTATION ATTRIBUTION
+
+The proven implementation-level classification is:
+
+`PTR ARCHITECTURE REGRESSION — PLAN-STAGE BOUNDARY BLINDNESS`
+
+Equivalently:
+
+`PLAN FIRST LOSES THE CONFIRMED BOUNDARY`
+
+This is not attributed to:
+
+- fixture drift
+- `validateBoundaryGrounding`
+- gate precedence
+- Cell-B schema coverage
+- a proven model change
+
+Render participates in the regression because it is locked to the boundary-blind
+Plan, but the first loss occurs before Render.
+
+### 7. CELL B REMAINS SEPARATE
+
+Cell B remains:
+
+`B4 FAILURE_PROVEN_BUT_CAUSE_NOT_YET_PROVEN`
+
+Its schema/retention track is parked.
+
+No Cell-B mutation belongs in the c18 repair.
+
+### 8. PRODUCTION MUTATION IS NOT YET AUTHORIZED
+
+Before changing Plan or Render production behavior, deterministic RED evidence
+must pin the current defect.
+
+The intended test-only evidence is:
+
+A. prove the c18 Plan request currently omits the confirmed boundary
+
+B. prove the Render contract simultaneously receives boundary-grounding
+requirements and the Plan-lock / do-not-redesign requirement
+
+C. positive-control `validateBoundaryGrounding` with a frozen,
+well-grounded c18 subject and matching boundaryGrounding entry
+
+The purpose is to lock the observed causal chain before repair.
+
+### 9. TEST-ONLY AUTHORIZATION
+
+If existing test seams can perform A/B/C without any production-source
+exposure change, Commander authorizes:
+
+`TEST-ONLY RED PHASE`
+
+Scope:
+
+- add focused regression tests only
+- no production source changes
+- no prompt changes
+- no schema changes
+- no validator changes
+- no fixture changes
+- no provider call
+- no live runner
+- no replay
+- no deployment
+
+The tests must first prove current behavior.
+
+Production repair remains separately gated.
+
+If existing test seams cannot observe A/B without modifying production source,
+this authorization does NOT permit exporting or changing production helpers.
+
+That requires a separate authorization.
+
+### 10. MUST REMAIN UNCHANGED
+
+During the RED phase:
+
+- `validateBoundaryGrounding`
+- gate precedence
+- c18/c19/c20 fixture input
+- provider DTO canonicalization
+- reviewer authority
+- boundary reviewer authority
+- Cell-B schema/retention path
+- production generation prompts
+- production Plan/Render logic
+
+must remain unchanged.
+
+### 11. NEXT STATUS
+
+CELL A output defect =
+`PROVEN`
+
+CELL A first loss =
+`PLAN`
+
+CELL A implementation cause =
+`PTR ARCHITECTURE / PLAN-STAGE BOUNDARY BLINDNESS`
+
+CELL B =
+`PARKED B4`
+
+PRODUCTION REPAIR =
+`NOT AUTHORIZED`
+
+TEST-ONLY RED PHASE =
+`AUTHORIZED ONLY IF EXISTING TEST SEAMS REQUIRE NO PRODUCTION SOURCE CHANGE`
+
 ## 2026-09-15 — CHECKPOINT: DECLARED-BOUNDARY GROUNDING CAUSAL ATTRIBUTION
 
 **[GOV-ARENA-BOUNDARY-GROUNDING-CAUSAL-1] RUN-2 GROUNDING FAILURES SPLIT INTO TWO DISTINCT CAUSAL CLASSES.**
