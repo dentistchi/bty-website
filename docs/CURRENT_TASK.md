@@ -1,3 +1,266 @@
+## 2026-09-15 — CHECKPOINT: DECLARED-BOUNDARY GROUNDING CAUSAL ATTRIBUTION
+
+**[GOV-ARENA-BOUNDARY-GROUNDING-CAUSAL-1] RUN-2 GROUNDING FAILURES SPLIT INTO TWO DISTINCT CAUSAL CLASSES.**
+
+Authority:
+
+OUTER =
+`cf6b4cf3b1a27ae1dc1c6dc373595ed8e46db138`
+
+INNER =
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+This checkpoint follows
+`[GOV-ARENA-OBSERVER-RUN-2-RESULT]`.
+
+It authorizes NO implementation, NO Run 3, NO provider execution and NO replay.
+
+### 1. CELL A — c18
+
+Run-2 Cell A:
+
+`c18-constrained-clinical`
+
+confirmed boundary:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+artifact:
+
+`8d1957d0430c8c47a800384108488a3db09b3328628b9a40ba22daef44d29410`
+
+outcome:
+
+`generation_rejected`
+
+primaryCode:
+
+`confirmed_boundary_absent`
+
+Current deterministic presence logic derives four content keys:
+
+`two`
+`ident`
+`verif`
+`treat`
+
+Required evidence:
+
+`2`
+
+Run-2 learner-facing evidence:
+
+`1`
+
+The only matching family is `treat`.
+
+The Run-2 learner-facing subject is about ward-backup notifications and does not
+state or semantically paraphrase the required two-identifier verification rule.
+
+Therefore Cell A is:
+
+`A1 GENERATION_CONTENT_DEFECT_PROVEN`
+
+This is not a lexical-validator false rejection for this artifact.
+
+Historical c18 evidence bound by the tracked replay source has SHA:
+
+`7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb`
+
+That historical subject explicitly includes the verification rule and produces:
+
+`4 / 4`
+
+content-key hits against the current presence algorithm.
+
+This proves an output-level regression for the same c18 fixture between the
+historical subject and Run 2.
+
+It does NOT yet prove the implementation cause.
+
+The following remain unresolved:
+
+- prompt drift
+- model/runtime difference
+- sampling variance
+- Plan→Render coupling
+- another generation-contract change
+
+No generation mutation is authorized by this checkpoint.
+
+### 2. CELL B — c19
+
+Run-2 Cell B:
+
+`c19-indirect-violation`
+
+confirmed boundary:
+
+`c1_priv`
+
+`Private employee information cannot be disclosed`
+
+artifact:
+
+`bbf2cdb7e23e4be95d3ed5232feaa57d1a741c00a7f219ef4ee5fe1207526acc`
+
+outcome:
+
+`generation_rejected`
+
+primaryCode:
+
+`missing_boundary_reference`
+
+The learner-facing text contains sufficient boundary vocabulary for the
+presence check.
+
+The failure is the absence of an accepted
+`boundaryGrounding[]` reference whose `boundaryId` equals `c1_priv`.
+
+Current source proves:
+
+- `boundaryGrounding` is required at the provider-response top level
+- the array may structurally be empty
+- each present entry requires a string `boundaryId`
+- the JSON schema does not know or enforce the set of confirmed constraint IDs
+- incomplete expected-id coverage can therefore be structurally valid
+- canonicalization passes accepted `dto.boundaryGrounding` through unchanged
+
+Run-2 retention does NOT retain:
+
+- raw provider response bytes
+- pre-canonical provider DTO boundaryGrounding
+
+Therefore the proximal Cell-B loss location cannot be attributed.
+
+Cell B remains:
+
+`B4 FAILURE_PROVEN_BUT_CAUSE_NOT_YET_PROVEN`
+
+The permissive coverage contract is recorded as:
+
+`SCHEMA COVERAGE GAP — PROVEN ARCHITECTURAL CONTRIBUTOR`
+
+but the following are NOT proven for this specific cell:
+
+`PROVIDER_OUTPUT_OMISSION`
+`PARSER LOSS`
+
+No schema, parser, normalization or retention mutation is authorized here.
+
+### 3. TWO DEFECT FAMILIES MUST REMAIN SEPARATE
+
+Cell A concerns generated subject content.
+
+Cell B concerns structured boundary-reference coverage and lacks enough retained
+pre-canonical evidence for proximal attribution.
+
+They MUST NOT be repaired in one experiment or one authorization.
+
+Changing generation behavior and schema/retention together would destroy causal
+attribution.
+
+### 4. VALIDATOR STATUS
+
+`validateBoundaryGrounding` correctly rejects the Run-2 c18 subject because the
+required rule is genuinely absent from learner-facing content.
+
+The validator can in principle be lexically brittle for synonym-only semantic
+paraphrases.
+
+That architectural limitation is NOT the cause of Run-2 Cell A.
+
+No validator change is authorized.
+
+Gate precedence remains unchanged.
+
+### 5. FIXTURE INTENT
+
+c18 is intended to generate difficult judgment inside a confirmed clinical
+boundary.
+
+It is not intended to fail grounding.
+
+c19 is intended to produce a live-review case involving an indirect violation of
+a confirmed privacy rule.
+
+It is not intended to fail deterministic grounding before reviewer reachability.
+
+Therefore the Run-2 failures are meaningful production-reachability evidence,
+not expected negative-fixture behavior.
+
+### 6. REPLAY STATUS
+
+Tracked reviewer-only seams exist.
+
+They do not preserve the complete production chain:
+
+deterministic grounding
+→ narrow boundary authority
+→ broad semantic reviewer.
+
+Therefore:
+
+`PRODUCTION-EQUIVALENT REPLAY SEAM = NO`
+
+`REVIEWER-ONLY SEAM = YES`
+
+Reviewer-only replay is NOT the next production-reachability step.
+
+It remains useful later under explicit reviewer-diagnostic authorization.
+
+### 7. NEXT PRIORITY
+
+Cell A is the first engineering investigation because its content defect is
+already proven and directly prevents declared-boundary subjects from progressing
+through the production reachability chain.
+
+However, mutation is NOT yet authorized.
+
+Before changing generation code, the implementation cause of the historical
+c18 → Run-2 c18 regression must be isolated read-only across:
+
+- generation prompt history
+- generation schema/contract history
+- model/runtime selection
+- sampling configuration
+- Plan→Render coupling
+- relevant code changes between the historical subject and current authority
+
+Cell B remains parked as a separate causal track.
+
+Its next step requires separate authorization after Cell A investigation, and
+must not be bundled with Cell A.
+
+### 8. FINAL STATUS
+
+CELL A =
+`A1 GENERATION_CONTENT_DEFECT_PROVEN`
+
+CELL B =
+`B4 FAILURE_PROVEN_BUT_CAUSE_NOT_YET_PROVEN`
+
+SCHEMA COVERAGE GAP =
+`PROVEN CONTRIBUTOR`
+
+VALIDATOR FALSE REJECTION IN CELL A =
+`NO`
+
+PRODUCTION-EQUIVALENT REPLAY =
+`NO`
+
+REVIEWER-ONLY REPLAY =
+`AVAILABLE, LATER`
+
+NEXT ENGINEERING MUTATION =
+`NONE AUTHORIZED`
+
+NEXT RESEARCH PRIORITY =
+`READ-ONLY CELL-A GENERATION REGRESSION IMPLEMENTATION ATTRIBUTION`
+
 ## 2026-09-15 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 2 RESULT
 
 **[GOV-ARENA-OBSERVER-RUN-2-RESULT] RUN 2 EXECUTION COMPLETE / REVIEWER OBSERVATION NOT REACHED.**
