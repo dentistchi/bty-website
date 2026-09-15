@@ -47,6 +47,17 @@ export const PHASE_CHOICE_DEFECT_CODES = [
   "passive_delay",
   "deflection_without_value",
   "repeated_decoy_across_branches",
+  /*
+    GOV-ARENA-COMMITMENT-FLAG-OBS — OBSERVATION ONLY, NEVER A VETO.
+
+    `isActionCommitment` is not descriptive metadata: it selects ACTION_REQUIRED over
+    NEXT_SCENARIO_READY and decides action-contract candidacy. A choice that describes an immediate
+    observable external action while carrying `false` therefore misroutes the learner's own decision.
+
+    The reviewer reports the inconsistency and nothing more. As an unregistered content-authority
+    code it is default-denied to telemetry, so it cannot reject a draft or become `primaryCode`.
+  */
+  "commitment_flag_mismatch",
 ] as const;
 export type PhaseChoiceDefectCode = (typeof PHASE_CHOICE_DEFECT_CODES)[number];
 

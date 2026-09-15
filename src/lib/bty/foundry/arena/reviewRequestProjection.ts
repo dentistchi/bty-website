@@ -16,7 +16,7 @@
  * replay path gains what it was missing.
  */
 
-import { enumerateChoices } from "@/domain/foundry/arena-draft/choiceConstruction";
+import { enumerateChoices, type ChoiceRef } from "@/domain/foundry/arena-draft/choiceConstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 
 /** The scope sentence. Empty active set and non-empty are deliberately different statements. */
@@ -30,13 +30,47 @@ export type BroadReviewRequest = {
   constraints: Array<{ id: string; statement: string }>;
   activeBoundaryCount: number;
   boundaryComplianceScope: string;
-  visibleChoices: Array<{ phase: string; branchIndex: number; choiceIndex: number; label: string; construction: unknown }>;
+  /*
+    GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-1 — `isActionCommitment` on the REVIEW UNIT.
+
+    The flag already travelled in this payload under the raw `branches[*].action` / `flatAction`
+    projections below, because those carry whole `ActionDecisionChoice` objects and the request is
+    serialized directly. What it did NOT do was sit on `visibleChoices` — the per-choice unit the
+    prompt actually binds the review to. Measured on Run 1: the fact was in the bytes and outside the
+    schema, so the reviewer had no unit on which to compare meaning against flag.
+
+    Present on action-phase entries ONLY, because only those choices carry the flag.
+  */
+  visibleChoices: Array<{
+    phase: string;
+    branchIndex: number;
+    choiceIndex: number;
+    label: string;
+    construction: unknown;
+    isActionCommitment?: boolean;
+  }>;
   opening: string;
   primary: unknown;
   branches: Record<string, { escalation: string; tradeoff: unknown; action: unknown }>;
   flatTradeoff: unknown;
   flatAction: unknown;
 };
+
+/**
+ * The commitment flag for ONE enumerated choice, or `undefined` where the phase has no such flag.
+ *
+ * Read from the same `ActionDecisionChoice` the label came from — never re-derived, never defaulted.
+ * `undefined` means "this phase does not carry the concept", which is why the key is omitted rather
+ * than sent as `false`: a primary choice is not a non-commitment, it is simply not an action choice.
+ */
+function actionCommitmentOf(draft: ArenaScenarioDraft, c: ChoiceRef): boolean | undefined {
+  if (c.phase === "flat_action") return draft.actionDecision.choices[c.index]?.isActionCommitment;
+  if (c.phase !== "branch_action") return undefined;
+  // Branch order follows primary-choice order — the same relationship `enumerateChoices` walks.
+  const primary = draft.primary.choices[c.branchIndex];
+  if (!primary) return undefined;
+  return draft.branches?.[primary.id]?.actionDecision.choices[c.index]?.isActionCommitment;
+}
 
 /**
  * Build the broad reviewer's user payload.
@@ -55,13 +89,17 @@ export function buildBroadReviewRequest(
     constraints: activeBoundaries,
     activeBoundaryCount: activeBoundaries.length,
     boundaryComplianceScope: broadBoundaryComplianceScope(activeBoundaries.length),
-    visibleChoices: enumerateChoices(draft).map((c) => ({
-      phase: c.phase,
-      branchIndex: c.branchIndex,
-      choiceIndex: c.index,
-      label: c.label,
-      construction: constructions[c.id] ?? null,
-    })),
+    visibleChoices: enumerateChoices(draft).map((c) => {
+      const flag = actionCommitmentOf(draft, c);
+      return {
+        phase: c.phase,
+        branchIndex: c.branchIndex,
+        choiceIndex: c.index,
+        label: c.label,
+        construction: constructions[c.id] ?? null,
+        ...(flag === undefined ? {} : { isActionCommitment: flag }),
+      };
+    }),
     opening: draft.opening,
     primary: draft.primary.choices,
     branches: Object.fromEntries(

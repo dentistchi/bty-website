@@ -21,6 +21,7 @@
  * Pure assembly plus one injected write callback: no clock, no direct filesystem access.
  */
 
+import type { ContentAuthority, ContentCoordinate } from "@/domain/foundry/arena-draft/contentAuthority";
 import type { GenObservation } from "./arenaScenarioGenerationService";
 import type { RetentionIdentity } from "./evalArtifact";
 
@@ -77,7 +78,23 @@ export type RetentionRecord = {
     Each entry keeps its provenance, because the answerable question is not *what did the reviewer
     say* but *through which path did it say it, and why did that path earn nothing*.
   */
-  contentTelemetry?: Array<{ code: string; provenance: string; evidence?: string }>;
+  contentTelemetry?: Array<{
+    code: string;
+    provenance: string;
+    evidence?: string;
+    /*
+      GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-2 §6 — DECLARING WHAT WAS ALREADY CARRIED.
+
+      `applyObservation` filters the classified findings rather than rebuilding them, so `coordinate`
+      and `disposition` have always reached the artifact by object identity. They were simply absent
+      from the declared shape, which made a durable fact look incidental. An observation bound to one
+      `visibleChoices` row is worthless without its coordinate, so the contract now names both.
+
+      Additive and OPTIONAL: `schemaVersion` does not move and every historical record still parses.
+    */
+    coordinate?: ContentCoordinate;
+    disposition?: ContentAuthority;
+  }>;
   /** Derived by `deriveParityGrade`. Never supplied by a caller. */
   parityGrade?: ParityGrade;
 };
