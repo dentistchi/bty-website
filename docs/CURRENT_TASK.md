@@ -1,3 +1,280 @@
+## 2026-09-14 — CHECKPOINT: COMMITMENT FLAG OBSERVATION — IMPLEMENTED
+
+**[GOV-ARENA-COMMITMENT-FLAG-OBS-IMPL-1] IMPLEMENTATION COMPLETE / INNER PUSHED.**
+Closes the implementation scope of [GOV-ARENA-COMMITMENT-FLAG-OBS] as amended by
+[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-1] and
+[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-2].
+Observation only. No reviewer rejection authority, no registry, precedence,
+collector, runtime-binding, Plan-validator, DB, migration, or deploy change.
+Run 2 NOT authorized.
+
+**1. AUTHORITY.**
+Inner parent `56d413570291da5a6fee938fd3d26ad46b125ef3` → inner
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+(fast-forward, refspec `inner-main:inner-main`; HEAD = origin/inner-main =
+ls-remote).
+
+Outer authority at implementation time
+`9fee047f720e5c5caa494efb986c0d4afc575e7a`, untouched by the inner push.
+
+Pre-existing inner WIP: 10 paths (2 tracked-modified + 8 untracked),
+byte-identical throughout
+(status hash
+`5872e6af15244dd46fa29d38e862742225b94f53e920f784d16e1f3afe884348`
+unbroken since first freeze); none staged.
+
+An interim report said "nine"; that prose count omitted one tracked-modified
+file. The frozen set never changed.
+
+**2. COMMIT.**
+Subject:
+`feat(arena): observe commitment flag mismatch as phase-choice telemetry`
+
+Body empty.
+
+Exactly five paths, 461 insertions and 10 deletions:
+
+- `src/domain/foundry/arena-draft/choiceReview.ts` —
+  `PHASE_CHOICE_DEFECT_CODES` += `commitment_flag_mismatch` (14 → 15)
+
+- `src/lib/bty/foundry/arena/reviewRequestProjection.ts` —
+  action-phase `visibleChoices[]` entries carry
+  `isActionCommitment?: boolean`;
+  the helper reads the same choice object.
+  Raw `branches[].action` / `flatAction` assignments are byte-identical to the
+  parent: 2/2 extracted lines, SHA
+  `1e3eee1c46b5c3c36b6ad8b4e4a1a9c6353b8eeac6773dbae9a62867bfadb133`.
+  No `id` projection was added.
+
+- `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts` —
+  REVIEW_SYSTEM_PROMPT +3 lines (§3),
+  generation guidance +1 line (§4)
+
+- `src/lib/bty/foundry/arena/retentionRecord.ts` —
+  `contentTelemetry` item type += optional `coordinate?`, `disposition?`
+  under the tracked additive-optional policy
+  (`retentionRecord.ts:76-77`; restated at `:93`).
+  `RETENTION_SCHEMA_VERSION` =
+  `arena_experiment_retention_v1` remains unchanged at `:29`.
+
+- `src/lib/bty/foundry/arena/commitmentFlagObservation.test.ts` —
+  new, 23 tests covering §13 A–H, J, K–Q plus four-term alignment.
+
+NO DIFF:
+
+- `semanticReview.ts`
+- `contentAuthority.ts`
+- `gatePrecedence.ts`
+- `contractManifest.ts`
+- runtime binding
+- Plan validators
+- docs/
+- `.eval-artifacts`
+
+`.eval-artifacts` remained 144 files with its measured manifest unchanged.
+
+**3. REVIEWER PROMPT — VERBATIM
+(`arenaScenarioGenerationService.ts:1002-1004`).**
+
+"COMMITMENT FLAG CONSISTENCY — every action-phase visibleChoices entry also carries `isActionCommitment`, the server's own classification of that choice. It marks a real observable action commitment as opposed to waiting, preparing, observing or deferring. Compare it against what that SAME entry's label and construction actually describe."
+
+"Report commitment_flag_mismatch in that entry's defectCodes ONLY when isActionCommitment is false AND the label/construction nevertheless describe an immediate, observable, committed external action rather than waiting, preparing, observing or deferring. Judge the entry in front of you; never infer the flag from a sibling."
+
+"isActionCommitment=true is NOT evidence that an option is correct, preferred, safer, more ethical, more competent or otherwise superior, and you must not use it that way for commitment_flag_mismatch or for any other finding. It is a consistency fact about classification, never an answer key. A false option whose behavior is waiting, preparing, observing or deferring is consistent with the flag and must NOT be reported merely for being non-commitment."
+
+**4. GENERATION GUIDANCE — VERBATIM
+(`arenaScenarioGenerationService.ts:573`).**
+
+"The flag must MATCH what the choice actually does. A choice marked false must not itself carry out the immediate observable external commitment; it must remain within waiting, preparing, observing or deferring. At the same time, a false option must remain concrete, competent and cost-bearing — a real strategy a capable person would defend, naming what it gives up. Never write it as a hollow 'do nothing', 'wait and see' or obviously inferior decoy: the decision must stay a genuine judgment between two defensible moves, not good-action versus bad-avoidance."
+
+Both surfaces use exactly the tracked four terms
+(`types.ts:84-91`).
+
+An earlier draft's `consulting / sequencing / scoping` expansion was removed
+before commit.
+
+**5. TESTS-FIRST PROOF.**
+
+New tests on the unmodified parent:
+
+10 RED:
+A, B/K, C/L, F, H×3, M-new×2, N1
+
+12 GREEN:
+the pre-existing invariants.
+
+After implementation:
+
+23 / 23 PASS.
+
+**6. GATES — MEASURED, NOT RECALLED.**
+
+TypeScript:
+PASS
+
+Terminology:
+44 violations
+= measured baseline
+
+Cloudflare build:
+PASS
+
+Full suite under the final gate order:
+
+17 failed tests
+8 failed files
+
+failing-set SHA:
+`8e53ba6b6c9a3f266a1d8b87952a84de093cca9a51c6d66be1a4d9c1c36f9be9`
+
+New regressions:
+0
+
+`git diff --check`:
+PASS
+
+**7. BASELINE CAPTURE-ORDER ARTIFACT — RECORDED, NOT RELABELED.**
+
+STEP 0 originally measured:
+
+18 failed tests
+9 failed files
+
+failing-set SHA:
+`b64fd8a20f2bcad9694576f48bde8729c8d8a80aceed3abd2974c1ffb0a2f512`
+
+That capture occurred BEFORE `cf:build`.
+
+The final gate used:
+
+`cf:build`
+→
+`test`
+
+and measured 17 / 8:
+
+one baseline failure became PASS,
+zero new failures were added.
+
+The cause was proven from:
+
+`ArenaPracticeFlow.previewSurface.test.ts:99-105`
+
+The test reads `.next/static/css` and returns early when the directory is
+absent (`:104`).
+
+The original failing state had stale stylesheet output present; `cf:build`
+regenerated the build output and removed that failure.
+
+Changed production lines contained zero style-surface tokens.
+
+Therefore:
+
+17 / 8 is the final acceptance reference under the correct gate order.
+
+It is NOT relabeled as the parent's original measurement.
+
+**8. PUSH GATE — TWO JUSTIFIED BLOCKS BEFORE PUSH.**
+
+First block:
+
+A source-mention regex counted the authorized helper's read of the choice
+source as though the raw projection assignment itself had changed.
+
+Measured proxy count:
+1
+
+The executor halted correctly.
+
+Second block:
+
+The reissued extraction anchored matching to line start and therefore missed
+the mid-line:
+
+`action: b.actionDecision.choices`
+
+assignment.
+
+It measured 1 of 2 raw assignments while its expected constant came from a
+different, unanchored measurement method.
+
+The executor halted correctly again.
+
+Both times the actual invariant remained intact.
+
+Final push gate measured:
+
+- changed raw-assignment lines = 0
+- parent raw extraction = 2
+- head raw extraction = 2
+- parent == head byte-for-byte
+- SHA =
+  `1e3eee1c46b5c3c36b6ad8b4e4a1a9c6353b8eeac6773dbae9a62867bfadb133`
+
+Both gate-design defects were on the dispatch-author side, not executor failure.
+
+**9. RULES ADOPTED — PERMANENT.**
+
+Baseline-order rule:
+
+An equality-gate baseline is captured under the same gate order and relevant
+generated-artifact state as the final gate.
+
+A later measurement must never be relabeled as the parent's original
+measurement.
+
+Invariant-gate rule:
+
+Measure the invariant's own bytes or structure whenever possible.
+
+Do not use lines that merely mention the source as a proxy for mutation of the
+invariant itself.
+
+Hard-expected-value rule:
+
+A hard expected value is valid only when it was produced by the same
+measurement command at the same authority.
+
+If the measurement method changes, discard the old hard constant and re-measure.
+
+Historical constants may remain cross-checks, but they are not BLOCK conditions
+when a fresh parent/head extraction directly proves byte identity.
+
+Node-tool rule:
+
+Direct Node-tool invocation uses the repo-local
+`./node_modules/.bin/<tool>` path.
+
+`npx` is forbidden.
+
+Tracked npm scripts remain allowed when their command chain has passed the
+applicable read-only/network-safety gate.
+
+**10. WHAT THIS DOES NOT DO.**
+
+`commitment_flag_mismatch` remains telemetry under default-deny content
+authority (`contentAuthority.ts:130-139`).
+
+It cannot become `primaryCode` and cannot reject.
+
+It cannot drive retry:
+
+- `reviewFindings` is built from `terminalFindings` only
+  (`arenaScenarioGenerationService.ts:2012`)
+- telemetry is routed separately to `contentTelemetry`
+  (`:2013` on the reject path; `:1977` on the accept path)
+- `resolveRejection` receives only that terminal finding set
+  (`:2014`)
+- `RETRYABLE_CODES` membership remains inert because there are zero production
+  consumers at this authority
+
+Its first live emission, if any, will be observed only under a separately
+authorized Run 2.
+
+`isActionCommitment` runtime meaning is unchanged.
+
+Run 2 is NOT authorized by this checkpoint.
+
 ## 2026-09-14 — AMENDMENT 2: COMMITMENT FLAG OBSERVATION AUTHORIZATION
 
 **[GOV-ARENA-COMMITMENT-FLAG-OBS-AMENDMENT-2] CORRECTION OF §3 AND §5 — RESPONSE-SCHEMA ENUM EXTENSION.**
