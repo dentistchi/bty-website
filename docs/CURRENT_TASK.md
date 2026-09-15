@@ -1,3 +1,521 @@
+## 2026-09-15 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 2 RESULT
+
+**[GOV-ARENA-OBSERVER-RUN-2-RESULT] RUN 2 EXECUTION COMPLETE / REVIEWER OBSERVATION NOT REACHED.**
+Closes the one-time live experiment authorized by
+[GOV-ARENA-OBSERVER-RUN-2].
+
+Run 2 consumed exactly the two authorized cells and performed no rerun.
+
+It produced useful generation-pipeline evidence but ZERO scored broad semantic
+reviewer cells.
+
+No authority changes follow from this result.
+
+**1. AUTHORITY.**
+
+OUTER authority:
+
+`7b7b893039556edc238b7a644a22c88d69337e7a`
+
+INNER runtime authority:
+
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+The two authorized live invocations completed under these authorities.
+
+No source, test, ledger, DB, migration, deploy, or git-push mutation occurred
+during execution.
+
+Pre-existing inner WIP remained byte-identical.
+
+**2. AUTHORIZED SAMPLE CONSUMED EXACTLY.**
+
+CELL A:
+
+`c18-constrained-clinical`
+constraint `c1_verify`
+× `plan_render_v1`
+× `runs=1`
+× correction disabled
+
+CELL B:
+
+`c19-indirect-violation`
+constraint `c1_priv`
+× `plan_render_v1`
+× `runs=1`
+× correction disabled
+
+Authorized cells consumed:
+
+`2 / 2`
+
+No third cell executed.
+
+No rerun occurred.
+
+External provider-call count remains:
+
+`NOT MEASURED`
+
+and is not reconstructed from cells, logs, reviewCalls, stages, gates, or
+artifacts.
+
+**3. FINAL REVIEWER REACHABILITY RESULT.**
+
+CELL A:
+
+`REVIEWER_REACHED = NO`
+
+CELL B:
+
+`REVIEWER_REACHED = NO`
+
+Therefore:
+
+NARROW LLM BOUNDARY REVIEWER REACHED:
+
+`0 / 2`
+
+BROAD SEMANTIC REVIEWER REACHED:
+
+`0 / 2`
+
+SCORED REVIEWER CELLS:
+
+`0`
+
+REVIEWER 2×2 DENOMINATOR:
+
+`0`
+
+This is NOT a `0 / 0 / 0 / 0` reviewer matrix.
+
+There were no eligible reviewer rows to populate such a matrix.
+
+Both cells are:
+
+`CONTEXT_ONLY`
+
+for broad-reviewer-quality adjudication.
+
+**4. PIPELINE ORDER — POSTMORTEM CORRECTION.**
+
+Run 2 established the current execution order as:
+
+Plan
+→ Render
+→ deterministic gates
+→ narrow LLM boundary review
+→ broad semantic review
+
+The deterministic gate set includes:
+
+`boundary_grounding`
+
+implemented by:
+
+`validateBoundaryGrounding`
+
+in:
+
+`src/domain/foundry/arena-draft/boundaryGrounding.ts`
+
+and invoked from the deterministic-gate collection path in
+`arenaScenarioGenerationService.ts`.
+
+Both Run-2 cells terminated at this deterministic `boundary_grounding` layer.
+
+Neither cell reached the later LLM-backed `boundary_review_stage`.
+
+Neither cell reached the broad semantic-review loop.
+
+Any earlier description that treated these Run-2 rejections as
+`boundary_review_stage` outcomes is superseded by this source-grounded
+postmortem.
+
+**5. CELL A — c18 ROOT CAUSE.**
+
+CELL A outcome:
+
+`generation_rejected`
+
+primaryCode:
+
+`confirmed_boundary_absent`
+
+primary originating gate:
+
+`boundary_grounding`
+
+Additional deterministic findings included:
+
+- `unsupported_boundary_compliance`
+- `plan_dimension_label_leakage`
+- `sibling_choice_pair_identical`
+
+The producer of:
+
+`confirmed_boundary_absent`
+
+is the deterministic boundary-grounding validator at:
+
+`boundaryGrounding.ts:283`
+
+The fixture DID declare:
+
+`c1_verify`
+
+with the confirmed statement:
+
+`Two identifiers must be verified before treatment`
+
+However, the generated learner-facing opening and decision surfaces did not
+contain sufficient evidence of that confirmed rule for the deterministic
+grounding check.
+
+Therefore:
+
+fixture declaration present = YES
+
+learner-facing boundary grounding sufficient = NO
+
+The rule existed in the input/prompt/declaration but was not adequately grounded
+in the rendered learner-facing scenario.
+
+This is generation-pipeline evidence.
+
+It is NOT a broad-reviewer false positive or false negative.
+
+**6. CELL B — c19 ROOT CAUSE.**
+
+CELL B outcome:
+
+`generation_rejected`
+
+primaryCode:
+
+`missing_boundary_reference`
+
+primary originating gate:
+
+`boundary_grounding`
+
+Additional deterministic findings included:
+
+- `unsupported_boundary_compliance`
+- `sibling_choice_pair_identical`
+
+The producer of:
+
+`missing_boundary_reference`
+
+is the deterministic boundary-grounding validator at:
+
+`boundaryGrounding.ts:293`
+
+The fixture DID declare:
+
+`c1_priv`
+
+with its confirmed privacy constraint.
+
+However, the generated canonical:
+
+`boundaryGrounding[]`
+
+did not contain the required entry referencing:
+
+`boundaryId = c1_priv`
+
+Therefore:
+
+fixture declaration present = YES
+
+required generated boundary reference present = NO
+
+The missing information was in the generated draft's canonical boundary
+grounding representation, not in the input constraint.
+
+This is generation-pipeline evidence.
+
+It is NOT a broad-reviewer false positive or false negative.
+
+**7. PRODUCER PROVENANCE MUST NOT BE INFERRED FROM CODE STRING.**
+
+Run 2 demonstrates why defect-code text alone is not provenance.
+
+For example:
+
+`confirmed_boundary_absent`
+
+also exists on a reviewer-derived provisional-boundary path elsewhere in the
+semantic-review architecture.
+
+That fact does NOT make Cell A's finding reviewer-originated.
+
+For these Run-2 artifacts, producer attribution is based on:
+
+- exact deterministic producer source
+- execution ordering
+- retained artifact shape
+- no broad parsed review
+- no reviewer channel/disposition/coordinate evidence
+- control-flow termination before reviewer invocation
+
+Code-string identity is insufficient.
+
+This rule remains permanent.
+
+**8. CFOBS WAS NOT EXERCISED.**
+
+`commitment_flag_mismatch`
+
+was observed:
+
+`0`
+
+times.
+
+That result is classified:
+
+`UNEXERCISED`
+
+not:
+
+`REVIEWER NEGATIVE`
+
+Reason:
+
+the broad semantic-review path that can emit phase-choice telemetry never ran in
+either cell.
+
+Therefore Run 2 provides no evidence that the reviewer:
+
+- detected
+- missed
+- accepted
+- rejected
+
+a commitment-flag mismatch.
+
+The absence of CFOBS telemetry is not a reviewer-quality result.
+
+**9. BOUNDARY REVIEWER OBSERVATION WAS ALSO NOT EXERCISED.**
+
+The LLM-backed narrow boundary-review stage was not reached in either cell.
+
+Therefore Run 2 did NOT measure:
+
+- narrow boundary reviewer quality
+- broad semantic reviewer boundary quality
+- reviewer-originated provisional-terminal boundary behavior
+- reviewer boundary false positives
+- reviewer boundary false negatives
+
+The finding gate name:
+
+`boundary_grounding`
+
+refers here to the deterministic domain validator, not to the LLM
+`boundary_review_stage`.
+
+**10. RUN-2 REVIEWER-QUALITY INTERPRETATION.**
+
+Broad semantic-reviewer observation measured:
+
+`NO`
+
+Commitment Flag Observation exercised:
+
+`NO`
+
+Narrow boundary-reviewer reachability exercised:
+
+`NO`
+
+Scored reviewer cells:
+
+`0`
+
+Reviewer 2×2 denominator:
+
+`0`
+
+CELL A:
+
+`CONTEXT_ONLY`
+
+CELL B:
+
+`CONTEXT_ONLY`
+
+Reviewer false-positive conclusion:
+
+`NONE`
+
+Reviewer false-negative conclusion:
+
+`NONE`
+
+Run 2 is therefore execution-complete but reviewer-observation-inconclusive.
+
+**11. GENERATION-PIPELINE SIGNAL — CONTEXT, NOT ADJUDICATION.**
+
+Run 2 produced meaningful counterevidence about the current generation pipeline.
+
+Under the live configuration used for this run:
+
+- c18 failed deterministic grounding because the confirmed rule was not
+  sufficiently present in learner-facing surfaces
+
+- c19 failed deterministic grounding because its confirmed boundary id was not
+  represented in generated `boundaryGrounding[]`
+
+Therefore the current plan/render pipeline did NOT produce a broad-reviewer-
+reachable declared-boundary subject for either authorized fixture.
+
+This is recorded as:
+
+`GENERATION / REACHABILITY CONTEXT`
+
+not as a reviewer-quality verdict and not as an automatic authorization to
+change generation behavior.
+
+**12. CURRENT REACHABILITY ARCHITECTURE IS INTENTIONAL.**
+
+Tracked source/tests establish the ordering:
+
+deterministic boundary grounding
+→ narrow LLM boundary review
+→ broad semantic review
+
+The narrow boundary reviewer must allow broad review before the broad semantic
+reviewer can execute.
+
+A boundary-invalid subject is therefore intentionally prevented from reaching
+the broad reviewer.
+
+Run 2 terminated even earlier:
+
+at deterministic boundary grounding.
+
+This checkpoint does NOT authorize changing that ordering.
+
+**13. NO PROVEN EXISTING DECLARED-BOUNDARY BROAD-REVIEW FIXTURE.**
+
+Current tracked evidence does NOT prove any existing non-empty declared-boundary
+fixture reaches the broad semantic reviewer end-to-end through the live runner.
+
+Tracked candidates include declared-boundary fixtures such as c18, c19, and c20,
+but successful broad-review reachability for a non-empty constraint is:
+
+`NOT PROVEN`
+
+by existing tracked artifacts/tests.
+
+Mocked boundary-review contract tests do not prove end-to-end live runner
+reachability.
+
+c17 has an empty constraint set and therefore does not establish the required
+declared non-empty boundary case.
+
+**14. MINIMUM REQUIREMENT FOR A FUTURE REVIEWER-QUALITY CELL.**
+
+Before a future declared-boundary reviewer-quality cell can be scored, all four
+conditions must occur in the same execution:
+
+1. input contains a declared, non-empty confirmed boundary
+
+2. generated subject passes deterministic `boundary_grounding`, including:
+   - every confirmed boundary id is represented
+   - learner-facing surfaces sufficiently ground the rule
+
+3. narrow LLM boundary review returns:
+   `boundary_review_pass`
+   with broad review allowed
+
+4. broad semantic review executes and retains a parsed review payload
+
+Only then can the packet score:
+
+- boundaryAssessments
+- phaseChoices
+- reviewer terminal CONTENT evidence
+- commitment_flag_mismatch telemetry
+- reviewer-positive / reviewer-negative concept slots
+
+**15. NEXT EXPERIMENT IS NOT YET AUTHORIZED.**
+
+No existing tracked fixture/replay path has yet been proven to guarantee the
+four conditions above without relying again on live generation success.
+
+Therefore this checkpoint authorizes:
+
+NO Run 3
+NO rerun of c18
+NO rerun of c19
+NO additional random-seed experiment
+NO generation fix
+NO replay harness
+NO instrumentation
+NO reviewer-authority change
+
+The next step, if Commander opens it, is READ ONLY:
+
+determine whether the tracked repo already contains a frozen declared-boundary
+subject or replay seam that can bypass generation variability while still
+exercising the real narrow-boundary and broad-semantic reviewer paths.
+
+If no such path exists, any reviewer-only replay harness or frozen-subject
+instrumentation requires a separate explicit authorization.
+
+**16. FINAL STATUS.**
+
+RUN 2:
+
+`EXECUTION COMPLETE`
+
+AUTHORIZED CELLS:
+
+`2 / 2`
+
+REVIEWER QUALITY:
+
+`NOT MEASURED`
+
+SCORED CELLS:
+
+`0`
+
+2×2 DENOMINATOR:
+
+`0`
+
+CFOBS:
+
+`UNEXERCISED`
+
+CELL A:
+
+`CONTEXT_ONLY`
+
+CELL B:
+
+`CONTEXT_ONLY`
+
+FALSE POSITIVE / FALSE NEGATIVE CONCLUSION:
+
+`NONE`
+
+AUTHORITY CHANGE:
+
+`NONE`
+
+AUTOMATIC NEXT STEP:
+
+`NONE`
+
 ## 2026-09-15 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 2
 
 **[GOV-ARENA-OBSERVER-RUN-2] ONE-TIME LIVE PROVIDER AUTHORIZATION.**
