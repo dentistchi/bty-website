@@ -1,3 +1,494 @@
+## 2026-09-15 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 2
+
+**[GOV-ARENA-OBSERVER-RUN-2] ONE-TIME LIVE PROVIDER AUTHORIZATION.**
+Commander authorizes one narrow Reviewer-as-Observer live experiment under:
+
+OUTER authority:
+`0891a8134ae61b3bbc93322e63b7c263688623bb`
+
+INNER runtime authority:
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+This is a separate one-time exception.
+
+It does NOT widen GOV-ARENA-GEN.
+It does NOT alter Run-1 adjudication or authority.
+It does NOT alter Commitment Flag Observation authority.
+It grants no new rejection authority.
+It authorizes no deploy, DB change, migration, source mutation,
+instrumentation change, or production push.
+
+**1. PURPOSE.**
+
+Run 2 measures semantic-reviewer observation quality on DECLARED-BOUNDARY
+fixtures while holding architecture constant at `plan_render_v1`.
+
+It also provides the first live opportunity to observe:
+
+`commitment_flag_mismatch`
+
+as coordinate-bearing telemetry under the already-shipped
+[GOV-ARENA-COMMITMENT-FLAG-OBS-IMPL-1].
+
+Its presence OR absence is a measurement result.
+
+Absence is not a failed run.
+
+Human adjudication authority remains Commander-only.
+
+No Run-2 result changes reviewer authority automatically.
+
+**2. CURRENT RUNNER AUTHORITY AND PREMISES.**
+
+Authorized runner:
+
+`scripts/practice-full-retention.ts`
+
+at INNER:
+
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+Current preauthorization inventory proves all eight relevant runner/runtime
+paths are CLEAN relative to the ten pre-existing WIP paths.
+
+Measured runner premises:
+
+- one fixture × one architecture × `runs=1` produces one RetentionIdentity
+- `plan_render_v1` forces correction disabled
+- generation accounting is passed as `null`
+- the shared 14-call accounting ceiling is therefore NOT ENFORCED
+- `reviewCalls` is NOT a provider-call counter
+- external provider-call count is NOT MEASURED
+- the runner contains no automatic rerun loop beyond its single matrix pass
+
+These code-path premises MUST be re-read from current HEAD before live
+execution under the permanent premise-audit rule.
+
+**3. EXACT AUTHORIZED LIVE SAMPLE.**
+
+Exactly TWO explicit one-cell invocations are authorized, serially.
+
+CELL A:
+
+fixture:
+`c18-constrained-clinical`
+
+declared constraint:
+`c1_verify`
+
+tracked fixture location:
+`practice-generation.eval.ts:98-99`
+
+architecture:
+`plan_render_v1`
+
+runs:
+`1`
+
+correction:
+`disabled`
+
+
+CELL B:
+
+fixture:
+`c19-indirect-violation`
+
+declared constraint:
+`c1_priv`
+
+tracked fixture location:
+`practice-generation.eval.ts:100-101`
+
+architecture:
+`plan_render_v1`
+
+runs:
+`1`
+
+correction:
+`disabled`
+
+
+Each cell may execute ONCE.
+
+Every invocation MUST explicitly pass:
+
+- its one authorized `--fixtures` value
+- `--architectures plan_render_v1`
+- `--runs 1`
+- `--correction disabled`
+- its authorized Run-2 artifact directory
+
+`--provider-fake` MUST be absent.
+
+The runner defaults MUST NOT be relied on.
+
+No third cell is authorized.
+
+Legacy architecture is NOT authorized.
+
+No fixture other than c18/c19 is authorized.
+
+No automatic rerun is authorized.
+
+Any rerun requires a new Commander authorization.
+
+**4. EXPERIMENTAL IDENTIFIABILITY.**
+
+Architecture is held constant at `plan_render_v1`.
+
+Run 1 measured a legacy cell that terminated at the deterministic
+`concrete_scene` gate before semantic review was reachable.
+
+That result is a measured prior, not a prediction for c18/c19.
+
+Holding architecture constant avoids introducing an architecture contrast and
+avoids deliberately spending a Run-2 cell on the architecture with that
+measured reviewer-not-reached failure mode.
+
+Pre-review deterministic rejection remains possible for either Run-2 cell and
+must be measured if it occurs.
+
+The experimental contrast is fixture boundary kind:
+
+- c18: confirmed verification constraint whose tracked note says generation
+  should remain inside the rule
+
+- c19: confirmed privacy constraint whose tracked note identifies an indirect
+  boundary-violation review case
+
+No model outcome is assumed in advance.
+
+**5. PROVIDER-CALL BOUNDARY.**
+
+No shared total provider-call ceiling is represented on this runner path
+because generation accounting is `null`.
+
+The authorization boundary is the two explicit one-cell invocations, not a
+reconstructed call count.
+
+External provider-call count is:
+
+`NOT MEASURED`
+
+and MUST NOT be inferred from:
+
+- cells
+- reviewCalls
+- stages
+- gates
+- retained observations
+- artifacts
+
+**6. LIVE CONFIGURATION — SAME-SESSION PRECONDITION.**
+
+The preauthorization session measured all four relevant environment variables
+as UNSET.
+
+Therefore no live cell was executable in that process and zero authorized
+cells were consumed.
+
+Before CELL A, the actual live execution process MUST run a presence-only
+preflight.
+
+Required:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+and at least one of:
+
+`LLM_API_KEY`
+`OPENAI_API_KEY`
+
+must be SET.
+
+Credential selection follows the tracked client precedence:
+
+`LLM_API_KEY ?? OPENAI_API_KEY`
+
+If neither key variable is SET:
+
+BLOCK before CELL A.
+
+Authorized cells consumed:
+`0`
+
+If both key variables are SET, the tracked client selects `LLM_API_KEY`.
+That fact is not an experimental axis.
+
+No credential value, prefix, suffix, length, digest, or partial content may be
+read or reported.
+
+Under the required base/model state, tracked defaults are:
+
+endpoint:
+`https://api.openai.com/v1/chat/completions`
+
+model:
+`gpt-4o-mini`
+
+provider implementation:
+native `fetch`
+
+**7. EVIDENCE MODEL.**
+
+Run-2 packet evidence remains separated by source and authority.
+
+R:
+
+raw parsed semantic-review assertions, including boundary assessments.
+
+Y:
+
+structured `contentTelemetry`, including any
+`commitment_flag_mismatch`.
+
+For CFOBS telemetry, code, provenance, coordinate, and disposition are
+contractually represented by the retention type.
+
+T:
+
+reviewer-originated TERMINAL CONTENT evidence.
+
+Declared-boundary fixtures can produce provisional-boundary terminal findings
+under authority already in force.
+
+Therefore Run 2 can contain reviewer-positive boundary rows with real existing
+rejection authority.
+
+However:
+
+`gates[].findings`
+
+alone is NOT sufficient to reconstruct reviewer provenance.
+
+Reviewer origin/provenance MUST be attributed using corresponding
+parsed-review / coordinate / classified evidence.
+
+The packet MUST NOT infer provenance from a defect-code string alone.
+
+Deterministic findings remain:
+
+`CONTEXT_ONLY`
+
+for reviewer-quality adjudication.
+
+A terminal reviewer finding maps to REVIEWER POSITIVE only when it can be
+attributed to a frozen reviewer-schema concept slot.
+
+A post-review `generation_rejected` outcome is scoreable because the reviewer
+was reached, but the outcome itself does NOT automatically make every slot
+reviewer-positive.
+
+**8. REVIEWER REACHABILITY AND DENOMINATOR.**
+
+If a cell terminates at a deterministic gate before semantic review:
+
+`REVIEWER_REACHED = NO`
+
+That cell is excluded from the reviewer 2×2 denominator.
+
+If semantic review is reached:
+
+the cell is eligible for reviewer-slot adjudication regardless of whether its
+terminalOutcome is:
+
+`generated`
+
+or
+
+`generation_rejected`
+
+Reviewer reachability, not final product outcome, determines denominator
+eligibility.
+
+**9. SLOT / PACKET GOVERNANCE.**
+
+The adjudication unit remains the independently enumerable concept slot.
+
+Packet rules carried forward:
+
+- HUMAN_ONLY and OUT_OF_SCHEMA remain separate from reviewer-schema slots
+- learner-unreachable flat compatibility projections are CONTEXT_ONLY
+- `overallVerdict` remains advisory/context only
+- provider-call count is never reconstructed from `reviewCalls`
+- accumulated `contentTelemetry` has no attempt-level attribution unless a
+  later tracked change explicitly adds it
+- boundary universe comes from the fixture's DECLARED tracked constraint,
+  never from reviewer output
+
+For each fixture, the exact reviewer-schema slot grid MUST be mechanically
+frozen from the current draft, current reviewer schema/catalog, and declared
+constraint before Commander adjudication.
+
+This authorization does NOT hard-code a boundary-slot count.
+
+No slot may be invented from reviewer output.
+
+**10. COMMITMENT FLAG OBSERVATION.**
+
+Current INNER authority proves:
+
+- `commitment_flag_mismatch` is an admitted phase-choice response-schema member
+- action-phase `visibleChoices[]` rows expose `isActionCommitment`
+- the reviewer prompt defines the mismatch condition
+- the phase-choice collector supplies:
+  `phase`
+  `branchIndex`
+  `choiceIndex`
+- provenance is `MODEL_DEFECT_CODE`
+- unknown/unproven content authority defaults it to `telemetry`
+- it cannot enter the terminal `reviewFindings` rejection path
+- coordinate and disposition are contractually represented in retention
+
+Its first live emission MAY occur in Run 2.
+
+Its absence MAY also occur.
+
+Neither result changes authority.
+
+**11. DECLARED-BOUNDARY OBSERVATION.**
+
+Both authorized fixtures contain exactly one tracked declared constraint.
+
+The reviewer receives the declared constraint surface and returns structured
+boundary assessments.
+
+Current boundary evidence may include:
+
+- presentInScenario
+- operationalized
+- affectedStages
+- allPrimaryChoicesComply
+- allTradeoffChoicesComply
+- allActionChoicesComply
+- allBranchesPreserve
+- prohibitedAlternativeExcluded
+- violatedChoiceReferences
+- violatedBranchReferences
+- remainingJudgmentDimensions
+- per-assessment defectCodes
+- boundaryCompliant
+- violatedBoundaryIds
+- boundaryIdsConsidered
+
+Current boundary evidence may arrive through distinct provenance classes:
+
+- provisional boundary boolean findings with existing terminal authority
+- model defect-code findings with telemetry disposition
+- deterministic gate evidence, which remains packet context only
+
+The packet must preserve these distinctions.
+
+**12. ARTIFACTS.**
+
+Authorized artifact root:
+
+`.eval-artifacts/reviewer-observer-live-02`
+
+Cell evidence must remain separated beneath that Run-2 root.
+
+`.eval-artifacts` is ignored by git.
+
+The tracked artifact writer uses atomic temp-write then rename.
+
+Run-1 artifacts MUST NOT be modified.
+
+Run-2 artifacts are evidence only.
+
+They MUST NOT be committed.
+
+Any packet derived from them is built outside the repo.
+
+**13. SERIAL STOP RULE.**
+
+Execution order:
+
+CELL A
+then
+CELL B
+
+Before CELL A:
+
+authority, WIP integrity, credential presence and exact CLI scope must pass.
+
+STOP before CELL B on any process/integrity failure from CELL A, including:
+
+- process exit != 0
+- `RUNNER FAILED`
+- expected artifact count != 1
+- authority mismatch
+- tracked WIP-integrity mismatch
+- artifact-path/scope mismatch
+
+The following product outcomes do NOT stop CELL B:
+
+- `generated`
+- `generation_rejected`
+- reviewer reached
+- reviewer not reached
+- presence or absence of reviewer-T
+- presence or absence of CFOBS telemetry
+- presence or absence of boundary findings
+
+If both cells end with:
+
+`REVIEWER_REACHED = NO`
+
+HALT after CELL B.
+
+No rerun.
+
+**14. FORBIDDEN.**
+
+Run 2 does NOT authorize:
+
+- source mutation
+- test mutation
+- Builder/web-shell mutation
+- reviewer-authority modification
+- authority-registry modification
+- precedence modification
+- runtime-binding modification
+- Plan-validator modification
+- instrumentation
+- provider-fake modification
+- DB change
+- migration
+- deploy
+- git push
+- a third live cell
+- legacy architecture
+- another fixture
+- automatic rerun
+
+**15. AFTER RUN 2.**
+
+Build the Run-2 evidence packet outside the repo.
+
+Apply the frozen Packet-v1 adjudication rules plus the later Run-1 amendments.
+
+Report separate breakdowns for:
+
+- declared-boundary slots
+- commitment-flag observation slots
+- other reviewer-schema slots
+- HUMAN_ONLY / OUT_OF_SCHEMA observations
+- deterministic context
+
+Reviewer-positive rows are now possible because declared-boundary
+provisional-terminal findings carry existing authority.
+
+Any such row must still be human-adjudicated by Commander.
+
+Run-2 results grant no new authority automatically.
+
+No Run 3, code change, reviewer-schema change, authority change, or live rerun
+follows automatically.
+
 ## 2026-09-14 — CHECKPOINT: COMMITMENT FLAG OBSERVATION — IMPLEMENTED
 
 **[GOV-ARENA-COMMITMENT-FLAG-OBS-IMPL-1] IMPLEMENTATION COMPLETE / INNER PUSHED.**
