@@ -1,3 +1,415 @@
+## 2026-09-16 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 3
+
+**[GOV-ARENA-OBSERVER-RUN-3] AUTHORIZE ONE LIVE c18 CELL TO MEASURE POST-REPAIR PRODUCTION REACHABILITY.**
+
+This authorization follows the durable repair result:
+
+`[GOV-ARENA-C18-PTR-REPAIR-RESULT-1]`
+
+OUTER authority:
+
+`40c485e4e05a60f3f53e395cc8435e214f10dba4`
+
+INNER runtime authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+### 1. PURPOSE
+
+Run 3 asks one ordered set of questions about one live c18 execution.
+
+Primary question:
+
+**(a) Does c18 now pass deterministic `boundary_grounding` after the Plan was repaired to receive the confirmed constraint?**
+
+Only if execution progresses farther:
+
+**(b) Is the narrow LLM boundary-review stage reached, and what outcome does it produce?**
+
+Only if narrow review permits continuation:
+
+**(c) Is the broad semantic reviewer reached, and if so what
+`boundaryAssessments`, phase-choice evidence and
+`commitment_flag_mismatch` telemetry are observed?**
+
+The experiment does NOT assume any of these later stages will be reached.
+
+### 2. REPAIR PREMISE
+
+The c18 Plan-blindness repair is CLOSED and durable.
+
+Current production authority proves:
+
+- Plan receives confirmed constraints before semantic dimensions are finalized
+- c18 Plan request contains:
+  `Two identifiers must be verified before treatment`
+- Render retains the same authoritative constraint fact
+- deterministic boundary-grounding validator is unchanged
+- reviewer and boundary-review authority are unchanged
+
+Run 3 therefore measures the production consequence of that repair.
+
+### 3. AUTHORIZED SAMPLE — EXACTLY ONE CELL
+
+Authorized fixture:
+
+`c18-constrained-clinical`
+
+Declared constraint:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+Architecture:
+
+`plan_render_v1`
+
+Runs:
+
+`1`
+
+Correction:
+
+`disabled`
+
+Authorized cells:
+
+`1`
+
+No c19.
+
+No legacy architecture.
+
+No second fixture.
+
+No automatic rerun.
+
+### 4. EXECUTION ARGUMENTS MUST BE EXPLICIT
+
+The live invocation MUST explicitly contain:
+
+`--fixtures c18-constrained-clinical`
+
+`--architectures plan_render_v1`
+
+`--runs 1`
+
+`--correction disabled`
+
+It MUST also use a Run-3-specific experiment id and artifact directory.
+
+The invocation MUST NOT contain:
+
+`--provider-fake`
+
+`--fake-plan`
+
+Runner defaults MUST NOT be relied upon.
+
+The exact argv array must be inspected before execution and the inspected array
+must be the array executed.
+
+### 5. PROVIDER / CALL-COUNT RULE
+
+This is a real live-provider execution.
+
+Current client authority uses native fetch.
+
+When no live overrides are present:
+
+endpoint =
+`https://api.openai.com/v1/chat/completions`
+
+model =
+`gpt-4o-mini`
+
+Credential precedence is:
+
+`LLM_API_KEY ?? OPENAI_API_KEY`
+
+External provider-call count remains:
+
+`NOT MEASURED`
+
+It MUST NOT be reconstructed from:
+
+- stages
+- reviewCalls
+- gates
+- cells
+- artifacts
+- logs
+
+`reviewCalls` remains observer evidence, not a provider-call counter.
+
+### 6. SAME-PROCESS CREDENTIAL PREFLIGHT REQUIRED
+
+Immediately before the live invocation, the SAME execution process must prove,
+using presence-only checks:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+and at least one of:
+
+`LLM_API_KEY = SET`
+`OPENAI_API_KEY = SET`
+
+No environment-variable value may be printed, hashed, measured, partially
+revealed or otherwise inspected.
+
+If both credentials are SET, current client precedence selects:
+
+`LLM_API_KEY`
+
+Failure of this preflight consumes:
+
+`0`
+
+authorized cells.
+
+### 7. WHY LIVE GENERATION IS REQUIRED
+
+The committed deterministic test proves the Plan REQUEST now contains the
+confirmed c18 rule.
+
+The fake/provider-fixed test seam fixes the Plan response.
+
+It therefore cannot answer whether the live model will now generate a Plan and
+rendered scenario that survive deterministic `boundary_grounding`.
+
+Question (a) requires this one live generation cell.
+
+### 8. FIRST-OBSERVATION OUTCOME SHAPES
+
+Run 3 remains valid even if the broad reviewer is never reached.
+
+If c18 again terminates at deterministic `boundary_grounding`, that is a valid
+answer to Question (a):
+
+`GROUNDING STILL FAILS`
+
+It is NOT a failed experiment and MUST NOT trigger an automatic rerun.
+
+If deterministic grounding passes but narrow boundary review rejects, that is a
+valid answer to Questions (a) and (b).
+
+If narrow boundary review passes and the broad reviewer runs, the same retained
+artifact may additionally answer Question (c).
+
+Therefore:
+
+`REVIEWER_REACHED = NO`
+
+does NOT by itself invalidate Run 3.
+
+### 9. EVIDENCE MODEL
+
+Evidence must preserve producer/origin distinctions.
+
+A defect-code string alone is never provenance.
+
+For deterministic findings, source/control-flow producer must be identified.
+
+For reviewer-derived findings, attribution requires retained review evidence,
+coordinate/provenance/disposition or another proven reviewer-origin path.
+
+In particular:
+
+`confirmed_boundary_absent`
+
+may exist in more than one producer family.
+
+Never infer its origin from the string.
+
+### 10. COMMITMENT FLAG OBSERVATION
+
+`commitment_flag_mismatch` remains reviewer telemetry.
+
+Run 3 creates the first post-repair opportunity for that path to be exercised
+only if the broad semantic reviewer is reached.
+
+Presence is NOT expected or guaranteed.
+
+Absence must be classified according to reachability:
+
+- broad reviewer not reached → `UNEXERCISED`
+- broad reviewer reached and no mismatch emitted → reviewer negative observation
+  for the applicable scored slot, subject to packet rules
+
+It remains telemetry and does not gain rejection authority.
+
+### 11. BOUNDARY OBSERVATION
+
+The execution order remains:
+
+Plan
+→ Render
+→ deterministic gates
+→ narrow LLM boundary review
+→ broad semantic review
+
+The experiment must separately report whether each layer is reached.
+
+A deterministic grounding result is not a narrow-reviewer result.
+
+A narrow-reviewer result is not a broad-reviewer result.
+
+### 12. ARTIFACT AUTHORITY
+
+Authorized Run-3 root:
+
+`.eval-artifacts/reviewer-observer-live-03/`
+
+Run-3 evidence must remain separated beneath this root.
+
+Before execution:
+
+the root must not exist.
+
+Pre-existing evaluation artifacts are frozen at:
+
+`146 files`
+
+manifest SHA:
+
+`7521520f4be2b540b7e8364cca66be88fc0180e1f78b5e576e329ddd2d9da0d0`
+
+Run-3 execution may add only the authorized Run-3 artifact beneath the new root.
+
+All pre-existing artifact bytes must remain unchanged.
+
+### 13. STOP / RERUN RULE
+
+Exactly one live cell is authorized.
+
+The cell is consumed when its live invocation begins.
+
+No automatic rerun is authorized under any product outcome, including:
+
+- generation_rejected
+- deterministic grounding reject
+- narrow-review reject
+- reviewer reached
+- reviewer not reached
+- boundary telemetry present
+- boundary telemetry absent
+- commitment-flag telemetry present
+- commitment-flag telemetry absent
+
+A process/integrity failure after invocation also does NOT authorize a rerun.
+
+Any additional live cell requires a new Commander authorization.
+
+### 14. FORBIDDEN SCOPE
+
+This authorization permits NO:
+
+- source mutation
+- test mutation
+- fixture mutation
+- schema mutation
+- validator mutation
+- reviewer-authority mutation
+- boundary-reviewer mutation
+- retention mutation
+- Cell-B work
+- c19 live cell
+- legacy architecture cell
+- fake provider
+- replay
+- deployment
+- DB or migration work
+- push
+
+Run 3 is observation only.
+
+### 15. PACKET / ADJUDICATION
+
+For reviewer-quality adjudication:
+
+- pre-broad-review deterministic termination is `CONTEXT_ONLY`
+- narrow-review-only outcome is not automatically a broad-reviewer scored cell
+- broad semantic reviewer evidence is scored only when broad review is proven
+  reached
+- flat compatibility projections remain `CONTEXT_ONLY`
+- HUMAN_ONLY / OUT_OF_SCHEMA remain separate
+- reviewer 2×2 denominator contains only eligible broad-reviewer concept slots
+
+Question (a), however, has its own production-reachability result independent of
+reviewer denominator eligibility.
+
+### 16. RUN-3 RESULT CLASSIFICATION
+
+Run 3 must return at minimum:
+
+`GROUNDING_PASS = YES / NO`
+
+`NARROW_REVIEW_REACHED = YES / NO`
+
+`NARROW_REVIEW_PASS = YES / NO / N/A`
+
+`BROAD_REVIEW_REACHED = YES / NO`
+
+`CFOBS_EXERCISED = YES / NO`
+
+If broad review is reached:
+
+report parsed boundary assessments, phase-choice defect evidence,
+contentTelemetry and terminal CONTENT candidates with provenance discipline.
+
+No result implies an automatic next step.
+
+### 17. FINAL AUTHORIZATION STATUS
+
+AUTHORIZED:
+
+`ONE LIVE c18 CELL`
+
+Fixture:
+
+`c18-constrained-clinical`
+
+Architecture:
+
+`plan_render_v1`
+
+Runs:
+
+`1`
+
+Correction:
+
+`disabled`
+
+Primary measurement:
+
+`POST-REPAIR DETERMINISTIC BOUNDARY_GROUNDING REACHABILITY`
+
+Conditional downstream observations:
+
+`NARROW BOUNDARY REVIEW`
+
+`BROAD SEMANTIC REVIEW`
+
+`BOUNDARY ASSESSMENTS`
+
+`COMMITMENT FLAG OBSERVATION`
+
+C19:
+
+`NOT AUTHORIZED`
+
+RERUN:
+
+`NOT AUTHORIZED`
+
+AUTOMATIC FOLLOW-UP:
+
+`NONE`
+
 ## 2026-09-16 — CHECKPOINT: c18 PLAN-STAGE BOUNDARY REPAIR RESULT
 
 **[GOV-ARENA-C18-PTR-REPAIR-RESULT-1] RED→GREEN REPAIR COMPLETE; PLAN NOW RECEIVES CONFIRMED BOUNDARY BEFORE SEMANTIC STRUCTURE IS FINALIZED.**
