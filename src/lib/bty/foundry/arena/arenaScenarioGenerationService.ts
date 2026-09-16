@@ -1404,8 +1404,31 @@ const LLM_PLAN_TIMEOUT_MS = 60_000;
  * it is what makes "these two phases are the same decision" an equality rather than a judgement
  * about Korean or English wording.
  */
-function buildPlanMessages(input: ScenarioGenInput, locale: Locale): LlmChatMessage[] {
+function buildPlanMessages(
+  input: ScenarioGenInput,
+  locale: Locale,
+  constraints: PracticeBoundary["constraints"],
+): LlmChatMessage[] {
   const isKo = locale === "ko";
+  /*
+    v1.3 — CONFIRMED CONSTRAINTS REACH THE PLAN.
+
+    Measured Run-2 c18: the plan was designed on training-problem + host-answer inputs only, produced
+    a boundary-blind primary decision (`how_to_sequence_notifications`), and the confirmed
+    two-identifier-verification rule then had no decision to attach to in Render. The plan MUST know
+    the Manager-confirmed non-negotiable rules before it chooses which decisions the learner will
+    face; otherwise a boundary-locked Render is asked to ground a rule the plan already routed
+    around. The rule text below is the same statement Render will later carry — one authoritative
+    fact, two stages informed by it.
+  */
+  const constraintPlanLines = constraints.length
+    ? [
+        "",
+        "CONFIRMED NON-NEGOTIABLE CONSTRAINTS — the Manager has confirmed these rules; they are the boundary this plan MUST be designed inside, not a topic the plan may reopen:",
+        ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
+        "The PRIMARY, TRADEOFF and ACTION dimensions must each be phrased as a HOW-TO-COMPLY decision inside these rules — never as whether to obey them, and never as a topic that ignores them. If the situation genuinely leaves no such difficult decision inside the boundary, the plan should still be attempted; the downstream stages own no-safe-space refusals.",
+      ]
+    : [];
   const system = [
     "You design the DECISION STRUCTURE of one leadership practice scenario. You do NOT write the scenario.",
     "Return ids, one short line per decision, and one short line per consequence. No opening, no choice labels, no paragraphs, no explanation.",
@@ -1450,6 +1473,7 @@ function buildPlanMessages(input: ScenarioGenInput, locale: Locale): LlmChatMess
     "Ground everything in the training context given. Invent no names, organizations, numbers or private details.",
     isKo ? "dimension, tension and resultingWorldState are written in Korean. dimensionId stays lower_snake_case ASCII." : "Write dimension, tension and resultingWorldState in English.",
     "Return ONLY the JSON object of the given schema.",
+    ...constraintPlanLines,
   ].join("\n");
 
   const facts = input.facts;
@@ -1460,6 +1484,14 @@ function buildPlanMessages(input: ScenarioGenInput, locale: Locale): LlmChatMess
     facts.learningNeeds.length ? `Learning needs: ${facts.learningNeeds.join(", ")}` : null,
     `When it is hardest (host answer 1): ${hardestWhenPhrase(input.guided, input.locale)}`,
     `Pressure that makes people avoid it (host answer 2): ${input.guided.avoidancePressure.text}`,
+    // The same authoritative rule statements reach the user block so a model that anchors to the
+    // last training-context line still has the boundary in front of it when it commits to primary.
+    ...(constraints.length
+      ? [
+          "Manager-confirmed non-negotiable constraints:",
+          ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
+        ]
+      : []),
   ].filter(Boolean);
 
   return [
@@ -1482,6 +1514,7 @@ type PlanOutcome =
  */
 async function generatePlan(
   input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
   accounting?: GenerationAccounting | null,
 ): Promise<PlanOutcome> {
   let client: ReturnType<typeof getLlmClient>;
@@ -1511,7 +1544,7 @@ async function generatePlan(
         const completion = await client.chat.completions.create(
           {
             model: getLlmModel(),
-            messages: buildPlanMessages(input, input.locale),
+            messages: buildPlanMessages(input, input.locale, constraints),
             temperature: LLM_GEN_TEMPERATURE,
             top_p: LLM_GEN_TOP_P,
             max_tokens: LLM_PLAN_MAX_TOKENS,
@@ -1683,7 +1716,7 @@ export async function generateArenaScenarioDraft(
   */
   let approvedPlan: DecisionPlan | null = null;
   if (architecture === "plan_render_v1") {
-    const planned = await generatePlan(input, accounting);
+    const planned = await generatePlan(input, constraints, accounting);
     if (!planned.ok) {
       logGenOutcome("declined", planned.reason);
       return { ok: false, reason: planned.reason, fault: planned.fault };
