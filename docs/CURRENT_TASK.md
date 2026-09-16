@@ -1,3 +1,479 @@
+## 2026-09-16 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 3 RESULT
+
+**[GOV-ARENA-OBSERVER-RUN-3-RESULT] ONE-CELL POST-REPAIR c18 RUN PASSED DETERMINISTIC BOUNDARY GROUNDING AND STOPPED AT DOWNSTREAM LEVEL-4 CHOICE CONSTRUCTION.**
+
+Closes the one-time live observation authorized by:
+
+`[GOV-ARENA-OBSERVER-RUN-3]`
+
+OUTER authority:
+
+`fc641f07cca9f89d43f7fd9876d5b1d552a24f5a`
+
+INNER runtime authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+Run-3 artifact SHA:
+
+`44d724e11cef41e20249738fc44f9238f5959b90371761d201acf0e1bca858db`
+
+### 1. AUTHORIZED SAMPLE CONSUMED
+
+Exactly one live cell was authorized and consumed:
+
+fixture =
+`c18-constrained-clinical`
+
+architecture =
+`plan_render_v1`
+
+runs =
+`1`
+
+correction =
+`disabled`
+
+No c19.
+
+No legacy architecture.
+
+No fake provider.
+
+No fake Plan.
+
+No rerun.
+
+Authorized cells consumed:
+
+`1 / 1`
+
+External provider-request count remains:
+
+`NOT MEASURED`
+
+and is not reconstructed from cells, logs, stages, gates, reviewCalls or
+artifacts.
+
+### 2. PRIMARY RUN-3 RESULT
+
+Run 3 answers its primary question:
+
+`GROUNDING_PASS = YES`
+
+The c18 execution progressed past deterministic:
+
+`boundary_grounding`
+
+after the Plan-boundary repair.
+
+Run-3 terminal outcome remained:
+
+`generation_rejected`
+
+but the primary code moved downstream to:
+
+`unsupported_boundary_compliance`
+
+with origin gate:
+
+`choice_construction`
+
+and precedence level:
+
+`4`
+
+The artifact carries no Level-3 boundary-grounding finding in the complete
+authoritative deterministic rejection set.
+
+Current control flow and precedence prove that any such Level-3 finding would
+have been retained and would have outranked the observed Level-4 primary.
+
+Therefore deterministic boundary grounding passed for this live c18 cell.
+
+### 3. DIRECT LIVE VALIDATION OF THE REPAIR
+
+Run 2 c18 stopped at:
+
+`confirmed_boundary_absent`
+
+from deterministic:
+
+`boundary_grounding`
+
+before narrow review.
+
+Run 3 c18, under repaired INNER authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+progressed past that gate.
+
+This is direct one-cell live evidence that exposing the confirmed boundary to
+the Plan moved c18 production reachability past the exact deterministic
+grounding failure targeted by the repair.
+
+This is a result for this live c18 execution.
+
+It is not generalized beyond this cell.
+
+### 4. NEW DOWNSTREAM STOP POINT
+
+The new primary finding is:
+
+`unsupported_boundary_compliance`
+
+origin gate:
+
+`choice_construction`
+
+level:
+
+`4`
+
+The same deterministic rejection set also contains:
+
+`repeated_action_meaning`
+from `measured_labels`
+at Level 6
+
+and:
+
+`sibling_choice_pair_identical`
+from `sibling_choice_pairs`
+at Level 6.
+
+These are downstream observations that became visible only after c18 passed the
+earlier boundary-grounding gate.
+
+They are NOT part of the closed c18 Plan-boundary repair scope.
+
+They do not invalidate the grounding repair.
+
+No cause is assigned here to `unsupported_boundary_compliance`.
+
+In particular, this checkpoint does NOT decide among:
+
+- missing or unsupported construction boundary-compliance evidence
+- constraint-reference mismatch
+- Render instruction insufficiency
+- provider DTO/output-shape mismatch
+- deterministic construction-validator strictness
+- model-output quality
+
+Those require a separate read-only causal audit before mutation.
+
+### 5. PRODUCER / PROVENANCE DISCIPLINE
+
+The retained deterministic findings are:
+
+`unsupported_boundary_compliance`
+→ `choice_construction`
+→ Level 4
+
+`repeated_action_meaning`
+→ `measured_labels`
+→ Level 6
+
+`sibling_choice_pair_identical`
+→ `sibling_choice_pairs`
+→ Level 6
+
+Their retained projected findings do not carry reviewer channel, disposition,
+coordinate or provenance fields.
+
+Producer attribution is based on deterministic source/control flow, not code
+strings.
+
+A defect-code string alone remains insufficient provenance.
+
+Finding `terminal=false` is not treated as rejection authority.
+
+### 6. REVIEWER REACHABILITY
+
+The execution stopped in deterministic gates before:
+
+`runBoundaryReviewStage`
+
+Therefore:
+
+NARROW_REVIEW_REACHED =
+`NO`
+
+NARROW_REVIEW_PASS =
+`N/A`
+
+The broad semantic reviewer was also not reached.
+
+Therefore:
+
+BROAD_REVIEW_REACHED =
+`NO`
+
+REVIEWER_REACHED =
+`NO`
+
+The artifact retains:
+
+reviewCalls =
+`0`
+
+parsed broad reviews =
+`0`
+
+boundaryAssessments =
+`ABSENT`
+
+phaseChoices =
+`ABSENT`
+
+contentTelemetry =
+`ABSENT`
+
+### 7. COMMITMENT FLAG OBSERVATION
+
+The broad reviewer was not reached.
+
+Therefore:
+
+CFOBS_EXERCISED =
+`NO`
+
+`commitment_flag_mismatch`
+
+appears:
+
+`0`
+
+times.
+
+This absence is classified:
+
+`UNEXERCISED`
+
+not reviewer-negative.
+
+Run 3 therefore still provides no live Commitment Flag Observation result.
+
+### 8. REVIEWER-QUALITY PACKET STATUS
+
+Broad reviewer reached:
+
+`0 / 1`
+
+Scored broad-review cells:
+
+`0`
+
+Reviewer 2×2 denominator:
+
+`0`
+
+The Run-3 cell is:
+
+`CONTEXT_ONLY`
+
+for broad-reviewer-quality adjudication.
+
+This is NOT a `0 / 0 / 0 / 0` reviewer matrix.
+
+No reviewer false-positive conclusion is available.
+
+No reviewer false-negative conclusion is available.
+
+No broad-reviewer quality conclusion is available.
+
+Separately, Question (a) has a valid production-reachability result:
+
+`GROUNDING_PASS = YES`
+
+### 9. ARTIFACT SHAPE
+
+Run-3 artifact:
+
+`arena_experiment_retention_v1`
+
+fixture:
+
+`c18-constrained-clinical`
+
+architecture:
+
+`plan_render_v1`
+
+run:
+
+`1`
+
+correction:
+
+`disabled`
+
+terminal outcome:
+
+`generation_rejected`
+
+primaryCode:
+
+`unsupported_boundary_compliance`
+
+parityGrade:
+
+`strict`
+
+stages:
+
+`2`
+
+Plan present:
+
+`YES`
+
+Draft present:
+
+`YES`
+
+Constructions present:
+
+`YES`
+
+Top-level primaryGate:
+
+`ABSENT`
+
+The primary finding's origin gate is:
+
+`choice_construction`
+
+Those two facts must not be conflated.
+
+### 10. SINGLE-CELL PLAN-SHAPE OBSERVATION
+
+If retained bytes support it, the Run-3 Plan contains a notification-centered
+primary dimension while at least one branch/tradeoff dimension carries explicit
+identifier-verification boundary awareness.
+
+This is recorded only as:
+
+`INFORMATIONAL SINGLE-CELL PLAN-SHAPE OBSERVATION`
+
+It is not adjudicated as a defect in this checkpoint.
+
+It is not generalized beyond this c18 cell.
+
+It is not declared the cause of the Level-4 rejection.
+
+### 11. INTEGRITY
+
+Pre-existing evaluation artifacts remain:
+
+`146 files`
+
+manifest SHA:
+
+`7521520f4be2b540b7e8364cca66be88fc0180e1f78b5e576e329ddd2d9da0d0`
+
+Run 3 added exactly one artifact beneath:
+
+`.eval-artifacts/reviewer-observer-live-03/`
+
+with SHA:
+
+`44d724e11cef41e20249738fc44f9238f5959b90371761d201acf0e1bca858db`
+
+Pre-existing unrelated INNER WIP remains byte-identical.
+
+Outer and Inner authorities did not change during the live run.
+
+### 12. WHAT RUN 3 PROVES
+
+Proven:
+
+`POST-REPAIR c18 DETERMINISTIC BOUNDARY_GROUNDING PASS = YES`
+
+Not proven:
+
+- narrow boundary-review behavior
+- narrow boundary-review pass
+- broad semantic-review behavior
+- boundaryAssessments
+- reviewer terminal CONTENT
+- Commitment Flag Observation
+- cause of downstream `unsupported_boundary_compliance`
+- cause or priority of Level-6 repeated-action findings
+
+### 13. NO AUTOMATIC NEXT STEP
+
+This checkpoint authorizes:
+
+NO additional live cell
+NO c18 rerun
+NO c19 run
+NO provider call
+NO source mutation
+NO test mutation
+NO validator mutation
+NO Render mutation
+NO construction mutation
+NO replay
+NO deployment
+NO DB/migration work
+
+The next step, if Commander opens it, is READ ONLY:
+
+determine the causal origin of:
+
+`unsupported_boundary_compliance`
+
+in Run-3 c18, including:
+
+- exact `choice_construction` validator contract
+- exact retained construction shape
+- exact boundaryCompliance shape/reference
+- Render/provider instructions governing construction compliance evidence
+- provider DTO/schema requirements
+- whether the failure is generation/output, DTO/schema, or validator-contract
+  related
+- whether a deterministic RED test can reproduce it without provider execution
+
+The Level-6 findings should be inventoried separately but must not be bundled
+into the Level-4 causal decision.
+
+### 14. FINAL STATUS
+
+RUN 3 =
+`EXECUTION COMPLETE`
+
+AUTHORIZED CELLS =
+`1 / 1`
+
+GROUNDING_PASS =
+`YES`
+
+NARROW_REVIEW_REACHED =
+`NO`
+
+NARROW_REVIEW_PASS =
+`N/A`
+
+BROAD_REVIEW_REACHED =
+`NO`
+
+REVIEWER_REACHED =
+`NO`
+
+CFOBS_EXERCISED =
+`NO`
+
+REVIEWER 2×2 DENOMINATOR =
+`0`
+
+CURRENT DOWNSTREAM STOP =
+`unsupported_boundary_compliance / choice_construction / Level 4`
+
+AUTOMATIC FOLLOW-UP =
+`NONE`
+
 ## 2026-09-16 — COMMANDER AUTHORIZATION: REVIEWER AS OBSERVER — LIVE RUN 3
 
 **[GOV-ARENA-OBSERVER-RUN-3] AUTHORIZE ONE LIVE c18 CELL TO MEASURE POST-REPAIR PRODUCTION REACHABILITY.**
