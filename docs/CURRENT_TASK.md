@@ -1,3 +1,288 @@
+## 2026-09-16 — COMMANDER AUTHORIZATION: c18 PLAN-STAGE BOUNDARY REPAIR
+
+**[GOV-ARENA-C18-PTR-REPAIR-1] AUTHORIZE ONE-FILE PLAN-BOUNDARY PROPAGATION REPAIR AFTER PINNED RED.**
+
+This authorization follows:
+
+`[GOV-ARENA-C18-PTR-REGRESSION-1]`
+
+and the committed RED evidence at INNER:
+
+`0249abe0f36a168891264ead9ae1390ff4caebc1`
+
+whose parent / current remote inner authority is:
+
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+OUTER authority at authorization:
+
+`76582687282bd2f1ea13447350814587d59a7895`
+
+### 1. PROVEN DEFECT
+
+The current `plan_render_v1` Plan request does not receive the Manager-confirmed
+constraint:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+The focused RED test proves the actual Plan provider request does not contain
+that confirmed rule.
+
+The Render request later receives the rule but is simultaneously instructed not
+to redesign the approved Plan's semantic decisions.
+
+The first proven loss point is therefore:
+
+`PLAN`
+
+### 2. AUTHORIZED PRODUCTION REPAIR
+
+Commander authorizes exactly one production repair family:
+
+`PROPAGATE EXISTING CONFIRMED CONSTRAINTS INTO THE PLAN REQUEST BEFORE PLAN SEMANTIC DECISIONS ARE FINALIZED`
+
+Authorized production file set:
+
+`src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+Expected narrow implementation surface:
+
+- extend `buildPlanMessages` to receive the already-available confirmed
+  constraints
+- include those constraints in Plan planning context
+- instruct Plan to design primary/tradeoff/action decisions inside the
+  non-negotiable boundary
+- extend `generatePlan` only as necessary to pass those existing constraints
+- pass the existing `constraints` value from the current
+  `generateArenaScenarioDraft` call site
+
+No other production file is authorized.
+
+### 3. PLAN OUTPUT CONTRACT MUST NOT CHANGE
+
+This repair is prompt/input propagation only.
+
+Not authorized:
+
+- new DecisionPlan output fields
+- DecisionPlan JSON schema changes
+- Plan parser changes
+- Plan validator changes
+- provider DTO changes
+- canonicalization changes
+- new deterministic boundary detectors
+- new vocabulary gates
+
+The Plan must know the constraint.
+
+It does not need a new serialized boundary field in its output.
+
+### 4. RENDER MUST REMAIN UNCHANGED
+
+The existing Render path already receives confirmed boundaries.
+
+Therefore this repair does NOT authorize changing:
+
+- `buildGenerationSystemPrompt`
+- Render `constraintLines`
+- `buildLlmMessages`
+- Plan-lock wording
+- Render provider schema
+- Render canonicalization
+
+Test B remains a characterization of the current downstream contract.
+
+Any later reconciliation of Render's Plan-lock semantics requires a separate
+authorization.
+
+### 5. VALIDATOR AND AUTHORITY SURFACES MUST REMAIN UNCHANGED
+
+The following remain frozen:
+
+- `validateBoundaryGrounding`
+- boundary gate precedence
+- c18/c19/c20 fixture definitions
+- `providerDto.ts`
+- semantic reviewer authority
+- narrow boundary-review authority
+- retention schema/path
+- Commitment Flag Observation authority
+- Cell-B schema/retention causal track
+
+Cell B remains:
+
+`B4 FAILURE_PROVEN_BUT_CAUSE_NOT_YET_PROVEN`
+
+and is out of scope.
+
+### 6. TEST SCOPE
+
+No new test is authorized.
+
+No existing test modification is authorized.
+
+The already-committed test:
+
+`src/lib/bty/foundry/arena/c18PtrBoundaryRegression.test.ts`
+
+is the repair oracle.
+
+Required focused result after repair:
+
+Test A =
+`GREEN`
+
+Test B =
+`GREEN`
+
+Test C+ =
+`GREEN`
+
+The repair must turn the existing RED into GREEN without weakening,
+rewriting or deleting its assertion.
+
+### 7. BASELINE ACCEPTANCE AUTHORITY
+
+The measured RED-authority baseline is:
+
+lint =
+`PASS`
+
+terminology =
+`44 violations / exit 1`
+
+cf:build =
+`PASS`
+
+full suite =
+`19 failing tests / 10 failing files`
+
+baseline failing-set SHA =
+`39717c094922ede713e64621586af89373c51e63d13b1f1d1da3492c6816c8c8`
+
+Exactly one baseline failure is the intentional c18 Plan RED.
+
+Post-repair acceptance requires:
+
+- c18 Test A leaves the failing set
+- no other baseline failure disappears unexpectedly
+- no new failure appears
+- expected full-suite result:
+  `18 failing tests / 9 failing files`
+
+Comparison must be made from the same failing-set extraction method used for the
+baseline.
+
+Do not rely on counts alone.
+
+### 8. ARTIFACT AND WIP INVARIANTS
+
+Current `.eval-artifacts` authority:
+
+files =
+`146`
+
+manifest SHA =
+`7521520f4be2b540b7e8364cca66be88fc0180e1f78b5e576e329ddd2d9da0d0`
+
+It must remain byte-identical.
+
+Pre-existing unrelated INNER WIP must remain byte-identical.
+
+Frozen hashes:
+
+STATUS =
+`5872e6af15244dd46fa29d38e862742225b94f53e920f784d16e1f3afe884348`
+
+UNSTAGED =
+`1d6df9b24fd1f6e617b61e31030dc181dfbb5c404f48b41f8bd20793470569a6`
+
+STAGED =
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
+
+### 9. NO LIVE EVALUATION IN THIS REPAIR
+
+Not authorized:
+
+- provider calls
+- c18 live retry
+- Run 3
+- reviewer-only replay
+- narrow-review replay
+- deployment
+- DB or migration work
+
+This repair is local deterministic RED→GREEN only.
+
+### 10. COMMIT AND PUSH POLICY
+
+After all acceptance gates pass, create one INNER production-fix commit with
+subject:
+
+`fix(arena): expose confirmed constraints to plan stage`
+
+The RED commit:
+
+`0249abe0f36a168891264ead9ae1390ff4caebc1`
+
+MUST NOT be pushed alone.
+
+After the production fix is committed, INNER will be two commits ahead of
+`origin/inner-main`.
+
+Do NOT push during the implementation dispatch.
+
+A later dedicated push dispatch may push the RED + GREEN pair together only
+after final authority and acceptance proof.
+
+### 11. FINAL AUTHORIZATION STATUS
+
+AUTHORIZED:
+
+`ONE-FILE PLAN PROMPT/INPUT PROPAGATION REPAIR`
+
+AUTHORIZED FILE:
+
+`src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+TEST MODIFICATION:
+
+`NONE`
+
+SCHEMA CHANGE:
+
+`NONE`
+
+VALIDATOR CHANGE:
+
+`NONE`
+
+RENDER CHANGE:
+
+`NONE`
+
+FIXTURE CHANGE:
+
+`NONE`
+
+CELL-B CHANGE:
+
+`NONE`
+
+LIVE RUN:
+
+`NONE`
+
+PROVIDER CALL:
+
+`NONE`
+
+PUSH:
+
+`NOT IN IMPLEMENTATION DISPATCH`
+
 ## 2026-09-15 — CHECKPOINT: c18 PLAN→RENDER BOUNDARY REGRESSION ATTRIBUTION
 
 **[GOV-ARENA-C18-PTR-REGRESSION-1] CELL-A IMPLEMENTATION CAUSE ISOLATED TO PLAN-THEN-RENDER BOUNDARY BLINDNESS.**
