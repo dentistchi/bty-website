@@ -1,3 +1,306 @@
+## 2026-09-16 — CHECKPOINT: c18 PLAN-STAGE BOUNDARY REPAIR RESULT
+
+**[GOV-ARENA-C18-PTR-REPAIR-RESULT-1] RED→GREEN REPAIR COMPLETE; PLAN NOW RECEIVES CONFIRMED BOUNDARY BEFORE SEMANTIC STRUCTURE IS FINALIZED.**
+
+This result closes the implementation authorized by
+`[GOV-ARENA-C18-PTR-REPAIR-1]`.
+
+OUTER authorization authority:
+
+`507c9aabf27de43ec92279071356556be847bccd`
+
+Current INNER authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+### 1. RED→GREEN CHAIN
+
+Remote pre-repair INNER:
+
+`dc9543c0905248ad09c6745d448bc20e3d51cec6`
+
+RED:
+
+`0249abe0f36a168891264ead9ae1390ff4caebc1`
+
+`test(arena): pin c18 plan boundary blindness`
+
+GREEN:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+`fix(arena): expose confirmed constraints to plan stage`
+
+They were pushed together:
+
+`dc9543c0 → 0249abe0 → 13007f5c`
+
+The RED commit was never pushed alone.
+
+### 2. REPAIR
+
+Exactly one production file changed:
+
+`src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+The repair propagates already-existing confirmed constraints into:
+
+`generatePlan`
+
+and then into:
+
+`buildPlanMessages`
+
+before Plan semantic dimensions are finalized.
+
+No DecisionPlan output field, schema, parser or validator changed.
+
+### 3. COMMANDER SCOPE ADJUDICATION
+
+The Plan receives the confirmed constraints as non-negotiable planning
+boundaries.
+
+It also receives the measured HOW-TO-COMPLY guidance requiring PRIMARY,
+TRADEOFF and ACTION dimensions to be designed inside those confirmed rules,
+rather than making obedience to the rule itself the decision.
+
+Commander explicitly ACCEPTS this HOW-TO-COMPLY guidance as within
+`[GOV-ARENA-C18-PTR-REPAIR-1]`.
+
+This guidance operationalizes the already-authorized repair:
+
+confirmed non-negotiable constraints must shape the Plan BEFORE semantic
+decision structure is finalized.
+
+This acceptance applies only where confirmed non-negotiable constraints exist.
+
+It does NOT create a general doctrine that every Plan dimension in every
+scenario must be HOW-TO-COMPLY.
+
+It creates no new schema, validator, gate, reviewer or boundary-reviewer
+authority.
+
+No rollback or narrowing is required.
+
+### 4. PLAN / RENDER PARITY
+
+For c18 both Plan and Render receive:
+
+`c1_verify`
+
+and the exact statement:
+
+`Two identifiers must be verified before treatment`
+
+Therefore:
+
+`AUTHORITATIVE FACT PARITY = YES`
+
+The complete stage-specific constraint blocks are:
+
+`NOT BYTE-EQUAL`
+
+This is intentional and not a defect.
+
+Plan uses the rule to design semantic decision structure inside the confirmed
+boundary.
+
+Render uses the same authoritative rule to ground the approved structure in the
+learner-facing scenario.
+
+No full-block byte-equality invariant exists.
+
+### 5. EMPTY-CONSTRAINT COMPATIBILITY
+
+When confirmed constraints are empty:
+
+Plan system request =
+`BYTE-IDENTICAL TO RED PARENT`
+
+Plan user request =
+`BYTE-IDENTICAL TO RED PARENT`
+
+No boundary heading is emitted.
+
+No empty/fake boundary bullet is emitted.
+
+Plan schema remains:
+
+`arena_decision_plan_v1`
+
+### 6. FOCUSED ORACLE
+
+The committed oracle is GREEN:
+
+Test A =
+`PASS`
+
+Test B =
+`PASS`
+
+Test C+ =
+`PASS`
+
+Test A proves the actual Plan request now contains the exact confirmed c18 rule.
+
+Test B proves existing Render boundary grounding and Plan-lock behavior remains.
+
+Test C+ proves the existing deterministic boundary validator accepts a
+well-grounded c18 subject.
+
+### 7. ACCEPTANCE GATES
+
+lint =
+`PASS`
+
+terminology =
+`44 violations / exit 1`
+
+cf:build =
+`PASS`
+
+Full suite moved from:
+
+`19 failing tests / 10 failing files`
+
+to:
+
+`18 failing tests / 9 failing files`
+
+The previously measured normalized identity delta removed only the intentional
+c18 Plan RED and added no new failure.
+
+### 8. FAILURE HASH VOCABULARY
+
+Historical raw diagnostic hashes:
+
+`BASELINE_RAW_FAILURE_LINES_SHA = 39717c094922ede713e64621586af89373c51e63d13b1f1d1da3492c6816c8c8`
+
+`POST_RAW_FAILURE_LINES_SHA = 3cbe9181084bfa28587cf379bc65f49de3dfa1d6d3a20430d0242a13e6c3eb70`
+
+Normalized failure-identity hashes:
+
+`BASELINE_FAILURE_IDENTITY_SHA = d9ef59a50ea467241bcb646f2819b9bf4fb38fb88ba7f7f0fb6fc485064169ff`
+
+`POST_FAILURE_IDENTITY_SHA = 4dc6767acfaf91dbecfa25b3ed10c0fc3a61097cf4e3b482002b6693c1399300`
+
+Permanent rule:
+
+`FAILURE-SET EQUALITY GATES USE ONLY NORMALIZED, TIMING-FREE FAILING-TEST IDENTITY SETS.`
+
+Raw failure-line hashes may contain run-specific timing/duration text and are
+diagnostic only.
+
+They must not independently BLOCK a failing-set equality gate.
+
+Equality authority is:
+
+`FAILURE_IDENTITY_SHA`
+
+### 9. PROTECTED SURFACES
+
+GREEN changed exactly one production path:
+
+`src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+Unchanged:
+
+- boundary grounding
+- gate precedence
+- c18/c19/c20 fixture inputs
+- provider DTO
+- DecisionPlan schema/validator
+- semantic reviewer
+- narrow boundary reviewer
+- retention
+- review projection
+- choice review
+- content authority
+- RED test
+
+Cell B remains parked:
+
+`B4 FAILURE_PROVEN_BUT_CAUSE_NOT_YET_PROVEN`
+
+### 10. ARTIFACT / WIP
+
+Existing evaluation artifacts remain:
+
+`146 files`
+
+manifest SHA:
+
+`7521520f4be2b540b7e8364cca66be88fc0180e1f78b5e576e329ddd2d9da0d0`
+
+Pre-existing unrelated INNER WIP remains byte-identical.
+
+### 11. WHAT IS PROVEN
+
+Proven:
+
+The Plan now receives the confirmed boundary before choosing semantic decision
+structure.
+
+Not yet proven:
+
+- live c18 passes deterministic boundary_grounding
+- narrow boundary reviewer is reached
+- narrow boundary reviewer passes
+- broad semantic reviewer is reached
+- boundaryAssessments are observed
+- commitment_flag_mismatch is exercised
+
+Those remain live-observation questions.
+
+### 12. NO AUTOMATIC LIVE FOLLOW-UP
+
+This checkpoint authorizes:
+
+NO Run 3
+NO provider call
+NO c18 live retry
+NO c19 live retry
+NO reviewer replay
+NO additional mutation
+
+A future live c18 observation requires separate Commander authorization.
+
+First live question, if opened:
+
+`Does c18 pass deterministic boundary_grounding now that Plan receives the confirmed constraint?`
+
+Only if execution progresses farther may the same retained artifact be used to
+observe narrow and broad reviewer reachability.
+
+### 13. FINAL STATUS
+
+C18 PLAN BOUNDARY BLINDNESS =
+`REPAIRED AND PUSHED`
+
+RED→GREEN =
+`PROVEN`
+
+AUTHORITATIVE FACT PARITY =
+`YES`
+
+FULL BLOCK BYTE-EQUALITY =
+`NO — NOT REQUIRED`
+
+EMPTY-CONSTRAINT REGRESSION =
+`NONE MEASURED`
+
+PROTECTED AUTHORITY SURFACES =
+`UNCHANGED`
+
+FAILURE-SET EQUALITY AUTHORITY =
+`FAILURE_IDENTITY_SHA`
+
+RUN 3 =
+`NOT AUTHORIZED`
+
+AUTOMATIC NEXT STEP =
+`NONE`
+
 ## 2026-09-16 — COMMANDER AUTHORIZATION: c18 PLAN-STAGE BOUNDARY REPAIR
 
 **[GOV-ARENA-C18-PTR-REPAIR-1] AUTHORIZE ONE-FILE PLAN-BOUNDARY PROPAGATION REPAIR AFTER PINNED RED.**
