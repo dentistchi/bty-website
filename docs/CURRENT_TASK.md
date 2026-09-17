@@ -1,3 +1,147 @@
+## 2026-09-17 — CHECKPOINT: c18 CONSTRUCTION BOUNDARY-COVERAGE REPAIR RESULT
+
+**[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-REPAIR-RESULT-1]**
+
+**1. AUTHORITY.**
+Outer `c72b2ca1e93b453b47297d0a1c5e34c96c04a086` (HEAD = origin/main = remote).
+Inner `610093f791f74e2fa957f2fa69505f2b039f1fda` (HEAD = origin/inner-main = remote,
+ahead/behind 0 0). Chain: base `13007f5c` → RED `a102e4b5` → GREEN `610093f7`.
+
+**2. COMMITS.**
+RED `test(arena): pin c18 construction boundary coverage gap` — body EMPTY.
+GREEN `fix(arena): enforce construction boundary coverage` — body EMPTY.
+
+base → GREEN touches exactly four paths:
+
+- `A src/lib/bty/foundry/arena/c18ConstructionBoundaryComplianceRegression.test.ts`
+- `A src/domain/foundry/arena-draft/providerDto.constrainedBoundarySchema.test.ts`
+- `M src/domain/foundry/arena-draft/providerDto.ts`
+- `M src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+The RED regression blob is byte-identical at RED and at GREEN
+(`774a0d425aa56dbfbad33a75786000a1793efd62`) — the repair was proved against the pinned
+test, not against a rewritten one.
+
+**3. REPAIR SURFACE (measured at GREEN).**
+
+- builder — `src/domain/foundry/arena-draft/providerDto.ts:232`
+  `buildProviderScenarioSchema(confirmedIds: string[])`
+- outbound Render schema — `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts:710`
+  `schema: buildProviderScenarioSchema(constraints.map((c) => c.id))` (import at `:74`)
+- approved prompt sentence — `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts:516`,
+  ONE line, inside `constraintLines` (`:509` `constraints.length ? [...] : []`), so it is
+  emitted only when constraints are confirmed. Production occurrences: 1.
+
+**4. WIRE CONTRACT (captured from the serialized outbound request, mocked seam, no provider).**
+
+Constrained c18 — all five construction paths carry, identically:
+
+`{"type":"array","minItems":1,"maxItems":3,"items":{"type":"string","maxLength":48,"enum":["c1_verify"]}}`
+
+PATH_1 `properties.primaryChoices.items…construction.properties.boundaryCompliance` ·
+PATH_2 `properties.flatTradeoffChoices.items…` ·
+PATH_3 `properties.flatActionDecision.properties.choices.items…` ·
+PATH_4 `properties.branches.items.properties.tradeoffChoices.items…` ·
+PATH_5 `properties.branches.items.properties.actionDecision.properties.choices.items…`
+
+Unconstrained — all five: `minItems` ABSENT, `items.enum` ABSENT
+(`{"type":"array","maxItems":3,"items":{"type":"string","maxLength":48}}`), and the approved
+sentence appears 0 times. `buildProviderScenarioSchema([])` returns
+`PROVIDER_SCENARIO_JSON_SCHEMA` BY IDENTITY — not an equal copy.
+
+`maxItems` and `items.maxLength` are READ from the base fragment rather than restated, so the
+constrained derivation cannot silently diverge the day a base bound moves.
+
+**5. ACCEPTANCE.**
+RED regression 4/4 PASS · builder tests 5/5 PASS · existing focused suites 211 PASS
+(8 files) · `tsc` PASS · terminology 44 historical violations / exit 1 with 0 new violations
+attributable to the repair · `cf:build` PASS · `git diff --check` PASS.
+
+Full suite 17 failed / 8 files. FAILURE_IDENTITY_SHA
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b` — ADDED EMPTY,
+REMOVED EMPTY. The two RED failures went green and nothing unrelated moved.
+
+Acceptance env: node `v20.20.2` at `/opt/homebrew/opt/node@20/bin/node`; `LLM_BASE_URL`,
+`LLM_MODEL`, `LLM_API_KEY`, `OPENAI_API_KEY` all UNSET.
+
+**6. MANIFEST ATTRIBUTION.**
+Measured PRE from a detached read-only worktree at `a102e4b5` and POST from the repaired tree,
+same probe, all 86 keys. The full diff is exactly TWO lines:
+
+- `components.generatorSystemPromptConstrained`
+  `f166b65f64696916cc4c2c96571e61c31cc6272f0319751d92dc3f8e27bb78fd`
+  → `4bc2e1bda1e4881e0cdd6688ea1cbf4ad00a622c9d3ac672df0c911bec23baaf`
+- `manifestDigest`
+  `8362ff23f04160a14acb1febd4e2ed80e001f635dccffb24b567f4e66c1bce95`
+  → `c14663a6c66e54859a7684cb1e99aa36eb102c053d247612b464045f55f03a90`
+
+UNCHANGED: `artifactSchemaVersion` (`r2.52.1`), `providerSchema`,
+`choiceConstructionContract`, `generatorSystemPromptEn`, `generatorSystemPromptKo`, and every
+other component. `contractManifest.ts` diff base → GREEN = ZERO.
+
+EXACT CONSTRAINED OUTBOUND-SCHEMA PROVENANCE IN MANIFEST = **PARKED.**
+`providerSchema` remains BASE/STATIC schema evidence and is NOT exact provenance for a
+request-scoped constrained schema. A sample constrained digest is NOT claimed as provenance
+for arbitrary request ids. Faithful reconstruction is available instead, from the tracked
+`buildProviderScenarioSchema` plus the request's confirmed constraint ids, because the builder
+is deterministic: trim → drop empty → unique → sort.
+
+**7. PROTECTED AUTHORITY (resolved from tracked files, zero diff base → GREEN).**
+`src/domain/foundry/arena-draft/choiceConstruction.ts` ·
+`src/domain/foundry/arena-draft/renderHardGates.ts` ·
+`src/domain/foundry/arena-draft/gatePrecedence.ts` ·
+`src/domain/foundry/arena-draft/decisionPlan.ts` ·
+`src/domain/foundry/arena-draft/providerDto.fixture.ts` ·
+`src/lib/bty/foundry/arena/practice-generation.eval.ts` ·
+`src/lib/bty/foundry/arena/retentionRecord.ts` ·
+`src/lib/bty/foundry/arena/contractManifest.ts` ·
+`src/lib/bty/llm/client.ts`
+
+validator mutation NO · manifest file mutation NO · fixture mutation NO · reviewer mutation NO ·
+Level-6 logic mutation NO. The validator contract is untouched: at least one KNOWN confirmed id
+per construction, never all of them — so the schema now states the floor the server already
+enforced, and nothing stricter.
+
+**8. LATENT — RECORD ONLY, NON-BLOCKING.**
+
+1. ID NORMALIZATION EDGE — the builder normalizes confirmed ids (trim → unique → sort) while
+   the validator's confirmed set consumes raw constraint ids. Every tracked id is already clean,
+   so there is no live divergence. A future non-normalized id could diverge. PARKED.
+2. ID LENGTH EDGE — the constrained fragment preserves `items.maxLength` 48 while adding enum
+   values. Every tracked id fits. A future confirmed id longer than 48 would contradict its own
+   enum entry. PARKED.
+3. PROVIDER STRICT-SCHEMA ACCEPTANCE — the outbound shape is proven locally against the mocked
+   seam only. Whether the live provider accepts `minItems` under strict structured output is
+   NOT YET LIVE-PROVEN. This is Run 4 observation #1, not a current failure.
+
+**9. RUN 4 — NOT AUTHORIZED BY THIS CHECKPOINT.**
+Intended future sample: `c18-constrained-clinical` × `plan_render_v1` × runs 1 ×
+correction disabled. Observation order: (1) provider accepts the constrained request schema;
+(2) Level-4 `unsupported_boundary_compliance` absent/present; (3) Level-6
+`repeated_action_meaning` / `sibling_choice_pair_identical` absent/present; (4) narrow/broad
+reviewer reachability. A `generation_rejected` at Level-6 would still be a VALID POSITIVE answer
+to the Level-4 repair question.
+
+**10. INTEGRITY.**
+Pre-existing unrelated INNER WIP byte-identical — STATUS
+`5872e6af15244dd46fa29d38e862742225b94f53e920f784d16e1f3afe884348`, UNSTAGED
+`1d6df9b24fd1f6e617b61e31030dc181dfbb5c404f48b41f8bd20793470569a6`, STAGED
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+Run-3 artifact unchanged at `44d724e11cef41e20249738fc44f9238f5959b90371761d201acf0e1bca858db`
+(`.eval-artifacts/reviewer-observer-live-03/`; 147 artifact files = 146 pre-existing + 1).
+
+**STATUS.**
+
+TRACK A REPAIR = **GREEN / PUSHED**
+INNER AUTHORITY = `610093f791f74e2fa957f2fa69505f2b039f1fda`
+LEVEL-4 LIVE VALIDATION = **PENDING RUN 4**
+LEVEL-6 = **SEPARATE TRACK / PARKED**
+EXACT CONSTRAINED SCHEMA MANIFEST PROVENANCE =
+**PARKED / RECONSTRUCTIBLE FROM TRACKED BUILDER + REQUEST CONSTRAINT IDS**
+AUTOMATIC FOLLOW-UP = **NONE**
+
+---
+
 ## 2026-09-17 — COMMANDER AUTHORIZATION: c18 CONSTRUCTION COVERAGE REPAIR
 
 **[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-REPAIR-1]**
