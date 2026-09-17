@@ -70,8 +70,8 @@ import {
   validateChoiceConstructions,
 } from "@/domain/foundry/arena-draft/choiceConstruction";
 import {
-  PROVIDER_SCENARIO_JSON_SCHEMA,
   PROVIDER_SCHEMA_NAME,
+  buildProviderScenarioSchema,
   canonicalizeProviderScenario,
   validateProviderScenario,
 } from "@/domain/foundry/arena-draft/providerDto";
@@ -513,6 +513,7 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
         "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, set noSafeJudgmentSpace to true.",
         "GROUND EVERY CONSTRAINT — silence about a rule is NOT compliance. A scenario that simply never mentions the rule is REJECTED even if no choice happens to break it. For each constraint: (1) make it OPERATIVE in the opening or immediate context, in natural language a person in this role would really use — never a policy quotation or a lecture; (2) let it visibly rule out the tempting non-compliant option, so the learner sees it excluded rather than offered; (3) keep it in force through EVERY branch, tradeoff and action decision — no phase may reopen, waive or quietly drop it; (4) put the real difficulty in the judgment that survives inside it.",
         "TEST YOURSELF: if the constraint were deleted, would your scenario read exactly the same? If yes, it is decorative — rewrite it so the rule actually changes what can be chosen.",
+        "When confirmed constraints exist, each construction's boundaryCompliance must contain at least one confirmed boundary id; an empty boundaryCompliance array is allowed only when there are no confirmed constraints.",
         "Also return `boundaryGrounding`: one entry per constraint id — {\"boundaryId\": the exact id, \"boundaryStatement\": the confirmed rule restated faithfully (never weakened), \"scenarioPresence\": where and how the rule is made operative in the learner-facing text, \"operationalEffect\": what it forces or forbids in the decisions, \"affectedDecisionStages\": which of opening/primary/flat_tradeoff/flat_action/branch_tradeoff/branch_action it constrains (it MUST constrain at least one decision stage, not just the opening), \"prohibitedAlternativeExcluded\": the tempting option the rule takes off the table, \"remainingJudgmentDimensions\": the judgment that genuinely remains}. This is internal metadata; never put it in a learner-facing label.",
       ]
     : [];
@@ -697,9 +698,17 @@ async function generateWithLlmCall(
         // shape — it CAN be expressed as a strict JSON Schema. A provider that rejects the
         // schema fails closed as `structured_output_unavailable`; it is never silently
         // downgraded to unconstrained JSON.
+        // The schema is REQUEST-SCOPED: when the Manager has confirmed constraints, every
+        // construction's `boundaryCompliance` carries `minItems: 1` and an enum of those ids, so
+        // the request states the coverage floor `validateChoiceConstructions` already enforces.
+        // With no confirmed constraints the builder returns the static schema itself, unchanged.
         response_format: {
           type: "json_schema",
-          json_schema: { name: PROVIDER_SCHEMA_NAME, strict: true, schema: PROVIDER_SCENARIO_JSON_SCHEMA },
+          json_schema: {
+            name: PROVIDER_SCHEMA_NAME,
+            strict: true,
+            schema: buildProviderScenarioSchema(constraints.map((c) => c.id)),
+          },
         },
       },
       { signal: controller.signal },

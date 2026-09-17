@@ -168,6 +168,106 @@ export const PROVIDER_SCENARIO_JSON_SCHEMA = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Request-scoped constrained schema (c18 construction coverage repair)
+// ---------------------------------------------------------------------------
+
+/*
+  THE MEASURED GAP.
+
+  `validateChoiceConstructions` rejects an EMPTY `boundaryCompliance` the moment any confirmed
+  constraint applies — but the Render request never said so. The schema above bounds that array
+  from ABOVE only (`maxItems`), so zero items and any string were permitted by the very contract
+  the provider was asked to satisfy. The floor existed only on the server, after the answer came
+  back.
+
+  This states it in the request instead, per request, because the permitted ids ARE the request:
+  they are the ids the Manager confirmed for THIS scenario.
+
+  TWO INVARIANTS MAKE THIS SAFE TO ADD.
+
+  1. An empty confirmed set returns `PROVIDER_SCENARIO_JSON_SCHEMA` BY IDENTITY — not a copy that
+     happens to be equal. The contract manifest digests that exact object, and an unconstrained
+     request must remain the contract the manifest already describes.
+
+  2. `maxItems` and `items.maxLength` are READ from the base fragment rather than restated. A
+     restated bound is a bound that can silently diverge the day the base one moves.
+
+  The validator is NOT changed. It requires at least one KNOWN confirmed id per construction — not
+  all of them — so `minItems: 1` plus an `enum` of the confirmed ids states exactly that and no
+  more. A `minItems` equal to the confirmed count would be a STRICTER contract than the server
+  enforces, and the request would then be asking for something the server never checks.
+*/
+
+const isNonEmptyId = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
+
+/** Sorted, de-duplicated, blank-free. The enum is part of a digestible request, so order is fixed. */
+function normalizeConfirmedIds(confirmedIds: string[]): string[] {
+  return [...new Set(confirmedIds.filter(isNonEmptyId).map((id) => id.trim()))].sort();
+}
+
+/** The construction schema for a constrained request: the base one plus the coverage floor. */
+function constrainedConstructionSchema(ids: string[]): Record<string, unknown> {
+  const base = CHOICE_CONSTRUCTION_JSON_SCHEMA.properties.boundaryCompliance;
+  return {
+    ...CHOICE_CONSTRUCTION_JSON_SCHEMA,
+    properties: {
+      ...CHOICE_CONSTRUCTION_JSON_SCHEMA.properties,
+      boundaryCompliance: {
+        type: "array",
+        minItems: 1,
+        maxItems: base.maxItems,
+        items: { ...base.items, enum: ids },
+      },
+    },
+  };
+}
+
+/**
+ * The JSON Schema for ONE Render request.
+ *
+ * @param confirmedIds the boundary ids the Manager confirmed for this scenario.
+ * @returns the static schema itself when nothing is confirmed; otherwise a fresh constrained copy.
+ *          The static constant is never mutated.
+ */
+export function buildProviderScenarioSchema(confirmedIds: string[]): typeof PROVIDER_SCENARIO_JSON_SCHEMA | Record<string, unknown> {
+  const ids = normalizeConfirmedIds(confirmedIds);
+  if (ids.length === 0) return PROVIDER_SCENARIO_JSON_SCHEMA;
+
+  const construction = constrainedConstructionSchema(ids);
+  const choice = { ...choiceSchema, properties: { ...choiceSchema.properties, construction } };
+  const actionChoice = { ...actionChoiceSchema, properties: { ...actionChoiceSchema.properties, construction } };
+  const actionDecision = {
+    ...actionDecisionSchema,
+    properties: {
+      ...actionDecisionSchema.properties,
+      choices: { ...actionDecisionSchema.properties.choices, items: actionChoice },
+    },
+  };
+  const branches = PROVIDER_SCENARIO_JSON_SCHEMA.properties.branches;
+
+  return {
+    ...PROVIDER_SCENARIO_JSON_SCHEMA,
+    properties: {
+      ...PROVIDER_SCENARIO_JSON_SCHEMA.properties,
+      primaryChoices: { ...PROVIDER_SCENARIO_JSON_SCHEMA.properties.primaryChoices, items: choice },
+      flatTradeoffChoices: { ...PROVIDER_SCENARIO_JSON_SCHEMA.properties.flatTradeoffChoices, items: choice },
+      flatActionDecision: actionDecision,
+      branches: {
+        ...branches,
+        items: {
+          ...branches.items,
+          properties: {
+            ...branches.items.properties,
+            tradeoffChoices: { ...branches.items.properties.tradeoffChoices, items: choice },
+            actionDecision,
+          },
+        },
+      },
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // DTO validation — structural only. Content gates stay in the canonical layer.
 // ---------------------------------------------------------------------------
 
