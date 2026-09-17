@@ -1,3 +1,61 @@
+## 2026-09-17 — COMMANDER AUTHORIZATION: c18 CONSTRUCTION COVERAGE REPAIR
+
+**[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-REPAIR-1]**
+
+**AUTHORITY.**
+outer `d34bd6f1c1f1ddfcb4d5d1ddf52e312ff1415459`
+inner RED `a102e4b574ccc830cbfa52b8748cde11a4fd64b4`
+(RED subject `test(arena): pin c18 construction boundary coverage gap`, parent /
+origin/inner-main `13007f5c6452e32a645cbf87b740b4d32e004c4a`.)
+
+**AUTHORIZED PRODUCTION FILES.**
+
+- `src/domain/foundry/arena-draft/providerDto.ts`
+- `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+**AUTHORIZED NEW GREEN TEST.**
+
+- `src/domain/foundry/arena-draft/providerDto.constrainedBoundarySchema.test.ts`
+
+No other path is authorized.
+
+**DECISIONS.**
+
+- Approved prompt sentence, verbatim, as ONE prompt line:
+  "When confirmed constraints exist, each construction's boundaryCompliance must contain at least one confirmed boundary id; an empty boundaryCompliance array is allowed only when there are no confirmed constraints."
+- Validator UNCHANGED. The contract stays: empty confirmed set permits an empty
+  `boundaryCompliance`; a non-empty confirmed set requires at least one claimed id per
+  construction; every claimed id must belong to the confirmed set; NOT every confirmed id
+  must be claimed.
+- Constrained outbound schema: `minItems` 1 plus `items.enum` = sorted unique confirmed ids,
+  preserving the existing `maxItems` and `items.maxLength`.
+- Unconstrained: return the static `PROVIDER_SCENARIO_JSON_SCHEMA` BY IDENTITY.
+- All five construction paths receive the same constrained contract —
+  `primaryChoices`, `flatTradeoffChoices`, `flatActionDecision.choices`,
+  `branches[].tradeoffChoices`, `branches[].actionDecision.choices`.
+- RED regression file `c18ConstructionBoundaryComplianceRegression.test.ts` UNCHANGED.
+- `contractManifest.ts` UNCHANGED.
+- No artifact schema version bump.
+- Exact per-request outbound-schema provenance cleanup is PARKED: a sample constrained digest
+  such as `buildProviderScenarioSchema(["c1"])` would not equal an arbitrary actual outbound
+  schema whose enum carries real request ids, so no pseudo-exact provenance component is
+  created. The `providerSchema` component remains BASE/STATIC contract evidence and must NOT
+  be represented as exact constrained outbound-schema provenance.
+- Level-6 findings remain parked. Run 4 is NOT authorized here.
+
+**ACTIVE ACCEPTANCE.**
+Node `v20.20.2`; `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` / `OPENAI_API_KEY` all UNSET.
+Baseline 17 failing tests / 8 failing files, FAILURE_IDENTITY_SHA
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`.
+
+**PUSH POLICY.**
+The RED commit must NOT be pushed alone. After GREEN review, RED + GREEN are pushed together
+by a separate dispatch.
+
+No other authority is granted by this entry.
+
+---
+
 ## 2026-09-17 — COMMANDER DECISION: REPRODUCIBLE ACCEPTANCE ENVIRONMENT
 
 **[GOV-ARENA-ACCEPTANCE-ENV-1] DEFINE THE ACTIVE ACCEPTANCE BASELINE AS NODE 20 WITH LLM AVAILABILITY VARIABLES UNSET, AND RETIRE THE ENVIRONMENT-SENSITIVE 18/9 IDENTITY FROM ACTIVE EQUALITY AUTHORITY.**
