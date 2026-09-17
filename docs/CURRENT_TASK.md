@@ -1,3 +1,345 @@
+## 2026-09-17 — COMMANDER DECISION: REPRODUCIBLE ACCEPTANCE ENVIRONMENT
+
+**[GOV-ARENA-ACCEPTANCE-ENV-1] DEFINE THE ACTIVE ACCEPTANCE BASELINE AS NODE 20 WITH LLM AVAILABILITY VARIABLES UNSET, AND RETIRE THE ENVIRONMENT-SENSITIVE 18/9 IDENTITY FROM ACTIVE EQUALITY AUTHORITY.**
+
+OUTER authority:
+
+`20f60319c42a20f6989ac3322ecb8b8fe723501f`
+
+INNER authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+This decision unblocks the RED phase authorized by:
+
+`[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-1]`
+
+### 1. WHY THIS DECISION EXISTS
+
+A c18 Track-A RED baseline run was first attempted under Node 25.9.0.
+
+That runtime was outside the repository contract and produced a contaminated:
+
+`327 tests / 33 files`
+
+failure shape because Node 25 exposed a native `globalThis.localStorage` object
+whose Web Storage methods were unavailable in that configuration.
+
+That measurement is rejected as acceptance authority.
+
+The repository's tracked runtime contract is consistently:
+
+`Node 20`
+
+across:
+
+- `.nvmrc`
+- `.node-version`
+- `package.json engines.node`
+- root lockfile engine metadata
+- CI workflow Node pins
+
+Node was restored to:
+
+`v20.20.2`
+
+and the Node-25 localStorage contamination disappeared.
+
+### 2. THE SECOND BASELINE DRIFT
+
+Under restored Node 20 the suite measured:
+
+`17 failing tests / 8 failing files`
+
+with normalized timing-free identity SHA:
+
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+The previous historical acceptance reference had been:
+
+`18 failing tests / 9 failing files`
+
+with identity SHA:
+
+`4dc6767acfaf91dbecfa25b3ed10c0fc3a61097cf4e3b482002b6693c1399300`
+
+The set delta contained:
+
+`ADDED = EMPTY`
+
+and exactly one previously failing test/file pair disappeared:
+
+`generateTodayMirror — shadow pipeline (mock client) > fails quiet when no client is available (no fabricated fallback)`
+
+from:
+
+`src/lib/bty/today-intelligence/todayMirrorGenerate.test.ts`
+
+### 3. PROXIMAL CAUSE
+
+Current source shows `isLlmAvailable()` depends on ambient presence of:
+
+- `LLM_BASE_URL`
+- `OPENAI_API_KEY`
+- `LLM_API_KEY`
+
+The today-mirror test passes:
+
+`client: undefined`
+
+and does not isolate that ambient availability.
+
+The module under test may therefore select:
+
+`getLlmClient()`
+
+when ambient LLM availability is true, instead of taking the intended
+`llm_unavailable` early-return path.
+
+The test result is therefore environment-sensitive.
+
+The controlled current environment has:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+`LLM_API_KEY = UNSET`
+
+`OPENAI_API_KEY = UNSET`
+
+Under this environment the test takes the unavailable-client path and the suite
+measures the reproducible 17/8 identity.
+
+### 4. HISTORICAL PRECISION
+
+The exact historical environment-variable presence tuple for the earlier 18/9
+PTR acceptance runs was NOT retained.
+
+Therefore this ledger does NOT claim that any specific API key was definitely
+set.
+
+The historical today-mirror failure is consistent with the tested path having
+an available LLM client, but the precise enabling environment state is not
+recorded.
+
+Accordingly, the historical 18/9 identity remains useful as historical evidence
+only.
+
+It is no longer the active equality authority for new acceptance comparisons.
+
+### 5. ACTIVE ACCEPTANCE ENVIRONMENT CONTRACT
+
+Effective immediately for BTY Arena acceptance baselines under this authority:
+
+Node major:
+
+`20`
+
+Current measured runtime:
+
+`v20.20.2`
+
+Before build/test acceptance measurement, presence-only checks must prove:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+`LLM_API_KEY = UNSET`
+
+`OPENAI_API_KEY = UNSET`
+
+No environment-variable value may be read, printed, hashed, partially exposed
+or otherwise inspected.
+
+The gate ordering remains:
+
+`cf:build`
+
+then:
+
+`full test suite`
+
+unless another track explicitly records a different generated-artifact
+precondition.
+
+### 6. ACTIVE FAILURE IDENTITY AUTHORITY
+
+For the environment contract above, the active baseline is:
+
+failing tests:
+
+`17`
+
+failing files:
+
+`8`
+
+timing-free `FAILURE_IDENTITY_SHA`:
+
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+Failure-set equality remains authoritative over raw timing/duration output.
+
+Counts are corroborating evidence.
+
+The normalized identifier set is the authority.
+
+### 7. HISTORICAL 18/9 STATUS
+
+Historical baseline:
+
+`18 tests / 9 files`
+
+historical identity SHA:
+
+`4dc6767acfaf91dbecfa25b3ed10c0fc3a61097cf4e3b482002b6693c1399300`
+
+Status:
+
+`HISTORICAL / ENVIRONMENT-SENSITIVE`
+
+It MUST NOT be used as the active acceptance equality target unless an explicitly
+authorized experiment is intentionally reproducing that historical environment.
+
+It is not deleted, rewritten or declared false.
+
+It remains a truthful measurement under an incompletely retained environment.
+
+### 8. PERMANENT ACCEPTANCE EVIDENCE RULE
+
+Every future failure-identity acceptance checkpoint must record at minimum:
+
+- `node -v`
+- `command -v node`
+- `LLM_BASE_URL` presence: SET/UNSET
+- `LLM_MODEL` presence: SET/UNSET
+- `LLM_API_KEY` presence: SET/UNSET
+- `OPENAI_API_KEY` presence: SET/UNSET
+- generated-artifact/build ordering used before the suite
+- failing-test count
+- failing-file count
+- timing-free normalized failure identity SHA
+
+Environment-variable VALUES remain forbidden evidence.
+
+An identity SHA without its execution-environment record is not sufficient by
+itself to establish reproducibility across runtimes.
+
+### 9. PROVIDER-FREE ACCEPTANCE INTENT
+
+The active acceptance environment intentionally makes ambient LLM availability
+false.
+
+Acceptance gates must not depend on accidental ambient credentials or a
+reachable external provider.
+
+Tests requiring LLM behavior must use their authorized mock/fake/injected client
+seams unless a separate live-provider authorization explicitly permits otherwise.
+
+This acceptance rule does not alter production LLM behavior.
+
+### 10. MEASURED TEST-HYGIENE DEFECT — PARKED
+
+The current today-mirror test:
+
+`fails quiet when no client is available (no fabricated fallback)`
+
+does not isolate ambient LLM availability.
+
+That is recorded as:
+
+`MEASURED TEST-HYGIENE DEFECT`
+
+Status:
+
+`PARKED`
+
+No test change is authorized here.
+
+A future cleanup may mock or explicitly control the LLM client/availability
+surface so that the unit test is independent of ambient shell credentials.
+
+That cleanup is a separate track.
+
+### 11. TRACK-A CONSEQUENCE
+
+The c18 construction-coverage RED authorization remains valid:
+
+`[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-1]`
+
+Track-A RED acceptance should now compare against the active:
+
+`17 / 8`
+
+baseline with identity:
+
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+under the four-variable-UNSET Node-20 environment contract.
+
+The authorized RED tests themselves remain provider-free.
+
+Expected RED delta remains:
+
+only Test B
+and Test C
+
+from the authorized new regression file.
+
+The old 18/9 identity is no longer the comparison target.
+
+### 12. SCOPE
+
+This checkpoint authorizes NO:
+
+- source mutation
+- test mutation
+- config mutation
+- package mutation
+- provider call
+- live run
+- replay
+- Track-B work
+- today-mirror test repair
+- deployment
+- DB/migration work
+
+It changes acceptance-evidence authority only.
+
+### 13. FINAL STATUS
+
+TRACKED NODE CONTRACT =
+`20`
+
+ACTIVE ACCEPTANCE NODE =
+`v20.20.2`
+
+ACTIVE LLM ENVIRONMENT =
+`FOUR VARIABLES UNSET`
+
+ACTIVE FAILURE BASELINE =
+`17 tests / 8 files`
+
+ACTIVE FAILURE_IDENTITY_SHA =
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+HISTORICAL 18/9 =
+`PRESERVED / NOT ACTIVE EQUALITY AUTHORITY`
+
+CONTAMINATED 327/33 =
+`REJECTED`
+
+TODAY-MIRROR TEST-HYGIENE DEFECT =
+`PARKED`
+
+TRACK-A RED =
+`RESUMABLE AFTER THIS CHECKPOINT IS DURABLE`
+
+AUTOMATIC FOLLOW-UP =
+`NONE`
+
 ## 2026-09-16 — COMMANDER AUTHORIZATION: c18 CONSTRUCTION BOUNDARY-COVERAGE RED PHASE
 
 **[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-1] AUTHORIZE TEST-ONLY RED EVIDENCE FOR THE LEVEL-4 `unsupported_boundary_compliance` CONTRACT GAP.**
