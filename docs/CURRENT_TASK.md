@@ -1,3 +1,375 @@
+## 2026-09-16 — COMMANDER AUTHORIZATION: c18 CONSTRUCTION BOUNDARY-COVERAGE RED PHASE
+
+**[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-1] AUTHORIZE TEST-ONLY RED EVIDENCE FOR THE LEVEL-4 `unsupported_boundary_compliance` CONTRACT GAP.**
+
+This authorization follows the durable Run-3 result:
+
+`[GOV-ARENA-OBSERVER-RUN-3-RESULT]`
+
+OUTER authority:
+
+`35035652bab644dacfecc2c4a1b4e2bd14bd84d8`
+
+INNER authority:
+
+`13007f5c6452e32a645cbf87b740b4d32e004c4a`
+
+Run-3 artifact:
+
+`44d724e11cef41e20249738fc44f9238f5959b90371761d201acf0e1bca858db`
+
+### 1. TRACK-A SCOPE
+
+This track covers only the downstream Level-4 finding:
+
+`unsupported_boundary_compliance`
+
+origin gate:
+
+`choice_construction`
+
+The Level-6 findings:
+
+`repeated_action_meaning`
+
+and:
+
+`sibling_choice_pair_identical`
+
+are a separate Track B.
+
+They are NOT authorized for repair or test expansion here.
+
+### 2. CURRENT VALIDATOR CONTRACT
+
+Current `validateChoiceConstructions` treats boundary-compliance evidence
+structurally.
+
+For each construction:
+
+- every claimed `boundaryCompliance` id must belong to the confirmed constraint
+  id set
+- when confirmed constraints exist, an empty `boundaryCompliance` claim is
+  rejected
+
+The measured predicate is structural.
+
+It does not use vocabulary, regex or semantic prose interpretation.
+
+This authorization does NOT modify that validator.
+
+### 3. CURRENT GENERATION / CONTRACT MISMATCH
+
+The current provider contract requires a `boundaryCompliance` array but permits:
+
+- an empty array
+- arbitrary string ids rather than only current confirmed ids
+
+The current Render prompt tells every choice to obey confirmed constraints and
+describes:
+
+`boundaryCompliance`
+
+as the confirmed boundary ids the construction obeys, with the phrase:
+
+`empty when there are none`
+
+It does not explicitly state the validator's structural requirement that, when
+the scenario has confirmed constraints, each construction must claim at least
+one known confirmed boundary id.
+
+Run 3 returned:
+
+`14 / 14`
+
+construction objects with the field present and:
+
+`14 / 14`
+
+with:
+
+`boundaryCompliance = []`
+
+Total confirmed-id claims:
+
+`0`
+
+Therefore the Level-4 failure is classified:
+
+`C6 — MULTIPLE PROVEN DEFECTS ON GENERATION / CONTRACT SIDE`
+
+Measured contributors:
+
+- schema coverage gap
+- prompt/input-surface ambiguity
+- model output using the allowed/ambiguous empty shape
+
+No validator defect is adjudicated here.
+
+### 4. COMMANDER DIRECTION FOR A FUTURE REPAIR
+
+Commander chooses the STRUCTURAL contract direction over prompt-only repair.
+
+Prompt-only clarification is not considered sufficient because the current
+structured-output schema itself permits the exact empty/unknown-id shapes that
+the deterministic validator later rejects.
+
+A future repair, if separately authorized, should investigate one coherent
+contract family:
+
+1. clarify Render instruction so empty `boundaryCompliance` is permitted only
+   when there are no confirmed constraints applicable under the existing
+   validator contract
+
+2. construct the generation response schema per request so that, when confirmed
+   constraints exist:
+   - `boundaryCompliance` cannot be empty under the current validator contract
+   - allowed ids are restricted to the current confirmed constraint ids
+
+This paragraph is a DIRECTION, not production-mutation authorization.
+
+No production code change is authorized by this checkpoint.
+
+### 5. VALIDATOR-AUTHORITY GUARD
+
+This track mirrors the CURRENT validator contract.
+
+It does NOT newly adjudicate that the product-level rule:
+
+`every construction in every constrained scenario must claim at least one confirmed boundary id`
+
+is universally the ideal long-term policy.
+
+That product/authority question remains separate.
+
+Therefore:
+
+- validator predicate change is NOT authorized
+- validator authority expansion is NOT authorized
+- validator authority rollback is NOT authorized
+
+A future provider-contract repair may align generation with the current
+validator without claiming that the validator can never later be reviewed under
+a separate authority decision.
+
+### 6. CONTRACT-MANIFEST GUARD
+
+A request-scoped generation schema may affect:
+
+- schema identity
+- contract manifest inputs
+- contract digest expectations
+- schema-pin tests
+
+That impact is NOT assumed.
+
+Before any production repair authorization, a READ-ONLY implementation-surface
+audit must determine whether introducing a request-scoped schema builder changes
+`contractManifest` authority or digest behavior.
+
+No contract-manifest mutation is authorized here.
+
+### 7. AUTHORIZED TEST-ONLY RED PHASE
+
+Because existing test seams require no production visibility change, Commander
+authorizes a TEST-ONLY RED phase.
+
+Authorized new test file:
+
+`src/lib/bty/foundry/arena/c18ConstructionBoundaryComplianceRegression.test.ts`
+
+No existing test may be modified.
+
+No production source may be modified.
+
+No tracked test may depend on the local gitignored `.eval-artifacts` file at
+runtime.
+
+Run-3 artifact facts may motivate the test, but the committed test must use
+tracked fixtures / local structural inputs / captured production request data.
+
+### 8. REQUIRED TEST SHAPES
+
+The new test file must establish separate evidence classes.
+
+**Test A — CHARACTERIZATION / VALIDATOR CONTROL**
+
+Prove current `validateChoiceConstructions` deterministically emits:
+
+`unsupported_boundary_compliance`
+
+for a constrained c18-like construction set whose `boundaryCompliance` arrays
+are empty.
+
+Zero provider calls.
+
+This test is expected to PASS on current authority.
+
+Its purpose is to pin the downstream validator contract, not to call the
+validator defective.
+
+**Test B — TRUE RED: RENDER INSTRUCTION CONTRACT**
+
+Capture the real Render request using the existing mocked LLM-client seam.
+
+Desired future invariant:
+
+For a constrained c18 request, the Render construction instruction explicitly
+states that each construction must include at least one current confirmed
+boundary id under the existing validator contract, and that an empty array is
+only valid when the relevant confirmed constraint set is empty.
+
+This test must FAIL on current authority because the prompt does not explicitly
+communicate that coverage rule.
+
+The assertion must be semantic-stable; it must not require an exact future
+sentence or prompt ordering.
+
+**Test C — TRUE RED: STRUCTURED-OUTPUT SCHEMA CONTRACT**
+
+Capture the actual Render provider request schema for constrained c18.
+
+Desired future invariant:
+
+`boundaryCompliance`
+
+for the constrained request structurally enforces:
+
+- non-empty coverage consistent with the current validator
+- allowed string values restricted to the current confirmed id set
+
+For c18 the expected allowed-id universe is:
+
+`c1_verify`
+
+This test must FAIL on current authority because the current schema has:
+
+- no `minItems`
+- no request-scoped enum of confirmed ids
+
+The test must inspect the actual provider request schema, not a private helper.
+
+**Test D — UNCONSTRAINED COMPATIBILITY CONTROL**
+
+Using an unconstrained fixture/request, prove the existing no-boundary case
+continues to permit an empty `boundaryCompliance` representation.
+
+This is a compatibility control.
+
+It must not create artificial boundary requirements for boundary-free scenarios.
+
+### 9. TRUE RED REQUIREMENT
+
+At least:
+
+Test B =
+`FAIL`
+
+Test C =
+`FAIL`
+
+on the current production authority.
+
+Expected:
+
+Test A =
+`PASS`
+
+Test D =
+`PASS`
+
+Collection/mock-wiring/setup failures do NOT count as RED evidence.
+
+No production source may be changed to make the tests observable.
+
+### 10. NO ARTIFACT-DEPENDENT TRACKED TEST
+
+The committed test must NOT read:
+
+`.eval-artifacts/reviewer-observer-live-03/...`
+
+at test runtime.
+
+Reason:
+
+that artifact is gitignored local evidence, not a durable test dependency.
+
+Use tracked fixtures, synthetic structural inputs and the established mocked
+provider-request capture seam instead.
+
+### 11. FUTURE REPAIR IS NOT YET AUTHORIZED
+
+This checkpoint authorizes NO:
+
+- Render prompt mutation
+- provider schema mutation
+- request-scoped schema builder
+- DTO parser mutation
+- contractManifest mutation
+- validator mutation
+- fixture mutation
+- reviewer mutation
+- Level-6 mutation
+- live Run 4
+- provider call
+- deployment
+- DB/migration work
+
+After RED evidence is committed, a separate read-only repair-surface audit must
+measure:
+
+- minimum files required for request-scoped schema construction
+- strict-schema compatibility
+- contractManifest/digest impact
+- unconstrained compatibility
+- existing schema/prompt pin tests
+
+Only then may Commander authorize a production repair.
+
+### 12. PUSH POLICY
+
+The future RED test commit must NOT be pushed alone.
+
+If RED evidence is valid:
+
+- keep RED commit local
+- obtain separate repair authorization
+- implement GREEN
+- pass acceptance gates
+- push RED + GREEN together under a dedicated push dispatch
+
+### 13. FINAL STATUS
+
+TRACK A =
+`BOUNDARY-COMPLIANCE GENERATION / CONTRACT SURFACE`
+
+CAUSAL CLASS =
+`C6`
+
+CURRENT VALIDATOR =
+`UNCHANGED AUTHORITY`
+
+PREFERRED FUTURE REPAIR DIRECTION =
+`PROMPT CLARIFICATION + REQUEST-SCOPED STRUCTURAL SCHEMA`
+
+PROMPT-ONLY REPAIR =
+`NOT PREFERRED`
+
+LEVEL-6 TRACK =
+`PARKED SEPARATELY`
+
+TEST-ONLY RED PHASE =
+`AUTHORIZED`
+
+PRODUCTION REPAIR =
+`NOT AUTHORIZED`
+
+LIVE RUN 4 =
+`NOT AUTHORIZED`
+
+AUTOMATIC NEXT STEP =
+`NONE`
+
 ## 2026-09-16 — CHECKPOINT: REVIEWER AS OBSERVER — LIVE RUN 3 RESULT
 
 **[GOV-ARENA-OBSERVER-RUN-3-RESULT] ONE-CELL POST-REPAIR c18 RUN PASSED DETERMINISTIC BOUNDARY GROUNDING AND STOPPED AT DOWNSTREAM LEVEL-4 CHOICE CONSTRUCTION.**
