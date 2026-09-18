@@ -1436,6 +1436,18 @@ function buildPlanMessages(
         "CONFIRMED NON-NEGOTIABLE CONSTRAINTS — the Manager has confirmed these rules; they are the boundary this plan MUST be designed inside, not a topic the plan may reopen:",
         ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
         "The PRIMARY, TRADEOFF and ACTION dimensions must each be phrased as a HOW-TO-COMPLY decision inside these rules — never as whether to obey them, and never as a topic that ignores them. If the situation genuinely leaves no such difficult decision inside the boundary, the plan should still be attempted; the downstream stages own no-safe-space refusals.",
+        /*
+          v1.4 — THE DIMENSION COMPLIED; THE OPTIONS DID NOT.
+
+          Measured Run-4 c18: the primary dimension was already phrased as a how-to-comply decision
+          ("How to verify the two identifiers before treatment"), and the plan still offered
+          `p2.stance = "Proceed without full verification"` with a branch whose resulting world was
+          "Treatment is initiated without complete verification of identifiers." Render copied the
+          stance verbatim into a learner-facing label and the deterministic constraint gate rejected
+          the draft. The rule above binds how a dimension is PHRASED; nothing bound the options the
+          dimension offers, so the confirmed rule became the axis of the dilemma.
+        */
+        "EVERY option those dimensions imply must ALSO stay inside the rules: each primary `stance`, each `acceptedCost` and each `resultingWorldState` must describe a COMPLIANT course of action — never skipping, deferring past, partially performing or working around a confirmed rule. Do NOT introduce a violating alternative merely to make the decision difficult; the difficulty must come from competing COMPLIANT actions, costs, timing or priorities.",
       ]
     : [];
   const system = [
