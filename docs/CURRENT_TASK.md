@@ -1,3 +1,273 @@
+## [GOV-ARENA-REVIEWER-REPLAY-1-AMENDMENT-1] — 2026-09-18 — AMENDMENT: Phase 1b executable interface and evidence writer before Phase 2
+
+§1 WHY
+
+The Phase-2 dispatch was correctly BLOCKED before any reviewer call.
+
+Run-4 subject consumed = NO.
+
+Run-5 subject consumed = NO.
+
+The committed harness at inner `17790e4f15017a11bf385bd9671e12a9319c3a5a` is a library module only: it has no CLI entrypoint and writes no replay evidence. `REPLAY_OUTPUT_ROOT` exists as a constant but is not used.
+
+The authorization requires retained replay evidence under `.eval-artifacts/reviewer-replay-01/`, and each frozen subject may be replayed exactly once. Executing Phase 2 through the current module would therefore spend one-shot subjects without durable runtime evidence.
+
+This gap lies between the Phase-1 and Phase-2 scope definitions, not in the implemented library seam.
+
+Commander decision E1:
+
+PHASE 1b IS REQUIRED.
+
+A throwaway `/tmp` driver is not authorized. The executable interface and evidence writer must be tracked, tested, committed, and pushed before Phase 2.
+
+§2 AUTHORIZED PHASE 1b SCOPE
+
+Tracked changes are limited to exactly two paths:
+
+- `scripts/practice-frozen-reviewer-replay.ts`
+- `src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts`
+
+`src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts` must have zero diff from inner `17790e4f`.
+
+The existing exported `reviewConstraintCompliance` body sha256 must remain:
+
+`69e3f57375c9893f229887fbfe248e8b7e2f267416dca2e7debce12af348a052`
+
+No production hook, prompt, schema, parser, reviewer authority, retention format, contract manifest, fixture, DB behavior, or migration change is authorized.
+
+Phase 1b uses tests first.
+
+Phase 1b makes:
+
+- provider calls = 0
+- live reviewer calls = 0
+- generation calls = 0
+- DB writes = 0
+- migrations = 0
+
+Acceptance follows the standing acceptance rules recorded in `[GOV-ARENA-REVIEWER-REPLAY-1-PHASE-1-RESULT]`, including the KNOWN_FLAKY rule and the rule that any failed acceptance gate requires explicit Commander GO before commit or push.
+
+§3 REQUIRED BEHAVIOR
+
+A. CLI
+
+The tracked replay script must expose an executable CLI accepting exactly:
+
+`--subject run4|run5`
+
+`--artifact <path>`
+
+`--expected-sha <sha256>`
+
+`--expected-scenario-digest <sha256>`
+
+All four are required.
+
+There are no defaults.
+
+There is no batch flag.
+
+There is no retry flag.
+
+Unknown, missing, duplicate, or batch-style arguments must fail before any provider call.
+
+B. Subject authority
+
+Before any provider call, the CLI must verify both the frozen artifact sha256 and `scenarioDigest(draft.parsed)`.
+
+Run 4 authority:
+
+artifact sha256:
+
+`e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b`
+
+scenario digest:
+
+`c917a9d33b581154768e19269c91a1553dd23da07c92b58b7d705cfed30e1390`
+
+Run 5 authority:
+
+artifact sha256:
+
+`46d6882b78f7064de68310b8312fd4b0f9ab5c6f603150ed682a4f8f383b4fd8`
+
+scenario digest:
+
+`cae7711899ddc565e3551b2666218986075fa60974fda133686da00a5df30be7`
+
+C. Once-only by construction
+
+Each subject has one evidence file under `.eval-artifacts/reviewer-replay-01/`.
+
+The evidence file must be created with exclusive-create semantics before the first provider call.
+
+If that subject's evidence file already exists, the run fails before any provider call.
+
+No overwrite path is authorized.
+
+D. Partial evidence survives failure
+
+The evidence file must exist before the first provider call.
+
+After narrow completes, narrow evidence is persisted before broad is invoked.
+
+If any later stage throws, the evidence file must still record:
+
+- all evidence obtained so far
+- consumed state
+- failing stage
+- error class
+- timestamps
+- measured call counts
+
+The harness must not allow a subject to be consumed while leaving zero replay evidence.
+
+E. Broad call policy — Commander decision E2
+
+The harness computes the production `broadReviewAllowed` value and records it.
+
+The harness then invokes the broad reviewer exactly ONCE per frozen subject regardless of that gate value.
+
+If `broadReviewAllowed = true`, the broad row is labeled:
+
+`REPLAY / ON_PIPELINE`
+
+If `broadReviewAllowed = false`, the broad row is labeled:
+
+`REPLAY / OFF_PIPELINE`
+
+`OFF_PIPELINE` broad evidence is reviewer-capability evidence only and must not be represented as production pipeline behavior.
+
+The broad rerun loop is not copied.
+
+There is no second broad call.
+
+F. Evidence scope — Commander decision E3
+
+The replay evidence stores the complete values returned by the existing production reviewer paths, without adding new semantic verdict fields.
+
+It additionally stores the exact harness-built narrow subject and broad request used for the calls, plus stable hashes of those request objects.
+
+For each request it records the number of occurrences of the field name `boundaryCompliance`.
+
+Expected interpretation:
+
+- narrow request: the forced claim is not visible
+- broad request: the complete construction is visible
+
+The evidence also records actual invocation counts at the injected dependency boundary, by call kind:
+
+- narrow review
+- narrow repair
+- broad review
+
+These are measured replay call counts for this harness execution, not inferred provider request counts beyond the injected dependency boundary.
+
+The evidence records:
+
+- `REPLAY`
+- `ON_PIPELINE` or `OFF_PIPELINE`
+- subject id
+- frozen artifact sha256
+- scenario digest
+- inner commit
+- `broadReviewAllowed`
+- narrow stage result and evidence
+- broad `ReviewOutcome`
+- narrow request and sha256
+- broad request and sha256
+- `boundaryCompliance` occurrence counts
+- measured call counts
+- timestamps
+- consumed state
+- failure stage/error class when applicable
+
+Accounting remains undefined/inert.
+
+No production capture hook is added.
+
+Replay artifacts are runtime evidence and are never committed.
+
+G. Output root
+
+Live CLI output root is fixed to:
+
+`.eval-artifacts/reviewer-replay-01/`
+
+Tests inject a temporary output root and must never write into `.eval-artifacts`.
+
+§4 TEST REQUIREMENTS
+
+Existing A through J remain green.
+
+K is refined to:
+
+the harness writes only under the injected replay root in tests, and tests leave `.eval-artifacts/reviewer-replay-01/` absent.
+
+Add:
+
+L. Existing evidence file refuses replay before any reviewer/provider call.
+
+M. If broad throws after narrow completes, partial evidence remains on disk with the completed narrow result, consumed state, failing stage, error class, timestamps, and measured call counts.
+
+N. CLI rejects unknown, missing, duplicate, and batch-style arguments before any provider call.
+
+O. Broad policy: broad is called exactly once whether `broadReviewAllowed` is true or false; the row is `REPLAY / ON_PIPELINE` or `REPLAY / OFF_PIPELINE` respectively.
+
+P. Measured call counts equal the actual injected dependency invocations.
+
+Q. Subject is marked CONSUMED at the first reviewer/provider dependency invocation and not before.
+
+R. Evidence contains the exact narrow subject and broad request, their stable sha256 values, and their `boundaryCompliance` occurrence counts.
+
+S. Zero generation symbols remain imported or invoked.
+
+§5 CONSUMPTION RULE FOR PHASE 2
+
+A subject is NOT CONSUMED if failure occurs before its first reviewer/provider dependency invocation, including:
+
+- CLI validation failure
+- credential failure
+- artifact sha mismatch
+- scenario-digest mismatch
+- existing evidence file
+- other pre-call authority failure
+
+A subject becomes CONSUMED when its first reviewer/provider dependency invocation is issued.
+
+After consumption there is no second replay of that subject, whatever the outcome.
+
+Evidence-file exclusive creation occurs before consumption.
+
+§6 UNCHANGED PHASE-2 AUTHORITY
+
+The authorized frozen subjects remain:
+
+- Run 4 exactly once
+- Run 5 exactly once
+- no Run 3
+
+Per-subject static opportunities remain:
+
+- narrow review `<= 2`
+- narrow repair `<= 2`
+- broad exactly `1`
+- conservative total `<= 5`
+
+Human ground truth remains the ground truth fixed in `[GOV-ARENA-REVIEWER-REPLAY-1]`.
+
+Replay remains analytically separate from the live reviewer 2x2.
+
+Phase 2 still requires:
+
+- Phase 1b implemented, accepted, committed, pushed, and recorded
+- separate explicit Commander GO
+- same-process credential precondition
+
+This amendment does not itself start Phase 1b implementation or Phase 2 live replay.
+
+---
+
 ## [GOV-ARENA-REVIEWER-REPLAY-1-PHASE-1-RESULT] — 2026-09-18 — RESULT: frozen reviewer replay harness Phase 1
 
 §1 AUTHORITY
