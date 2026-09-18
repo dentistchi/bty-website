@@ -1,3 +1,340 @@
+## [GOV-ARENA-OBSERVER-RUN-5] — 2026-09-18 — AUTHORIZATION: live observer Run 5, c18 single cell, after the constrained Plan option repair
+
+§1 AUTHORITY
+
+Outer authority:
+
+`662117b8ce11a45cc57a47f49a4e1f64665c167f`
+
+Inner authority under observation:
+
+`cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5`
+
+The code provenance for this cell is the inner commit. The constrained Plan prompt is outside the current contract-manifest component map, so `manifestDigest` does not distinguish this cell from Run 4. Premises below were measured read-only at inner `cfaa4e5f` and must be re-read before invocation.
+
+§2 PURPOSE
+
+This is the first live observation of the constrained Plan option repair recorded in `[GOV-ARENA-C18-CONSTRAINT-PLAN-REPAIR-RESULT-1]`.
+
+Acceptance at `cfaa4e5f` proved that the approved instruction is present, that focused tests pass, and that no new acceptance failure was introduced. It does not prove that a live model obeys the instruction.
+
+§3 AUTHORIZED EXECUTION
+
+Exactly ONE invocation is authorized, from the inner repo root:
+
+    ./node_modules/.bin/tsx scripts/practice-full-retention.ts --experiment-id reviewer-observer-live-05-c18 --fixtures c18-constrained-clinical --architectures plan_render_v1 --runs 1 --correction disabled --artifact-dir .eval-artifacts/reviewer-observer-live-05/c18-constrained-clinical
+
+Every flag is explicit and appears exactly once.
+
+The following flags MUST be absent:
+
+`--provider-fake`
+
+`--fake-plan`
+
+`--case-deadline-ms`
+
+Forbidden execution scope:
+
+- c19
+- legacy
+- any other fixture
+- any control cell
+- any second cell
+- any rerun
+
+The artifact root `.eval-artifacts/reviewer-observer-live-05` must be absent before invocation.
+
+The runner itself forces correction disabled for `plan_render_v1`; therefore the `--correction disabled` literal records the authorized argv but does not independently select the architecture's retry behavior.
+
+§4 CREDENTIAL PRECONDITION
+
+In the same executor process that invokes the cell:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+At least one of:
+
+`LLM_API_KEY`
+
+`OPENAI_API_KEY`
+
+must be SET and non-empty.
+
+Credential values are never read, printed, hashed or measured.
+
+If this precondition fails before invocation:
+
+BLOCKED
+
+cells consumed = 0
+
+The service's no-model path occurs before a useful live provider observation, so a credential failure must not spend the authorized cell.
+
+§5 MEASURED PREMISES AT INNER `cfaa4e5f`
+
+Runner blob:
+
+`acf7ecf6c842e003b52f6f497e3e405dbb184986`
+
+Fixture blob:
+
+`1eda912c0b7359cf615e7a5aa90696a6e2b5824f`
+
+The c18 fixture contains one confirmed constraint:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+Fifteen non-service premise files are blob-equal to the Run-4 authority.
+
+The only production service delta from `610093f7` to `cfaa4e5f` is the constrained Plan guidance inserted at `arenaScenarioGenerationService.ts:1439` inside `constraintPlanLines` in `buildPlanMessages`.
+
+The guidance is emitted only when confirmed constraints exist.
+
+Plan path:
+
+- confirmed constraints are bound from `authority.constraints`
+- they enter `generatePlan`
+- the retained Plan is captured wholesale after validation
+
+Render path:
+
+- confirmed constraints remain present in the Render prompt
+- the request-scoped provider schema is strict
+- construction `boundaryCompliance` coverage is constrained by the confirmed ids
+
+The deterministic pooled region remains byte-for-byte unchanged from Run 4.
+
+`plan_render_v1` has one Plan generation opportunity and one Render generation opportunity and has no correction retry available under the current design.
+
+§6 OBSERVATION ORDER AND PRE-REGISTERED READINGS
+
+The execution report must quote these criteria rather than rewrite them.
+
+### Q1a — retained Plan compliance
+
+Question:
+
+Whether every option represented in the retained Plan remains inside the confirmed rule.
+
+The Commander reads the retained Plan text directly.
+
+Required inspection scope:
+
+- every `primary.choices[].stance`
+- every `primary.choices[].acceptedCost`
+- every branch `resultingWorldState`
+
+These fields are completely observable in the retained Plan.
+
+A vocabulary-gate PASS is NOT evidence of semantic compliance.
+
+A `boundaryCompliance` claim is NOT evidence of semantic compliance.
+
+### Q1b — Render-authored choice compliance
+
+Question:
+
+Whether every learner-facing choice authored at Render remains inside the confirmed rule.
+
+The Commander reads the retained Render output directly.
+
+Required inspection scope for every retained choice:
+
+- coordinate / id
+- learner-facing label
+- `construction.concreteAction`
+
+This includes primary, tradeoff, action and branch choices.
+
+The Plan contains no tradeoff/action option objects; those options are authored downstream at Render. Therefore compliance of those choices can only be judged from the retained Render draft/constructions.
+
+Again:
+
+A vocabulary-gate PASS is NOT evidence of semantic compliance.
+
+A `boundaryCompliance` claim is NOT evidence of semantic compliance.
+
+### Q2 — deterministic block
+
+Question:
+
+Whether the draft clears the deterministic block in one shot.
+
+Use the complete authoritative finding set.
+
+Attribute each finding to its producer from producer/control-flow evidence, never from code-string inference.
+
+Because `plan_render_v1` has no correction attempt, any authoritative rejection ends this cell.
+
+### Q3 — reviewer reach
+
+Question:
+
+Whether narrow boundary review and broad semantic review are reached.
+
+Report explicitly:
+
+narrow reached
+
+broad reached
+
+REVIEWER_REACHED
+
+If reviewer is not reached, the cell is CONTEXT_ONLY and contributes zero to the reviewer 2x2 denominator.
+
+### Q4 — reviewer observations, only if reached
+
+For narrow review, inspect:
+
+- narrow boundary outcomes
+- retained `boundaryAssessments`
+
+The narrow reviewer does not receive `construction.boundaryCompliance`; its construction projection reads `acceptedCost` rather than the forced compliance claim.
+
+For broad review, inspect:
+
+- retained broad review findings
+- `phaseChoices`
+- `contentTelemetry`
+- `commitment_flag_mismatch`
+
+The broad reviewer receives the complete construction object, including the forced `boundaryCompliance` claim.
+
+No reviewer instruction explicitly tells the broad reviewer that `boundaryCompliance` is not proof.
+
+Therefore any broad boundary judgment must carry this caveat:
+
+`claim visible, uninstructed`
+
+No repair to that reviewer prompt is authorized before this observation.
+
+§7 PROVIDER-ACCEPTANCE READING
+
+Provider acceptance of this cell's Plan/Render request is proven if execution progresses through Render into a parsed draft and/or deterministic gates.
+
+A request-time provider rejection is recorded only as a class result available from retained evidence, such as:
+
+`generation_failed`
+
+or
+
+`structured_output_unavailable`
+
+with no parsed draft / no deterministic gates.
+
+Exact provider rejection cause remains NOT_PROVEN when current instrumentation does not retain enough response detail.
+
+External provider request count is NOT MEASURED.
+
+§8 STATIC CALL OPPORTUNITIES
+
+These are control-flow upper bounds, not measured provider request counts:
+
+Plan generation = `1`
+
+Render generation = `1`
+
+narrow review = `<= 2`
+
+narrow field-repair = `<= 2`
+
+broad review = `<= 2`
+
+conservative total upper bound = `<= 8`
+
+Whether narrow review and narrow field-repair share the same per-subject provider-invocation cap strongly enough to lower that total is NOT RESOLVED here.
+
+The earlier `<= 6` observer figure omitted narrow field-repair.
+
+§9 ARTIFACT INTEGRITY
+
+Pre-run artifact authority under the canonical serialization command from `[GOV-ARENA-OBSERVER-RUN-4-AMENDMENT-1]` §4:
+
+count:
+
+`148`
+
+manifest SHA:
+
+`dbf449adebcf265686137207dfdb3bcc05290fc51a282bda2283e37dfbef243a`
+
+Post-run requirements:
+
+- the 148 pre-existing manifest rows remain byte-identical
+- every new artifact row is under `.eval-artifacts/reviewer-observer-live-05`
+- runtime artifacts are not committed
+
+Runner stdout/stderr may be captured under `/tmp` without environment-value echo.
+
+§10 STOP RULES
+
+Any precondition failure before launcher invocation:
+
+BLOCKED
+
+cells consumed = 0
+
+If the launcher itself fails before creating the Run-5 artifact root:
+
+not consumed
+
+Anything after actual cell invocation, artifact creation, or any doubt about whether execution began:
+
+CONSUMED
+
+No rerun is authorized.
+
+If `REVIEWER_REACHED = NO` again:
+
+NO further live observer cell is opened under this same design.
+
+The next step is a Commander decision between:
+
+1. frozen-subject reviewer replay, requiring separate instrumentation authorization
+
+or
+
+2. a correction path for `plan_render_v1`, requiring separate migration-bearing authorization
+
+This authorization selects neither option.
+
+§11 CARRY-FORWARD AND NOT AUTHORIZED
+
+Packet, adjudication and provenance rules from the established observer-run chain remain in force:
+
+- learner-unreachable flat compatibility projections remain CONTEXT_ONLY
+- only `REVIEWER_REACHED = YES` enters the reviewer 2x2
+- the Commander is the sole human adjudicator
+- provenance is never inferred from defect-code identity
+- `Finding.terminal` means retry-policy terminality, not authority
+- `primaryCode` is a precedence winner/pointer, not a unique terminator
+- unclassified content does not receive silent rejection authority
+
+For the request-scoped constrained provider schema, faithful reconstruction from the tracked builder plus declared confirmed id `[c1_verify]` is the accepted provenance method.
+
+This authorization does NOT permit:
+
+- source mutation
+- test mutation
+- fixture mutation
+- prompt mutation
+- instrumentation mutation
+- reviewer-prompt mutation
+- additional live cells
+- Run 6
+- deploy
+- database mutation
+- migration
+
+A later result checkpoint is separate work.
+
+---
+
 ## [GOV-ARENA-C18-CONSTRAINT-PLAN-REPAIR-RESULT-1] — 2026-09-18 — RESULT: constrained Plan option repair recorded after the fact
 
 §1 ORDER OF EVENTS
