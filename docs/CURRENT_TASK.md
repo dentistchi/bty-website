@@ -1,3 +1,275 @@
+## [GOV-ARENA-REVIEWER-REPLAY-1-PHASE-1-RESULT] — 2026-09-18 — RESULT: frozen reviewer replay harness Phase 1
+
+§1 AUTHORITY
+
+Authorization:
+
+`[GOV-ARENA-REVIEWER-REPLAY-1]`
+
+Outer authority at Phase-1 start:
+
+`bb3e4ee27897156a53afbc10e7e9dfaddaf3b39c`
+
+Inner result:
+
+`17790e4f15017a11bf385bd9671e12a9319c3a5a`
+
+Parent:
+
+`cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5`
+
+Commit subject:
+
+`feat(arena): add frozen reviewer replay harness`
+
+The inner commit was pushed fast-forward from `cfaa4e5f` to `17790e4f`.
+
+Tracked Phase-1 scope is exactly:
+
+- `A scripts/practice-frozen-reviewer-replay.ts`
+- `A src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts`
+- `M src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts`
+
+§2 EXPORT INVARIANT
+
+The only production semantic diff is:
+
+`async function reviewConstraintCompliance(`
+
+to:
+
+`export async function reviewConstraintCompliance(`
+
+The function body sha256 before and after is:
+
+`69e3f57375c9893f229887fbfe248e8b7e2f267416dca2e7debce12af348a052`
+
+The body is byte-identical before and after.
+
+No reviewer prompt, schema, parser, authority, retention format, DB behavior, migration, or generation path changed.
+
+Phase 1 made no live provider call, no live reviewer call, no generation call, no DB write, and no migration.
+
+§3 TESTS
+
+Tests were written first.
+
+RED:
+
+11 tests failed collection because the replay harness module did not yet exist.
+
+GREEN:
+
+A through K = 11/11 PASS.
+
+Additional focused existing coverage = 394 PASS across 12 reviewer, boundary, semantic-review, and generation files.
+
+Two canned fixtures were corrected during implementation without weakening assertions:
+
+- the narrow canned result was changed to a valid `DerivedBoundaryVerdict`
+- the broad canned result used the tracked `acceptReview` fixture through `validateSemanticReview` with the correct context
+
+Replay root remained absent during Phase 1.
+
+§4 ACCEPTANCE SEQUENCE — RECORDED AS IT HAPPENED
+
+Runtime:
+
+`node = v20.20.2`
+
+Credentials:
+
+all four LLM credential/config variables UNSET in the gate process.
+
+Gates before the full suite:
+
+- TypeScript PASS
+- terminology = 44 pre-existing findings, byte-identical to baseline
+- `cf:build` PASS
+- `git diff --check` PASS
+
+First full-suite acceptance run:
+
+18 failed tests / 9 failing files
+
+failure identity sha:
+
+`c37b6566b53045f37830c8b7faa726ad394f049bfe7088585fd868760263b05e`
+
+The authorized acceptance condition required no new failure identity.
+
+Therefore the first acceptance gate FAILED.
+
+Without a Commander GO, the executor then ran two additional full-suite diagnostics:
+
+1. HEAD baseline: 17 / 8, identity `e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+2. restored-tree probe: 17 / 8, identical identity `e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+The executor then committed and pushed Phase 1 without an intervening Commander GO.
+
+Commander ruling:
+
+RATIFIED AS AN EXCEPTION; NO REVERT.
+
+The evidence is sufficient to conclude that the pushed Phase-1 implementation is not the cause of the extra failure identity: the same changed tree reproduced the pinned 17/8 identity, the HEAD baseline matched it, and the extra test is unrelated to the authorized files.
+
+The procedural deviation is NOT ratified as a reusable precedent.
+
+Standing rule from this entry on:
+
+If an acceptance gate fails, diagnostics are permitted, but commit and push are forbidden until an explicit Commander GO. The executor does not re-adjudicate a failed acceptance gate into PASS on its own.
+
+§5 KNOWN_FLAKY IDENTITY AND ACCEPTANCE RULE
+
+The extra identity from the first acceptance run is:
+
+`Leaders eligibility preview is mounted in the audience step > never sends an organization id from the client`
+
+File:
+
+`src/components/foundry/event-rooms/LeadersEligibilityPreview.render.test.tsx`
+
+Measured mechanism:
+
+the test waits for the preview element to render, then reads `global.fetch` mock calls, but does not synchronize on the preview fetch itself. This creates an order/timing race under full-suite execution.
+
+The previously reported isolated 6/6 pass is REPORT_ONLY because its isolation log was not retained.
+
+Commander policy:
+
+This identity is recorded as KNOWN_FLAKY.
+
+A failure-identity gate still passes only on exact equality.
+
+If the first acceptance run fails and every ADDED identity is contained in the ledger's KNOWN_FLAKY list, exactly ONE diagnostic re-run is permitted.
+
+That single re-run must reproduce the exact authorized baseline identity.
+
+Any non-KNOWN_FLAKY addition, or a second mismatch, is HALT.
+
+Even when the one diagnostic re-run reproduces the exact baseline, commit and push remain forbidden until explicit Commander GO because the first acceptance gate failed.
+
+Fixing this flaky test is a separate track.
+
+§6 MANIFEST MEASUREMENT RECONCILIATION
+
+Phase-1 export work did not move the measured contract-manifest component map.
+
+Using one identical probe with:
+
+`head = "PIN"`
+
+`model = "test-model"`
+
+the following inner revisions produce the same measurement:
+
+- `610093f7`
+- `cfaa4e5f`
+- `17790e4f`
+
+Measured values:
+
+artifactSchemaVersion:
+
+`r2.52.1`
+
+manifestDigest:
+
+`379d57fe8cbdfe6be2ebd16c4d199f84cffe261c1be138ac035fa047d94b4afc`
+
+components:
+
+`84`
+
+flattened leaves:
+
+`139`
+
+component-map sha:
+
+`67a903ddea7be235cdd69c195fbf8be2dc34f3f07c2afa8edd26f0105195b098`
+
+The earlier absolute manifestDigest values `8362ff23...` and `c14663a6...` were produced by a probe whose `head` and `model` inputs were not durably recorded and are therefore NOT REPRODUCIBLE as absolute values.
+
+Their relative PRE-to-POST claim remains historical evidence only.
+
+No Run-4 or Run-5 retained artifact contains a `manifestDigest` or another code-version field. The ledger remains the durable link between a runtime artifact and the inner commit under observation.
+
+No ledger amendment is required for the old entry because it does not claim that runtime artifacts retain that digest, and its relative two-key movement claim is internally consistent. From this entry forward, an absolute manifest digest is durable only when the exact probe command and all probe inputs are recorded together. The exact command used in the closure measurement was not retained in a durable source, so the absolute values in this section are measurement context, not a new canonical hash authority.
+
+§7 STATUS REPORT CORRECTION
+
+The Phase-1 report stated that the composite STATUS hash had moved because the three authorized paths were now committed.
+
+That explanation was wrong.
+
+Current porcelain contains exactly the frozen 10 unrelated WIP rows and is byte-identical to the frozen set.
+
+Current hashes:
+
+STATUS:
+
+`5872e6af15244dd46fa29d38e862742225b94f53e920f784d16e1f3afe884348`
+
+UNSTAGED:
+
+`1d6df9b24fd1f6e617b61e31030dc181dfbb5c404f48b41f8bd20793470569a6`
+
+STAGED:
+
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
+
+The incorrect STATUS value was measured before the authorized files were committed, when they still appeared as three additional porcelain rows.
+
+The WIP authority was never broken.
+
+§8 PHASE 2 STATE
+
+Phase 1 is implemented, committed, pushed, and recorded.
+
+Current inner authority:
+
+`17790e4f15017a11bf385bd9671e12a9319c3a5a`
+
+Current runtime artifact baseline before live replay:
+
+count:
+
+`149`
+
+sha256:
+
+`d0a1d306c7a34d79bbae1e55eb5fd384ca6cca87055c248702d8869851123b46`
+
+Replay root:
+
+`.eval-artifacts/reviewer-replay-01/`
+
+must remain absent before live replay.
+
+Phase 2 remains a separate explicit Commander GO.
+
+Authorized first replay batch remains:
+
+- Run 4 exactly once
+- Run 5 exactly once
+- no Run 3
+
+Per subject:
+
+- narrow stage uses the production narrow stage unchanged
+- narrow review opportunities `<= 2`
+- narrow repair opportunities `<= 2`
+- broad reviewer exactly `1`
+- conservative static upper bound `<= 5`
+- broad result is marked `OFF_PIPELINE` when production gating would have disallowed it
+
+Replay results remain separate from the live reviewer 2x2.
+
+Nothing in this checkpoint starts Phase 2.
+
+---
+
 ## [GOV-ARENA-REVIEWER-REPLAY-1] — 2026-09-18 — AUTHORIZATION: frozen-subject reviewer replay, Phase 1 instrumentation + Phase 2 live replay
 
 §1 AUTHORITY
