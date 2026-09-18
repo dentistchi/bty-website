@@ -1048,7 +1048,7 @@ export const REVIEW_SYSTEM_PROMPT: string = [
  * JSON. It catches INDIRECT / implied violations the lexical gate cannot. Its output never
  * reaches the learner. Distinguishes transport failure from a malformed/violating verdict.
  */
-async function reviewConstraintCompliance(
+export async function reviewConstraintCompliance(
   input: ScenarioGenInput,
   constraints: PracticeBoundary["constraints"],
   draft: ArenaScenarioDraft,
