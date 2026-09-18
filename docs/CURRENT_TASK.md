@@ -1,3 +1,476 @@
+## [GOV-ARENA-REVIEWER-REPLAY-1] — 2026-09-18 — AUTHORIZATION: frozen-subject reviewer replay, Phase 1 instrumentation + Phase 2 live replay
+
+§1 AUTHORITY
+
+Outer authority:
+
+`4a205a4b6c970cc31d4cb5707b245945dbd5e667`
+
+Inner authority before Phase 1:
+
+`cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5`
+
+This authorization starts a new replay track after `[GOV-ARENA-OBSERVER-RUN-5-RESULT]`.
+
+The generation observer stop rule remains in force. No additional live generation cell is authorized.
+
+§2 PURPOSE
+
+The replay track isolates reviewer capability from generation reliability.
+
+Five declared-boundary live generation cells reached reviewer zero times. Existing frozen subjects therefore provide a cheaper and more faithful way to observe the current narrow and broad reviewer behavior without spending another generation cell.
+
+This track does not change reviewer semantics before observation.
+
+It does not modify the live reviewer 2x2.
+
+Replay evidence is labeled `REPLAY` and remains analytically separate from live pipeline evidence.
+
+§3 COMMANDER DECISIONS
+
+D1 — BROAD EXPORT
+
+APPROVED.
+
+The existing production `reviewConstraintCompliance` function may be exported so the replay harness can call the exact production broad-review body.
+
+Allowed production-file change:
+
+add the `export` token to the existing function declaration.
+
+The function body must remain byte-identical to the parent revision.
+
+No prompt, schema, parser, retry, authority or behavior change is authorized.
+
+D2 — BROAD REPLAY CALL POLICY
+
+APPROVED.
+
+Broad replay is exactly one broad call per frozen subject.
+
+The production broad rerun loop is not copied into the replay harness.
+
+Narrow replay calls the existing `runBoundaryReviewStage` unchanged and therefore retains that stage's existing review/repair behavior.
+
+D3 — PIPELINE-FAITHFUL VS COUNTERFACTUAL
+
+APPROVED.
+
+For every frozen subject, the replay artifact records the production `broadReviewAllowed` value.
+
+Narrow and broad reviewer capability may both be observed.
+
+If production gating would not have allowed broad review for that frozen subject, the broad replay row is labeled:
+
+`REPLAY / OFF_PIPELINE`
+
+Such a row is reviewer-capability evidence only, not evidence of production pipeline behavior.
+
+D4 — FIRST SUBJECT SET AND BLIND HUMAN GROUND TRUTH
+
+APPROVED.
+
+First replay batch contains exactly two frozen subjects:
+
+Run 4
+
+Run 5
+
+Each subject is replayed exactly once.
+
+Run 3 is excluded from the first replay batch.
+
+No Run-3 reviewer call is authorized by this entry.
+
+Ground truth is fixed before any replay output is observed.
+
+RUN-4 GROUND TRUTH
+
+Subject-level:
+
+The Run-4 frozen subject contains at least one true confirmed-boundary violation.
+
+Choice-level adjudicated coordinate:
+
+`primary / p2`
+
+Confirmed rule:
+
+`Two identifiers must be verified before treatment`
+
+Label:
+
+`Proceed without full verification`
+
+Concrete action:
+
+`Initiate treatment without verifying both identifiers.`
+
+Commander adjudication:
+
+TRUE CONSTRAINT VIOLATION.
+
+The attached `boundaryCompliance = ["c1_verify"]` claim does not change that adjudication and is not evidence of compliance.
+
+All other Run-4 choice coordinates:
+
+UNADJUDICATED BEFORE REPLAY.
+
+EXCLUDED FROM CHOICE-LEVEL SCORING.
+
+Their reviewer outputs may be retained descriptively but must not be scored against a post-hoc human label.
+
+RUN-5 GROUND TRUTH
+
+Confirmed rule:
+
+`Two identifiers must be verified before treatment`
+
+Commander subject-level adjudication:
+
+BOUNDARY-BLIND / VACUOUS COMPLIANCE.
+
+Q1a:
+
+FAIL.
+
+The retained Plan does not engage the confirmed rule. Its primary dimension, stances, accepted costs and resulting world states concern notification sequencing rather than two-identifier verification before treatment.
+
+Q1b:
+
+FAIL.
+
+All 14 learner-facing Render choices are rule-unrelated. They concern notification sequencing, communication, backlog recovery, task assignment or prioritization rather than the confirmed rule.
+
+The fact that all 14 constructions carry `boundaryCompliance = ["c1_verify"]` has no evidentiary value and must not be treated as proof of semantic compliance.
+
+Run 5 has no adjudicated direct per-choice rule violation analogous to Run-4 `primary/p2`. The adjudicated failure is scenario-wide boundary blindness.
+
+D5 — REPLAY TABLE
+
+APPROVED.
+
+Replay rows never enter the live reviewer 2x2.
+
+Every replay row is labeled `REPLAY`.
+
+Narrow and broad results are stored as separate rows/views.
+
+Broad rows additionally carry `OFF_PIPELINE` when the production broad gate would have blocked broad review for that frozen subject.
+
+§4 FROZEN SUBJECTS
+
+RUN 4
+
+Artifact path:
+
+`.eval-artifacts/reviewer-observer-live-04/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-04-c18.c18-constrained-clinical.plan_render_v1.1.json`
+
+Artifact sha256:
+
+`e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b`
+
+Existing scenario digest measured from `draft.parsed`:
+
+`c917a9d33b581154768e19269c91a1553dd23da07c92b58b7d705cfed30e1390`
+
+RUN 5
+
+Artifact path:
+
+`.eval-artifacts/reviewer-observer-live-05/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-05-c18.c18-constrained-clinical.plan_render_v1.1.json`
+
+Artifact sha256:
+
+`46d6882b78f7064de68310b8312fd4b0f9ab5c6f603150ed682a4f8f383b4fd8`
+
+For both subjects:
+
+- draft is retained
+- constructions are retained
+- fixture identity is retained
+- confirmed constraints, facts and language are derivable from the tracked fixture
+- generation is never invoked
+- grounding declaration is not required by either reviewer
+- production `reviewSubjectSha256` is not reproducible because `generationModel` is not retained
+
+Replay identity uses existing material only:
+
+`scenarioDigest(draft.parsed)`
+
+paired with the frozen artifact file sha256.
+
+This replay-local identity must not be claimed to equal the original live `reviewSubjectSha256`.
+
+§5 REVIEWER FIDELITY
+
+NARROW
+
+Entrypoint:
+
+`runBoundaryReviewStage`
+
+The replay harness must call the existing stage unchanged.
+
+The narrow request is reconstructed from the frozen draft/constructions plus tracked fixture-derived boundaries, provenance, language and other deterministic values.
+
+The narrow construction projection does not receive `boundaryCompliance`.
+
+BROAD
+
+The replay harness must call the existing exported production `reviewConstraintCompliance` body.
+
+It must not duplicate or reimplement the broad prompt/schema/parser body.
+
+The broad request receives the complete construction object and therefore can see `boundaryCompliance`.
+
+No existing broad reviewer instruction explicitly says that `boundaryCompliance` is not proof.
+
+Broad boundary interpretations are therefore recorded with the caveat:
+
+`claim visible, uninstructed`
+
+§6 PHASE 1 — INSTRUMENTATION AUTHORIZATION
+
+Phase 1 authorizes code/test work only.
+
+Provider calls:
+
+0
+
+Generation calls:
+
+0
+
+Live reviewer calls:
+
+0
+
+Permitted tracked scope:
+
+ADD exactly one replay harness script under `scripts/`.
+
+ADD exactly one focused replay test file.
+
+MODIFY `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts` only to add `export` to the existing `reviewConstraintCompliance` declaration.
+
+No function-body change is authorized.
+
+No other production-file mutation is authorized.
+
+No migration.
+
+No DB mutation.
+
+No retention-format mutation.
+
+No reviewer prompt/schema/parser/authority mutation.
+
+No fixture mutation.
+
+No contract-manifest source mutation.
+
+No live 2x2 mutation.
+
+The replay harness output root is:
+
+`.eval-artifacts/reviewer-replay-01/`
+
+Phase 1 tests use canned provider/reviewer responses only and must not create replay runtime artifacts under the live output root.
+
+§7 PHASE 1 TEST REQUIREMENTS A–K
+
+A. Load the exact Run-4 frozen subject and require artifact sha256 `e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b` plus the existing measured Run-4 scenario digest.
+
+B. Prove generation functions are never invoked.
+
+C. Build the narrow subject through the existing narrow path and prove the serialized narrow request excludes `boundaryCompliance`.
+
+D. Build the broad request through the production broad path and prove the forced `boundaryCompliance = ["c1_verify"]` claim is visible for the frozen choices.
+
+E. Prove narrow and broad receive the same frozen subject identity from one frozen load.
+
+F. Feed canned reviewer responses through the existing narrow/broad parser paths and prove the replay evidence preserves the existing output fields needed for boundary verdicts, `boundaryAssessments`, `overallVerdict`, `defectCodes`, `phaseChoices`, `constructionAgrees`, `constructionDispute` and CFOBS observation.
+
+G. Prove accounting is absent/inert and no generation-call allocator, DB call-row recorder or submission-accounting mutation occurs.
+
+H. Artifact sha mismatch must refuse replay before reviewer invocation.
+
+I. For every subject, compute and retain the production `broadReviewAllowed` value used to classify broad evidence as pipeline-faithful or `OFF_PIPELINE`.
+
+J. Export-only invariant: the only production semantic diff is the `export` token; the `reviewConstraintCompliance` function body must hash byte-identically before and after Phase 1.
+
+K. Replay output confinement: live replay writes only under `.eval-artifacts/reviewer-replay-01/`; the pre-replay artifact manifest authority remains unchanged before Phase 2.
+
+Subject-level static call bound for Phase 2:
+
+narrow review `<= 2`
+
+narrow repair `<= 2`
+
+broad exactly `1`
+
+conservative total per subject `<= 5`
+
+These are call opportunities, not measured provider request counts.
+
+§8 PHASE 1 ACCEPTANCE
+
+Runtime authority:
+
+Node 20.
+
+Credentials are UNSET for Phase 1 acceptance.
+
+Required focused replay tests:
+
+all PASS.
+
+Required type/build gates:
+
+TypeScript PASS.
+
+`cf:build` PASS.
+
+`git diff --check` PASS.
+
+Full suite:
+
+no new failure identity.
+
+Active baseline identity recipe is the durable ledger recipe.
+
+Expected active failure identity sha:
+
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+Manifest component map:
+
+unchanged.
+
+Current artifact baseline before replay:
+
+count `149`
+
+sha256 `d0a1d306c7a34d79bbae1e55eb5fd384ca6cca87055c248702d8869851123b46`
+
+No Phase-1 provider call is permitted.
+
+Phase 1 must end with an inner commit and push before Phase 2 can be considered.
+
+Phase 2 requires a separate Commander GO after Phase-1 acceptance.
+
+§9 PHASE 2 — LIVE REPLAY AUTHORIZATION BOUNDARY
+
+This ledger entry defines the allowed Phase-2 scope but does not itself trigger execution.
+
+Phase 2 may execute only after:
+
+- Phase 1 is committed and pushed
+- Phase-1 acceptance is recorded
+- Commander gives explicit GO
+- credential precondition passes in the same process that executes replay
+
+Exactly two frozen subjects are authorized:
+
+Run 4 once.
+
+Run 5 once.
+
+No Run 3.
+
+No second replay of either subject.
+
+No generation call.
+
+No mutation before or during live replay.
+
+For each subject:
+
+- execute the narrow reviewer path
+- execute broad reviewer exactly once
+- compute production `broadReviewAllowed`
+- mark broad as `OFF_PIPELINE` when appropriate
+- retain replay evidence under `.eval-artifacts/reviewer-replay-01/`
+
+Replay artifacts are not committed.
+
+Provider request count is not inferred from call opportunities.
+
+§10 PHASE 2 EVIDENCE
+
+The replay artifact must retain enough existing parsed output to answer:
+
+A. Did narrow identify the Run-4 known p2 violation?
+
+B. Did broad identify the Run-4 known p2 violation while the forced claim was visible?
+
+C. Did narrow identify Run-5 scenario-wide boundary blindness?
+
+D. Did broad identify Run-5 scenario-wide boundary blindness while the forced claims were visible?
+
+E. Narrow-versus-broad comparison on the same frozen subject.
+
+F. `boundaryAssessments`.
+
+G. `overallVerdict`.
+
+H. `boundaryCompliant`.
+
+I. `defectCodes`.
+
+J. `phaseChoices`.
+
+K. `commitment_flag_mismatch`.
+
+L. `constructionAgrees` / `constructionDispute`.
+
+M. actual retained reviewer-call counts.
+
+N. production `broadReviewAllowed`.
+
+O. `REPLAY` and `OFF_PIPELINE` classification.
+
+The Run-4 unadjudicated choices remain descriptive only and are excluded from scored choice-level accuracy.
+
+Replay results do not alter the live reviewer 2x2.
+
+§11 NOT AUTHORIZED
+
+Not authorized:
+
+generation calls
+
+Run 6
+
+Run-3 replay
+
+reviewer prompt changes
+
+reviewer schema changes
+
+reviewer authority changes
+
+retention contract changes
+
+contract manifest changes
+
+fixture changes
+
+DB changes
+
+migration
+
+live 2x2 modification
+
+production correction-path work
+
+claim-semantics redesign
+
+Any later expansion requires separate authorization.
+
+---
+
 ## [GOV-ARENA-OBSERVER-RUN-5-RESULT] — 2026-09-18 — RESULT: live observer Run 5, c18 single cell
 
 §1 EXECUTION
