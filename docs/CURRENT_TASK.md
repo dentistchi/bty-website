@@ -1,3 +1,436 @@
+## [GOV-ARENA-C18-CONSTRAINT-PLAN-REPAIR-RESULT-1] — 2026-09-18 — RESULT: constrained Plan option repair recorded after the fact
+
+§1 ORDER OF EVENTS
+
+This repair had no prior ledger authorization. The Commander directed the implementation directly after the Run-4 post-run diagnosis. Inner commits `3e0040ac75f07fc93197e300bfa21486b0847f67` and `cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5` were made and pushed as fast-forward `610093f7..cfaa4e5f` on `inner-main` while outer remained `b384d126ce24c94303a857f02412348cfed44d5c`. This entry records that work after the fact; it does not claim to predate it.
+
+§2 DEFECT — LOCUS = PLAN
+
+In the Run-4 cell, the retained Plan's `primary.dimension` already obeyed the existing HOW-TO-COMPLY instruction:
+
+`How to verify the two identifiers before treatment`
+
+But `primary.choices[1].stance` was:
+
+`Proceed without full verification`
+
+with:
+
+`acceptedCost = Risk of treating the wrong patient`
+
+and:
+
+`resultingWorldState = Treatment is initiated without complete verification of identifiers.`
+
+The rejected draft's learner-facing `primary/p2` label was byte-identical to the Plan stance:
+
+`Proceed without full verification`
+
+Both strings were 33 bytes and had sha256:
+
+`cbd3632e5fe8a09a67ac9540f20e77bdbd87ff973a69de4d62627ec4078a5ceb`
+
+The Render stage did not invent a new stance. The earlier Plan repair constrained how a dimension was phrased, but did not constrain the options offered inside that dimension.
+
+The Commander confirmed `primary/p2` as a true constraint violation in the generated content and directed a Plan-side repair.
+
+§3 REPAIR
+
+One constrained-Plan instruction was added inside `constraintPlanLines` in `buildPlanMessages` at `src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts:1439`.
+
+It is emitted only when confirmed constraints exist.
+
+Commander-approved final text, verbatim:
+
+"EVERY option those dimensions imply must ALSO stay inside the confirmed rules: each primary `stance` and each `resultingWorldState` must describe a COMPLIANT course of action, and each `acceptedCost` must describe a cost or tradeoff incurred by a COMPLIANT course of action. Do NOT create difficulty by offering an option that violates, bypasses or only partially performs a confirmed rule, or that postpones compliance until after the point when the rule requires it; difficulty must come from meaningful differences among COMPLIANT actions, costs, timing or priorities."
+
+The repair does not prohibit legitimate waiting, preparing, observing or deferring before the point at which the confirmed rule requires compliance. It prohibits postponing compliance beyond that required point.
+
+Commits:
+
+`3e0040ac75f07fc93197e300bfa21486b0847f67`
+`fix(arena): keep constrained choices inside confirmed boundaries`
+
+`cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5`
+`fix(arena): clarify constrained plan option semantics`
+
+`3e0040ac` was not amended.
+
+The net production delta from `610093f7` to `cfaa4e5f` is the constrained Plan guidance line. The second changed tracked path is `src/lib/bty/foundry/arena/c18ConstraintComplianceGenerationRegression.test.ts`, which pins tests A, A2, B, B2, C and D. Test D was mutation-verified: removing the approved guidance causes D and only D to fail; restoring it returns 6/6.
+
+§4 ACCEPTANCE AT `cfaa4e5f`
+
+Acceptance runtime:
+
+`node = v20.20.2`
+
+`node path = /opt/homebrew/opt/node@20/bin/node`
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+`LLM_API_KEY = UNSET`
+
+`OPENAI_API_KEY = UNSET`
+
+Gate order included `cf:build` before the full suite.
+
+Results:
+
+- TypeScript: PASS
+- terminology: exit 1 with the pre-existing 44-hit finding set byte-identical to baseline
+- `cf:build`: PASS
+- `git diff --check`: PASS
+- full suite: 17 failed tests / 8 failing files / 14214 passed / 88 skipped / 1250 files
+- focused repair set: 204/204 PASS across 11 files
+- FAILURE_IDENTITY_SHA: `e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+- identity set size: 34 lines = 17 failing-test identity lines + 17 failing-file identity lines
+- no newly introduced failure identity
+- protected authority paths unchanged
+- frozen unrelated WIP unchanged
+- artifact baseline unchanged at 148 files / `dbf449adebcf265686137207dfdb3bcc05290fc51a282bda2283e37dfbef243a`
+
+§5 FAILURE-IDENTITY RECIPE PINNED
+
+The active acceptance identity is produced by this exact command chain:
+
+```bash
+{
+  grep '^   × ' vitest-full.log \
+    | sed -E 's/ [0-9]+ms$//' \
+    | sort -u;
+
+  grep '^ FAIL  ' vitest-full.log \
+    | sort -u;
+} > failing-identities.txt
+
+shasum -a 256 failing-identities.txt
+```
+
+This reproduces:
+
+`e9bb9e7c8bb64645807ab7b59971bff382cd226231f86d8787034e0f82d4240b`
+
+The interim value `f538019c5e34c279265468ed6f99a1cfbeab642db8802445127a57ce2a62ca58` came from a non-authoritative substitute recipe that captured only the failing-file half of the identity set and is discarded.
+
+Standing recording rule: when a hash constant is made durable in this ledger, the command chain that produces it is recorded with it.
+
+§6 PTR CORRECTION STRUCTURE
+
+`plan_render_v1` does not currently have a correction attempt available by design.
+
+Three independent constraints establish this:
+
+1. its execution option type pins `correction: "disabled"`;
+2. `MAX_CALLS_PER_KIND.generation = 2`, with Plan occupying generation position 1 and Render position 2;
+3. migration `20260805020000_foundry_practice_generation_attempt_calls_v1.sql` constrains generation `kind_sequence` to `1..2`.
+
+Therefore a correction-enabled `plan_render_v1` would require a migration-bearing product change and separate authorization.
+
+The existing correction machinery is `constraint_violation`-aware on the correction-enabled legacy path. Regression test B proves a retryable violation can produce correction guidance and recover on a second attempt. Test B2 pins the two-generation-call ceiling.
+
+§7 LATENT / OPEN
+
+A. The constrained Plan prompt is outside the current contract-manifest component map. The manifest does not contain a Plan-prompt component and does not reference `buildPlanMessages`; therefore this Plan repair does not move `manifestDigest`. Plan-prompt provenance is currently the inner git authority.
+
+B. `boundaryCompliance` is a forced claim/coverage field under the request-scoped constrained schema and is not semantic evidence that a choice actually complies. Test A2 pins that `boundaryCompliance: ["c1_verify"]` does not override deterministic `constraint_violation`.
+
+Violating language outside the current fixed vocabulary patterns can still evade that deterministic safety producer.
+
+Effect of the forced `boundaryCompliance` claim on the reviewer payload: NOT MEASURED.
+
+C. Run-3 claim-vs-content measurement — whether Run-3's empty `boundaryCompliance` arrays sat on violating choices: NOT PERFORMED.
+
+D. Effect of the new constrained-Plan instruction on the c19 indirect-violation fixture: NOT MEASURED.
+
+E. Live model compliance after this repair is NOT PROVEN. Only a new live cell can show whether the generated Plan now keeps every option inside the confirmed rule.
+
+---
+
+## [GOV-ARENA-OBSERVER-RUN-4-RESULT] — 2026-09-18 — RESULT: live observer Run 4, c18 single cell
+
+§1 EXECUTION
+
+Durable authorization:
+
+`[GOV-ARENA-OBSERVER-RUN-4]`
+
+plus:
+
+`[GOV-ARENA-OBSERVER-RUN-4-AMENDMENT-1]`
+
+Outer authority at execution:
+
+`b384d126ce24c94303a857f02412348cfed44d5c`
+
+Inner authority at execution:
+
+`610093f791f74e2fa957f2fa69505f2b039f1fda`
+
+A first execution attempt was blocked before invocation because all four LLM credential variables were UNSET in the actual executor process. That attempt consumed 0 cells and created no Run-4 artifact.
+
+After relaunching the VS Code process from a credential-bearing parent, the authorized live cell ran with:
+
+`OPENAI_API_KEY = SET`
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+`LLM_API_KEY = UNSET`
+
+Credential values were never read, printed, hashed or measured.
+
+Runtime:
+
+`node = v20.20.2`
+
+`tsx = v4.21.0`
+
+Execution:
+
+start `2026-09-18T15:19:57Z`
+
+end `2026-09-18T15:20:47Z`
+
+exit `0`
+
+authorized cells executed = `1/1`
+
+cell consumed = YES
+
+External provider request count = NOT MEASURED.
+
+§2 ARTIFACT
+
+Artifact:
+
+`.eval-artifacts/reviewer-observer-live-04/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-04-c18.c18-constrained-clinical.plan_render_v1.1.json`
+
+bytes:
+
+`17089`
+
+sha256:
+
+`e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b`
+
+Canonical artifact manifest under Amendment-1 serialization:
+
+before Run 4:
+
+147 files
+
+`17575b320dca7659de51fbd0354dec31c6db2762abfd0ae1ab3b0cf664bea0b0`
+
+after Run 4:
+
+148 files
+
+`dbf449adebcf265686137207dfdb3bcc05290fc51a282bda2283e37dfbef243a`
+
+The prior 147 manifest rows remained byte-identical and the only new row was inside the Run-4 root.
+
+The artifact is runtime evidence and was not committed.
+
+§3 OUTCOME
+
+Terminal outcome:
+
+`generation_rejected`
+
+Parity grade:
+
+`strict`
+
+Complete authoritative deterministic finding set:
+
+`constraint_violation`
+
+gate:
+
+`constraint_compliance`
+
+level:
+
+`3`
+
+terminal:
+
+`false`
+
+`reviewCalls.length = 0`
+
+§4 AUTHORIZED OBSERVATION ANSWERS
+
+1. Provider acceptance of the request-scoped constrained schema under `strict = true`:
+
+ACCEPTED — PROVEN.
+
+The Plan parsed, the Render draft parsed, all 14 constructions parsed, and execution reached deterministic validation. No request-time provider rejection occurred.
+
+2. Durable Run-4 question:
+
+`whether deterministic Level-3 boundary_grounding remains passed`
+
+Answer:
+
+YES.
+
+`boundary_grounding` producer findings = 0.
+
+Execution progressed beyond that producer.
+
+Fact split:
+
+* boundary_grounding findings = 0
+* boundary_grounding maintained = YES
+* overall Level-3 findings = 1
+* overall Level-3 clean = NO
+* the one Level-3 finding came from the different `constraint_compliance` producer
+
+A stricter unqualified "no Level-3 finding" criterion appeared only in a non-durable execution instruction and is not the durable Run-4 criterion.
+
+3. Level-4 `unsupported_boundary_compliance`:
+
+ABSENT.
+
+All 14 retained constructions carried:
+
+`boundaryCompliance = ["c1_verify"]`
+
+This result validates the request-scoped schema/coverage repair, but the forced claim is not evidence that the semantic action actually complies.
+
+4. Level-6 findings:
+
+`repeated_action_meaning` = ABSENT, n = 1
+
+`sibling_choice_pair_identical` = ABSENT, n = 1
+
+No repair had been made specifically for these Level-6 findings; therefore they are recorded as ABSENT, not RESOLVED.
+
+Narrow review reached = NO.
+
+Broad review reached = NO.
+
+REVIEWER_REACHED = NO.
+
+The cell is CONTEXT_ONLY.
+
+Reviewer 2x2 denominator contribution = 0.
+
+No reviewer packet is created.
+
+`commitment_flag_mismatch` remains UNEXERCISED.
+
+§5 CONSTRAINT VIOLATION
+
+Producer:
+
+`validateConstraintCompliance`
+
+Source:
+
+`src/domain/foundry/arena-draft/safety.ts`
+
+At the Run-4 authority it is deterministic and consumes learner-facing labels only through `allLabels`.
+
+It does not consume:
+
+* concreteAction
+* confirmed constraint statement
+* Plan
+* boundaryCompliance
+
+It is a fixed vocabulary heuristic layer, not a semantic proof system.
+
+The retained finding carried no coordinate. Re-applying the pure producer to the complete retained label input reproduced the retained verdict and located the single match at:
+
+`primary / p2`
+
+Rule:
+
+`Two identifiers must be verified before treatment`
+
+Learner-facing label:
+
+`Proceed without full verification`
+
+Construction concreteAction:
+
+`Initiate treatment without verifying both identifiers.`
+
+The primary surface is learner-reachable and is not a flat compatibility projection.
+
+The concreteAction independently states the same violation even though `validateConstraintCompliance` does not read that field.
+
+The Commander confirmed `primary/p2` as a true constraint violation in the generated content and directed the Plan-side repair recorded in `[GOV-ARENA-C18-CONSTRAINT-PLAN-REPAIR-RESULT-1]`.
+
+§6 DETERMINISTIC CONTROL-FLOW CENSUS
+
+From parsed Render response to the first narrow review call, the measured control-flow grouping is:
+
+pre-pool early-return producers = 3
+
+* provider envelope parse/shape
+* provider DTO validation
+* canonical draft validation
+
+pooled deterministic producers = 9
+
+* branched_quality
+* concrete_scene
+* incident_specific
+* constraint_compliance
+* sibling_choice_pairs
+* plan_dimension_leakage
+* boundary_grounding
+* choice_construction
+* measured_labels
+
+post-accept authority checks before narrow review = 3
+
+* review_boundary_authority
+* boundary mode / active-set check
+* surface-map validation
+
+The earlier inventory report's headline count of 16 did not match its own table. This entry records the table-derived grouping instead.
+
+For the pooled region, the validators are evaluated before pooled rejection resolution. The Run-4 Level-4 and Level-6 absences therefore were not hidden by the Level-3 primary finding.
+
+§7 LATENT / OPEN FROM RUN 4
+
+Recorded but not authorized for repair here:
+
+A. `isStructuredOutputUnsupported` examines the error message, while a provider schema complaint may live only in a response body; such a case can collapse to generic `bad_request`.
+
+B. When accounting is null, retained evidence drops raw provider HTTP status/body, so a request-time rejection class may be observable while its exact provider cause remains unproven.
+
+C. `branch:<key>:` generated codes do not match the existing `branch_` prefix rule and therefore can fall to the default precedence level.
+
+D. Unregistered findings with no explicit channel can inherit integrity rejection authority through the default authority path.
+
+E. The observer runner hardcodes correction disabled for `plan_render_v1`; its `--correction` literal does not select behavior for that architecture.
+
+F. No tracked production caller at the measured authority selects `plan_render_v1`; the tracked production path defaults to legacy architecture with correction enabled.
+
+G. Run-3 claim-vs-content measurement — whether Run-3's empty `boundaryCompliance` arrays sat on violating choices: NOT PERFORMED.
+
+H. Effect of the forced `boundaryCompliance` claim on reviewer judgment: NOT MEASURED.
+
+§8 PROCESS LESSONS
+
+Execution-dispatch acceptance criteria must quote the durable ledger criterion verbatim rather than rewrite it.
+
+Governance-tag gates use header-anchored declaration counts.
+
+If a dispatch gate is impossible to satisfy by construction, the executor blocks before mutation rather than silently reinterpreting it.
+
+Runtime truth and current source authority outrank remembered line numbers or prior summaries.
+
+---
+
 ## [GOV-ARENA-OBSERVER-RUN-4-AMENDMENT-1] — 2026-09-17 — AMENDMENT: manifest serialization base pinned
 
 ### 1. SCOPE
