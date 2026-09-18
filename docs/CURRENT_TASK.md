@@ -1,3 +1,289 @@
+## [GOV-ARENA-OBSERVER-RUN-5-RESULT] — 2026-09-18 — RESULT: live observer Run 5, c18 single cell
+
+§1 EXECUTION
+
+Authorization:
+
+`[GOV-ARENA-OBSERVER-RUN-5]`
+
+Outer authority:
+
+`5f4bda2ad241683edcc4e4468f9536d5b49c0ef7`
+
+Inner authority:
+
+`cfaa4e5f34e74ac4fa2a0c9ad00762d81c7014b5`
+
+Credential source:
+
+`OPENAI_API_KEY`
+
+Presence only. `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` were UNSET. Credential values were never read, printed, hashed, or measured.
+
+Runtime:
+
+`node = v20.20.2`
+
+`tsx = v4.21.0`
+
+Authorized cell:
+
+`c18-constrained-clinical × plan_render_v1 × 1`
+
+Execution:
+
+start `2026-09-18T21:21:04Z`
+
+end `2026-09-18T21:21:36Z`
+
+exit `0`
+
+totalMs `31470`
+
+cells executed = `1/1`
+
+cell consumed = YES
+
+External provider request count = NOT MEASURED.
+
+§2 ARTIFACT INTEGRITY
+
+Run-5 artifact:
+
+`.eval-artifacts/reviewer-observer-live-05/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-05-c18.c18-constrained-clinical.plan_render_v1.1.json`
+
+bytes:
+
+`17633`
+
+sha256:
+
+`46d6882b78f7064de68310b8312fd4b0f9ab5c6f603150ed682a4f8f383b4fd8`
+
+Canonical artifact manifest before Run 5:
+
+count `148`
+
+sha256 `dbf449adebcf265686137207dfdb3bcc05290fc51a282bda2283e37dfbef243a`
+
+Canonical artifact manifest after Run 5:
+
+count `149`
+
+sha256 `d0a1d306c7a34d79bbae1e55eb5fd384ca6cca87055c248702d8869851123b46`
+
+The pre-existing 148 rows remained byte-identical. The only new row is under the Run-5 root. Runtime artifacts were not committed.
+
+Repository authority and frozen WIP were unchanged.
+
+§3 PROVIDER AND DETERMINISTIC OUTCOME
+
+Provider:
+
+ACCEPTED.
+
+The Plan parsed, the Render draft parsed, all 14 constructions parsed, both stages completed with `timeout:false`, and execution reached deterministic validation.
+
+Terminal outcome:
+
+`generation_rejected`
+
+Parity grade:
+
+`strict`
+
+Complete authoritative deterministic finding set:
+
+one finding only:
+
+`code = confirmed_boundary_absent`
+
+`gate = boundary_grounding`
+
+`level = 3`
+
+`terminal = false`
+
+Producer:
+
+`validateBoundaryGrounding`
+
+The finding is emitted by the PRESENCE check over the confirmed constraint statement and learner-facing opening plus decisions.
+
+Measured cause:
+
+the rule vocabulary corresponding to `Two identifiers must be verified before treatment` did not appear in the learner-facing opening or decisions.
+
+The finding is scenario-wide. No per-choice coordinate is warranted.
+
+The grounding declaration itself is not retained in the artifact. Re-application to the retained draft reproduced the PRESENCE failure while checks requiring the missing declaration were neutralized with a constructed declaration. Therefore the retained draft independently proves the PRESENCE failure, but the original live values for declaration-dependent checks are not independently reproduced.
+
+§4 COMMANDER READING — Q1a AND Q1b
+
+Confirmed rule:
+
+`Two identifiers must be verified before treatment`
+
+Run-5 retained Plan:
+
+primary dimension:
+
+`How to sequence notifications`
+
+primary stance 1:
+
+`Sequence notifications in a staggered manner to manage flow.`
+
+primary stance 2:
+
+`Notify all at once to ensure everyone is aware of the situation.`
+
+The retained accepted costs and branch resultingWorldState values also remain about notification sequencing, flow, awareness, and backlog handling rather than two-identifier verification before treatment.
+
+Commander adjudication:
+
+Q1a = FAIL — boundary-blind / vacuous compliance.
+
+The retained Plan does not offer an explicitly violating option, but it does not engage the confirmed rule at all. A rule-unrelated dimension is not the intended meaning of staying inside the confirmed boundary. This also fails the pre-existing Plan requirement that the decision not ignore the confirmed rule.
+
+Run-5 Render output:
+
+all 14 retained learner-facing choices concern notification sequencing, communication clarity, backlog recovery, task assignment, or prioritization.
+
+All 14 constructions carry:
+
+`boundaryCompliance = ["c1_verify"]`
+
+Commander adjudication:
+
+Q1b = FAIL — boundary-blind / vacuous compliance.
+
+The Render choices do not directly state a violation of the two-identifier rule, but they do not operationalize or engage that rule. The forced `boundaryCompliance` claim therefore demonstrates no semantic compliance and carries no evidentiary value.
+
+Vocabulary-gate PASS, where present, is not semantic compliance evidence.
+
+§5 AUTHORIZED ANSWERS
+
+Q1a — retained Plan compliance:
+
+FAIL — boundary-blind / vacuous compliance.
+
+Q1b — Render-authored choice compliance:
+
+FAIL — boundary-blind / vacuous compliance.
+
+Q2 — deterministic block:
+
+NO.
+
+The draft stopped at `confirmed_boundary_absent` from `boundary_grounding`.
+
+Q3 — reviewer reach:
+
+narrow reached = NO
+
+broad reached = NO
+
+REVIEWER_REACHED = NO
+
+The cell is CONTEXT_ONLY and contributes zero to the reviewer 2×2 denominator.
+
+Q4 — reviewer observations:
+
+N/A.
+
+`reviewCalls.length = 0`
+
+No narrow boundary outcomes, no `boundaryAssessments`, no broad semantic findings, no `phaseChoices`, and no `contentTelemetry` were produced.
+
+CFOBS:
+
+UNEXERCISED.
+
+`commitment_flag_mismatch`:
+
+UNEXERCISED.
+
+The broad-review caveat `claim visible, uninstructed` was not exercised because broad review was not reached.
+
+§6 SHAPE ACROSS RUNS
+
+Since confirmed constraints entered the Plan path:
+
+Run 3:
+
+rule-engaged; deterministic boundary grounding passed; stopped at Level 4 plus Level 6 residue.
+
+Run 4:
+
+rule-engaged; Plan offered a true violating option; stopped at Level 3 `constraint_compliance`.
+
+Run 5:
+
+rule-avoiding / boundary-blind Plan; stopped at Level 3 `boundary_grounding` with `confirmed_boundary_absent`.
+
+The Run-5 shape resembles the earlier boundary-absence failure rather than the Run-4 option-violation failure.
+
+The hypothesis that the option-level instruction caused the model to avoid the confirmed rule is NOT PROVEN. There is one live sample under this repair and sampling variance remains a plausible alternative.
+
+Five declared-boundary live cells have been spent in this observer line and reviewer reach is still zero.
+
+`plan_render_v1` remains one-shot by design and has no correction attempt.
+
+§7 STOP RULE AND COMMANDER TRACK DECISION
+
+The durable Run-5 stop rule is now active:
+
+no further live observer cell is opened under the same generation design after `REVIEWER_REACHED = NO`.
+
+The Commander selects the next track:
+
+FIRST:
+
+frozen-subject reviewer replay.
+
+This track is intended to answer the still-unobserved reviewer-capability question independently of generation reliability.
+
+The first replay subjects are Run 4 and Run 5 only.
+
+Run 4 ground truth was adjudicated before replay:
+
+the primary/p2 choice is a true confirmed-rule violation despite carrying `boundaryCompliance = ["c1_verify"]`.
+
+Run 5 ground truth was adjudicated before replay in §4 of this result entry:
+
+Q1a FAIL and Q1b FAIL due boundary-blind / vacuous compliance.
+
+Run 3 is excluded from the first replay batch until a blind Commander adjudication is fixed before reviewer output is seen.
+
+Replay rows remain separate from the live observer 2×2 and are labeled REPLAY.
+
+Narrow and broad replay outcomes are recorded separately.
+
+Broad replay may be executed as an explicitly counterfactual reviewer-capability observation even when the production `broadReviewAllowed` gate would not have permitted broad review for that frozen subject; such rows are labeled OFF_PIPELINE.
+
+SECOND, SEPARATE TRACK:
+
+a possible correction path for `plan_render_v1`.
+
+That track is not authorized here. It is migration-bearing because Plan and Render already occupy the two current generation-call positions.
+
+§8 LATENT / OPEN
+
+A. The boundary-grounding declaration is not retained in the artifact.
+
+B. Forced `boundaryCompliance` claims remain non-evidentiary. Run 5 gives a direct example: all 14 rule-unrelated choices claim `[c1_verify]`.
+
+C. The broad reviewer can see the complete construction object, including the forced claim, while no explicit reviewer instruction says that `boundaryCompliance` is not proof. This has not yet been exercised because reviewer reach is zero in the live generation runs.
+
+D. The constrained Plan prompt remains outside the current contract-manifest component map.
+
+E. The Run-3 claim-vs-content measurement remains NOT PERFORMED.
+
+F. No additional live generation cell is authorized by this result checkpoint.
+
+---
+
 ## [GOV-ARENA-OBSERVER-RUN-5] — 2026-09-18 — AUTHORIZATION: live observer Run 5, c18 single cell, after the constrained Plan option repair
 
 §1 AUTHORITY
