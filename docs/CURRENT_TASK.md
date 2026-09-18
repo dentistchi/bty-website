@@ -1,3 +1,151 @@
+## [GOV-ARENA-OBSERVER-RUN-4-AMENDMENT-1] — 2026-09-17 — AMENDMENT: manifest serialization base pinned
+
+### 1. SCOPE
+
+This amendment changes only the artifact-manifest serialization clause of:
+
+`[GOV-ARENA-OBSERVER-RUN-4]`
+
+at outer commit:
+
+`67b7777b5408c83a2a3a09ddda47bbba8df462d5`
+
+Every other Run-4 authorization clause remains unchanged.
+
+The authorization commit and this amendment are local and unpushed at the time
+of this amendment.
+
+They are intended to become durable together in one later fast-forward push.
+
+### 2. DEFECT
+
+The Run-4 authorization records manifest rows as:
+
+`relative-path<TAB>bytes<TAB>sha256`
+
+but does not state the base of `relative-path`.
+
+That ambiguity changes the manifest SHA even when the same artifact files and
+the same bytes are measured.
+
+### 3. CANONICAL BASE
+
+For Run 4, the manifest path base is:
+
+`the bty-app INNER repository root`
+
+Column 1 therefore INCLUDES the literal prefix:
+
+`.eval-artifacts/`
+
+Example shape:
+
+`.eval-artifacts/<relative artifact path><TAB><bytes><TAB><sha256>`
+
+The `.eval-artifacts/` prefix MUST NOT be stripped.
+
+### 4. CANONICAL COMMAND
+
+Run from:
+
+`/Users/hanbit/Dev/btytrainingcenter/bty-app`
+
+with:
+
+`ARTIFACT_DIR=.eval-artifacts`
+
+Canonical serialization:
+
+`LC_ALL=C find "$ARTIFACT_DIR" -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' f; do bytes=$(wc -c < "$f" | tr -d ' '); sha=$(shasum -a 256 "$f" | awk '{print $1}'); printf '%s\t%s\t%s\n' "$f" "$bytes" "$sha"; done > /tmp/run4-canonical-manifest.tsv`
+
+Manifest digest:
+
+`shasum -a 256 /tmp/run4-canonical-manifest.tsv`
+
+Under this exact command, measured twice on 2026-09-17:
+
+files =
+`147`
+
+SHA =
+`17575b320dca7659de51fbd0354dec31c6db2762abfd0ae1ab3b0cf664bea0b0`
+
+The two generated manifest files were byte-identical.
+
+### 5. PREFIX-STRIPPED VARIANT
+
+A serialization using the same artifact files and the same bytes/SHA columns,
+but stripping `.eval-artifacts/` from column 1, produces a different manifest
+identity.
+
+Measured informational variant:
+
+`1ad88810cdeb763cdef2eadaeb7ba3b1048fe688f99aa5c1cbf073acb6b27581`
+
+The bytes and sha256 columns are identical row for row.
+
+Only the path serialization differs.
+
+This variant is:
+
+`INFORMATIONAL / NOT A RUN-4 GATE`
+
+### 6. RUN-4 MANIFEST RULE
+
+Every Run-4 pre/post artifact-manifest gate MUST use the canonical command in
+§4 verbatim.
+
+The hardcoded SHA:
+
+`17575b320dca7659de51fbd0354dec31c6db2762abfd0ae1ab3b0cf664bea0b0`
+
+has authority only under that serialization recipe.
+
+Another serialization method MUST NOT compare itself against that hardcoded
+constant.
+
+If a different measurement method is intentionally used, it must re-measure and
+report its own result rather than relabeling the canonical SHA.
+
+### 7. PERMANENT MEASUREMENT RULE
+
+When a ledger entry records a hardcoded measured invariant, the exact
+command/serialization recipe that produced the invariant must reproduce the
+same value before the entry is written.
+
+If it does not reproduce:
+
+`BLOCK BEFORE MUTATION`
+
+Do not continue merely because another measurement method appears to preserve
+the same semantic files or bytes.
+
+This rule prevents measurement-method drift from being mistaken for state
+drift.
+
+### 8. FINAL STATUS
+
+RUN-4 AUTHORIZATION =
+`UNCHANGED`
+
+RUN-4 AUTHORIZED CELLS =
+`1`
+
+MANIFEST BASE =
+`BTY-APP REPO ROOT`
+
+COLUMN-1 PREFIX =
+`.eval-artifacts/ INCLUDED`
+
+PINNED FILE COUNT =
+`147`
+
+PINNED SHA =
+`17575b320dca7659de51fbd0354dec31c6db2762abfd0ae1ab3b0cf664bea0b0`
+
+AUTOMATIC FOLLOW-UP =
+`NONE`
+
 ## [GOV-ARENA-OBSERVER-RUN-4] — 2026-09-17 — AUTHORIZATION: c18 live observer Run 4
 
 ### Scope
