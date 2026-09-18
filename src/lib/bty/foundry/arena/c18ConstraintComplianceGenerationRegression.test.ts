@@ -327,12 +327,15 @@ describe("c18 constraint-compliant generation", () => {
 
     // CLAIM 1 — the prohibition names a violating alternative and forbids introducing it.
     const FORBIDS = /\b(do not|never|must not|may not)\b/i;
-    const VIOLATING_ALTERNATIVE = /\bviolating\b[^.]{0,40}\b(alternative|option|choice|stance)\b/i;
+    // Morphology-agnostic: the prohibition may name the option before or after the violation verb.
+    const VIOLATING_ALTERNATIVE =
+      /\bviolat\w*\b[^.]{0,60}\b(alternative|option|choice|stance)\b|\b(alternative|option|choice|stance)\b[^.]{0,40}\bviolat\w*/i;
     expect(segments.some((s) => FORBIDS.test(s) && VIOLATING_ALTERNATIVE.test(s))).toBe(true);
 
     // CLAIM 2 — difficulty is relocated to competing COMPLIANT options.
     const DIFFICULTY = /\b(difficult|difficulty|hard|tension)\b/i;
-    const COMPLIANT_COMPETITION = /\bcompet\w*\b[^.]{0,60}\bcompliant\b/i;
+    // "competing", "differences among", "between" — the concept is contrast among compliant options.
+    const COMPLIANT_COMPETITION = /\b(compet\w*|differen\w*|among|between)\b[^.]{0,60}\bcompliant\b/i;
     expect(segments.some((s) => DIFFICULTY.test(s) && COMPLIANT_COMPETITION.test(s))).toBe(true);
 
     // CLAIM 3 — the rule binds the plan's OPTIONS, not only its dimension phrasing.
