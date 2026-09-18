@@ -13,9 +13,10 @@
  * `boundaryCompliance` claim while the broad projection still can.
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, mkdtempSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 import { vi, describe, it, expect } from "vitest";
 
 // --- mock the shared LLM seam: any live provider path must throw, never succeed -------------
@@ -42,10 +43,26 @@ import {
   buildReplayNarrowSubject,
   buildReplayBroadRequest,
   runFrozenReviewerReplay,
+  parseReplayArgs,
+  SUBJECT_AUTHORITY,
+  evidencePathFor,
   type ReplayDeps,
 } from "../../../../../scripts/practice-frozen-reviewer-replay";
+import { noBoundaryProvenance, boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 
 const ROOT = process.cwd();
+
+/** A fresh injected output root per call. Tests must never write into `.eval-artifacts`. */
+const tmpRoot = (): string => mkdtempSync(join(tmpdir(), "replay-evidence-"));
+const readEvidence = (root: string, id: string): Record<string, unknown> =>
+  JSON.parse(readFileSync(evidencePathFor(root, id), "utf8")) as Record<string, unknown>;
+
+/** A no-boundary authority: the production stage returns not-applicable, so the gate is TRUE. */
+function noBoundaryAuthority(fixtureId: string) {
+  const base = deriveReplayAuthority(fixtureId);
+  const prov = noBoundaryProvenance("boundary:none", "0".repeat(64));
+  return { ...base, constraints: [], boundaries: [], provenance: prov, provenanceSha256: boundaryProvenanceSha256(prov) };
+}
 const RUN4 =
   ".eval-artifacts/reviewer-observer-live-04/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-04-c18.c18-constrained-clinical.plan_render_v1.1.json";
 const RUN5 =
@@ -113,7 +130,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
 
   it("B. never invokes Plan, Render or any generation function", async () => {
     const { deps } = cannedDeps();
-    await runFrozenReviewerReplay({ subject: loadFrozenSubject(RUN4, RUN4_SHA), deps });
+    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: tmpRoot() });
     expect(mockCreate).not.toHaveBeenCalled();
 
     // Structural: the harness source must not reference a generation entrypoint at all.
@@ -146,7 +163,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   it("E. narrow and broad consume one replay-local identity from a single frozen load", async () => {
     const s = loadFrozenSubject(RUN4, RUN4_SHA);
     const { deps, seen } = cannedDeps();
-    const r = await runFrozenReviewerReplay({ subject: s, deps });
+    const r = await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps, outputRoot: tmpRoot() });
     expect(r.subjectIdentity.artifactSha256).toBe(RUN4_SHA);
     expect(r.subjectIdentity.scenarioSha256).toBe(RUN4_SCENARIO_DIGEST);
     const narrowSubject = (seen.narrow[0] as { subject: { scenarioSha256: string } }).subject;
@@ -191,7 +208,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
 
   it("G. replay accounting is inert: no sequence allocation, no DB recorder, no submission accounting", async () => {
     const { deps } = cannedDeps();
-    const r = await runFrozenReviewerReplay({ subject: loadFrozenSubject(RUN4, RUN4_SHA), deps });
+    const r = await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: tmpRoot() });
     expect(r.accountingMode).toBe("inert");
     const src = readFileSync(resolve(ROOT, "scripts/practice-frozen-reviewer-replay.ts"), "utf8");
     expect(src).not.toContain("generationCallSequence");
@@ -211,7 +228,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   it("I. production broadReviewAllowed is computed and broad rows are markable OFF_PIPELINE", async () => {
     for (const [path, sha] of [[RUN4, RUN4_SHA], [RUN5, RUN5_SHA]] as const) {
       const { deps } = cannedDeps();
-      const r = await runFrozenReviewerReplay({ subject: loadFrozenSubject(path, sha), deps });
+      const r = await runFrozenReviewerReplay({ subjectId: path === RUN4 ? "run4" : "run5", subject: loadFrozenSubject(path, sha), deps, outputRoot: tmpRoot() });
       expect(typeof r.broadReviewAllowed).toBe("boolean");
       expect(r.rows.every((row) => row.mode === "REPLAY")).toBe(true);
       const broadRows = r.rows.filter((row) => row.stage === "broad");
@@ -234,10 +251,144 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     expect(svc[decl]).toMatch(/^(export )?async function reviewConstraintCompliance\($/);
   });
 
-  it("K. output is confined to the replay root and phase 1 writes nothing", async () => {
+  it("K. evidence is written ONLY to the injected root; the real replay root stays absent", async () => {
     expect(REPLAY_OUTPUT_ROOT).toBe(".eval-artifacts/reviewer-replay-01");
+    const root = tmpRoot();
     const { deps } = cannedDeps();
-    await runFrozenReviewerReplay({ subject: loadFrozenSubject(RUN4, RUN4_SHA), deps });
+    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
+    expect(existsSync(evidencePathFor(root, "run4"))).toBe(true);
     expect(existsSync(resolve(ROOT, REPLAY_OUTPUT_ROOT))).toBe(false);
+  });
+
+  it("L. a pre-existing subject evidence file refuses before any reviewer dependency call", async () => {
+    const root = tmpRoot();
+    mkdirSync(resolve(root), { recursive: true });
+    writeFileSync(evidencePathFor(root, "run4"), "{}", "utf8");
+    const { deps, seen } = cannedDeps();
+    await expect(
+      runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root }),
+    ).rejects.toThrow(/exist/i);
+    expect(seen.narrow).toHaveLength(0);
+    expect(seen.broad).toHaveLength(0);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("M. a broad failure still leaves partial evidence on disk", async () => {
+    const root = tmpRoot();
+    const { deps } = cannedDeps();
+    deps.broadReview = async () => {
+      throw new TypeError("canned broad failure");
+    };
+    await expect(
+      runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root }),
+    ).rejects.toThrow(/canned broad failure/);
+    const e = readEvidence(root, "run4");
+    expect(e.consumed).toBe(true);
+    expect(e.narrowStage).toBeDefined();
+    expect(e.failingStage).toBe("broad");
+    expect(e.errorClass).toBe("TypeError");
+    expect(e.startedAt).toBeDefined();
+    expect(e.failedAt).toBeDefined();
+    expect(e.callCounts).toBeDefined();
+  });
+
+  it("N. the CLI parser rejects bad argv before any dependency call", () => {
+    const ok = [
+      "--subject", "run4",
+      "--artifact", RUN4,
+      "--expected-sha", RUN4_SHA,
+      "--expected-scenario-digest", RUN4_SCENARIO_DIGEST,
+    ];
+    expect(parseReplayArgs(ok).subject).toBe("run4");
+    expect(() => parseReplayArgs(ok.slice(0, 6))).toThrow(/required|missing/i);
+    expect(() => parseReplayArgs([...ok, "--unknown", "x"])).toThrow(/unknown/i);
+    expect(() => parseReplayArgs([...ok, "--subject", "run5"])).toThrow(/duplicate/i);
+    expect(() => parseReplayArgs([...ok, "--subjects", "run4,run5"])).toThrow(/unknown|batch/i);
+    expect(() => parseReplayArgs(["--subject", "run3", "--artifact", RUN4, "--expected-sha", RUN4_SHA, "--expected-scenario-digest", RUN4_SCENARIO_DIGEST])).toThrow(/subject/i);
+    expect(SUBJECT_AUTHORITY.run4.artifactSha256).toBe(RUN4_SHA);
+    expect(SUBJECT_AUTHORITY.run5.artifactSha256).toBe(RUN5_SHA);
+  });
+
+  it("O. broad is called exactly once whether the narrow gate is true or false", async () => {
+    // gate FALSE — the real c18 authority with the canned narrow transport failure
+    const rootF = tmpRoot();
+    const f = cannedDeps();
+    const rf = await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps: f.deps, outputRoot: rootF });
+    expect(rf.broadReviewAllowed).toBe(false);
+    expect(f.seen.broad).toHaveLength(1);
+    expect(rf.rows.find((r) => r.stage === "broad")?.pipeline).toBe("OFF_PIPELINE");
+
+    // gate TRUE — a no-boundary authority makes the production stage return not-applicable
+    const rootT = tmpRoot();
+    const t = cannedDeps();
+    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const rt = await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps: t.deps, outputRoot: rootT, authority: noBoundaryAuthority(s.fixtureId) });
+    expect(rt.broadReviewAllowed).toBe(true);
+    expect(t.seen.broad).toHaveLength(1);
+    expect(rt.rows.find((r) => r.stage === "broad")?.pipeline).toBe("ON_PIPELINE");
+    expect(rt.rows.every((r) => r.mode === "REPLAY")).toBe(true);
+  });
+
+  it("P. recorded call counts equal the actual injected dependency invocations", async () => {
+    const root = tmpRoot();
+    const { deps, seen } = cannedDeps();
+    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
+    const e = readEvidence(root, "run4");
+    const counts = e.callCounts as { narrowReview: number; narrowRepair: number; broadReview: number };
+    expect(counts.narrowReview).toBe(seen.narrow.length);
+    expect(counts.narrowRepair).toBe(seen.repair.length);
+    expect(counts.broadReview).toBe(seen.broad.length);
+  });
+
+  it("Q. consumed flips exactly at the first dependency invocation, not at stage start", async () => {
+    // A no-boundary authority makes the narrow stage invoke ZERO deps, so the FIRST dependency
+    // invocation of the whole run is broad. Reading the file inside broad proves the flip happened
+    // immediately before that first invocation and not earlier.
+    const root = tmpRoot();
+    const { deps, seen } = cannedDeps();
+    let consumedSeenInsideFirstDep: unknown = "unset";
+    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    deps.broadReview = async () => {
+      consumedSeenInsideFirstDep = readEvidence(root, "run4").consumed;
+      return { kind: "canned", parsed: null } as never;
+    };
+    await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps, outputRoot: root, authority: noBoundaryAuthority(s.fixtureId) });
+    expect(seen.narrow).toHaveLength(0);
+    expect(consumedSeenInsideFirstDep).toBe(true);
+
+    // A pre-call authority failure never consumes and never writes evidence.
+    const root2 = tmpRoot();
+    const d2 = cannedDeps();
+    await expect(
+      runFrozenReviewerReplay({ subjectId: "run4", subject: { ...s, scenarioSha256: "0".repeat(64) }, deps: d2.deps, outputRoot: root2 }),
+    ).rejects.toThrow();
+    expect(existsSync(evidencePathFor(root2, "run4"))).toBe(false);
+    expect(d2.seen.narrow).toHaveLength(0);
+    expect(d2.seen.broad).toHaveLength(0);
+  });
+
+  it("R. evidence retains both exact requests, their hashes and boundaryCompliance counts", async () => {
+    const root = tmpRoot();
+    const { deps } = cannedDeps();
+    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
+    const e = readEvidence(root, "run4");
+    expect(e.narrowRequest).toBeDefined();
+    expect(e.broadRequest).toBeDefined();
+    expect(String(e.narrowRequestSha256)).toMatch(/^[0-9a-f]{64}$/);
+    expect(String(e.broadRequestSha256)).toMatch(/^[0-9a-f]{64}$/);
+    const counts = e.boundaryComplianceOccurrences as { narrowRequest: number; broadRequest: number };
+    expect(counts.narrowRequest).toBe(0);
+    expect(counts.broadRequest).toBe(14);
+    expect(e.marker).toBe("REPLAY");
+    expect(e.subjectId).toBe("run4");
+    expect(e.artifactSha256).toBe(RUN4_SHA);
+    expect(e.scenarioSha256).toBe(RUN4_SCENARIO_DIGEST);
+  });
+
+  it("S. the harness references no generation symbol at all", () => {
+    const src = readFileSync(resolve(ROOT, "scripts/practice-frozen-reviewer-replay.ts"), "utf8");
+    for (const sym of ["generateArenaScenarioDraft", "generatePlan", "generateWithLlm", "generationCallSequence", "GenerationAccounting"]) {
+      expect(src).not.toContain(sym);
+    }
   });
 });
