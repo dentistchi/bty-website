@@ -1,3 +1,289 @@
+## [GOV-ARENA-OBSERVER-RUN-4] — 2026-09-17 — AUTHORIZATION: c18 live observer Run 4
+
+### Scope
+
+Exactly ONE live cell is authorized:
+
+`--experiment-id reviewer-observer-live-04-c18`
+
+`--fixtures c18-constrained-clinical`
+
+`--architectures plan_render_v1`
+
+`--runs 1`
+
+`--correction disabled`
+
+`--artifact-dir .eval-artifacts/reviewer-observer-live-04/c18-constrained-clinical`
+
+Forbidden:
+
+`--provider-fake`
+
+`--fake-plan`
+
+No c19.
+No legacy.
+No second fixture.
+No second cell.
+No control cell.
+No automatic rerun.
+
+### Authority
+
+OUTER:
+
+`0de936d4cb5c2153999e83c04f0c4b6d641e8868`
+
+INNER:
+
+`610093f791f74e2fa957f2fa69505f2b039f1fda`
+
+Fixture:
+
+`c18-constrained-clinical`
+
+Confirmed constraint:
+
+`c1_verify`
+
+`Two identifiers must be verified before treatment`
+
+### Credential precondition
+
+Immediately before invocation, in the SAME process:
+
+`LLM_BASE_URL = UNSET`
+
+`LLM_MODEL = UNSET`
+
+and at least one of:
+
+`LLM_API_KEY = SET`
+
+`OPENAI_API_KEY = SET`
+
+Presence only.
+No credential value may be inspected.
+
+Preflight failure consumes:
+
+`0`
+
+cells.
+
+### Observation order
+
+Run 4 answers, in order:
+
+1. provider acceptance of the request-scoped constrained schema under
+   `strict = true`
+
+2. whether deterministic Level-3 `boundary_grounding` remains passed
+
+3. whether Level-4 `unsupported_boundary_compliance` is resolved
+
+4. remaining Level-6 findings and narrow/broad reviewer reach
+
+5. only if broad review is reached:
+   `boundaryAssessments`,
+   CONTENT telemetry,
+   `commitment_flag_mismatch`
+
+### Provider acceptance taxonomy
+
+Commander pre-registers:
+
+`ACCEPTED = PROVEN`
+
+when retained evidence proves execution progressed beyond Render into generated
+draft/constructions and/or deterministic gates.
+
+`REQUEST-TIME PROVIDER REJECTION CLASS = PROVEN`
+
+when the retained record proves Render-stage provider failure before deterministic
+gates.
+
+`REJECTION CAUSE = NOT_PROVEN`
+
+under current instrumentation.
+
+Raw HTTP status/body are not durably retained on this runner path when
+accounting is null.
+
+The structured-output unsupported detector reads the error message while a
+provider schema complaint may reside only in the error body.
+
+Therefore generic `bad_request` must not be relabeled as proven schema rejection.
+
+No instrumentation change is authorized before Run 4.
+
+### Side-channel
+
+The single invocation may capture stdout/stderr to `/tmp`.
+
+This is supplementary process evidence only.
+
+It may distinguish outcome tokens such as:
+
+`provider_error`
+
+`provider_rejected`
+
+`provider_timeout`
+
+but does not upgrade rejection cause beyond `NOT_PROVEN` without stronger
+evidence.
+
+### Deterministic interpretation
+
+Current pipeline order is:
+
+Plan
+→ Render
+→ `boundary_grounding`
+→ `choice_construction`
+→ deterministic rejection resolution
+→ narrow boundary review
+→ broad semantic review
+
+If execution passes Level 3 and Level 4 but later terminates at Level 6,
+Questions 1–3 are still validly answered.
+
+Level-6 remains a separate track.
+
+Reviewer-not-reached does not invalidate Questions 1–3.
+
+### Static invocation opportunities
+
+These are source-derived upper bounds only.
+
+Happy-path upper bound:
+
+Plan `1`
+Render `1`
+narrow `≤2`
+broad `≤2`
+
+Total `≤6`.
+
+Render request-time rejection path:
+
+Plan `1`
+Render `1`
+narrow `0`
+broad `0`.
+
+External provider request count remains:
+
+`NOT MEASURED`
+
+and must not be inferred from cells, stages, gates, reviewCalls or artifacts.
+
+### Schema provenance
+
+Manifest `providerSchema` remains BASE/STATIC evidence.
+
+It is not exact provenance for the request-scoped constrained schema.
+
+For this c18 cell the exact constrained schema is faithfully reconstructible
+from tracked:
+
+`buildProviderScenarioSchema`
+
+plus:
+
+`["c1_verify"]`
+
+because the builder deterministically normalizes the id set.
+
+Exact request-scoped schema provenance in the durable manifest remains:
+
+`PARKED`
+
+### Artifact authority
+
+Pre-Run-4 artifact count:
+
+`147`
+
+Pinned manifest SHA:
+
+`17575b320dca7659de51fbd0354dec31c6db2762abfd0ae1ab3b0cf664bea0b0`
+
+Pinned serialization:
+
+`relative-path<TAB>bytes<TAB>sha256`
+
+with byte-safe path sort under:
+
+`LC_ALL=C`
+
+Run-4 artifacts may be created only under:
+
+`.eval-artifacts/reviewer-observer-live-04/`
+
+and are never committed.
+
+The older `7521520f…` 146-file value is historical cross-check only because its
+serialization recipe was not durably pinned.
+
+### Latent items — parked
+
+Not authorized for repair here:
+
+- message-only structured-output unsupported classification
+- raw provider HTTP status loss when accounting is null
+- builder-id normalization versus raw validator ids
+- future constraint id longer than maxLength 48
+- exact per-request constrained-schema manifest provenance
+
+### Stop rule
+
+Exactly one cell is authorized.
+
+The cell is consumed once invocation begins.
+
+No outcome authorizes a rerun.
+
+No process/integrity failure after invocation authorizes a rerun.
+
+Any additional cell requires new Commander authorization.
+
+### Not authorized
+
+No:
+
+- source mutation
+- test mutation
+- fixture mutation
+- instrumentation mutation
+- manifest mutation
+- validator mutation
+- c19
+- control cell
+- Run 5
+- deployment
+- DB work
+- migration work
+
+### Final authorization
+
+RUN 4 =
+`AUTHORIZED`
+
+authorized cells =
+`1`
+
+automatic rerun =
+`NO`
+
+observation order =
+`PROVIDER ACCEPTANCE → LEVEL-3 → LEVEL-4 → LEVEL-6 / REVIEWER REACH`
+
+automatic follow-up =
+`NONE`
+
 ## 2026-09-17 — CHECKPOINT: c18 CONSTRUCTION BOUNDARY-COVERAGE REPAIR RESULT
 
 **[GOV-ARENA-C18-CONSTRUCTION-COVERAGE-REPAIR-RESULT-1]**
