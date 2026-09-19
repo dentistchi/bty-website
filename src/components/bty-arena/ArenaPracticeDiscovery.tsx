@@ -29,6 +29,9 @@ type AvailablePractice = {
 const COPY = {
   en: {
     heading: "Practice",
+    clinicalHeading: "Clinical reasoning",
+    clinicalBody: "Work through a deterministic synthetic case and review your reasoning.",
+    clinicalStart: "Open clinical case",
     from: "From",
     start: "Start practice",
     done: "Done",
@@ -37,6 +40,9 @@ const COPY = {
   },
   ko: {
     heading: "연습",
+    clinicalHeading: "임상 추론",
+    clinicalBody: "합성 교육 사례를 통해 추론 과정을 연습하고 검토합니다.",
+    clinicalStart: "임상 사례 열기",
     from: "원본",
     start: "연습 시작",
     done: "완료",
@@ -96,9 +102,8 @@ export function ArenaPracticeDiscovery({ locale }: { locale?: string }) {
 
   return (
     <section className="mx-auto mb-4 w-full max-w-md">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--arena-text)]/50">
-        {t.heading}
-      </p>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--arena-text)]/50">{t.heading}</p>
+      <div className="mb-3 rounded-2xl border border-[var(--arena-text)]/15 bg-white/40 px-5 py-4"><p className="font-semibold text-[var(--arena-text)]">{t.clinicalHeading}</p><p className="mt-0.5 text-xs text-[var(--arena-text)]/55">{t.clinicalBody}</p><Link href={`/${loc}/bty-arena/clinical-reasoning`} className="mt-3 inline-flex min-h-[40px] items-center rounded-xl px-5 text-sm font-semibold text-white" style={{ background: "var(--arena-accent, #5b8fa8)" }}>{t.clinicalStart}</Link></div>
 
       {status === "loading" ? (
         <div aria-hidden className="h-16 rounded-2xl border border-[var(--arena-text)]/10 bg-[var(--arena-text)]/[0.02]" />
