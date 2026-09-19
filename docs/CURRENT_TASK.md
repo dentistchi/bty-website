@@ -1,25 +1,21 @@
 # Active application task contract
 
-## CODEX-SETUP-1 — repository-native Codex workflow
+## FROZEN-REVIEWER-REPLAY-CLOSURE — completed evidence handoff
 
-This file is the active application task contract for the inner repository. The integration branch is `inner-main`. Outer documentation is historical/reference material only. No outer task ledger is copied here, and no historical task is implicitly authorized.
+This is the active application task contract for the inner repository. The integration branch is `inner-main`; outer documentation remains historical/reference material only.
 
-- Verified base: `728d7ae4b5c126f5ab4479e7041f6fc9eafd99db` (live `origin` branch `refs/heads/inner-main`, checked 2026-09-18).
-- Worktree: `/Users/hanbit/Dev/worktrees/bty-arena-codex-setup`.
-- Working branch: `codex/arena-agentic-workflow-setup`.
-- Objective: establish durable application instructions, this active task contract, and an evidence-based workflow; submit a PR to `inner-main` without merging.
-- Sole writer: the Codex session assigned CODEX-SETUP-1. No concurrent writer may edit this worktree.
-- Allowed changes: exactly `AGENTS.md`, `docs/CURRENT_TASK.md`, `docs/CODEX_WORKFLOW.md`.
-- Excluded: application changes, copying unrelated dirty work, outer edits, deployment, migrations, database/service access, Teams/Entra changes and Cloudflare actions.
-- Authorized delivery: commit and push only the setup branch; open a PR targeting `inner-main`. Merge and direct push to `inner-main` are not authorized.
+- Official code authority: `cb6df0ca49d4e752370d1005b5b5eb7bff5d110f` (`origin/inner-main`, verified 2026-09-18).
+- Replay implementation lineage: `728d7ae4b5c126f5ab4479e7041f6fc9eafd99db`; the replay script, focused test, and scenario-generation service are byte-equivalent between that commit and the official authority.
+- Worktree: `/Users/hanbit/Dev/worktrees/bty-arena-replay-handoff`.
+- Working branch: `codex/frozen-reviewer-replay-closure`.
+- Objective: close the already-completed Run-4 and Run-5 frozen reviewer replay using retained evidence only. No application behavior changes are authorized.
+- Evidence archive: `/Users/hanbit/Dev/project-evidence/bty-arena/reviewer-replay-01/`; raw runtime evidence is deliberately outside Git. See `docs/FROZEN_REVIEWER_REPLAY_CLOSURE.md` for hashes, analysis, and limits.
+- Delivery: documentation-only PR to `inner-main`; merge is not authorized.
 
-## Acceptance and handoff
+## Scope and acceptance
 
-- Prove the live base before worktree creation; stop if the destination exists or the base cannot be proven.
-- Preserve both original checkouts: status, HEAD, index and tracked/untracked file contents must match the initial snapshot. Stop on any unexpected change.
-- Resolve the QR instruction discrepancy from source, without changing application code.
-- Verify instruction discovery in this worktree and explicitly read both linked documents.
-- Review the exact three-file diff, run whitespace and scope checks, and confirm no application-code changes.
-- Record observed verification and delivery evidence in the PR and final handoff. Do not infer that a requested action has completed.
+- Preserve the legacy evidence checkout read-only; neither frozen subject may be replayed because both were already consumed.
+- Record verified artifact identity, completion state, reviewer findings, fixed human-ground-truth comparison, claim-visibility limitation, CFOBS retention state, and zero-generation/zero-accounting evidence.
+- Stage only reviewed documentation files. Do not update the outer repository, call providers or reviewers, generate scenarios, deploy, migrate, write production data, or access Supabase, Teams, Entra, or Cloudflare.
 
-Status: setup documentation prepared; verification and PR delivery must be established by observed evidence. This contract does not authorize the next application task. Before new work, replace this task's scope and acceptance criteria with the newly authorized task; do not turn this file into a duplicate historical ledger.
+Status: closure evidence recovered and analyzed; this branch records the reviewable closure. The next product decision is whether the reviewer behavior documented in the closure warrants a separately authorized product change.
