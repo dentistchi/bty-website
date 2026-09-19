@@ -105,6 +105,8 @@ export type BoundarySurface = {
   isActionCommitment: boolean;
   /** The generator's own accepted-cost note for this choice, when one exists. Never invented. */
   acceptedCost: string;
+  /** Generator-supplied action context for this coordinate; never a compliance claim. */
+  concreteAction?: string;
   /** For a compatibility projection: the reachable surface it duplicates, when one exists. */
   compatibilitySource: string;
 };
@@ -136,6 +138,14 @@ export function enumerateBoundarySurfaces(
     const rec = constructions[choiceId];
     return rec && typeof rec === "object" ? text((rec as Record<string, unknown>).acceptedCost) : "";
   };
+  const action = (choiceId: string): string => {
+    const rec = constructions[choiceId];
+    return rec && typeof rec === "object" ? text((rec as Record<string, unknown>).concreteAction) : "";
+  };
+  const learnerActionText = (label: string, choiceId: string): string => {
+    const concreteAction = action(choiceId);
+    return concreteAction.trim() ? `${label}\nConcrete action: ${concreteAction}` : label;
+  };
   // MEASURED from `ArenaPracticePlayer`: the flat continuation is rendered ONLY when the draft has
   // no branches. This single fact decides which fields carry product authority.
   const branchAware = isBranchAware(draft);
@@ -159,11 +169,12 @@ export function enumerateBoundarySurfaces(
       independentlySelectable: true,
       branchIndex: -1,
       index: i,
-      text: c.label,
+      text: learnerActionText(c.label, c.id),
       selectedPrimaryLabel: "",
       branchContext: "",
       isActionCommitment: false,
       acceptedCost: cost(c.id),
+      concreteAction: action(c.id),
     }),
   );
 
@@ -181,11 +192,12 @@ export function enumerateBoundarySurfaces(
       independentlySelectable: !branchAware,
       branchIndex: -1,
       index: i,
-      text: c.label,
+      text: learnerActionText(c.label, c.id),
       selectedPrimaryLabel: "",
       branchContext: flatEscalation,
       isActionCommitment: false,
       acceptedCost: cost(c.id),
+      concreteAction: action(c.id),
       // The branch-specific tradeoff at the same position is what the learner actually gets.
       compatibilitySource: branchAware ? `branch[*].tradeoff[${i}]` : "",
     }),
@@ -202,11 +214,12 @@ export function enumerateBoundarySurfaces(
       independentlySelectable: !branchAware,
       branchIndex: -1,
       index: i,
-      text: c.label,
+      text: learnerActionText(c.label, c.id),
       selectedPrimaryLabel: "",
       branchContext: flatEscalation,
       isActionCommitment: c.isActionCommitment === true,
       acceptedCost: cost(c.id),
+      concreteAction: action(c.id),
       compatibilitySource: branchAware ? `branch[*].action[${i}]` : "",
     }),
   );
@@ -263,9 +276,10 @@ export function enumerateBoundarySurfaces(
         coordinate: `branch[${b}].tradeoff[${i}]`,
         phase: "branch_tradeoff",
         index: i,
-        text: c.label,
+        text: learnerActionText(c.label, c.id),
         isActionCommitment: false,
         acceptedCost: cost(c.id),
+        concreteAction: action(c.id),
       }),
     );
 
@@ -275,9 +289,10 @@ export function enumerateBoundarySurfaces(
         coordinate: `branch[${b}].action[${i}]`,
         phase: "branch_action",
         index: i,
-        text: c.label,
+        text: learnerActionText(c.label, c.id),
         isActionCommitment: c.isActionCommitment === true,
         acceptedCost: cost(c.id),
+        concreteAction: action(c.id),
       }),
     );
   });
@@ -322,6 +337,7 @@ export function surfaceMapSha256(surfaces: BoundarySurface[]): string {
     inheritedWorldState: s.inheritedWorldState,
     isActionCommitment: s.isActionCommitment,
     acceptedCost: s.acceptedCost,
+    concreteAction: s.concreteAction ?? "",
     compatibilitySource: s.compatibilitySource,
   }));
   return createHash("sha256").update(JSON.stringify({ version: SURFACE_MAP_VERSION, surfaces: canonical })).digest("hex");

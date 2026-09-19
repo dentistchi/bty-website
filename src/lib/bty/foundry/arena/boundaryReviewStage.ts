@@ -70,6 +70,7 @@ import {
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { classifyTruthState, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { boundaryAppearsInLearnerWorld } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import type { BoundarySemanticFrame } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import {
@@ -469,6 +470,16 @@ export async function runBoundaryReviewStage(
   const surfaceByRef = new Map(surfaces.map((s) => [s.coordinate, s]));
   const reachable = reviewableSurfaces(surfaces);
   const excluded = compatibilitySurfaces(surfaces);
+
+  // A confirmed boundary must enter the learner-facing world before per-surface truth reporting
+  // can call the scenario compliant. This is a necessary lexical precondition only; it does not
+  // infer compliance or replace semantic judgment.
+  const learnerFacingText = [args.draft.opening, ...reachable.map((surface) => surface.text), ...reachable.map((surface) => surface.inheritedWorldState)].join("\n");
+  const absentBoundaryIds = args.boundaries.filter((boundary) => !boundaryAppearsInLearnerWorld(boundary.statement, learnerFacingText)).map((boundary) => boundary.id);
+  if (absentBoundaryIds.length > 0) {
+    log("boundary_review_reject", "confirmed_boundary_absent", { absentBoundaryIds, source: "server_lexical_presence_precondition" });
+    return empty("boundary_review_reject", ["confirmed_boundary_absent"]);
+  }
 
   log("boundary_review_subject_frozen", undefined, {
     boundaryReviewSubjectSha256: subjectSha,

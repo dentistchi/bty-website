@@ -117,7 +117,7 @@ export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "",
   "YOU DO NOT DECIDE WHETHER A SURFACE COMPLIES. There is no applicability field, no compliance field, no violation-mechanism field and no overall verdict. Those are computed from your three facts. Report what is true and stop.",
   "",
-  "FACT 1 — governedActionStatus. Is the action the boundary governs present in THIS SURFACE'S OWN TEXT?",
+  "FACT 1 — governedActionStatus. Is the action the boundary governs present in THIS SURFACE'S OWN TEXT? When supplied, concreteAction is retained action context for that same learner choice: use it with the visible text, but never treat it as proof of compliance.",
   "  present   — this surface's own text performs, commits to, authorizes or asserts the governed action.",
   "  absent    — it does not. It does something else: staffing, notification, documentation, reporting, escalation, sequencing, communication. Surrounding context may describe the governed action; that is not this surface doing it.",
   "  uncertain — the text is genuinely insufficient to tell.",
@@ -427,6 +427,7 @@ export type NarrowBoundaryRequest = {
     lineage: string[];
     isActionCommitment: boolean;
     acceptedCost: string;
+    concreteAction: string;
   }>;
   /**
    * The ONLY evidence the reviewer may select, per boundary, per surface, per role. R2.37 measured
@@ -545,6 +546,7 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject, surfa
       lineage: s.lineage,
       isActionCommitment: s.isActionCommitment,
       acceptedCost: s.acceptedCost,
+      concreteAction: s.concreteAction ?? "",
     })),
     evidenceCandidates: subject.boundaries.map((b) => ({
       boundaryId: b.id,
