@@ -1,0 +1,11 @@
+export const CLINICAL_REASONING_CASE_VERSION = "clinical-reasoning-case/v1" as const;
+export const CLINICAL_REASONING_TRACE_VERSION = "clinical-reasoning-trace/v1" as const;
+export type EvidenceCriticality = "critical" | "useful" | "optional" | "irrelevant";
+export type EvidenceCategory = "history" | "symptom" | "exam" | "imaging" | "occlusion";
+export type ClinicalEvidenceItemV1 = { id: string; label: string; aliases: string[]; category: EvidenceCategory; result: string; criticality: EvidenceCriticality; rubricRelevance: string[] };
+export type ClinicalReasoningCaseV1 = { caseId: string; version: string; title: string; specialty: string; synthetic: true; startingVignette: string; evidence: ClinicalEvidenceItemV1[]; rubric: { criticalEvidenceIds: string[]; earlyEvidenceIds: string[]; editableFeedback: string[] }; decisionOptions: string[]; provenance: { contentVersion: string; clinicianValidationStatus: "pending" | "validated" } };
+export type ClinicalReasoningEventType = "case_started" | "question_searched" | "evidence_requested" | "evidence_revealed" | "differential_updated" | "decision_started" | "decision_submitted" | "confidence_submitted" | "rationale_submitted" | "case_completed";
+export type ClinicalReasoningEventV1 = { sequence: number; timestamp: string; elapsedMs: number; type: ClinicalReasoningEventType; queryText?: string; evidenceId?: string; resultSnapshot?: string; differential?: string; decision?: string; confidence?: number; rationale?: string };
+export type ClinicalReasoningTraceV1 = { traceId: string; caseId: string; caseVersion: string; subjectRef: string; startedAt: string; completedAt?: string; events: ClinicalReasoningEventV1[] };
+export type ClinicalReasoningMetricsV1 = { requestedEvidenceIds: string[]; criticalEvidenceIds: string[]; obtainedCriticalEvidenceIds: string[]; missedCriticalEvidenceIds: string[]; criticalCoverage: { obtained: number; total: number }; evidenceAtDecision: string[]; missingCriticalAtDecision: string[]; prematureClosure: boolean; decisionSequence: number[]; finalConfidence?: number; finalPlan?: string };
+export type ClinicalReasoningBenchmarkV1 = { benchmarkId: string; caseId: string; version: string; synthetic: true; notes: string };
