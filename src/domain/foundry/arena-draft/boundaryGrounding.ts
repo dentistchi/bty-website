@@ -179,6 +179,12 @@ function evidence(statement: string, text: string): { hits: number; needed: numb
   return { hits, needed: Math.min(needed, Math.max(1, rule.size)) };
 }
 
+/** Necessary precondition only: lexical absence cannot be accepted as grounded compliance. */
+export function boundaryAppearsInLearnerWorld(statement: string, learnerFacingText: string): boolean {
+  const measured = evidence(statement, learnerFacingText);
+  return measured.hits >= measured.needed;
+}
+
 /** Learner-facing text split into the stage that ESTABLISHES a rule and the stages it must BITE. */
 export function learnerFacingSurfaces(draft: ArenaScenarioDraft): { opening: string; decisions: string } {
   const decisions = [
