@@ -1,0 +1,1 @@
+import{it,expect}from"vitest";import{compareEncounter}from"./comparison";it("describes zero-reference comparison without score",()=>{const r=compareEncounter({traceId:"t",caseId:"c",caseVersion:"1",schemaVersion:"clinical-encounter-trace/v2",events:[]},[]);expect(r.label).toBe("Author Reference");expect(r.compositeScore).toBeUndefined()})
