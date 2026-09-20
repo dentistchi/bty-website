@@ -35,7 +35,7 @@ describe("Encounter V2 truth boundary", () => {
 
   it("recognizes imaging aliases only as complete tokens or phrases", () => {
     for (const request of ["PA", "Take a PA", "periapical x-ray", "x-ray", "radiograph"]) {
-      expect(interpretEncounter(request)).toMatchObject({ intent: "imaging_request", canonicalIds: ["radiograph"] });
+      expect(interpretEncounter(request)).toMatchObject({ intent: "imaging_request", canonicalIds: [], resolution: "unavailable" });
     }
     expect(interpretEncounter("How much occlusal space left?").intent).not.toBe("imaging_request");
     expect(interpretEncounter("space").intent).not.toBe("imaging_request");
@@ -54,7 +54,30 @@ describe("Encounter V2 truth boundary", () => {
 
   it("does not invent unavailable patient facts or media", () => {
     expect(respondToEncounter("do you have a root fracture?").response).toContain("don't know");
-    expect(respondToEncounter("show me clinical photo").response).toContain("No authored clinical image");
+    expect(respondToEncounter("show me clinical photo").response).toBe("No clinical photo has been authored for this case yet.");
+  });
+
+  it("does not substitute related findings for an unavailable exact fact", () => {
+    for (const question of ["How much occlusal space left?", "How much space is left?"]) {
+      const result = respondToEncounter(question);
+      expect(result.response).not.toContain("Occlusion is stable.");
+      expect(result.response).toContain("not available");
+      expect(result.resolution).toBe("unavailable");
+    }
+    expect(respondToEncounter("Check occlusion").response).toBe("Occlusion is stable.");
+  });
+
+  it("keeps media assets separate from hidden imaging truth", () => {
+    for (const request of ["Take a PA", "Show me the x-ray", "Let me see the periapical"]) {
+      const result = respondToEncounter(request);
+      expect(result.intent).toBe("imaging_request");
+      expect(result.response).toBe("No PA image has been authored for this case yet.");
+      expect(result.response).not.toContain("periodontal ligament spaces");
+      expect(result.response).not.toContain("root fracture");
+    }
+    expect(CASE_001_ENCOUNTER.media).toEqual([]);
+    expect(CASE_001_ENCOUNTER.hiddenImagingTruth?.map(fact => fact.id)).toEqual(["radiograph", "root-fracture", "alveolar-fracture"]);
+    expect(respondToEncounter("Is there a root fracture?").response).not.toContain("No root fracture is visible.");
   });
 });
 
