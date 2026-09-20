@@ -6,6 +6,7 @@ import { PracticeAuthoringEntry } from "@/components/app-shell/PracticeAuthoring
 import { showsAuthoringEntry, type PracticeSurface } from "@/components/app-shell/practiceSurface";
 import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
 import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPracticeFlow";
+import { ClinicalReasoningTrainer } from "@/components/bty-arena/ClinicalReasoningTrainer";
 
 /**
  * Practice — landing surface (App Shell + Today Simplification V1, Phase 6).
@@ -13,6 +14,7 @@ import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPrac
  * A calm entry surface for the "Practice" tab. It does NOT expose internal runtime-state vocabulary;
  * it offers a small set of doors:
  *   • Arena practice — the existing in-shell Arena runtime (unchanged), opened in place.
+ *   • Clinical cases — the existing conversational encounter, opened inside Practice.
  *   • Field Actions — opens the focused in-shell Field Actions surface ({@link FieldActionsFocus}),
  *     the learner's (and authorized reviewer's) full Field Action state. Never redirects to Today.
  *   • Live Experiences — a calm "Coming next" placeholder; no canonical scheduled-event contract
@@ -30,6 +32,8 @@ const COPY: Record<Locale, {
   title: string;
   arena: string;
   arenaSub: string;
+  clinical: string;
+  clinicalSub: string;
   fieldActions: string;
   fieldActionsSub: string;
   live: string;
@@ -44,6 +48,8 @@ const COPY: Record<Locale, {
     title: "Practice it before you need it.",
     arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
+    clinical: "Clinical cases",
+    clinicalSub: "Interview a patient, order tests, and decide treatment.",
     fieldActions: "Action plans",
     fieldActionsSub: "Your action plans for real life.",
     live: "Live sessions",
@@ -58,6 +64,8 @@ const COPY: Record<Locale, {
     title: "필요해지기 전에 미리 연습하세요.",
     arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
+    clinical: "임상 케이스",
+    clinicalSub: "환자를 문진하고 검사한 뒤 치료를 결정합니다.",
     fieldActions: "행동 계획",
     fieldActionsSub: "실제 삶을 위한 나의 행동 계획.",
     live: "라이브 세션",
@@ -138,7 +146,7 @@ export default function PracticeLanding({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [view, setView] = useState<"landing" | "arena" | "fieldActions">(
+  const [view, setView] = useState<"landing" | "arena" | "clinical" | "fieldActions">(
     initialView === "fieldActions" || initialFieldActionId ? "fieldActions" : "landing",
   );
   /**
@@ -194,6 +202,24 @@ export default function PracticeLanding({
     );
   }
 
+  if (view === "clinical") {
+    return (
+      <div className="flex flex-col gap-4" data-testid="practice-clinical">
+        <button
+          type="button"
+          data-testid="practice-clinical-back"
+          onClick={() => setView("landing")}
+          className="self-start text-xs font-medium text-white/60 hover:text-white/85"
+        >
+          ‹ {t.back}
+        </button>
+        <div className="overflow-hidden rounded-2xl bg-white text-slate-900">
+          <ClinicalReasoningTrainer />
+        </div>
+      </div>
+    );
+  }
+
   if (view === "fieldActions") {
     return (
       <FieldActionsFocus
@@ -215,6 +241,7 @@ export default function PracticeLanding({
       </header>
       <div className="flex flex-col gap-2">
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
+        <DoorRow testId="practice-clinical-entry" title={t.clinical} sub={t.clinicalSub} onClick={() => setView("clinical")} />
         <DoorRow testId="practice-field-actions" title={t.fieldActions} sub={t.fieldActionsSub} onClick={() => setView("fieldActions")} />
         <DoorRow testId="practice-live" title={t.live} sub={t.liveSub} badge={t.comingNext} disabled />
         {qrAuthorized ? (
