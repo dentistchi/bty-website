@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase-admin", () => ({
       if (mode === "update" && state.race) {
         state.rows[0].status = "completed"; state.race = false;
       }
-      let matching = state.rows.filter(r => filters.every(([key, value]) => r[key] === value));
+      let matching = state.rows.filter(r => filters.every(([key, value]) => value === null ? r[key] == null : r[key] === value));
       if (mode === "insert") {
         if (state.rows.some(r => r.trace_id === row.trace_id)) return { data: null, error: { code: "23505" } };
         state.rows.push(structuredClone(row)); matching = [state.rows.at(-1)!];
@@ -36,6 +36,7 @@ vi.mock("@/lib/supabase-admin", () => ({
     const query = {
       select: () => query,
       eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
+      is: (key: string, value: unknown) => { filters.push([key, value]); return query; },
       order: () => { sorted = true; return query; },
       limit: (n: number) => { max = n; return query; },
       insert: (r: Record<string, unknown>) => { mode = "insert"; row = r; return query; },
@@ -50,6 +51,7 @@ const active = () => startEncounter("trace-1", "2026-09-19T00:00:00Z");
 const completed = () => completeEncounter(active(), { ...emptyDecision, diagnosis: "Fracture", treatment: "Protect", followup: "Review", confidence: "Moderate", rationale: "History" }, "2026-09-19T00:01:00Z");
 const request = (body: unknown) => new NextRequest("https://example.test/api/bty/clinical-encounter/traces", { method: "POST", body: JSON.stringify(body) });
 const post = (operation: string, trace = active()) => POST(request({ operation, trace, user_id: "attacker" }));
+const restart = () => POST(request({ operation: "restart", caseId: active().caseId, caseVersion: active().caseVersion, user_id: "attacker" }));
 beforeEach(() => { state.rows = []; state.user = "owner"; state.available = true; state.failRead = false; state.failWrite = false; state.race = false; });
 
 describe("authenticated V2 trace persistence", () => {
@@ -115,6 +117,32 @@ describe("authenticated V2 trace persistence", () => {
     const result = await response.json();
     expect(result.traces.map((r: { raw_trace: { traceId: string } }) => r.raw_trace.traceId)).toEqual(["trace-1"]);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+  it("supersedes every matching active V2 attempt and creates a clean server-owned replacement", async () => {
+    const first: Record<string, unknown> = { ...encounterRecord("owner", active()), updated_at: "2026-09-19" };
+    const duplicate: Record<string, unknown> = { ...encounterRecord("owner", { ...active(), traceId: "duplicate" }), updated_at: "2026-09-20" };
+    const other: Record<string, unknown> = { ...encounterRecord("other", { ...active(), traceId: "other" }), updated_at: "2026-09-20" };
+    const completedRow: Record<string, unknown> = encounterRecord("owner", { ...completed(), traceId: "completed" }, "completed");
+    state.rows = [first, duplicate, other, completedRow];
+    const response = await restart(); const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.trace.traceId).not.toBe("trace-1");
+    expect(result.trace.events.map((event: { type: string }) => event.type)).toEqual(["encounter_started", "chief_complaint_presented"]);
+    expect(first).toMatchObject({ superseded_by_trace_id: result.trace.traceId });
+    expect(duplicate).toMatchObject({ superseded_by_trace_id: result.trace.traceId });
+    expect(other.superseded_at).toBeUndefined();
+    expect(completedRow.superseded_at).toBeUndefined();
+    expect((first.raw_trace as { events: unknown[] }).events).toEqual(active().events);
+    expect(state.rows.filter(row => row.status === "active" && row.superseded_at == null).map(row => row.trace_id)).toEqual(expect.arrayContaining([result.trace.traceId, "other"]));
+  });
+  it("never auto-resumes a superseded trace and prevents its later write", async () => {
+    const old = { ...encounterRecord("owner", active()), superseded_at: "2026-09-20", superseded_by_trace_id: "replacement" };
+    state.rows = [old];
+    const response = await GET(new NextRequest(`https://example.test/api/bty/clinical-encounter/traces?caseId=${active().caseId}&caseVersion=2.0.0&status=active`));
+    expect((await response.json()).traces).toEqual([]);
+    const save = await post("save");
+    expect(save.status).toBe(409);
+    expect((await save.json()).error).toBe("SUPERSEDED");
   });
   it("fails closed for missing authentication, database failures, and malformed requests", async () => {
     state.user = null;

@@ -19,12 +19,15 @@ const currentCase = (t: EncounterTraceV2) => t.caseId === CASE_001_ENCOUNTER.cas
 
 export function ClinicalReasoningTrainer() {
   const [trace, setTrace] = useState<EncounterTraceV2 | null>(null);
+  const [resumeCandidate, setResumeCandidate] = useState<EncounterTraceV2 | null>(null);
   const traceRef = useRef<EncounterTraceV2 | null>(null);
   const [input, setInput] = useState("");
   const [decision, setDecision] = useState<EncounterDecision>({ ...emptyDecision });
   const [ready, setReady] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [confirmRestart, setConfirmRestart] = useState(false);
   const completionLock = useRef(false);
   const [saveState, setSaveState] = useState("Loading encounter…");
   const [error, setError] = useState<string | null>(null);
@@ -78,21 +81,57 @@ export function ClinicalReasoningTrainer() {
           && validateEncounterTrace(row.raw_trace) && currentCase(row.raw_trace) && !isEncounterCompleted(row.raw_trace))?.raw_trace;
       } catch { failed = true; }
       if (cancelled) return;
-      const next = resumed ?? startEncounter(crypto.randomUUID());
+      if (resumed) {
+        setResumeCandidate(resumed);
+        setReady(true);
+        setSaveState("Unfinished case");
+        return;
+      }
+      const next = startEncounter(crypto.randomUUID());
       install(next);
       setDecision(decisionFromTrace(next));
       setReady(true);
       if (failed) {
         setSaveState("Not saved to server");
         setError("Could not load a saved encounter. This new encounter remains on this page until a save succeeds.");
-      } else if (resumed) setSaveState("Resumed from server");
-      else saveActive(next);
+      } else saveActive(next);
     }
     void load();
     return () => { cancelled = true; };
     // One load per mounted encounter; all writes are initiated by explicit actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function continuePreviousAttempt() {
+    if (!resumeCandidate) return;
+    install(resumeCandidate);
+    setDecision(decisionFromTrace(resumeCandidate));
+    setResumeCandidate(null);
+    setSaveState("Resumed from server");
+  }
+  async function restartAttempt() {
+    if (restarting) return;
+    setRestarting(true);
+    setError(null);
+    try {
+      await queue.current;
+      const response = await fetch(endpoint, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation: "restart", caseId: CASE_001_ENCOUNTER.caseId, caseVersion: CASE_001_ENCOUNTER.version }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok || !validateEncounterTrace(result.trace) || !currentCase(result.trace)) throw new Error("RESTART_FAILED");
+      install(result.trace);
+      setDecision({ ...emptyDecision });
+      setInput("");
+      setCompleted(false);
+      setResumeCandidate(null);
+      setConfirmRestart(false);
+      setSaveState("Started new attempt");
+    } catch {
+      setError("Could not start a new attempt. Your current attempt has not been removed.");
+    } finally { setRestarting(false); }
+  }
 
   function send() {
     if (!traceRef.current || completionLock.current || isEncounterCompleted(traceRef.current) || !input.trim()) return;
@@ -144,6 +183,15 @@ export function ClinicalReasoningTrainer() {
   const review = completed && trace ? compareEncounter(trace, CASE_001_ENCOUNTER.hiddenReference.rubric.map(id => ({
     id, domain: id, importance: "important" as const, acceptableIds: [id],
   }))) : null;
+  const korean = typeof document !== "undefined" && document.documentElement.lang.startsWith("ko");
+  const copy = korean ? { title: "미완료 케이스", body: "이 케이스의 미완료 시도가 있습니다.", continue: "이전 시도 계속하기", restart: "새 시도 시작", over: "처음부터 다시 시작", confirm: "현재 시도를 중단하고 새로 시작하시겠습니까?", yes: "새 시도 시작", no: "취소" } : { title: "Unfinished case", body: "You have an unfinished attempt for this case.", continue: "Continue previous attempt", restart: "Start new attempt", over: "Start over", confirm: "Abandon this attempt and start a new one?", yes: "Start new attempt", no: "Cancel" };
+  if (resumeCandidate) return <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-6">
+    <p className="text-xs font-semibold uppercase">Synthetic clinical encounter · content validation pending</p>
+    <h1 className="text-2xl font-bold">{copy.title}</h1>
+    <p>{copy.body}</p>
+    {error && <p role="alert">{error}</p>}
+    <div className="flex gap-2"><button type="button" className="rounded border p-3" onClick={continuePreviousAttempt} disabled={restarting}>{copy.continue}</button><button type="button" className="rounded bg-black p-3 text-white" onClick={() => void restartAttempt()} disabled={restarting}>{copy.restart}</button></div>
+  </main>;
   return <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-6">
     <p className="text-xs font-semibold uppercase">Synthetic clinical encounter · content validation pending</p>
     <h1 className="text-2xl font-bold">{CASE_001_ENCOUNTER.caseId}</h1>
@@ -164,6 +212,7 @@ export function ClinicalReasoningTrainer() {
       </div>)}
     </section>
     {!completed && <>
+      <div>{confirmRestart ? <div className="flex items-center gap-2"><span>{copy.confirm}</span><button type="button" className="rounded bg-black p-2 text-white" onClick={() => void restartAttempt()} disabled={restarting}>{copy.yes}</button><button type="button" className="rounded border p-2" onClick={() => setConfirmRestart(false)} disabled={restarting}>{copy.no}</button></div> : <button type="button" className="self-start text-sm underline" onClick={() => setConfirmRestart(true)} disabled={!ready || restarting}>{copy.over}</button>}</div>
       <form className="mt-auto flex gap-2" onSubmit={e => { e.preventDefault(); send(); }}>
         <input aria-label="Clinical encounter message" className="flex-1 rounded border p-3" value={input} onChange={e => setInput(e.target.value)} disabled={!ready || pendingCompletion} placeholder="Ask the patient or request an examination…" />
         <button className="rounded bg-black px-4 text-white" disabled={!ready || pendingCompletion || !input.trim()}>Send</button>
