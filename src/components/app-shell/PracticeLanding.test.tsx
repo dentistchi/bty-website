@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 /** App Shell V1 Phase 6 — Practice landing: Arena practice + Field Actions + Live/QR placeholders. */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 // Mock the heavy in-shell subviews — this test only proves the landing wiring, not their internals.
 vi.mock("@/components/app-shell/ArenaRoom", () => ({
@@ -17,7 +17,7 @@ vi.mock("@/components/app-shell/FieldActionsFocus", () => ({
 
 import PracticeLanding from "./PracticeLanding";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const base = {
   locale: "en",
@@ -26,6 +26,45 @@ const base = {
 };
 
 describe("PracticeLanding", () => {
+  it("shows Clinical cases directly between Practice situations and Action plans", () => {
+    render(<PracticeLanding {...base} />);
+    const doors = within(screen.getByTestId("practice-landing")).getAllByRole("button");
+    expect(doors.map(door => door.dataset.testid)).toEqual([
+      "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
+    ]);
+    expect(doors[0].textContent).toContain("Practice situations");
+    expect(doors[1].textContent).toContain("Clinical cases");
+    expect(doors[1].textContent).toContain("Interview a patient, order tests, and decide treatment.");
+    expect(doors[2].textContent).toContain("Action plans");
+    expect(doors[3].textContent).toContain("Live sessions");
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+  });
+
+  it.each([ ["en", "Clinical cases", "Back"], ["ko", "임상 케이스", "뒤로"] ])(
+    "%s opens the real encounter in-shell and Back restores the landing",
+    async (locale, title, back) => {
+      vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => Response.json(
+        init?.method === "POST" ? { ok: true, status: "active" } : { ok: true, traces: [] },
+      )));
+      const location = window.location.href;
+      render(<PracticeLanding {...base} locale={locale} />);
+      const entry = screen.getByTestId("practice-clinical-entry");
+      expect(entry.textContent).toContain(title);
+      if (locale === "ko") expect(entry.textContent).toContain("환자를 문진하고 검사한 뒤 치료를 결정합니다.");
+      fireEvent.click(entry);
+      expect(screen.queryByTestId("practice-landing")).toBeNull();
+      expect(within(screen.getByTestId("practice-clinical")).getByText("I fell earlier today and broke my two front teeth.")).toBeTruthy();
+      await screen.findByText("Saved to server");
+      expect(screen.getByLabelText("Clinical encounter message")).toBeTruthy();
+      expect(window.location.href).toBe(location);
+      expect(screen.queryAllByRole("tab")).toHaveLength(0);
+      expect(screen.getByTestId("practice-clinical-back").textContent).toContain(back);
+      fireEvent.click(screen.getByTestId("practice-clinical-back"));
+      expect(screen.getByTestId("practice-landing")).toBeTruthy();
+      expect(screen.queryByLabelText("Clinical encounter message")).toBeNull();
+    },
+  );
+
   it("shows Arena practice + Field Actions, and Live Experiences as a Coming next placeholder", () => {
     render(<PracticeLanding {...base} />);
     expect(screen.getByTestId("practice-arena-entry")).toBeTruthy();
