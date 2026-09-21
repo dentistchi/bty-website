@@ -6,6 +6,7 @@ import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import InShellLearnerRoom from "@/components/foundry/learner/InShellLearnerRoom";
+import { shouldOpenTrainingRequest, type TrainingRequest } from "@/domain/teams/trainingRequest";
 import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import { parseTodayDeepLink, type TodayTarget } from "@/components/app-shell/todayDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
@@ -1248,21 +1249,40 @@ function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greeti
 export default function BtyDailyAppShell({
   locale,
   onLocaleChanged,
-  initialTrainingTarget = null,
+  trainingRequest = null,
+  onTrainingExit,
 }: {
   locale: Locale;
   /**
-   * TEAMS-NATIVE TRAINING DELIVERY V1 — the training a personal-tab deep link named.
+   * TEAMS-NATIVE TRAINING DELIVERY — the training a personal-tab deep link named, as a REQUEST.
    *
    * Supplied ONLY by `/teams`, which has already parsed `context.page.subPageId` through the one
-   * approved grammar (`parseTrainingTarget`) and completed its Teams bootstrap. Absent everywhere
-   * else, so the web shell is byte-identical to what it was.
+   * approved grammar and completed its Teams bootstrap. Absent everywhere else, so the web shell
+   * behaves exactly as it did.
    *
-   * It is read in the state initialiser below, never in an effect: a training that arrives after
-   * the first paint means the learner sees Today flash first and then be replaced, and a
-   * deep-link destination that is derived post-render is the exact defect 3.2G-R3 removed.
+   * ★ WHY THIS IS A REQUEST AND NOT A TARGET (Slice Teams iOS Deep-Link Resume).
+   *
+   * It used to be `initialTrainingTarget`, copied into state by a mount-time initialiser. That is
+   * correct for a COLD open and wrong for every other one: measured on a real iPhone, tapping the
+   * invitation resumed the already-running personal-tab WebView instead of remounting it, so the
+   * newly delivered target reached a `useState` initialiser that had already run — and the learner
+   * landed on ordinary Learn.
+   *
+   * A request carries an OCCURRENCE (`requestKey`), so a target arriving after mount is visible,
+   * and so the SAME training can be asked for again after the learner has left it. The rules for
+   * acting on one live in `shouldOpenTrainingRequest` — including the one that keeps a refocus
+   * mid-quiz from remounting the room the learner is already in.
+   *
+   * The first request is still committed in the state initialiser below, so a cold deep link paints
+   * the training on the FIRST render with no Learn flash.
    */
-  initialTrainingTarget?: { joinToken: string } | null;
+  trainingRequest?: TrainingRequest | null;
+  /**
+   * Fired when the learner leaves a Teams-native training. `/teams` uses it to return the Teams
+   * host to the BTY root page, so the tab stops naming a training the learner has finished with.
+   * Absent on web, where there is no host page state to clear.
+   */
+  onTrainingExit?: () => void;
   /**
    * Present ⇒ the HOST owns the resolved locale and this shell must not navigate to change it.
    * Only `/teams` passes it: its document is framed, and any navigation off `/teams` is opened in
@@ -1273,14 +1293,23 @@ export default function BtyDailyAppShell({
 }) {
   const [tab, setTab] = useState<AppTabKey>("today");
   /*
-    THE DEEP-LINKED TRAINING, COMMITTED AT MOUNT (Slice Teams-Native Delivery V1).
+    THE OPEN TRAINING.
 
-    A lazy initialiser, not an effect — see the prop's note. Closing the room clears this and
-    lands the learner on Learn, which is where a finished training belongs.
+    The FIRST request is committed here, in a lazy initialiser, so a cold deep link paints the
+    training on the first render rather than flashing Learn and replacing it. Every LATER request
+    arrives through the effect below, which is what makes a resumed tab work.
   */
   const [trainingTarget, setTrainingTarget] = useState<{ joinToken: string } | null>(
-    () => initialTrainingTarget,
+    () => trainingRequest?.target ?? null,
   );
+  /** The occurrence already acted on, so a re-render or a re-delivery of it is inert. */
+  const handledTrainingKeyRef = useRef<string | null>(trainingRequest?.requestKey ?? null);
+  /*
+    The token currently on screen, held in a ref as well as in state because the effect below must
+    read it WITHOUT depending on it — depending on it would re-run the effect on every open and
+    close, which is precisely the loop this seam must not have.
+  */
+  const openTrainingTokenRef = useRef<string | null>(trainingRequest?.target.joinToken ?? null);
   // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
   // authenticated read-only review inside the Foundry tab. Null = normal Foundry surface.
   const [reviewId, setReviewId] = useState<string | null>(null);
@@ -1341,6 +1370,49 @@ export default function BtyDailyAppShell({
   // (from another tab, a nested Me subview, or Me-root-while-scrolled) clears any nested meView,
   // re-fetches the weekly projection once, and scrolls the real scroll owner to the top. Idempotent:
   // repeated Me taps just re-assert root + scroll-top (no duplicate navigation, no unrelated reset).
+  /*
+    ★ A TRAINING ASKED FOR AFTER MOUNT (Slice Teams iOS Deep-Link Resume).
+
+    THE MEASURED FAILURE: on Teams iOS a deep-link tap RESUMES the personal tab rather than
+    remounting it, so the target reached a `useState` initialiser that had already run and the
+    learner landed on ordinary Learn. This effect is the other half of the fix — `/teams` re-reads
+    the host context when the tab returns, and hands the result here as a new occurrence.
+
+    WHAT IT DOES NOT DO is as important as what it does. `shouldOpenTrainingRequest` refuses an
+    occurrence already handled, and refuses one naming the training ALREADY OPEN — otherwise
+    switching to another app mid-quiz and coming back would remount the room and destroy the
+    attempt. The same target after the room was CLOSED is not refused, which is how tapping the
+    same invitation a second time reopens it.
+
+    Opening also puts the shell in a coherent place: Learn, with every nested Learn view closed, so
+    the learner returns from the training to Learn's root rather than to a stale sub-surface.
+  */
+  useEffect(() => {
+    if (
+      !shouldOpenTrainingRequest({
+        request: trainingRequest,
+        handledKey: handledTrainingKeyRef.current,
+        openJoinToken: openTrainingTokenRef.current,
+      })
+    ) {
+      // Still record the occurrence, so a refused one is never reconsidered.
+      if (trainingRequest) handledTrainingKeyRef.current = trainingRequest.requestKey;
+      return;
+    }
+    const request = trainingRequest!;
+    handledTrainingKeyRef.current = request.requestKey;
+    openTrainingTokenRef.current = request.target.joinToken;
+    setTrainingTarget(request.target);
+    setTab("learn");
+    // Unrelated nested Learn surfaces are closed — the training is the whole screen.
+    setFoundryView("rooms");
+    setReviewId(null);
+    setFollowupId(null);
+    setHostEventDetailId(null);
+    setLearnAssignmentFocus(null);
+    setMyLearningFocus(null);
+  }, [trainingRequest]);
+
   const handleTabSelect = useCallback((key: AppTabKey) => {
     if (key === "me") {
       setMeView("home");
@@ -1730,8 +1802,15 @@ export default function BtyDailyAppShell({
           target={trainingTarget}
           locale={locale === "ko" ? "ko" : "en"}
           onExit={() => {
+            /*
+              The room closes locally FIRST and unconditionally — the learner is out either way.
+              Clearing the ref is what lets the SAME invitation reopen this training later.
+              `onTrainingExit` then asks the Teams host to drop the subpage; it fails soft.
+            */
+            openTrainingTokenRef.current = null;
             setTrainingTarget(null);
             setTab("learn");
+            onTrainingExit?.();
           }}
         />
       </div>
