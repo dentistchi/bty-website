@@ -8,8 +8,8 @@ create index if not exists clinical_reasoning_traces_user_case_current_active_id
   where status = 'active' and superseded_at is null;
 
 -- A learner may update only a current active row. Once superseded, raw history is immutable.
-drop policy if exists "clinical_reasoning_traces_update_own_active_learner" on public.clinical_reasoning_traces;
-create policy "clinical_reasoning_traces_update_own_active_learner"
-  on public.clinical_reasoning_traces for update to authenticated
+alter policy "clinical_reasoning_traces_update_own_active_learner"
+  on public.clinical_reasoning_traces
+  to authenticated
   using ((select auth.uid()) = user_id and trace_role = 'learner' and status = 'active' and superseded_at is null)
-  with check ((select auth.uid()) = user_id and trace_role = 'learner' and status = 'active');
+  with check ((select auth.uid()) = user_id and trace_role = 'learner' and status = 'active' and superseded_at is null);
