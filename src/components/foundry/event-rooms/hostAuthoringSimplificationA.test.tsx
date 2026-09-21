@@ -613,6 +613,8 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
       "20260915000000_bty_host_track_history_retention_v1.sql",
       "20260916000000_bty_action_capture_saved_removed_v1.sql",
       "20260917000000_bty_foundry_event_history_dismissal_v1.sql",
+      // Quick Training Authoring V1 — registered here deliberately, which is the signal this list exists for.
+      "20260924000000_quick_training_quiz_authoring_v1.sql",
     ];
     const newer = [...known]
       .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")

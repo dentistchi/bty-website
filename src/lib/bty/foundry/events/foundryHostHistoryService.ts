@@ -70,18 +70,23 @@ export type HostHistoryParticipant = {
   status: ManagerRosterStatus;
 };
 
+/*
+  `completionPrompt` is NULL exactly when the training was completed by its attached quiz. A Host
+  reading history then sees that no completion question was asked — which is the truth about that
+  training — rather than a sentence nobody wrote.
+*/
 export type HostHistoryMaterial =
-  | { kind: "youtube"; title: string | null; videoId: string; completionPrompt: string }
+  | { kind: "youtube"; title: string | null; videoId: string; completionPrompt: string | null }
   | {
       kind: "document";
       fileName: string | null;
       pageCount: number;
       sourceType: string;
-      completionPrompt: string;
+      completionPrompt: string | null;
     }
   /** R4-R2G — the Host's own text, read from the immutable module snapshot (no content table). */
-  | { kind: "written_guidance"; guidance: string; completionPrompt: string }
-  | { kind: "live_discussion"; discussion: string; completionPrompt: string }
+  | { kind: "written_guidance"; guidance: string; completionPrompt: string | null }
+  | { kind: "live_discussion"; discussion: string; completionPrompt: string | null }
   /** The stored discriminator is not one this build knows. Never rendered as another type. */
   | { kind: "unknown" }
   | { kind: "none" };
@@ -284,7 +289,7 @@ async function loadMaterial(
         file_name: string | null;
         page_count: number;
         source_type: string;
-        completion_prompt: string;
+        completion_prompt: string | null;
       }>();
     if (!data) return { kind: "none" };
     return {
@@ -303,7 +308,7 @@ async function loadMaterial(
     .maybeSingle<{
       youtube_video_id: string;
       youtube_title: string | null;
-      completion_prompt: string;
+      completion_prompt: string | null;
     }>();
   if (!data) return { kind: "none" };
   return {

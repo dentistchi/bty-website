@@ -1,14 +1,70 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { learnerQuizPayload, scoreQuiz, type LearnerAnswer, type Quiz } from "@/domain/foundry/events/quickTrainingQuiz";
+import {
+  isQuizSourceKind,
+  learnerQuizPayload,
+  scoreQuiz,
+  validateQuiz,
+  type LearnerAnswer,
+  type Quiz,
+  type QuizSourceKind,
+} from "@/domain/foundry/events/quickTrainingQuiz";
 import { finalizeCanonicalTrainingCompletion, resolvePublic } from "./foundryTrainingService";
 
 type Progress = { id: string; video_completed_at: string | null; document_read_completed_at: string | null; written_guidance_read_at: string | null; completed_at: string | null; quiz_attempt_id: string | null };
 type Attempt = { id: string; answers: LearnerAnswer[]; correct_count: number; total_count: number; submitted_at: string };
-export async function attachReviewedQuiz(admin: SupabaseClient, eventId: string, ownerUserId: string, rawQuiz: unknown, sourceKind: "csv" | "generated" | "manual" = "manual") {
+/**
+ * Is this payload a quiz the server will accept? Pure structural read, used by the create route
+ * BEFORE anything is written, so "a quiz is attached" and "the completion question is not asked"
+ * are decided from the same fact.
+ */
+export function readReviewedQuiz(rawQuiz: unknown): Quiz | null {
+  if (!rawQuiz || typeof rawQuiz !== "object") return null;
   const quiz = rawQuiz as Quiz;
-  const { validateQuiz } = await import("@/domain/foundry/events/quickTrainingQuiz");
-  if (validateQuiz(quiz)) return { ok: false as const, reason: "quiz_invalid" };
-  const { error } = await admin.from("foundry_event_quizzes").insert({ event_id: eventId, source_kind: sourceKind, quiz_snapshot: quiz, question_count: quiz.questions.length, created_by_user_id: ownerUserId });
+  if (!Array.isArray(quiz.questions)) return null;
+  if (quiz.schemaVersion !== 1) return null;
+  for (const q of quiz.questions) {
+    if (!q || typeof q !== "object") return null;
+    if (typeof q.id !== "string" || typeof q.text !== "string") return null;
+    if (typeof q.correctChoiceId !== "string" || typeof q.position !== "number") return null;
+    if (!Array.isArray(q.choices)) return null;
+    for (const c of q.choices) {
+      if (!c || typeof c !== "object" || typeof c.id !== "string" || typeof c.label !== "string") return null;
+    }
+    if (q.explanation !== undefined && typeof q.explanation !== "string") return null;
+  }
+  return validateQuiz(quiz) ? null : quiz;
+}
+
+/**
+ * HOW THE QUIZ SAYS IT CAME TO EXIST. The client names the authoring method; an unrecognised or
+ * missing value is NOT silently coerced to `manual`, because `manual` is a claim that a person
+ * wrote these questions and a quiz an AI drafted must never carry it. A bad value is refused.
+ */
+export function readQuizSourceKind(raw: unknown): QuizSourceKind | null {
+  return isQuizSourceKind(raw) ? raw : null;
+}
+
+/**
+ * Persist the quiz a manager reviewed. Nothing an AI produced and nothing a CSV contained
+ * reaches this function without passing through the manager's editor first — this is the ONLY
+ * writer of `foundry_event_quizzes`, and it re-validates rather than trusting the client.
+ */
+export async function attachReviewedQuiz(
+  admin: SupabaseClient,
+  eventId: string,
+  ownerUserId: string,
+  rawQuiz: unknown,
+  sourceKind: QuizSourceKind,
+) {
+  const quiz = readReviewedQuiz(rawQuiz);
+  if (!quiz) return { ok: false as const, reason: "quiz_invalid" };
+  const { error } = await admin.from("foundry_event_quizzes").insert({
+    event_id: eventId,
+    source_kind: sourceKind,
+    quiz_snapshot: quiz,
+    question_count: quiz.questions.length,
+    created_by_user_id: ownerUserId,
+  });
   return error ? { ok: false as const, reason: "quiz_insert_failed" } : { ok: true as const };
 }
 export const quizStudyComplete = (p: Omit<Progress, "id" | "completed_at" | "quiz_attempt_id">) => Boolean(p.video_completed_at || p.document_read_completed_at || p.written_guidance_read_at);

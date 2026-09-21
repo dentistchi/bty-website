@@ -11,6 +11,7 @@ import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
+import { LearnerQuizPanel, useLearnerQuiz } from "./LearnerQuizPanel";
 
 /**
  * Foundry PDF Study Room — participant experience.
@@ -628,6 +629,12 @@ export default function FoundryDocumentClient({
 
   const stage = snapshot?.stage;
   const showReader = stage === "read" || stage === "response";
+  /*
+    R4 Quick Training Quiz — a PDF training may be completed by a quiz instead of a written
+    answer. Asked only once the learner has reached the completion step; `null` while resolving,
+    so neither surface is shown before the server has said which one applies.
+  */
+  const quiz = useLearnerQuiz(token, stage === "response");
 
   // Fetch a signed url once we're a participant who needs the document.
   useEffect(() => {
@@ -1230,7 +1237,13 @@ export default function FoundryDocumentClient({
         )}
       </div>
 
-      {readingComplete && (
+      {readingComplete && quiz ? (
+        <div className="mt-6" ref={reflectionRef}>
+          <LearnerQuizPanel token={token} quiz={quiz} locale={locale} onSubmitted={() => void load()} />
+        </div>
+      ) : null}
+
+      {readingComplete && !quiz && (
         <div className="mt-6" ref={reflectionRef}>
           {/* The completion check — what the learner will SAY. Never the REFLECT question,
               which is answered above beside the section that asks it (Slice 3.2R-R8B). */}

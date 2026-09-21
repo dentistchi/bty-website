@@ -10,6 +10,7 @@ import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
+import { LearnerQuizPanel, useLearnerQuiz } from "./LearnerQuizPanel";
 
 /**
  * Foundry GUIDANCE room — participant experience for written guidance and live discussion
@@ -406,6 +407,12 @@ export default function FoundryGuidanceClient({
       : null,
   );
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  /*
+    R4 Quick Training Quiz — a TEXT Quick Training may be completed by a quiz instead of the
+    written completion check. Declared here, before the loading early-return below, because a
+    hook cannot be called conditionally.
+  */
+  const quiz = useLearnerQuiz(token, snapshot?.stage === "response");
   const [loaded, setLoaded] = useState(false);
   /*
     R4-R5C9A — the server's Apply outcome, captured from the completion/claim response and held
@@ -1048,7 +1055,17 @@ export default function FoundryGuidanceClient({
         )}
       </div>
 
-      {declared && (
+      {/*
+        THE QUIZ REPLACES THE COMPLETION CHECK for a quiz-backed training — it is never shown
+        beside it, and `completeGuidanceTraining` refuses the written path for these rooms.
+      */}
+      {declared && quiz ? (
+        <div className="mt-8">
+          <LearnerQuizPanel token={token} quiz={quiz} locale={locale} onSubmitted={() => void load()} />
+        </div>
+      ) : null}
+
+      {declared && !quiz && (
         <div className="mt-8">
           <Eyebrow>{t.beforeYouFinish}</Eyebrow>
           {guidance.completion_prompt && (

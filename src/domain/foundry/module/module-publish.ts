@@ -290,10 +290,31 @@ export type PublishedGuidanceV1 = {
   contentType: GuidanceContentType;
   /** The Host's guidance text, or the discussion topic/instruction. Never empty. */
   materialText: string;
-  /** The completion check the learner is asked. Never empty. */
-  completionPrompt: string;
+  /**
+   * The completion check the learner is asked — non-empty when `completionEvidence` is
+   * `"response"`, and NULL exactly when it is `"quiz"`.
+   *
+   * WHY THIS BECAME NULLABLE. A quiz-backed Quick Training has no completion question: the
+   * learner's immutable quiz attempt IS the completion evidence. The only two ways to keep this
+   * field non-null were to invent a prompt no Host wrote, or to ask the learner to answer a
+   * question and take a quiz for the same completion. Neither is truthful, so the field became
+   * nullable and the reason it is null became explicit in the field beside it.
+   */
+  completionPrompt: string | null;
   /** The Shared Understanding question, or null when this training asks none. */
   sharedQuestion: string | null;
+  /**
+   * WHAT COMPLETING THIS TRAINING MEANS. `"response"` is every guidance event that has ever
+   * existed — the learner answers the completion question. `"quiz"` is a quiz-backed Quick
+   * Training, where the attached quiz's scored attempt is the evidence instead.
+   *
+   * ABSENT IS NOT UNKNOWN HERE, and that is a deliberate exception to the usual fail-closed
+   * reading: every stored snapshot predating this field was written by a path that ALWAYS
+   * required a non-empty prompt, so absence is a fact about those rows, not a gap. `readPublishedGuidance`
+   * therefore reads an absent field as `"response"` and still demands the prompt those rows
+   * carry — an unrecognised VALUE, by contrast, is refused.
+   */
+  completionEvidence: "response" | "quiz";
 };
 
 /** The snapshot key this contract is stored under. One namespaced key, like the Journey. */
@@ -308,19 +329,32 @@ export const PUBLISHED_GUIDANCE_KEY = "publishedGuidanceV1" as const;
 export function buildPublishedGuidance(input: {
   contentType: GuidanceContentType;
   materialText: string;
-  completionPrompt: string;
+  completionPrompt: string | null;
   sharedQuestion: string | null;
+  /** Omitted ⇒ `"response"`, so every existing caller keeps its exact behaviour. */
+  completionEvidence?: "response" | "quiz";
 }): PublishedGuidanceV1 | null {
   const materialText = (input.materialText ?? "").trim();
   const completionPrompt = (input.completionPrompt ?? "").trim();
-  if (!materialText || !completionPrompt) return null;
+  if (!materialText) return null;
+  const completionEvidence = input.completionEvidence ?? "response";
+  /*
+    REFUSE, DO NOT REPAIR. A response-backed training with no prompt has no completion check a
+    learner could ever answer; a quiz-backed one carrying a prompt would show a question the
+    quiz has already replaced. Both are the caller passing something incoherent, and both return
+    null so the caller refuses the publish rather than creating an event nobody can finish
+    honestly.
+  */
+  if (completionEvidence === "response" && !completionPrompt) return null;
+  if (completionEvidence === "quiz" && completionPrompt) return null;
   const sharedQuestion = (input.sharedQuestion ?? "").trim();
   return {
     version: 1,
     contentType: input.contentType,
     materialText,
-    completionPrompt,
+    completionPrompt: completionEvidence === "quiz" ? null : completionPrompt,
     sharedQuestion: sharedQuestion.length > 0 ? sharedQuestion : null,
+    completionEvidence,
   };
 }
 
@@ -337,16 +371,26 @@ export function readPublishedGuidance(snapshot: unknown): PublishedGuidanceV1 | 
   const g = raw as Record<string, unknown>;
   if (g.version !== 1) return null;
   if (g.contentType !== "written_guidance" && g.contentType !== "live_discussion") return null;
+  /*
+    ABSENT ⇒ "response" (see the field's own note). An UNRECOGNISED value is a snapshot this
+    build does not understand and is refused, which is the ordinary fail-closed rule.
+  */
+  const rawEvidence = g.completionEvidence;
+  if (rawEvidence !== undefined && rawEvidence !== "response" && rawEvidence !== "quiz") return null;
+  const completionEvidence: "response" | "quiz" = rawEvidence === "quiz" ? "quiz" : "response";
   const materialText = typeof g.materialText === "string" ? g.materialText.trim() : "";
   const completionPrompt = typeof g.completionPrompt === "string" ? g.completionPrompt.trim() : "";
-  if (!materialText || !completionPrompt) return null;
+  if (!materialText) return null;
+  if (completionEvidence === "response" && !completionPrompt) return null;
+  if (completionEvidence === "quiz" && completionPrompt) return null;
   const sharedQuestion = typeof g.sharedQuestion === "string" ? g.sharedQuestion.trim() : "";
   return {
     version: 1,
     contentType: g.contentType,
     materialText,
-    completionPrompt,
+    completionPrompt: completionEvidence === "quiz" ? null : completionPrompt,
     sharedQuestion: sharedQuestion.length > 0 ? sharedQuestion : null,
+    completionEvidence,
   };
 }
 

@@ -199,7 +199,8 @@ export type ManagerGuidanceSnapshot = {
     join_token: string;
     created_at: string;
     closed_at: string | null;
-    guidance: { material_text: string; completion_prompt: string } | null;
+    /** `completion_prompt` is null exactly when this training is completed by its quiz. */
+    guidance: { material_text: string; completion_prompt: string | null } | null;
   };
   participants: ManagerGuidanceParticipant[];
   joined_count: number;
@@ -589,6 +590,14 @@ export async function completeGuidanceTraining(
 
   const content = await readGuidanceContent(admin, r.event.id);
   if (!content) return { ok: false, reason: "guidance_unavailable" };
+
+  /*
+    A QUIZ-BACKED TRAINING IS NOT COMPLETED HERE. Its completion check is the quiz, and its
+    evidence is the immutable attempt written by `submitPublicQuiz`. This path would write a
+    `response_text` to a question that was never asked, so it refuses and names the reason.
+    Defense in depth: the learner client already routes these rooms to the quiz.
+  */
+  if (content.completionEvidence === "quiz") return { ok: false, reason: "quiz_required" };
 
   const response = validateResponse(rawResponse);
   if (!response.ok) return { ok: false, reason: response.reason };

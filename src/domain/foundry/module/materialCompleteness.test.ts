@@ -213,6 +213,8 @@ describe("R4-R2G · the frozen guidance contract (F5, F10, F15)", () => {
       materialText: "Ask before you assume.",
       completionPrompt: "What will you ask?",
       sharedQuestion: null,
+      // Quick Training Authoring V1 — the default, and what every pre-existing caller freezes.
+      completionEvidence: "response",
     });
   });
 

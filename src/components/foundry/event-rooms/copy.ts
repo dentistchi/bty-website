@@ -48,6 +48,67 @@ export type EventRoomsCopy = {
   pdfReadError: string;
   uploadFailedError: string;
   reading: string; // "Reading the PDF…" progress hint while uploading
+  /*
+    QUICK TRAINING MATERIAL — the third option (Slice Quick Training Authoring V1). Text is not a
+    new kind of learning: it is the existing written-guidance runtime, reached from this form.
+  */
+  activityText: string;
+  textLabel: string;
+  textPlaceholder: string;
+  textError: string;
+  textTooLongError: string;
+  textPromptLabel: string;
+  textPromptPlaceholder: string;
+  /*
+    QUIZ OPTIONALITY. The two states are named, both are visible, and each says what it does to
+    the completion check — because choosing a quiz REMOVES the completion question rather than
+    adding something beside it.
+  */
+  quizSectionLabel: string;
+  quizNone: string;
+  quizAdd: string;
+  quizNoneNote: string;
+  quizAddNote: string;
+  // The three authoring methods. All three land in the one editor below them.
+  quizMethodLabel: string;
+  quizMethodManual: string;
+  quizMethodCsv: string;
+  quizMethodGenerate: string;
+  quizCsvLabel: string;
+  quizCsvHint: string;
+  quizCsvError: string;
+  quizCsvLoaded: (n: number) => string;
+  /** The AI box is SOURCE MATERIAL — what the employee should study — never a quiz question. */
+  quizSourceLabel: string;
+  quizSourceNote: string;
+  quizSourcePlaceholder: string;
+  quizCount: (n: number) => string;
+  quizGenerate: string;
+  quizGenerating: string;
+  quizGenShortError: (required: number) => string;
+  quizGenUngroundedError: string;
+  quizGenProviderError: string;
+  quizGenTimeoutError: string;
+  quizGenOutputError: string;
+  // The one shared editor.
+  quizEditorHeading: string;
+  quizEditorLead: string;
+  quizEditorCount: (n: number, max: number) => string;
+  quizQuestionLabel: (n: number) => string;
+  quizQuestionPlaceholder: string;
+  quizChoicePlaceholder: (n: number) => string;
+  quizCorrectLabel: string;
+  quizAddChoice: string;
+  quizRemoveChoice: string;
+  quizAddQuestion: string;
+  quizRemoveQuestion: string;
+  quizExplanationLabel: string;
+  quizExplanationPlaceholder: string;
+  quizQuestionTextError: string;
+  quizChoiceLabelError: string;
+  quizDuplicateChoiceError: string;
+  quizCorrectChoiceError: string;
+  quizIncompleteError: string;
   // roster status labels
   status_joined: string;
   status_watching: string;
@@ -209,6 +270,56 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     pdfReadError: "Couldn’t read this PDF. Try another file.",
     uploadFailedError: "Couldn’t upload the PDF. Please upload it once more.",
     reading: "Preparing the document…",
+    activityText: "Read a short text",
+    textLabel: "What should participants read?",
+    textPlaceholder: "Paste or write the guidance participants should read.",
+    textError: "Please enter the text participants will read.",
+    textTooLongError: "This text is too long. Please shorten it to 2,000 characters or fewer.",
+    textPromptLabel: "What should participants reflect on after reading?",
+    textPromptPlaceholder: "e.g. What is one thing from this you will apply this week?",
+    quizSectionLabel: "Quiz",
+    quizNone: "No quiz",
+    quizAdd: "Add quiz",
+    quizNoneNote: "Participants answer your completion question to finish.",
+    quizAddNote: "Submitting the quiz completes the training, so no completion question is asked.",
+    quizMethodLabel: "How do you want to create the questions?",
+    quizMethodManual: "Write them myself",
+    quizMethodCsv: "Upload a CSV",
+    quizMethodGenerate: "Generate from study content",
+    quizCsvLabel: "Choose a CSV file",
+    quizCsvHint: "Columns: question, option_a, option_b, option_c, option_d, correct_option, explanation",
+    quizCsvError: "Couldn’t read this CSV. Check the columns, then choose the file once more.",
+    quizCsvLoaded: (n) => `Loaded ${n} question${n === 1 ? "" : "s"} for review.`,
+    quizSourceLabel: "Paste what your team should study",
+    quizSourceNote: "The questions are written only from this content.",
+    quizSourcePlaceholder: "Paste the policy, guide or notes participants should learn from.",
+    quizCount: (n) => `${n} questions`,
+    quizGenerate: "Create questions",
+    quizGenerating: "Writing questions…",
+    quizGenShortError: (required) =>
+      `There isn’t enough content to write these questions from. Please paste at least ${required} characters.`,
+    quizGenUngroundedError: "The questions weren’t traceable to your content. Add more detail, then create them once more.",
+    quizGenProviderError: "Questions couldn’t be created right now. You can upload a CSV or write them yourself.",
+    quizGenTimeoutError: "That took too long. Use a shorter piece of content and create the questions once more.",
+    quizGenOutputError: "The questions came back unusable. Please create them once more.",
+    quizEditorHeading: "Review the quiz",
+    quizEditorLead: "Edit anything here before you create the training. Nothing is saved until then.",
+    quizEditorCount: (n, max) => `${n} of ${max} questions`,
+    quizQuestionLabel: (n) => `Question ${n}`,
+    quizQuestionPlaceholder: "What do you want to check?",
+    quizChoicePlaceholder: (n) => `Answer ${n}`,
+    quizCorrectLabel: "Correct answer",
+    quizAddChoice: "Add answer",
+    quizRemoveChoice: "Remove",
+    quizAddQuestion: "Add question",
+    quizRemoveQuestion: "Remove question",
+    quizExplanationLabel: "Explanation (optional)",
+    quizExplanationPlaceholder: "Shown after the participant submits.",
+    quizQuestionTextError: "Please write the question.",
+    quizChoiceLabelError: "Please fill in every answer.",
+    quizDuplicateChoiceError: "Two answers are the same.",
+    quizCorrectChoiceError: "Please mark the correct answer.",
+    quizIncompleteError: "Please finish the quiz before creating the training.",
     status_joined: "Joined",
     status_watching: "Watching",
     status_reading: "Reading",
@@ -341,6 +452,55 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     pdfReadError: "이 PDF를 읽을 수 없습니다. 다른 파일을 시도해 주세요.",
     uploadFailedError: "PDF를 업로드하지 못했습니다. 다시 시도해 주세요.",
     reading: "문서를 준비하는 중…",
+    activityText: "짧은 글 읽기",
+    textLabel: "참가자가 읽을 내용은 무엇인가요?",
+    textPlaceholder: "참가자가 읽을 내용을 붙여 넣거나 작성하세요.",
+    textError: "참가자가 읽을 내용을 입력해 주세요.",
+    textTooLongError: "내용이 너무 깁니다. 2,000자 이내로 줄여 주세요.",
+    textPromptLabel: "읽은 후 참가자가 성찰할 질문은 무엇인가요?",
+    textPromptPlaceholder: "예: 이 중에서 이번 주에 적용해볼 한 가지는 무엇인가요?",
+    quizSectionLabel: "퀴즈",
+    quizNone: "퀴즈 없음",
+    quizAdd: "퀴즈 추가",
+    quizNoneNote: "참가자는 완료 질문에 답하면 훈련이 끝납니다.",
+    quizAddNote: "퀴즈를 제출하면 훈련이 완료되므로 완료 질문은 묻지 않습니다.",
+    quizMethodLabel: "문제를 어떻게 만들까요?",
+    quizMethodManual: "직접 작성",
+    quizMethodCsv: "CSV 파일 올리기",
+    quizMethodGenerate: "학습 내용으로 만들기",
+    quizCsvLabel: "CSV 파일 선택",
+    quizCsvHint: "열: question, option_a, option_b, option_c, option_d, correct_option, explanation",
+    quizCsvError: "이 CSV를 읽을 수 없습니다. 열 구성을 확인해 주세요.",
+    quizCsvLoaded: (n) => `${n}문제를 불러왔습니다. 검토해 주세요.`,
+    quizSourceLabel: "직원이 공부할 내용을 붙여 넣으세요",
+    quizSourceNote: "이 내용만 사용해서 퀴즈를 만듭니다.",
+    quizSourcePlaceholder: "참가자가 배워야 할 규정, 안내문, 메모를 붙여 넣으세요.",
+    quizCount: (n) => `${n}문제`,
+    quizGenerate: "문제 만들기",
+    quizGenerating: "문제를 만드는 중…",
+    quizGenShortError: (required) => `이 문제 수를 만들기에는 내용이 부족합니다. ${required}자 이상 붙여 넣어 주세요.`,
+    quizGenUngroundedError: "붙여 넣은 내용에서 근거를 찾을 수 없었습니다. 내용을 보강한 뒤 다시 시도해 주세요.",
+    quizGenProviderError: "지금은 문제를 만들 수 없습니다. CSV를 올리거나 직접 작성할 수 있습니다.",
+    quizGenTimeoutError: "시간이 너무 오래 걸렸습니다. 내용을 줄여 다시 시도해 주세요.",
+    quizGenOutputError: "만들어진 문제를 사용할 수 없습니다. 다시 시도해 주세요.",
+    quizEditorHeading: "퀴즈 검토",
+    quizEditorLead: "훈련을 만들기 전에 여기서 모두 수정할 수 있습니다. 그전까지는 저장되지 않습니다.",
+    quizEditorCount: (n, max) => `${max}문제 중 ${n}문제`,
+    quizQuestionLabel: (n) => `${n}번 문제`,
+    quizQuestionPlaceholder: "무엇을 확인하고 싶나요?",
+    quizChoicePlaceholder: (n) => `보기 ${n}`,
+    quizCorrectLabel: "정답",
+    quizAddChoice: "보기 추가",
+    quizRemoveChoice: "삭제",
+    quizAddQuestion: "문제 추가",
+    quizRemoveQuestion: "문제 삭제",
+    quizExplanationLabel: "해설 (선택)",
+    quizExplanationPlaceholder: "참가자가 제출한 뒤에 보여집니다.",
+    quizQuestionTextError: "문제를 입력해 주세요.",
+    quizChoiceLabelError: "모든 보기를 채워 주세요.",
+    quizDuplicateChoiceError: "같은 보기가 두 개 있습니다.",
+    quizCorrectChoiceError: "정답을 표시해 주세요.",
+    quizIncompleteError: "훈련을 만들기 전에 퀴즈를 완성해 주세요.",
     status_joined: "입장",
     status_watching: "시청 중",
     status_reading: "읽는 중",

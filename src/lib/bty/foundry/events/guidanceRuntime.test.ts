@@ -563,3 +563,70 @@ describe("R4-R5B1 · assignment completion truth — guidance / discussion", () 
     faulting RPC in the video and document service suites.
   */
 });
+
+/*
+  QUICK TRAINING AUTHORING V1 — a quiz-backed guidance training is completed by its QUIZ.
+
+  The written-response path would store a `response_text` answering a completion question this
+  training never asks, which is the fabrication the whole slice exists to prevent. It refuses
+  instead, and says why.
+*/
+describe("Quick Training Authoring V1 · a quiz-backed guidance room refuses the written path", () => {
+  function quizBackedRoom(): Tables {
+    return {
+      foundry_event_module: [
+        {
+          event_id: "ev-1",
+          module_snapshot: {
+            publishedGuidanceV1: {
+              version: 1,
+              contentType: "written_guidance",
+              materialText: "The material.",
+              completionPrompt: null,
+              sharedQuestion: null,
+              completionEvidence: "quiz",
+            },
+          },
+        },
+      ],
+      foundry_event_training_progress: [
+        {
+          id: "pr-1",
+          event_id: "ev-1",
+          participant_id: "pt-1",
+          completed_at: null,
+          written_guidance_read_at: "2026-01-01T00:00:00.000Z",
+          discussion_self_reported_at: null,
+          xp_awarded_at: null,
+        },
+      ],
+    };
+  }
+
+  it("answers quiz_required, writes nothing, and awards nothing", async () => {
+    const tables = quizBackedRoom();
+    const admin = makeFakeAdmin(tables);
+
+    const r = await completeGuidanceTraining(admin, "tok", "sess", "written_guidance", "I will ask.", "user-1");
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("quiz_required");
+    expect(tables.foundry_event_training_progress[0].completed_at ?? null).toBeNull();
+    expect(tables.foundry_event_training_progress[0].response_text ?? null).toBeNull();
+    expect(awardTrainingCoreXp).not.toHaveBeenCalled();
+  });
+
+  it("a response-backed room in the SAME shape still completes exactly as before", async () => {
+    const tables = quizBackedRoom();
+    const guidance = (tables.foundry_event_module[0].module_snapshot as Row).publishedGuidanceV1 as Row;
+    guidance.completionEvidence = "response";
+    guidance.completionPrompt = "What will you do?";
+    const admin = makeFakeAdmin(tables);
+
+    const r = await completeGuidanceTraining(admin, "tok", "sess", "written_guidance", "I will ask.", "user-1");
+
+    expect(r.ok).toBe(true);
+    expect(tables.foundry_event_training_progress[0].response_text).toBe("I will ask.");
+  });
+});
