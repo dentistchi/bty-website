@@ -30,3 +30,13 @@ A completion question supplied alongside a quiz is refused (`completion_prompt_n
 **Atomicity.** The event and its material are created first, then the quiz. A failed quiz insert compensates by deleting the event, so a training meant to be completed by a quiz never goes live without one.
 
 **Storage.** Migration `20260924000000_quick_training_quiz_authoring_v1.sql` makes `completion_prompt` nullable on both content tables (keeping the 1–300 bound for every present value) and `foundry_event_module.source_draft_id` nullable. NULL means "the completion check is the quiz"; the service layer is what guarantees that, because the database cannot read the quiz table from a constraint on the content table.
+
+## Next product direction (NOT built in this mission)
+
+**Quiz follow-up / review conversation.** A manager looking at a factual score — `4 / 5 · 80%` — taps it and is offered **"Review 1 missed question"**. The learner then receives a Teams-native review invitation, and BTY asks conversationally: *"Want to review one question?"* — a short 2–3 turn reinforcement around ONE missed concept.
+
+What it is not, and must not become: an automatic punishment, a pass/fail verdict, a scheduled reminder, or a manager ranking. The learner is invited, not summoned.
+
+This is deliberately distinct from the existing 7/30-day follow-up, which exists for **behavioral application** — whether the person did the thing — and not for ordinary knowledge-quiz remediation. The two must not be collapsed: one asks "did you act", the other offers "shall we look at that one idea again".
+
+Not implemented. Recorded here so the next slice starts from the product shape rather than re-deriving it.

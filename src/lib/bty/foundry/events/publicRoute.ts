@@ -20,11 +20,36 @@ export function jsonNoStore(body: unknown, status = 200): NextResponse {
   return res;
 }
 
-/** Read the per-event participant session cookie for a given join token, if valid. */
+/**
+ * The header a framed client presents its participant session in, when a cookie cannot travel.
+ *
+ * TEAMS-NATIVE DELIVERY V1. `/teams` is a third-party browsing context: Teams iOS blocks
+ * third-party cookies and storage partitioning makes anything durable unreliable there, which is
+ * why the tab's Supabase session is already memory-only. The participant session has exactly the
+ * same problem, so the Teams learner presents it explicitly instead.
+ *
+ * This is NOT a second identity. It is the same opaque capability the cookie carries, over the
+ * same same-origin request, and it is resolved the same way: hashed, then looked up SCOPED BY THE
+ * EVENT the join token names (`findParticipantBySession` filters on `event_id`). A session minted
+ * for event A therefore resolves nothing when presented with event B's token.
+ */
+export { PARTICIPANT_SESSION_HEADER } from "./publicRoute.shared";
+import { PARTICIPANT_SESSION_HEADER } from "./publicRoute.shared";
+
+/**
+ * Read the participant session for a given join token, if valid.
+ *
+ * COOKIE FIRST and unchanged — every existing web and native caller behaves exactly as before.
+ * The header is consulted ONLY when no cookie is present, so a framed client can be recognised
+ * without changing what an unframed one does.
+ */
 export function readParticipantSession(req: NextRequest, token: string): string | null {
   const verified = verifyFoundryRoomToken(token);
   if (!verified.ok) return null;
-  return req.cookies.get(participantCookieName(verified.payload.eventId))?.value ?? null;
+  const cookie = req.cookies.get(participantCookieName(verified.payload.eventId))?.value;
+  if (cookie) return cookie;
+  const header = req.headers.get(PARTICIPANT_SESSION_HEADER);
+  return header && header.trim().length > 0 ? header.trim() : null;
 }
 
 /** Set/refresh the per-event HttpOnly participant session cookie (raw token; hash-only in DB). */
@@ -68,6 +93,12 @@ export const PUBLIC_REASON_STATUS: Record<string, number> = {
     declaration this content type completes through.
   */
   guidance_not_declared: 409,
+  /* Teams-native room open (Slice Teams-Native Delivery V1). */
+  unauthenticated: 401,
+  target_invalid: 400,
+  participant_write_failed: 500,
+  participant_unresolved: 500,
+  unsupported_room: 409,
   guidance_unavailable: 404,
   study_required: 409,
   quiz_missing: 404,
