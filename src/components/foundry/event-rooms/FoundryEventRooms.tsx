@@ -168,10 +168,10 @@ export default function FoundryEventRooms({
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
-  // Host-capability access, resolved from the events list response. A non-host
-  // sees a quiet employee-pointer state; an auth/network error is NOT shown as
-  // "non-host" (it stays a neutral loading hold so we never misrepresent it).
-  const [access, setAccess] = useState<"loading" | "host" | "non_host">("loading");
+  // Author capability, resolved from the events list response. A non-author
+  // sees a quiet learner state; an auth/network error is NOT shown as denial
+  // (it stays a neutral loading hold so we never misrepresent it).
+  const [access, setAccess] = useState<"loading" | "author" | "non_author">("loading");
 
   const loadList = useCallback(async () => {
     try {
@@ -182,13 +182,13 @@ export default function FoundryEventRooms({
       if (res.ok) {
         const data = (await res.json()) as { events?: ManagerEventSummary[] };
         setEvents(Array.isArray(data.events) ? data.events : []);
-        setAccess("host");
+        setAccess("author");
         return;
       }
       if (res.status === 403) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        if (body?.error === "foundry_host_required") {
-          setAccess("non_host");
+        if (body?.error === "foundry_author_required") {
+          setAccess("non_author");
           return;
         }
       }
@@ -372,7 +372,7 @@ export default function FoundryEventRooms({
   */
   const openLearning = onOpenMyLearning;
   const learnDoors = (
-    <LearnDoors locale={loc} canCreate={access === "host"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
+    <LearnDoors locale={loc} canCreate={access === "author"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
   );
   const requiredLearning = (
     <div id="learn-required">
@@ -441,12 +441,12 @@ export default function FoundryEventRooms({
     );
   }
 
-  // home — non-host quiet state (no Create CTA, no permission-request CTA, no
+  // home — non-author quiet state (no Create CTA, no permission-request CTA, no
   // "coming soon"; employees join via the public QR route). An unresolved auth/
-  // network error stays a neutral hold, never mislabeled as non-host.
-  if (access === "non_host") {
-    // A non-host learner's Foundry home: their required-learning surface leads, with
-    // the quiet host-pointer copy retained beneath it (calmer, no longer full-height).
+  // network error stays a neutral hold, never mislabeled as non-author.
+  if (access === "non_author") {
+    // A non-author learner's Foundry home: their required-learning surface leads, with
+    // the quiet author-pointer copy retained beneath it (calmer, no longer full-height).
     return (
       // B3A.2C: a non-host learner's Learn surface is just the two-door entry + their
       // required learning. The "FOUNDRY / Training rooms are opened by authorized

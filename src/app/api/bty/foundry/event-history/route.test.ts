@@ -56,7 +56,7 @@ describe("GET /api/bty/foundry/event-history", () => {
     const res = await GET(req());
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toBe("foundry_host_required");
+    expect(json.error).toBe("foundry_author_required");
     expect(json.events).toBeUndefined();
     expect(listHostHistory).not.toHaveBeenCalled();
   });

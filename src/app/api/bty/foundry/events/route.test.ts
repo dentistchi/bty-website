@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * are mocked so we exercise only the route + gate + attachJoinUrl.
  */
 const currentUser = vi.fn<() => { id: string } | null>();
-const hostActive = vi.fn<() => boolean>();
+const authorActive = vi.fn<() => boolean>();
 const createTrainingEvent = vi.fn();
 const listOwnerEvents = vi.fn();
 
@@ -18,8 +18,9 @@ vi.mock("@/lib/supabase/route-client", () => ({
   copyCookiesAndDebug: () => {},
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
-vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
-  isActiveFoundryHost: async () => hostActive(),
+vi.mock("@/lib/bty/authority/foundryAuthor.server", () => ({
+  FOUNDRY_AUTHOR_ERROR: "foundry_author_required",
+  hasFoundryAuthorCapability: async () => authorActive(),
 }));
 vi.mock("@/lib/bty/foundry/events/foundryTrainingService", () => ({
   createTrainingEvent: (...args: unknown[]) => createTrainingEvent(...args),
@@ -39,8 +40,8 @@ beforeEach(() => {
   currentUser.mockReset();
   createTrainingEvent.mockReset();
   listOwnerEvents.mockReset();
-  hostActive.mockReset();
-  hostActive.mockReturnValue(true); // default: an active Foundry Host (overridden per test)
+  authorActive.mockReset();
+  authorActive.mockReturnValue(true); // default: an eligible Foundry author (overridden per test)
 });
 
 function req(body?: unknown) {
@@ -116,36 +117,36 @@ describe("GET /api/bty/foundry/events", () => {
   });
 });
 
-describe("Foundry Host authorization gate", () => {
-  it("authenticated non-host create → 403 foundry_host_required (service untouched)", async () => {
+describe("Foundry author authorization gate", () => {
+  it("authenticated non-author create → 403 foundry_author_required (service untouched)", async () => {
     currentUser.mockReturnValue({ id: "user-x" });
-    hostActive.mockReturnValue(false);
+    authorActive.mockReturnValue(false);
     const res = await POST(req(VALID));
     expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe("foundry_host_required");
+    expect((await res.json()).error).toBe("foundry_author_required");
     expect(createTrainingEvent).not.toHaveBeenCalled();
   });
 
-  it("authenticated non-host list → 403 foundry_host_required (no event data)", async () => {
+  it("authenticated non-author list → 403 foundry_author_required (no event data)", async () => {
     currentUser.mockReturnValue({ id: "user-x" });
-    hostActive.mockReturnValue(false);
+    authorActive.mockReturnValue(false);
     const res = await GET(req());
     expect(res.status).toBe(403);
     const json = await res.json();
-    expect(json.error).toBe("foundry_host_required");
+    expect(json.error).toBe("foundry_author_required");
     expect(json.events).toBeUndefined();
     expect(listOwnerEvents).not.toHaveBeenCalled();
   });
 
-  it("revoked host (no active grant) is treated as non-host → 403", async () => {
+  it("non-author remains denied → 403", async () => {
     currentUser.mockReturnValue({ id: "was-host" });
-    hostActive.mockReturnValue(false); // revoked => isActiveFoundryHost() === false
+    authorActive.mockReturnValue(false);
     expect((await POST(req(VALID))).status).toBe(403);
   });
 
-  it("active host create → 201", async () => {
+  it("eligible author create → 201", async () => {
     currentUser.mockReturnValue({ id: "owner-1" });
-    hostActive.mockReturnValue(true);
+    authorActive.mockReturnValue(true);
     createTrainingEvent.mockResolvedValue({ ok: true, value: SNAPSHOT });
     expect((await POST(req(VALID))).status).toBe(201);
   });

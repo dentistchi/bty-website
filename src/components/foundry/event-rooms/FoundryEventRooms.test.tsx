@@ -19,7 +19,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("FoundryEventRooms — Host access states", () => {
+describe("FoundryEventRooms — author access states", () => {
   it("active host → event home (empty state shows the Create CTA)", async () => {
     mockFetch({ ok: true, status: 200, body: { events: [] } });
     render(<FoundryEventRooms locale="en" />);
@@ -27,8 +27,8 @@ describe("FoundryEventRooms — Host access states", () => {
     expect(screen.queryByText(/authorized hosts/i)).toBeNull();
   });
 
-  it("no host grant → learner surface only (My learning door, NO Create door, NO host-pointer copy)", async () => {
-    mockFetch({ ok: false, status: 403, body: { error: "foundry_host_required" } });
+  it("no author capability → learner surface only (My learning door, NO Create door, NO author-pointer copy)", async () => {
+    mockFetch({ ok: false, status: 403, body: { error: "foundry_author_required" } });
     render(<FoundryEventRooms locale="en" />);
     expect(await screen.findByTestId("door-my-learning")).toBeTruthy(); // one My learning entry
     expect(screen.queryByTestId("door-create-training")).toBeNull(); // no creator door
@@ -38,8 +38,8 @@ describe("FoundryEventRooms — Host access states", () => {
     expect(screen.queryByText(/Scan an invitation QR/i)).toBeNull();
   });
 
-  it("revoked host (403 foundry_host_required) → same learner-only surface, no host-pointer copy", async () => {
-    mockFetch({ ok: false, status: 403, body: { error: "foundry_host_required" } });
+  it("denied author request → same learner-only surface, no author-pointer copy", async () => {
+    mockFetch({ ok: false, status: 403, body: { error: "foundry_author_required" } });
     render(<FoundryEventRooms locale="en" />);
     await screen.findByTestId("door-my-learning");
     expect(screen.queryByText(/Scan an invitation QR/i)).toBeNull();

@@ -23,7 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/authz";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
+import { hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 import {
   resolveLeaderEligibility,
   resolveOwnOrganizationId,
@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 });
 
   // Foundry Host capability — authentication alone is not enough.
-  const isHost = await isActiveFoundryHost(admin, auth.user.id);
-  if (!isHost) {
-    return NextResponse.json({ error: "Forbidden: Foundry Host required" }, { status: 403 });
+  const isAuthor = await hasFoundryAuthorCapability(admin, auth.user.id);
+  if (!isAuthor) {
+    return NextResponse.json({ error: "Forbidden: Foundry author required" }, { status: 403 });
   }
 
   try {

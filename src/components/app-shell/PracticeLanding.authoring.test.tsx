@@ -108,7 +108,7 @@ describe("[R1] the Host has a way in from Practice situations", () => {
   });
 
   it("a learner reaching the same surface sees the list and no authoring control", async () => {
-    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ error: "foundry_host_required" }, false, 403) }));
+    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ error: "foundry_author_required" }, false, 403) }));
     render(<PracticeLanding {...base} />);
     openPracticeSituations();
     await waitFor(() => expect(screen.getByText("A finished situation")).toBeTruthy());

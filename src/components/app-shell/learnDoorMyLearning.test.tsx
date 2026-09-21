@@ -39,7 +39,7 @@ afterEach(() => {
 describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
   it("clicking the door calls the shell's My Learning authority", async () => {
     const onOpenMyLearning = vi.fn();
-    mockRooms({ error: "foundry_host_required" }, 403); // ordinary learner, no creator door
+    mockRooms({ error: "foundry_author_required" }, 403); // ordinary learner, no creator door
     render(<FoundryEventRooms locale="en" onOpenMyLearning={onOpenMyLearning} />);
 
     const door = await screen.findByTestId("door-my-learning");
@@ -55,7 +55,7 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
 
   it("L — it keeps working on repeat taps", async () => {
     const onOpenMyLearning = vi.fn();
-    mockRooms({ error: "foundry_host_required" }, 403);
+    mockRooms({ error: "foundry_author_required" }, 403);
     render(<FoundryEventRooms locale="en" onOpenMyLearning={onOpenMyLearning} />);
     const door = await screen.findByTestId("door-my-learning");
     fireEvent.click(door);
@@ -110,7 +110,7 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
   });
 
   it("H/I — opening My Learning writes nothing and calls no provider", async () => {
-    const fetchMock = mockRooms({ error: "foundry_host_required" }, 403);
+    const fetchMock = mockRooms({ error: "foundry_author_required" }, 403);
     render(<FoundryEventRooms locale="en" onOpenMyLearning={vi.fn()} />);
     fireEvent.click(await screen.findByTestId("door-my-learning"));
     for (const call of fetchMock.mock.calls as unknown as Array<[string, RequestInit | undefined]>) {
