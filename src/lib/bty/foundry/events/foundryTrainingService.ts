@@ -835,15 +835,9 @@ export async function completeTraining(
   const prog = await ensureProgress(admin, r.event.id, r.participant.id);
   if (!prog) return { ok: false, reason: "progress_failed" };
 
-  // Already complete: do not overwrite evidence, but retry idempotent downstream
-  // consequences. This is the same recovery contract Quiz V1 relies on.
-  if (prog.completed_at) {
-    const finalized = await finalizeCanonicalTrainingCompletion(admin, {
-      event: r.event, participant: r.participant, progressId: prog.id,
-      completedAt: prog.completed_at, authUserId, deviceTz,
-    });
-    return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, finalized.xpOverride), ...applyNarration(finalized.applyWindowResult), claimCode: finalized.claimCode, claimExpiresAt: finalized.claimExpiresAt };
-  }
+  // Existing video completion stays a pure idempotent read. Quiz retries use the
+  // attempt-backed finalizer directly and never alter this legacy contract.
+  if (prog.completed_at) return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
 
   if (r.event.status === "closed") return { ok: false, reason: "event_closed" };
   if (!prog.video_completed_at) return { ok: false, reason: "video_not_complete" };
