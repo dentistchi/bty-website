@@ -32,6 +32,7 @@ type MyLearningItem = {
    * no decision — then the section is ABSENT, never an empty box. Never BTY's proposed sentence.
    */
   decisionResponse: string | null;
+  quizScore: { correctCount: number; totalCount: number; scorePercent: number } | null;
 };
 
 /**
@@ -289,7 +290,7 @@ export default function FoundryMyLearning({
         return;
       }
       const data = (await res.json()) as {
-        history?: Array<{ entryId?: string; eventId?: string; eventTitle?: string; contentType?: string; completedAt?: string; sharedUnderstanding?: string | null; decisionResponse?: string | null }>;
+        history?: Array<{ entryId?: string; eventId?: string; eventTitle?: string; contentType?: string; completedAt?: string; sharedUnderstanding?: string | null; decisionResponse?: string | null; quizScore?: { correctCount?: number; totalCount?: number; scorePercent?: number } | null }>;
       };
       // Allow-list mapping — responseText (Private Reflection) is intentionally NOT read here.
       const mapped: MyLearningItem[] = (data?.history ?? []).map((h) => ({
@@ -300,6 +301,7 @@ export default function FoundryMyLearning({
         completedAt: String(h.completedAt ?? ""),
         sharedUnderstanding: h.sharedUnderstanding ? String(h.sharedUnderstanding) : null,
         decisionResponse: h.decisionResponse ? String(h.decisionResponse) : null,
+        quizScore: h.quizScore && typeof h.quizScore.correctCount === "number" && typeof h.quizScore.totalCount === "number" && typeof h.quizScore.scorePercent === "number" ? { correctCount: h.quizScore.correctCount, totalCount: h.quizScore.totalCount, scorePercent: h.quizScore.scorePercent } : null,
       }));
       setItems(mapped);
     } catch {
@@ -575,6 +577,7 @@ export default function FoundryMyLearning({
                   </p>
                 </div>
               ) : null}
+              {it.quizScore ? <p className="text-sm text-[#C9A66B]" data-testid="my-learning-quiz-score">{it.quizScore.correctCount} / {it.quizScore.totalCount} · {it.quizScore.scorePercent}%</p> : null}
               {/*
                 SINCE THIS TRAINING (Slice 3.2R-R1) — secondary to the completion above it.
 
