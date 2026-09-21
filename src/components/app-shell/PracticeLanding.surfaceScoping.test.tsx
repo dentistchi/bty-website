@@ -146,7 +146,7 @@ describe("[R2] the Host CTA lives on the situations index only", () => {
   });
 
   it("a learner never sees it on any surface, runtime included", async () => {
-    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ error: "foundry_host_required" }, false, 403) }));
+    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ error: "foundry_author_required" }, false, 403) }));
     render(<PracticeLanding {...base} />);
     openSituations();
     await waitFor(() => expect(screen.getByText("A finished situation")).toBeTruthy());

@@ -75,7 +75,7 @@ describe("POST /api/bty/foundry/modules", () => {
     hostActive.mockReturnValue(false);
     const res = await POST(req("POST"));
     expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe("foundry_host_required");
+    expect((await res.json()).error).toBe("foundry_author_required");
     expect(createDraft).not.toHaveBeenCalled();
   });
 

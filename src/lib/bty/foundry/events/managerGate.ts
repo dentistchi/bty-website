@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { hasHostCapability } from "@/lib/bty/authority/platformAdmin.server";
+import { FOUNDRY_AUTHOR_ERROR, hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 
 /**
  * Shared manager-route gate for Foundry Training Rooms.
  *
- * Order: authenticated (401) → service-role client (503) → ACTIVE Foundry Host
- * grant (403 foundry_host_required) → [service proves Event ownership]. Every
+ * Order: authenticated (401) → service-role client (503) → Foundry author
+ * capability (403 foundry_author_required) → [service proves Event ownership]. Every
  * manager operation is additionally owner-scoped inside the service (queries
- * filter by owner_user_id). Authentication alone is NOT authority — a Host grant
- * is required to create/operate events (a Host operates only events they own).
- * The `foundry_host_required` code lets the native UI render a quiet non-host
+ * filter by owner_user_id). Authentication alone is NOT authority. The author
+ * capability opens only the caller's own content.
+ * The `foundry_author_required` code lets the native UI render a quiet non-author
  * state instead of a raw 403 — no separate access API needed.
  */
 export type ManagerContext = {
@@ -35,16 +35,13 @@ export async function requireManager(
   }
 
   /*
-    Foundry Host CAPABILITY — required for every manager operation.
-
-    `hasHostCapability` is the shared rule: an active platform admin OR an active Foundry Host
-    grant. An admin inherits the capability without holding a grant, which is the whole point of
-    the inheritance contract — but inherits ONLY the capability. Every operation behind this gate
-    is still scoped to the caller's own rows, so an admin who owns no events still sees none.
+    Foundry AUTHOR CAPABILITY — required for every manager operation. It admits
+    platform admins, explicit Host grants, and eligible doctor/manager identities.
+    Every operation behind this gate is still scoped to the caller's own rows.
   */
-  const isHost = await hasHostCapability(admin, user.id);
-  if (!isHost) {
-    const res = NextResponse.json({ error: "foundry_host_required" }, { status: 403 });
+  const isAuthor = await hasFoundryAuthorCapability(admin, user.id);
+  if (!isAuthor) {
+    const res = NextResponse.json({ error: FOUNDRY_AUTHOR_ERROR }, { status: 403 });
     copyCookiesAndDebug(base, res, req, true);
     return { ok: false, response: res };
   }

@@ -95,20 +95,20 @@ describe("★ the module is PURE and never becomes an identity reader", () => {
 describe("★ ORGANIZATIONAL AUTHORING DID NOT MOVE — the non-regression that matters", () => {
   const PARTICIPANT_RULE = "isCollaborationParticipant";
 
-  it("★ Event creation requires Host capability, and the participant rule cannot reach it", () => {
+  it("★ Event creation requires Foundry author capability, and the participant rule cannot reach it", () => {
     const src = code("src/app/api/bty/events/route.ts");
-    expect(src).toMatch(/await hasHostCapability\(/);
+    expect(src).toMatch(/await hasFoundryAuthorCapability\(/);
     expect(src).not.toContain(PARTICIPANT_RULE);
     // The two gates nobody in production could satisfy are gone, not merely bypassed.
     expect(src).not.toContain("requireApprovedMembership");
     expect(src).not.toContain("isLeaderTrack");
   });
 
-  it("★ every Foundry manager route still goes through requireManager → hasHostCapability", () => {
+  it("★ every Foundry manager route still goes through requireManager → hasFoundryAuthorCapability", () => {
     const gate = code("src/lib/bty/foundry/events/managerGate.ts");
-    expect(gate).toMatch(/await hasHostCapability\(/);
+    expect(gate).toMatch(/await hasFoundryAuthorCapability\(/);
     expect(gate).not.toContain(PARTICIPANT_RULE);
-    expect(gate).toContain("foundry_host_required");
+    expect(gate).toContain("FOUNDRY_AUTHOR_ERROR");
   });
 
   it("★ the XP award path is unchanged and is not a collaboration surface", () => {

@@ -48,7 +48,7 @@ describe("[R1] only an authorized Host sees the authoring entry", () => {
   });
 
   it("a learner sees nothing — not a disabled control, not an explanation", async () => {
-    vi.stubGlobal("fetch", mockEvents(() => jsonRes({ error: "foundry_host_required" }, false, 403)));
+    vi.stubGlobal("fetch", mockEvents(() => jsonRes({ error: "foundry_author_required" }, false, 403)));
     const { container } = render(<PracticeAuthoringEntry locale="en" onOpen={vi.fn()} />);
     await waitFor(() => expect(calls.length).toBe(1));
     await waitFor(() => expect(container.textContent).toBe(""));

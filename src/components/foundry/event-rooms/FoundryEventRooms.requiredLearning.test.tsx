@@ -30,8 +30,8 @@ function routeFetch(map: Record<string, { status: number; body: unknown }>) {
 describe("FoundryEventRooms — required-learning surface on the Foundry tab", () => {
   it("a non-host learner sees their Completed assignment inside the Foundry tab", async () => {
     routeFetch({
-      "/api/bty/foundry/events": { status: 403, body: { error: "foundry_host_required" } },
-      "/api/bty/foundry/modules": { status: 403, body: { error: "foundry_host_required" } },
+      "/api/bty/foundry/events": { status: 403, body: { error: "foundry_author_required" } },
+      "/api/bty/foundry/modules": { status: 403, body: { error: "foundry_author_required" } },
       "/api/bty/foundry/assignments/mine": {
         status: 200,
         body: {

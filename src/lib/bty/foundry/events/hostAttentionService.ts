@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
+import { hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
 import {
   sortHostAttention,
@@ -246,8 +246,8 @@ export async function getHostDailyAttention(
   if (!ownerUserId) return [];
 
   // 1) Eligibility — ONLY an active Foundry Host grant (V1 authority model). Structural: not fail-soft.
-  const isHost = await isActiveFoundryHost(admin, ownerUserId);
-  if (!isHost) return [];
+  const isAuthor = await hasFoundryAuthorCapability(admin, ownerUserId);
+  if (!isAuthor) return [];
 
   // 2) Owned events — the exact authorization scope. A foreign event is never in this set.
   const { data: evs } = await admin

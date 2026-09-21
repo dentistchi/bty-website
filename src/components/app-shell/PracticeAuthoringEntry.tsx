@@ -22,15 +22,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * single tap goes straight through; with several, guessing would silently author against the wrong
  * Training, so the Host is asked.
  *
- * AUTHORIZATION comes from the canonical Host list itself: `/api/bty/foundry/events` answers 403
- * `foundry_host_required` for a learner. Following the established `FoundryEventRooms` reading, an
- * auth expiry or network error is NOT read as "not a Host" — it holds silently, so a Host is never
+ * AUTHORIZATION comes from the canonical author list itself: `/api/bty/foundry/events` answers 403
+ * `foundry_author_required` for a learner. Following the established `FoundryEventRooms` reading, an
+ * auth expiry or network error is NOT read as "not an author" — it holds silently, so an author is never
  * told their own control does not exist because a request failed.
  */
 
 type Locale = "en" | "ko";
 type ManagerEventSummary = { id: string; title: string };
-type Access = "loading" | "host" | "non_host";
+type Access = "loading" | "author" | "non_author";
 
 const COPY: Record<Locale, {
   create: string;
@@ -85,14 +85,14 @@ export function PracticeAuthoringEntry({
           const data = (await res.json().catch(() => ({}))) as { events?: ManagerEventSummary[] };
           if (cancelled) return;
           setEvents(Array.isArray(data.events) ? data.events : []);
-          setAccess("host");
+          setAccess("author");
           return;
         }
         if (res.status === 403) {
           const body = (await res.json().catch(() => null)) as { error?: string } | null;
           if (cancelled) return;
-          if (body?.error === "foundry_host_required") {
-            setAccess("non_host");
+          if (body?.error === "foundry_author_required") {
+            setAccess("non_author");
             return;
           }
         }
@@ -119,7 +119,7 @@ export function PracticeAuthoringEntry({
   );
 
   // A learner sees nothing at all — not a disabled control, not an explanation.
-  if (access !== "host") return null;
+  if (access !== "author") return null;
 
   if (events.length === 0) {
     return (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { hasHostCapability } from "@/lib/bty/authority/platformAdmin.server";
+import { FOUNDRY_AUTHOR_ERROR, hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 import { signEventQrToken } from "@/lib/bty/event-qr/event-qr-token";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
  * receives a signed Event QR token (second QR family, `btyev1`). NO scan / NO
  * participation / NO XP / NO activity_xp_events write — those are later slices.
  *
- * Auth/gate order: requireUser (401) → Host capability (403 foundry_host_required)
+ * Auth/gate order: requireUser (401) → Foundry author capability (403 foundry_author_required)
  * → input validation (400) → service-role insert → sign token.
  *
  * Insert uses the service-role client: `bty_events` RLS exposes only a SELECT
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 });
 
   /*
-    ★ ORGANIZATIONAL AUTHORING AUTHORITY — ONE RULE, THE ONE THE DOOR ALREADY USES (2026-09-04).
+    ★ ORGANIZATIONAL AUTHORING AUTHORITY — ONE RULE, THE ONE THE DOOR ALREADY USES.
 
     This route asked for TWO things nobody in production could satisfy:
 
@@ -45,16 +45,16 @@ export async function POST(req: NextRequest) {
 
     So Event creation was refused for EVERY user, including both platform admins — and `bty_events`
     has 0 rows, meaning an event has never once been created. Meanwhile the DOOR that opens this
-    form (`LearnDoors`, `canCreate`) is gated on a THIRD authority: `hasHostCapability`. A
+    form (`LearnDoors`, `canCreate`) is gated on the Foundry author capability. An
     host-capable person was therefore shown a complete Event form and, on submit, a flat
     "You're not authorized to open events." — which is what a real DSO demonstration hit.
 
     Worse, the two refusals rendered the SAME sentence, so the screen could not even say which
     authority had refused.
 
-    The room now uses the door's authority: `hasHostCapability` — active Platform Admin OR active
-    Foundry Host grant — the same rule that already governs Training/Module authoring across 31
-    manager routes. One organizational-authoring authority instead of three.
+    The room now uses the door's authority: active Platform Admin, explicit Foundry Host grant,
+    or eligible doctor/manager identity — the same rule that governs Training/Module authoring
+    across manager routes. One organizational-authoring authority instead of three.
 
     ★ ARENA MEMBERSHIP WAS NOT A SAFEGUARD HERE. It gates Arena PRACTICE entry (5 other routes keep
     it, untouched). A Reality Event is a leader opening a real moment for their team; requiring the
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
     happens only through the scan route's signed token. A participant gains nothing here: they
     cannot see the door and, if they forge the call, they are refused by this line.
   */
-  if (!(await hasHostCapability(admin, user.id))) {
-    return NextResponse.json({ error: "foundry_host_required" }, { status: 403 });
+  if (!(await hasFoundryAuthorCapability(admin, user.id))) {
+    return NextResponse.json({ error: FOUNDRY_AUTHOR_ERROR }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));

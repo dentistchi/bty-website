@@ -76,14 +76,14 @@ describe("★ 6. a Manager+ still sees every authoring surface", () => {
 describe("★ the door and the room now ask the SAME question", () => {
   it("the door is gated on host capability, resolved from the manager route's own refusal", () => {
     const rooms = code("src/components/foundry/event-rooms/FoundryEventRooms.tsx");
-    expect(rooms).toContain('canCreate={access === "host"}');
-    expect(rooms).toContain("foundry_host_required");
+    expect(rooms).toContain('canCreate={access === "author"}');
+    expect(rooms).toContain("foundry_author_required");
   });
 
   it("★ the Event room asks host capability too — no third authority left", () => {
     const route = code("src/app/api/bty/events/route.ts");
-    expect(route).toMatch(/await hasHostCapability\(/);
-    expect(route).toContain("foundry_host_required");
+    expect(route).toMatch(/await hasFoundryAuthorCapability\(/);
+    expect(route).toContain("FOUNDRY_AUTHOR_ERROR");
   });
 
   it("★ the two refusals that rendered the SAME sentence are gone", () => {
