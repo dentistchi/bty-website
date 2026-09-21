@@ -1,5 +1,5 @@
 name = "bty-arena-staging"
-main = ".open-next/worker.js"
+main = "src/worker.ts"
 compatibility_date = "2026-04-26"
 
 compatibility_flags = ["nodejs_compat"]
@@ -26,6 +26,9 @@ BTY_ADMIN_EMAILS = "ywamer2022@gmail.com"
 # than at botframework.com.
 TEAMS_BOT_TENANT_ID = "10110d5c-bd30-467e-9912-e44e67777647"
 SELF_REPORT_AUTO_APPROVE = "true"
+
+[triggers]
+crons = ["0 * * * *"]
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
