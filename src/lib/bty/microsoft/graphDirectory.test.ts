@@ -6,6 +6,7 @@ import {
   getGraphAppToken,
   graphConfigFromEnv,
   probeDirectReports,
+  probeProfessionalProfile,
   resetGraphTokenCache,
 } from "./graphDirectory.server";
 
@@ -149,5 +150,18 @@ describe("the direct-reports probe", () => {
     vi.stubGlobal("fetch", fetchMock);
     expect(await probeDirectReports("tok", "not-a-guid")).toEqual({ ok: false, reason: "invalid_oid" });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("professional profile probe", () => {
+  it("reads only the measured authority fields", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: OID, jobTitle: "General Dentist", employeeType: "WA - Provider" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await probeProfessionalProfile("tok", OID)).toEqual({ ok: true, jobTitle: "General Dentist", employeeType: "WA - Provider" });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(`https://graph.microsoft.com/v1.0/users/${OID}?$select=id,jobTitle,employeeType`);
+  });
+  it("fails closed on a Graph error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+    expect((await probeProfessionalProfile("tok", OID)).ok).toBe(false);
   });
 });

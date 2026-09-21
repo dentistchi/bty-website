@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hasFoundryAuthorCapability } from "./foundryAuthor.server";
 
-type Tables = Partial<Record<"bty_platform_admin_grants" | "foundry_host_grants" | "bty_org_memberships" | "memberships" | "workforce_profiles", Record<string, unknown> | null>>;
+type Tables = Partial<Record<"bty_platform_admin_grants" | "foundry_host_grants" | "bty_microsoft_authority_snapshots", Record<string, unknown> | null>>;
 
 function authorityDb(tables: Tables, failedTable?: keyof Tables) {
   return {
@@ -24,45 +24,24 @@ function authorityDb(tables: Tables, failedTable?: keyof Tables) {
 }
 
 const userId = "user-1";
-const canonical = (primary_role_key: string | null): Tables => ({ bty_org_memberships: { primary_role_key } });
-const legacy = (role: string): Tables => ({ memberships: { role } });
+const microsoft = (is_provider: boolean, is_manager = false): Tables => ({ bty_microsoft_authority_snapshots: { is_provider, is_manager, sync_status: "success" } });
 
 beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => {}));
 
 describe("hasFoundryAuthorCapability", () => {
-  it.each(["GENERAL_DENTIST", "ORTHODONTIST", "OFFICE_MANAGER", "AREA_MANAGER", "STATE_REGIONAL_DIRECTOR"])(
-    "grants eligible canonical role %s",
-    async (primary_role_key) => {
-      expect(await hasFoundryAuthorCapability(authorityDb(canonical(primary_role_key)), userId)).toBe(true);
-    },
-  );
-
-  it.each(["DENTAL_ASSISTANT", "OFFICE_ADMIN", "DSO_OPERATIONS_MEMBER", "SSO_SUPPORT_SPECIALIST"])(
-    "denies canonical non-author role %s",
-    async (primary_role_key) => {
-      expect(await hasFoundryAuthorCapability(authorityDb(canonical(primary_role_key)), userId)).toBe(false);
-    },
-  );
+  it("grants successful Microsoft provider or manager snapshots", async () => {
+    expect(await hasFoundryAuthorCapability(authorityDb(microsoft(true)), userId)).toBe(true);
+    expect(await hasFoundryAuthorCapability(authorityDb(microsoft(false, true)), userId)).toBe(true);
+  });
 
   it("preserves platform-admin and explicit Foundry Host exception authority", async () => {
     expect(await hasFoundryAuthorCapability(authorityDb({ bty_platform_admin_grants: { status: "active" } }), userId)).toBe(true);
     expect(await hasFoundryAuthorCapability(authorityDb({ foundry_host_grants: { status: "active" } }), userId)).toBe(true);
   });
 
-  it.each(["doctor", "office_manager", "regional_manager"])(
-    "uses structured legacy %s only when canonical identity is unknown",
-    async (role) => {
-      expect(await hasFoundryAuthorCapability(authorityDb({ ...canonical(null), ...legacy(role) }), userId)).toBe(true);
-    },
-  );
-
-  it("does not let stale legacy doctor data override a known canonical assistant", async () => {
-    expect(await hasFoundryAuthorCapability(authorityDb({ ...canonical("DENTAL_ASSISTANT"), ...legacy("doctor") }), userId)).toBe(false);
-  });
-
-  it("uses existing structured SSO manager semantics only after unknown canonical identity", async () => {
-    expect(await hasFoundryAuthorCapability(authorityDb({ ...canonical(null), workforce_profiles: { team: "sso", sso_level: "manager" } }), userId)).toBe(true);
-    expect(await hasFoundryAuthorCapability(authorityDb({ ...canonical(null), workforce_profiles: { team: "sso", sso_level: "staff" } }), userId)).toBe(false);
+  it("does not grant automatic authority from absent or indeterminate snapshots", async () => {
+    expect(await hasFoundryAuthorCapability(authorityDb({}), userId)).toBe(false);
+    expect(await hasFoundryAuthorCapability(authorityDb({ bty_microsoft_authority_snapshots: { is_provider: true, is_manager: false, sync_status: "indeterminate" } }), userId)).toBe(false);
   });
 
   it("never derives authority from display name, email, title, or metadata", async () => {
@@ -73,10 +52,10 @@ describe("hasFoundryAuthorCapability", () => {
     }
   });
 
-  it.each(["bty_platform_admin_grants", "foundry_host_grants", "bty_org_memberships", "memberships", "workforce_profiles"] as const)(
+  it.each(["bty_platform_admin_grants", "foundry_host_grants", "bty_microsoft_authority_snapshots"] as const)(
     "fails closed when %s cannot be read",
     async (failedTable) => {
-      expect(await hasFoundryAuthorCapability(authorityDb(canonical(null), failedTable), userId)).toBe(false);
+      expect(await hasFoundryAuthorCapability(authorityDb({}, failedTable), userId)).toBe(false);
     },
   );
 });

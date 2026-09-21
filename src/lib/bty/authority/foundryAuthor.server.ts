@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isActivePlatformAdmin } from "@/lib/bty/authority/platformAdmin.server";
-import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
+import { isActiveExplicitFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
 
 /**
  * Server-only Foundry authoring capability.
@@ -9,21 +9,9 @@ import { isActiveFoundryHost } from "@/lib/bty/foundry/events/foundryHostService
  * own Foundry training/event content. Record ownership and organization scope
  * are enforced by the routes and services behind this gate.
  *
- * Precedence is intentional: platform admin, explicit Host exception, canonical
- * professional identity, then structured transitional identity only when the
- * canonical primary role is unknown. No email, display name, directory title, or
- * user metadata is an input to this decision.
+ * Platform admin and explicit Host are exceptions. All automatic authority is a
+ * successfully-synced Microsoft snapshot keyed by verified tenant + object ID.
  */
-
-const CANONICAL_AUTHOR_ROLES = new Set([
-  "GENERAL_DENTIST",
-  "ORTHODONTIST",
-  "OFFICE_MANAGER",
-  "AREA_MANAGER",
-  "STATE_REGIONAL_DIRECTOR",
-]);
-
-const TRANSITIONAL_AUTHOR_ROLES = new Set(["doctor", "office_manager", "regional_manager"]);
 
 type Row = Record<string, unknown> | null;
 type Lookup = { data: Row; error: { code?: string } | null };
@@ -57,34 +45,15 @@ export async function hasFoundryAuthorCapability(
     // closed themselves; keeping them here also keeps existing route seams
     // stable while the eligible-role rule is added beneath them.
     if (await isActivePlatformAdmin(admin, userId)) return true;
-    if (await isActiveFoundryHost(admin, userId)) return true;
+    if (await isActiveExplicitFoundryHost(admin, userId)) return true;
 
-    const canonicalQuery = db
-      .from("bty_org_memberships")
-      .select("primary_role_key")
-      .eq("user_id", userId) as unknown as FilterQuery;
-    const canonical = await single(canonicalQuery.eq("status", "active").eq("is_primary", true));
-    if (canonical.error) return false;
-    const primaryRole = canonical.data?.primary_role_key;
-    // A non-null canonical role is authoritative, including a known non-author
-    // role. Stale legacy data never overrides a curated professional identity.
-    if (typeof primaryRole === "string") return CANONICAL_AUTHOR_ROLES.has(primaryRole);
-
-    const legacyQuery = db
-      .from("memberships")
-      .select("role")
-      .eq("user_id", userId) as unknown as FilterQuery;
-    const legacy = await single(legacyQuery.eq("status", "active"));
-    if (legacy.error) return false;
-    if (typeof legacy.data?.role === "string" && TRANSITIONAL_AUTHOR_ROLES.has(legacy.data.role)) return true;
-
-    const sso = await single(
-      (db.from("workforce_profiles").select("team, sso_level").eq("user_id", userId) as {
+    const snapshot = await single(
+      (db.from("bty_microsoft_authority_snapshots").select("is_provider, is_manager, sync_status").eq("user_id", userId) as {
         maybeSingle: () => Promise<Lookup>;
       }),
     );
-    if (sso.error) return false;
-    return sso.data?.team === "sso" && sso.data?.sso_level === "manager";
+    if (snapshot.error || snapshot.data?.sync_status !== "success") return false;
+    return snapshot.data?.is_provider === true || snapshot.data?.is_manager === true;
   } catch {
     // Do not log a user id or roster detail from an authorization failure.
     console.error("[foundry-author] authority lookup failed");

@@ -9,8 +9,10 @@ import {
   getGraphAppToken,
   graphConfigFromEnv,
   probeDirectReports,
+  probeProfessionalProfile,
   type GraphConfig,
 } from "@/lib/bty/microsoft/graphDirectory.server";
+import { classifyMicrosoftProfessionalAuthority } from "@/lib/bty/microsoft/professionalAuthority";
 import { listHostGrantStates, readHostGrantState, setMicrosoftManagerGrant } from "./foundryHostService";
 
 /**
@@ -90,6 +92,17 @@ async function probeOne(
   };
 }
 
+async function writeProfessionalSnapshot(admin: SupabaseClient, user: LinkedUser, jobTitle: string | null, employeeType: string | null, hierarchyManager: boolean) {
+  const normalized = classifyMicrosoftProfessionalAuthority(jobTitle, employeeType);
+  const { error } = await admin.from("bty_microsoft_authority_snapshots").upsert({
+    user_id: user.user_id, tenant_id: user.tenant_id, aad_object_id: user.aad_object_id,
+    job_title: jobTitle, employee_type: employeeType,
+    is_provider: normalized.isProvider, is_manager: normalized.isManager || hierarchyManager,
+    sync_status: "success", synced_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+  return !error;
+}
+
 /** Apply a plan. Grants first: an incomplete run still grants, and never revokes. */
 async function applyPlan(admin: SupabaseClient, plan: ManagerSyncPlan) {
   const granted: string[] = [];
@@ -127,7 +140,15 @@ export async function syncMicrosoftManagers(admin: SupabaseClient): Promise<Mana
   if (users === null) return { ok: false, complete: false, reason: "directory_unavailable", ...EMPTY };
 
   const probes: ManagerProbe[] = [];
-  for (const user of users) probes.push(await probeOne(config, token, user));
+  let snapshotFailures = 0;
+  for (const user of users) {
+    const probe = await probeOne(config, token, user);
+    probes.push(probe);
+    if (user.tenant_id.toLowerCase() !== config.tenantId) continue;
+    const profile = await probeProfessionalProfile(token, user.aad_object_id);
+    // A partial Graph failure is indeterminate: retain the last successful snapshot.
+    if (!profile.ok || !(await writeProfessionalSnapshot(admin, user, profile.jobTitle, profile.employeeType, probe.outcome === "manager"))) snapshotFailures += 1;
+  }
 
   const plan = planManagerSync(probes, await listHostGrantStates(admin));
   const applied = await applyPlan(admin, plan);
@@ -141,7 +162,7 @@ export async function syncMicrosoftManagers(admin: SupabaseClient): Promise<Mana
     revoked: applied.revoked,
     unchanged: plan.unchanged.length,
     indeterminate: plan.indeterminate.length,
-    failures: applied.failures,
+    failures: applied.failures + snapshotFailures,
   };
 
   // Counts and nothing else — never an oid, an email or a name.
@@ -196,6 +217,11 @@ export async function evaluateMicrosoftManagerEntitlement(
     if (!probe.ok) return { evaluated: false, isManager: state.microsoftManagerGranted };
 
     const isManager = isMicrosoftManager(probe.hasDirectReports ? 1 : 0);
+    const profile = await probeProfessionalProfile(token, aadObjectId);
+    if (profile.ok) {
+      // Both identity coordinates came from the verified Teams token at this boundary.
+      await writeProfessionalSnapshot(admin, { user_id: userId, tenant_id: tenantId, aad_object_id: aadObjectId }, profile.jobTitle, profile.employeeType, isManager);
+    }
     await setMicrosoftManagerGrant(admin, userId, isManager);
     return { evaluated: true, isManager };
   } catch {

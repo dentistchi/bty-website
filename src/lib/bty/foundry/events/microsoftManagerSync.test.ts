@@ -14,11 +14,13 @@ import { makeFakeHostAdmin } from "./fakeHostGrantsAdmin.testkit";
 const graphConfigFromEnv = vi.fn();
 const getGraphAppToken = vi.fn();
 const probeDirectReports = vi.fn();
+const probeProfessionalProfile = vi.fn();
 
 vi.mock("@/lib/bty/microsoft/graphDirectory.server", () => ({
   graphConfigFromEnv: () => graphConfigFromEnv(),
   getGraphAppToken: (...a: unknown[]) => getGraphAppToken(...a),
   probeDirectReports: (...a: unknown[]) => probeDirectReports(...a),
+  probeProfessionalProfile: (...a: unknown[]) => probeProfessionalProfile(...a),
   REQUIRED_GRAPH_APPLICATION_PERMISSIONS: ["User.Read.All"],
 }));
 
@@ -55,6 +57,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   graphConfigFromEnv.mockReturnValue({ tenantId: TENANT, clientId: "c", clientSecret: "s" });
   getGraphAppToken.mockResolvedValue("tok");
+  probeProfessionalProfile.mockResolvedValue({ ok: true, jobTitle: null, employeeType: null });
 });
 
 describe("entitlement", () => {
@@ -75,7 +78,9 @@ describe("entitlement", () => {
 
     const r = await sync(fake.admin);
     expect(r).toMatchObject({ ok: true, complete: true, managers: 0, granted: [], revoked: [] });
-    expect(fake.row(STAFF)).toBeUndefined();
+    // Snapshot persistence is separate from Host authority; this fake shares its
+    // generic upsert store, so assert the actual entitlement invariant.
+    expect(fake.row(STAFF)?.microsoft_manager_granted).not.toBe(true);
   });
 
   it("★ a wrong-tenant identity never reaches Graph and never becomes a manager", async () => {
@@ -245,7 +250,6 @@ describe("the sync cannot create identity", () => {
       "generateLink",
       "email",
       "userPrincipalName",
-      "jobTitle",
       "displayName",
       "department",
     ]) {
