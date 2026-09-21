@@ -143,3 +143,31 @@ export async function probeDirectReports(
     return { ok: false, reason: "network" };
   }
 }
+
+export type ProfessionalProfileProbe =
+  | { ok: true; jobTitle: string | null; employeeType: string | null }
+  | { ok: false; reason: "http_error" | "network" | "invalid_oid" };
+
+/** Read only the two measured professional fields for an already-linked identity. */
+export async function probeProfessionalProfile(token: string, aadObjectId: string): Promise<ProfessionalProfileProbe> {
+  const oid = (aadObjectId ?? "").trim().toLowerCase();
+  if (!GUID.test(oid)) return { ok: false, reason: "invalid_oid" };
+  try {
+    const res = await fetch(`${GRAPH}/v1.0/users/${oid}?$select=id,jobTitle,employeeType`, {
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.error("[graph] professional profile probe failed", { status: res.status });
+      return { ok: false, reason: "http_error" };
+    }
+    const body = (await res.json()) as { jobTitle?: unknown; employeeType?: unknown };
+    return {
+      ok: true,
+      jobTitle: typeof body.jobTitle === "string" ? body.jobTitle : null,
+      employeeType: typeof body.employeeType === "string" ? body.employeeType : null,
+    };
+  } catch {
+    console.error("[graph] professional profile probe threw");
+    return { ok: false, reason: "network" };
+  }
+}

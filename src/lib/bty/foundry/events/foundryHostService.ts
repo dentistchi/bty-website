@@ -31,6 +31,18 @@ export async function isActiveFoundryHost(admin: SupabaseClient, userId: string)
   return data?.status === "active";
 }
 
+/** Manual Host exception only; Microsoft hierarchy is read from its own snapshot gate. */
+export async function isActiveExplicitFoundryHost(admin: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await admin
+    .from("foundry_host_grants")
+    .select("status, manual_granted")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle<{ status: string; manual_granted: boolean | null }>();
+  // Legacy manual rows predate provenance; active with a null flag remains an explicit exception.
+  return data?.status === "active" && data.manual_granted !== false;
+}
+
 export type HostStatus = "active" | "revoked" | "none";
 
 /** Read a user's Host status (no secrets, grant state only). */
