@@ -5,7 +5,9 @@ import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
 import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
-import { parseTrainingTarget } from "@/domain/teams/trainingTarget";
+import { readTrainingRequest, type TrainingRequest } from "@/domain/teams/trainingRequest";
+import { BTY_TEAMS_PERSONAL_TAB_ENTITY_ID } from "@/domain/teams/trainingTarget";
+import { clearTeamsSubPage, readTeamsSubPageId } from "@/lib/bty/teams/teamsTabNavigation";
 import {
   installTeamsApiTransport,
   installTeamsFrameContainment,
@@ -43,7 +45,7 @@ type Phase =
   | { k: "starting" }
   | { k: "needs_first_sign_in" }
   | { k: "signing_in" }
-  | { k: "ready"; locale: "en" | "ko"; training: { joinToken: string } | null }
+  | { k: "ready"; locale: "en" | "ko" }
   | { k: "retry"; message: string }
   | { k: "failed"; message: string };
 
@@ -76,6 +78,14 @@ export default function TeamsTabShell() {
   /** Bootstrap is idempotent per tab; this stops StrictMode and re-renders from spending budget. */
   const startedRef = useRef(false);
   const attemptRef = useRef(0);
+  /*
+    THE TRAINING THE HOST CONTEXT CURRENTLY NAMES, as a request the shell can act on more than once.
+    Held here rather than inside `phase` because it changes on tab RESUME, which is not a phase
+    change: the session is already ready and must not be re-derived to notice a new deep link.
+  */
+  const [trainingRequest, setTrainingRequest] = useState<TrainingRequest | null>(null);
+  /** Occurrence counter — what makes two taps of the SAME invitation two distinct asks. */
+  const occurrenceRef = useRef(0);
 
   /** Install the transport + containment exactly once, before any shell fetch can run. */
   useEffect(() => {
@@ -172,7 +182,7 @@ export default function TeamsTabShell() {
 
     let ctxLocale: "en" | "ko" | null = null;
     /*
-      THE DEEP-LINKED TRAINING (Slice Teams-Native Delivery V1).
+      THE DEEP-LINKED TRAINING — the COLD read.
 
       A personal-tab deep link carries `context.subEntityId`, which the Teams client hands back as
       `page.subPageId`. It is read HERE — after the bootstrap above has already produced a real
@@ -184,22 +194,20 @@ export default function TeamsTabShell() {
       origin, an internal route, an event id or a user, and a value that fails to parse simply
       opens the ordinary tab — which is also what every non-deep-link launch does.
 
-      `subEntityId` is read as a fallback for older clients that still populate the pre-v2 field.
+      This read alone was the bug: see the refresh effect below for why a cold read cannot be the
+      only one.
     */
-    let training: { joinToken: string } | null = null;
     try {
       const ctx = await app.getContext();
       ctxLocale = localeFromTeams(ctx?.app?.locale);
       const page = ctx?.page as { subPageId?: unknown; subEntityId?: unknown } | undefined;
-      const parsed = parseTrainingTarget(page?.subPageId ?? page?.subEntityId);
-      // Narrowed to the ONE field the shell needs. The target kind has done its job by here.
-      training = parsed ? { joinToken: parsed.joinToken } : null;
+      setTrainingRequest(readTrainingRequest(page?.subPageId ?? page?.subEntityId, "bootstrap", 0));
     } catch {
       /* context is a convenience here, never an authority */
     }
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
-    setPhase({ k: "ready", locale, training });
+    setPhase({ k: "ready", locale });
   }, []);
 
   const run = useCallback(async () => {
@@ -225,6 +233,77 @@ export default function TeamsTabShell() {
     startedRef.current = true;
     void run();
   }, [run]);
+
+  /*
+    ★ RE-READ THE HOST CONTEXT WHEN THE TAB COMES BACK (Slice Teams iOS Deep-Link Resume).
+
+    THE MEASURED FAILURE. The Host's invitation opened BTY inside Teams — routing worked — but the
+    tab showed ordinary Learn instead of the named training. On Teams iOS, tapping a deep link
+    RESUMES the existing personal-tab WebView rather than remounting it, so the only read of
+    `app.getContext()` had already happened, minutes or hours earlier, and the freshly delivered
+    `subPageId` was observed by nobody.
+
+    So the tab now asks again whenever it returns to the foreground. `focus` and
+    `visibilitychange → visible` are the two signals a resumed WebView actually produces, and both
+    are cheap.
+
+    THIS REFRESHES NAVIGATION ONLY. It calls `app.getContext()` and nothing else: no
+    `/api/auth/teams-bootstrap`, no token exchange, no session work. Re-bootstrapping to read a
+    navigation field would spend the organisation-wide `/auth/v1/verify` budget (360/hour per IP,
+    all of BTY behind one Worker) on a question that has nothing to do with identity. A test
+    asserts the bootstrap count does not move.
+
+    IT RUNS ONLY WHEN THE SESSION IS READY, so a deep link can never be acted on before we know who
+    is opening it — the same ordering the cold read has.
+
+    EVERY OBSERVED TARGET IS A NEW OCCURRENCE. That is deliberate: a learner who finishes, presses
+    Back to Learn, returns to the chat and taps the SAME invitation produces an identical
+    `subPageId`, and only the occurrence distinguishes the second ask from the first. The shell,
+    not this seam, decides what to do with one — it refuses an occurrence naming the training
+    already open, so a mid-quiz refocus never remounts the room.
+  */
+  useEffect(() => {
+    if (phase.k !== "ready") return;
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const refresh = () => {
+      void (async () => {
+        const raw = await readTeamsSubPageId();
+        if (cancelled) return;
+        occurrenceRef.current += 1;
+        setTrainingRequest(readTrainingRequest(raw, "refresh", occurrenceRef.current));
+      })();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [phase.k]);
+
+  /*
+    LEAVING A TRAINING RETURNS THE HOST TO THE BTY ROOT.
+
+    The host keeps `subPageId` until something changes it, so a finished training would otherwise
+    be named forever — and the next return to the tab would put the learner back inside it. The
+    local exit has already happened by the time this runs; this only asks Teams to forget the
+    subpage, through the stable `pages.currentApp` navigation surface, and fails soft on a client
+    that does not have it.
+
+    The local request is dropped either way, so a stale occurrence cannot reopen the room behind
+    the learner.
+  */
+  const onTrainingExit = useCallback(() => {
+    setTrainingRequest(null);
+    void clearTeamsSubPage(BTY_TEAMS_PERSONAL_TAB_ENTITY_ID);
+  }, []);
 
   /**
    * First-ever sign-in. A USER ACTION, never automatic: Microsoft's own guidance is that an
@@ -287,10 +366,12 @@ export default function TeamsTabShell() {
         <BtyDailyAppShell
           locale={phase.locale}
           /*
-            The training the invitation named, committed by the shell at mount. Null for an
+            The training the invitation named, as an OCCURRENCE the shell can act on whenever one
+            arrives — at mount for a cold open, and on resume for every tap after that. Null for an
             ordinary tab launch, which is every launch that did not come from an invitation.
           */
-          initialTrainingTarget={phase.training}
+          trainingRequest={trainingRequest}
+          onTrainingExit={onTrainingExit}
           /*
             ★ CHANGING LANGUAGE IS A STATE CHANGE HERE, NOT A NAVIGATION.
 
@@ -302,7 +383,7 @@ export default function TeamsTabShell() {
             The alternative — letting the control navigate — is what put iOS's in-app browser in
             front of the Founder, since `/teams` opens anything leaving the frame in a real browser.
           */
-          onLocaleChanged={(next) => setPhase({ k: "ready", locale: next, training: phase.training })}
+          onLocaleChanged={(next) => setPhase({ k: "ready", locale: next })}
         />
         {diag ? <TeamsRuntimeProbe /> : null}
       </>

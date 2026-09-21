@@ -34,8 +34,14 @@ vi.mock("@/lib/supabase", () => ({
 vi.mock("@/components/app-shell/BtyDailyAppShell", () => ({
   default: (props: Record<string, unknown>) => {
     H.shellProps.push(props);
-    const target = props.initialTrainingTarget as { joinToken: string } | null;
-    return <div data-testid="shell" data-training={target ? target.joinToken : "none"} />;
+    const req = props.trainingRequest as { target: { joinToken: string }; requestKey: string } | null;
+    return (
+      <div
+        data-testid="shell"
+        data-training={req ? req.target.joinToken : "none"}
+        data-request-key={req ? req.requestKey : "none"}
+      />
+    );
   },
 }));
 
@@ -93,7 +99,10 @@ describe("an invitation opens the training inside the tab", () => {
     await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
     expect(screen.getByTestId("shell").getAttribute("data-training")).toBe(TOKEN);
     // The shell received it on its FIRST render — never as a later update.
-    expect(H.shellProps[0]!.initialTrainingTarget).toEqual({ joinToken: TOKEN });
+    expect(H.shellProps[0]!.trainingRequest).toEqual({
+      target: { joinToken: TOKEN },
+      requestKey: "bootstrap:0",
+    });
   });
 
   it("reads the pre-v2 subEntityId too, for older clients", async () => {
@@ -138,7 +147,7 @@ describe("a malformed or forged subPageId opens the ordinary tab", () => {
     render(<TeamsTabShell />);
     await waitFor(() => expect(screen.getByTestId("shell")).toBeTruthy());
     expect(screen.getByTestId("shell").getAttribute("data-training")).toBe("none");
-    expect(H.shellProps[0]!.initialTrainingTarget).toBeNull();
+    expect(H.shellProps[0]!.trainingRequest ?? null).toBeNull();
   });
 
   it("a context read that THROWS still opens the tab rather than failing the bootstrap", async () => {
