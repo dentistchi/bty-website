@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isActivePlatformAdmin } from "@/lib/bty/authority/platformAdmin.server";
 import { isActiveExplicitFoundryHost } from "@/lib/bty/foundry/events/foundryHostService";
+import { refreshMicrosoftAuthorityForCanonicalUser, refreshMicrosoftAuthorityForUser } from "@/lib/bty/foundry/events/microsoftManagerSync.server";
 
 /**
  * Server-only Foundry authoring capability.
@@ -47,12 +48,33 @@ export async function hasFoundryAuthorCapability(
     if (await isActivePlatformAdmin(admin, userId)) return true;
     if (await isActiveExplicitFoundryHost(admin, userId)) return true;
 
-    const snapshot = await single(
-      (db.from("bty_microsoft_authority_snapshots").select("is_provider, is_manager, sync_status").eq("user_id", userId) as {
+    let snapshot = await single(
+      (db.from("bty_microsoft_authority_snapshots").select("is_provider, is_manager, sync_status, synced_at, tenant_id, aad_object_id").eq("user_id", userId) as {
         maybeSingle: () => Promise<Lookup>;
       }),
     );
+    if (!snapshot.error && !snapshot.data) {
+      await refreshMicrosoftAuthorityForCanonicalUser(admin, userId);
+      snapshot = await single(
+        (db.from("bty_microsoft_authority_snapshots").select("is_provider, is_manager, sync_status, synced_at, tenant_id, aad_object_id").eq("user_id", userId) as {
+          maybeSingle: () => Promise<Lookup>;
+        }),
+      );
+    }
     if (snapshot.error || snapshot.data?.sync_status !== "success") return false;
+    const syncedAt = typeof snapshot.data.synced_at === "string" ? Date.parse(snapshot.data.synced_at) : NaN;
+    const stale = !Number.isFinite(syncedAt) || Date.now() - syncedAt >= 60 * 60 * 1000;
+    if (stale && typeof snapshot.data.tenant_id === "string" && typeof snapshot.data.aad_object_id === "string") {
+      await refreshMicrosoftAuthorityForUser(admin, {
+        user_id: userId, tenant_id: snapshot.data.tenant_id, aad_object_id: snapshot.data.aad_object_id,
+      });
+      snapshot = await single(
+        (db.from("bty_microsoft_authority_snapshots").select("is_provider, is_manager, sync_status").eq("user_id", userId) as {
+          maybeSingle: () => Promise<Lookup>;
+        }),
+      );
+      if (snapshot.error || snapshot.data?.sync_status !== "success") return false;
+    }
     return snapshot.data?.is_provider === true || snapshot.data?.is_manager === true;
   } catch {
     // Do not log a user id or roster detail from an authorization failure.

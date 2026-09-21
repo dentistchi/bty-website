@@ -59,6 +59,12 @@ const EMPTY = {
 };
 
 type LinkedUser = { user_id: string; tenant_id: string; aad_object_id: string };
+type AuthoritySnapshot = { synced_at: string | null; sync_status: string | null; is_provider: boolean | null; is_manager: boolean | null };
+export const MICROSOFT_AUTHORITY_MAX_AGE_MS = 60 * 60 * 1000;
+
+export type MicrosoftAuthorityRefresh =
+  | { status: "success"; refreshed: boolean; isProvider: boolean; isManager: boolean }
+  | { status: "indeterminate"; refreshed: boolean };
 
 async function listMicrosoftLinkedUsers(admin: SupabaseClient): Promise<LinkedUser[] | null> {
   const { data, error } = await admin.rpc("bty_list_microsoft_linked_users");
@@ -103,6 +109,62 @@ async function writeProfessionalSnapshot(admin: SupabaseClient, user: LinkedUser
   return !error;
 }
 
+function isFresh(snapshot: AuthoritySnapshot | null | undefined, nowMs: number): boolean {
+  if (snapshot?.sync_status !== "success" || !snapshot.synced_at) return false;
+  const at = Date.parse(snapshot.synced_at);
+  return Number.isFinite(at) && nowMs - at < MICROSOFT_AUTHORITY_MAX_AGE_MS;
+}
+
+/**
+ * Refresh one canonical user's Microsoft authority only when its last successful
+ * snapshot is missing or stale. Graph failures leave a prior successful snapshot
+ * untouched; first-time failures grant nothing.
+ */
+export async function refreshMicrosoftAuthorityForUser(
+  admin: SupabaseClient,
+  user: LinkedUser,
+  nowMs = Date.now(),
+): Promise<MicrosoftAuthorityRefresh> {
+  try {
+    const { data } = await admin
+      .from("bty_microsoft_authority_snapshots")
+      .select("synced_at, sync_status, is_provider, is_manager")
+      .eq("user_id", user.user_id)
+      .maybeSingle<AuthoritySnapshot>();
+    if (isFresh(data ?? null, nowMs)) {
+      return { status: "success", refreshed: false, isProvider: data?.is_provider === true, isManager: data?.is_manager === true };
+    }
+    const config = graphConfigFromEnv();
+    if (!config || user.tenant_id.toLowerCase() !== config.tenantId) return { status: "indeterminate", refreshed: false };
+    const token = await getGraphAppToken(config);
+    if (!token) return { status: "indeterminate", refreshed: false };
+    const [hierarchy, profile] = await Promise.all([
+      probeDirectReports(token, user.aad_object_id),
+      probeProfessionalProfile(token, user.aad_object_id),
+    ]);
+    if (!hierarchy.ok || !profile.ok) return { status: "indeterminate", refreshed: false };
+    const hierarchyManager = isMicrosoftManager(hierarchy.hasDirectReports ? 1 : 0);
+    if (!(await writeProfessionalSnapshot(admin, user, profile.jobTitle, profile.employeeType, hierarchyManager))) {
+      return { status: "indeterminate", refreshed: false };
+    }
+    const normalized = classifyMicrosoftProfessionalAuthority(profile.jobTitle, profile.employeeType);
+    return { status: "success", refreshed: true, isProvider: normalized.isProvider, isManager: normalized.isManager || hierarchyManager };
+  } catch {
+    console.error("[microsoft-authority] refresh threw");
+    return { status: "indeterminate", refreshed: false };
+  }
+}
+
+/** Resolve a canonical user's already-linked Microsoft identity server-side. */
+export async function refreshMicrosoftAuthorityForCanonicalUser(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<MicrosoftAuthorityRefresh> {
+  const linked = await listMicrosoftLinkedUsers(admin);
+  const user = linked?.find((candidate) => candidate.user_id === userId);
+  return user ? refreshMicrosoftAuthorityForUser(admin, user) : { status: "indeterminate", refreshed: false };
+}
+
 /** Apply a plan. Grants first: an incomplete run still grants, and never revokes. */
 async function applyPlan(admin: SupabaseClient, plan: ManagerSyncPlan) {
   const granted: string[] = [];
@@ -142,12 +204,13 @@ export async function syncMicrosoftManagers(admin: SupabaseClient): Promise<Mana
   const probes: ManagerProbe[] = [];
   let snapshotFailures = 0;
   for (const user of users) {
-    const probe = await probeOne(config, token, user);
-    probes.push(probe);
-    if (user.tenant_id.toLowerCase() !== config.tenantId) continue;
-    const profile = await probeProfessionalProfile(token, user.aad_object_id);
-    // A partial Graph failure is indeterminate: retain the last successful snapshot.
-    if (!profile.ok || !(await writeProfessionalSnapshot(admin, user, profile.jobTitle, profile.employeeType, probe.outcome === "manager"))) snapshotFailures += 1;
+    const refreshed = await refreshMicrosoftAuthorityForUser(admin, user);
+    if (refreshed.status === "indeterminate") {
+      probes.push({ userId: user.user_id, outcome: "indeterminate" });
+      snapshotFailures += 1;
+    } else {
+      probes.push({ userId: user.user_id, outcome: refreshed.isManager ? "manager" : "not_manager" });
+    }
   }
 
   const plan = planManagerSync(probes, await listHostGrantStates(admin));
@@ -178,9 +241,6 @@ export async function syncMicrosoftManagers(admin: SupabaseClient): Promise<Mana
   return result;
 }
 
-/** Re-probing on every app open would put Graph in the sign-in path. Twelve hours is enough. */
-const ENTITLEMENT_MAX_AGE_MS = 12 * 60 * 60 * 1000;
-
 /**
  * Evaluate ONE person's manager entitlement at activation time.
  *
@@ -199,31 +259,10 @@ export async function evaluateMicrosoftManagerEntitlement(
   aadObjectId: string,
 ): Promise<{ evaluated: boolean; isManager: boolean }> {
   try {
-    const state = await readHostGrantState(admin, userId);
-    const syncedAt = state.microsoftSyncedAt ? Date.parse(state.microsoftSyncedAt) : NaN;
-    if (Number.isFinite(syncedAt) && Date.now() - syncedAt < ENTITLEMENT_MAX_AGE_MS) {
-      return { evaluated: false, isManager: state.microsoftManagerGranted };
-    }
-
-    const config = graphConfigFromEnv();
-    if (!config || (tenantId ?? "").toLowerCase() !== config.tenantId) {
-      return { evaluated: false, isManager: state.microsoftManagerGranted };
-    }
-
-    const token = await getGraphAppToken(config);
-    if (!token) return { evaluated: false, isManager: state.microsoftManagerGranted };
-
-    const probe = await probeDirectReports(token, aadObjectId);
-    if (!probe.ok) return { evaluated: false, isManager: state.microsoftManagerGranted };
-
-    const isManager = isMicrosoftManager(probe.hasDirectReports ? 1 : 0);
-    const profile = await probeProfessionalProfile(token, aadObjectId);
-    if (profile.ok) {
-      // Both identity coordinates came from the verified Teams token at this boundary.
-      await writeProfessionalSnapshot(admin, { user_id: userId, tenant_id: tenantId, aad_object_id: aadObjectId }, profile.jobTitle, profile.employeeType, isManager);
-    }
-    await setMicrosoftManagerGrant(admin, userId, isManager);
-    return { evaluated: true, isManager };
+    const refreshed = await refreshMicrosoftAuthorityForUser(admin, { user_id: userId, tenant_id: tenantId, aad_object_id: aadObjectId });
+    if (refreshed.status !== "success") return { evaluated: false, isManager: false };
+    await setMicrosoftManagerGrant(admin, userId, refreshed.isManager);
+    return { evaluated: refreshed.refreshed, isManager: refreshed.isManager };
   } catch {
     console.error("[manager-sync] activation evaluation threw");
     return { evaluated: false, isManager: false };
