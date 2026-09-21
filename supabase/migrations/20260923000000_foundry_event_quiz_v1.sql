@@ -42,8 +42,16 @@ alter table public.foundry_event_training_progress
   check (
     completed_at is null
     or (
-      (response_text is not null and char_length(btrim(response_text)) between 1 and 1000)
-      or quiz_attempt_id is not null
+      (
+        video_completed_at is not null
+        or document_read_completed_at is not null
+        or written_guidance_read_at is not null
+        or discussion_self_reported_at is not null
+      )
+      and (
+        (response_text is not null and char_length(btrim(response_text)) between 1 and 1000)
+        or quiz_attempt_id is not null
+      )
     )
   );
 alter table public.foundry_event_quizzes enable row level security;
