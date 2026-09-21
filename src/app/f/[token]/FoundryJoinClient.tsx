@@ -395,6 +395,28 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 const api = (token: string, path = "") =>
   `/api/bty/foundry/public/${encodeURIComponent(token)}${path}`;
 
+type LearnerQuiz = { questions: { id: string; text: string; choices: { id: string; label: string }[]; position: number }[] };
+
+function QuizPanel({ token, quiz }: { token: string; quiz: LearnerQuiz }) {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ correctCount: number; totalCount: number; scorePercent: number; questions: { id: string; correctChoiceId: string; selectedChoiceId: string | null; explanation: string | null; choices: { id: string; label: string }[]; text: string }[] } | null>(null);
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(api(token, "/quiz/submit"), { method: "POST", credentials: "include", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: quiz.questions.map((q) => ({ questionId: q.id, choiceId: answers[q.id] ?? null })), tz: deviceTz() }) });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.result) { setError("Your quiz could not be saved. Please try again."); return; }
+      setResult(data.result);
+    } catch { setError("Your quiz could not be saved. Please try again."); }
+    finally { setBusy(false); }
+  };
+  if (result) return <div className="btyFadeIn flex flex-1 flex-col justify-center gap-5"><Eyebrow>QUIZ RESULT</Eyebrow><h1 className="text-2xl font-semibold text-white">{result.correctCount} / {result.totalCount}</h1><p className="text-lg text-[#C9A66B]">{result.scorePercent}% correct</p>{result.questions.map((q, index) => { const correct = q.choices.find((c) => c.id === q.correctChoiceId)?.label; const selected = q.choices.find((c) => c.id === q.selectedChoiceId)?.label ?? "No answer"; return <section key={q.id} className="rounded-xl border border-white/15 p-4"><p className="font-medium text-white">{index + 1}. {q.text}</p><p className="mt-2 text-sm text-white/65">Your answer: {selected}</p><p className="mt-1 text-sm text-[#C9A66B]">Correct answer: {correct}</p>{q.explanation ? <p className="mt-2 text-sm text-white/60">{q.explanation}</p> : null}</section>; })}<a href={`/f/${encodeURIComponent(token)}`} className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-center text-base font-semibold text-[#0B1F3A]">Continue</a></div>;
+  return <div className="btyFadeIn flex flex-1 flex-col justify-center gap-5"><Eyebrow>QUICK QUIZ</Eyebrow><h1 className="text-xl font-semibold text-white">Check what you learned</h1>{quiz.questions.map((q, index) => <fieldset key={q.id} className="rounded-xl border border-white/15 p-4"><legend className="px-1 text-base font-medium text-white">{index + 1}. {q.text}</legend><div className="mt-3 flex flex-col gap-2">{q.choices.map((choice) => <label key={choice.id} className="flex cursor-pointer items-center gap-3 text-sm text-white/80"><input type="radio" name={q.id} checked={answers[q.id] === choice.id} onChange={() => setAnswers((old) => ({ ...old, [q.id]: choice.id }))} />{choice.label}</label>)}</div></fieldset>)}{error ? <p className="text-sm text-red-300">{error}</p> : null}<button type="button" onClick={() => void submit()} disabled={busy} className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-60">{busy ? "Saving…" : "Submit quiz"}</button></div>;
+}
+
 /** Best-effort device IANA tz for the follow-up due-date resolution (Slice 3.1B-3K). Capture-only. */
 function deviceTz(): string | null {
   try {
@@ -418,6 +440,8 @@ export default function FoundryJoinClient({
   */
   const [locale, setLocale] = useState<Locale>(() => resolveRoomLocale(savedLocale, null));
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  // null = resolving whether this room has a quiz; false = the established reflection path.
+  const [quiz, setQuiz] = useState<LearnerQuiz | false | null>(null);
   const [loaded, setLoaded] = useState(false);
   /*
     R4-R5C9A — the server's Apply outcome, captured from the completion/claim response and held
@@ -534,6 +558,16 @@ export default function FoundryJoinClient({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (snapshot?.stage !== "response") { setQuiz(null); return; }
+    let cancelled = false;
+    void fetch(api(token, "/quiz"), { credentials: "include", cache: "no-store", signal: timeoutSignal() })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (!cancelled) setQuiz(data?.submitted ? false : data?.quiz?.questions ? data.quiz as LearnerQuiz : false); })
+      .catch(() => { if (!cancelled) setQuiz(false); });
+    return () => { cancelled = true; };
+  }, [snapshot?.stage, token]);
 
   const post = useCallback(
     async (path: string, body?: unknown): Promise<PostResult> => {
@@ -1329,6 +1363,7 @@ export default function FoundryJoinClient({
   }
 
   if (stage === "response") {
+    if (quiz) return <Frame><QuizPanel token={token} quiz={quiz} /></Frame>;
     return (
       <Frame>
         <div className="btyFadeIn flex flex-1 flex-col justify-center gap-4">

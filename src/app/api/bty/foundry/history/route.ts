@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
       aiReflection: it.aiReflection,
       aiReflectionLine: it.aiReflectionLine,
       completionState: it.completionState,
+      quizScore: it.quizScore,
     })),
     thread,
     threadStatus,

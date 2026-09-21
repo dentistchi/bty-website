@@ -18,6 +18,7 @@ import { excerptOf, type CompletionMeaning, type FoundryHistoryRecord } from "@/
 type ProgressRow = {
   id: string;
   event_id: string;
+  participant_id: string;
   completed_at: string;
   response_text: string | null;
   learner_reflection_text: string | null;
@@ -46,7 +47,7 @@ type ProgressRow = {
   separate query with its own allow-list that this cannot reach.
 */
 const HISTORY_COLS =
-  "id, event_id, completed_at, response_text, learner_reflection_text, shared_understanding_response, decision_response_text, reflection, completion_state";
+  "id, event_id, participant_id, completed_at, response_text, learner_reflection_text, shared_understanding_response, decision_response_text, reflection, completion_state";
 
 export type FoundryHistoryItem = {
   /** Stable owner-scoped record id (the progress row id) — the Center deep-link entry (Slice 3.1B-3I). */
@@ -89,6 +90,7 @@ export type FoundryHistoryItem = {
   /** A short AI reflection meaning line (the living sentence), reference only. */
   aiReflectionLine: string | null;
   completionState: CompletionMeaning | null;
+  quizScore: { correctCount: number; totalCount: number; scorePercent: number } | null;
 };
 
 function parseCompletionMeaning(v: unknown): CompletionMeaning | null {
@@ -123,6 +125,8 @@ export async function listUserFoundryHistory(
     .in("id", eventIds)
     .returns<{ id: string; title: string; content_type: string | null }[]>();
   const metaById = new Map((events ?? []).map((e) => [e.id, e] as const));
+  const { data: attempts } = await admin.from("foundry_event_quiz_attempts").select("event_id,participant_id,correct_count,total_count").in("participant_id", rows.map((r) => r.participant_id));
+  const attemptsByPair = new Map((attempts ?? []).map((a) => [`${a.event_id}:${a.participant_id}`, a] as const));
 
   return rows.map((r) => {
     const stored = validateLivingReflection(r.reflection);
@@ -132,6 +136,7 @@ export async function listUserFoundryHistory(
     const ev = metaById.get(r.event_id);
     const sharedUnderstanding = (r.shared_understanding_response ?? "").trim();
     const decisionResponse = (r.decision_response_text ?? "").trim();
+    const attempt = attemptsByPair.get(`${r.event_id}:${r.participant_id}`);
     return {
       entryId: r.id,
       eventId: r.event_id,
@@ -146,6 +151,7 @@ export async function listUserFoundryHistory(
       aiReflection,
       aiReflectionLine: aiReflection?.livingSentence ?? null,
       completionState: parseCompletionMeaning(r.completion_state),
+      quizScore: attempt ? { correctCount: attempt.correct_count, totalCount: attempt.total_count, scorePercent: Math.round((attempt.correct_count * 100) / attempt.total_count) } : null,
     };
   });
 }

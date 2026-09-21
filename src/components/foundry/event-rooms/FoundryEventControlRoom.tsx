@@ -12,6 +12,7 @@ import { ManagerCanvas } from "./ManagerCanvas";
 import FoundrySharedReview from "./FoundrySharedReview";
 import FoundryFollowupStatus from "./FoundryFollowupStatus";
 import { FoundryShareControls } from "./FoundryShareControls";
+import { FoundryQuizResults } from "./FoundryQuizResults";
 import type { HostFocusSection } from "@/components/app-shell/hostDeepLink";
 
 async function postAction(url: string): Promise<ManagerSnapshot | null> {
@@ -253,6 +254,7 @@ export function FoundryEventControlRoom({
               removingId={removingId}
               t={t}
             />
+            <FoundryQuizResults eventId={eventId} participantIds={participants} />
             {/* Shared Understanding review (Slice 3.1B-3G) — self-gates: renders only when a shared
                 question is configured AND a learner has submitted a shared response. Never shows
                 private Reflection. */}

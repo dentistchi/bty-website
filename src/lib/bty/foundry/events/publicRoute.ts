@@ -69,6 +69,11 @@ export const PUBLIC_REASON_STATUS: Record<string, number> = {
   */
   guidance_not_declared: 409,
   guidance_unavailable: 404,
+  study_required: 409,
+  quiz_missing: 404,
+  attempt_write_failed: 500,
+  completion_write_failed: 500,
+  attempt_mismatch: 409,
   award_failed: 500,
   progress_failed: 500,
   join_failed: 500,
