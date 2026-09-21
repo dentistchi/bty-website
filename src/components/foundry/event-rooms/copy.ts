@@ -156,6 +156,17 @@ export type EventRoomsCopy = {
   readyToPaste: string;
   readyToPasteNative: string;
   openTeams: string;
+  /*
+    TEAMS-NATIVE DELIVERY V1 — inside the BTY personal tab the Host never leaves Teams: they pick
+    colleagues in Teams' own picker and Teams opens a chat with the invitation already drafted.
+    "Send" rather than "Share", because the Host is addressing people, not publishing a link.
+  */
+  sendInTeams: string;
+  sendInTeamsChoosing: string;
+  sendInTeamsComposed: string;
+  sendInTeamsUnsupported: string;
+  sendInTeamsFailed: string;
+  teamsLinkCopied: string;
   closeFallback: string;
   rotateQr: string;
   rotateConfirm: string;
@@ -351,6 +362,12 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     readyToPaste: "Invitation copied. Paste it into Teams.",
     readyToPasteNative: "Invitation ready to paste.",
     openTeams: "Open Teams",
+    sendInTeams: "Send in Teams",
+    sendInTeamsChoosing: "Choosing people…",
+    sendInTeamsComposed: "Teams opened a draft. Press Send there to invite them.",
+    sendInTeamsUnsupported: "This Teams version can't pick people here. The BTY link is copied — paste it into a chat.",
+    sendInTeamsFailed: "Teams couldn't open a chat. The BTY link is copied — paste it into a chat.",
+    teamsLinkCopied: "BTY training link copied.",
     closeFallback: "Close",
     rotateQr: "Rotate QR",
     rotateConfirm: "Replace the current QR? The old QR will stop working.",
@@ -532,6 +549,12 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     readyToPaste: "초대장이 복사되었습니다. Teams에 붙여넣으세요.",
     readyToPasteNative: "초대장을 붙여넣을 준비가 되었습니다.",
     openTeams: "Teams 열기",
+    sendInTeams: "Teams에서 보내기",
+    sendInTeamsChoosing: "받을 사람 선택 중…",
+    sendInTeamsComposed: "Teams에 초대 메시지가 작성되었습니다. 거기서 보내기를 누르세요.",
+    sendInTeamsUnsupported: "이 Teams 버전에서는 여기서 사람을 선택할 수 없습니다. BTY 링크를 복사했으니 채팅에 붙여넣으세요.",
+    sendInTeamsFailed: "Teams에서 채팅을 열지 못했습니다. BTY 링크를 복사했으니 채팅에 붙여넣으세요.",
+    teamsLinkCopied: "BTY 훈련 링크가 복사되었습니다.",
     closeFallback: "닫기",
     rotateQr: "QR 재발급",
     createArenaPractice: "연습 만들기",

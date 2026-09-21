@@ -5,6 +5,7 @@ import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
 import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
+import { parseTrainingTarget } from "@/domain/teams/trainingTarget";
 import {
   installTeamsApiTransport,
   installTeamsFrameContainment,
@@ -42,7 +43,7 @@ type Phase =
   | { k: "starting" }
   | { k: "needs_first_sign_in" }
   | { k: "signing_in" }
-  | { k: "ready"; locale: "en" | "ko" }
+  | { k: "ready"; locale: "en" | "ko"; training: { joinToken: string } | null }
   | { k: "retry"; message: string }
   | { k: "failed"; message: string };
 
@@ -170,15 +171,35 @@ export default function TeamsTabShell() {
     });
 
     let ctxLocale: "en" | "ko" | null = null;
+    /*
+      THE DEEP-LINKED TRAINING (Slice Teams-Native Delivery V1).
+
+      A personal-tab deep link carries `context.subEntityId`, which the Teams client hands back as
+      `page.subPageId`. It is read HERE — after the bootstrap above has already produced a real
+      session — because a training must never open before we know who is opening it.
+
+      IT IS PARSED, NEVER FOLLOWED. `subPageId` comes from the Teams client and anyone can craft a
+      deep link, so it goes through the one approved grammar: either it is
+      `foundry-training:<signed room token>` or it is nothing at all. It can never name a path, an
+      origin, an internal route, an event id or a user, and a value that fails to parse simply
+      opens the ordinary tab — which is also what every non-deep-link launch does.
+
+      `subEntityId` is read as a fallback for older clients that still populate the pre-v2 field.
+    */
+    let training: { joinToken: string } | null = null;
     try {
       const ctx = await app.getContext();
       ctxLocale = localeFromTeams(ctx?.app?.locale);
+      const page = ctx?.page as { subPageId?: unknown; subEntityId?: unknown } | undefined;
+      const parsed = parseTrainingTarget(page?.subPageId ?? page?.subEntityId);
+      // Narrowed to the ONE field the shell needs. The target kind has done its job by here.
+      training = parsed ? { joinToken: parsed.joinToken } : null;
     } catch {
       /* context is a convenience here, never an authority */
     }
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
-    setPhase({ k: "ready", locale });
+    setPhase({ k: "ready", locale, training });
   }, []);
 
   const run = useCallback(async () => {
@@ -266,6 +287,11 @@ export default function TeamsTabShell() {
         <BtyDailyAppShell
           locale={phase.locale}
           /*
+            The training the invitation named, committed by the shell at mount. Null for an
+            ordinary tab launch, which is every launch that did not come from an invitation.
+          */
+          initialTrainingTarget={phase.training}
+          /*
             ★ CHANGING LANGUAGE IS A STATE CHANGE HERE, NOT A NAVIGATION.
 
             This component already owns the resolved locale — it picks it once at bootstrap from
@@ -276,7 +302,7 @@ export default function TeamsTabShell() {
             The alternative — letting the control navigate — is what put iOS's in-app browser in
             front of the Founder, since `/teams` opens anything leaving the frame in a real browser.
           */
-          onLocaleChanged={(next) => setPhase({ k: "ready", locale: next })}
+          onLocaleChanged={(next) => setPhase({ k: "ready", locale: next, training: phase.training })}
         />
         {diag ? <TeamsRuntimeProbe /> : null}
       </>

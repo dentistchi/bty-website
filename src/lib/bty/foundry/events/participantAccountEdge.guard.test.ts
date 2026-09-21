@@ -48,10 +48,25 @@ describe("T10 — no projection may expose the account edge", () => {
         }
       }
     }
-    // TWO, both in the one service that owns the table: the session lookup the compatibility
-    // rule reads, and the insert-returning select on the row it just created. Any third would be
-    // a new projection and must be reviewed.
+    /*
+      THREE, and each one is registered here deliberately — which is the whole point of this list.
+
+      Two in `foundryEventService.ts`, the service that owns the table: the session lookup the
+      compatibility rule reads, and the insert-returning select on the row it just created.
+
+      One in `accountParticipant.ts` (Slice Teams-Native Delivery V1), the insert-returning select
+      for an ACCOUNT-BACKED participant — the Teams learner, whose participant is resolved by
+      (event, canonical user) because a third-party frame cannot carry the per-event cookie. It
+      reads the edge for the same reason the other two do: to return the row it just wrote to the
+      caller who IS that account.
+
+      IT DOES NOT BECOME A PROJECTION. `/api/bty/foundry/teams/room/open` returns exactly
+      { ok, joinToken, contentType, title, displayName, participantSession } — no user id, no
+      event id, no address — and a route test asserts that key set exactly. A fourth entry here
+      still means a new projection, and still must be reviewed.
+    */
     expect(withUserId).toEqual([
+      "accountParticipant.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
       "foundryEventService.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
       "foundryEventService.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
     ]);

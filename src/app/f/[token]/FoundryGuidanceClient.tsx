@@ -385,12 +385,26 @@ export default function FoundryGuidanceClient({
   token,
   contentType,
   savedLocale = null,
+  /**
+   * IN-SHELL EXIT (Slice Teams-Native Delivery V1). Present ONLY when this room is rendered inside
+   * the BTY app shell — today, the Teams personal tab. The terminal then offers a BUTTON that
+   * returns to Learn in-shell, instead of an anchor.
+   *
+   * WHY AN ANCHOR WILL NOT DO THERE. Every BTY route outside `/teams` is served
+   * `X-Frame-Options: DENY`, so the Teams frame guard sends any link leaving `/teams` out to a
+   * real browser. Correct for a link to the web app; exactly wrong for "I have finished, take me
+   * back" — it would end a Teams-native training in Safari, the handoff this slice removes.
+   *
+   * Absent on the public `/f/<token>` path, where the existing anchors are untouched.
+   */
+  onExit,
 }: {
   token: string;
   /** Resolved SERVER-SIDE from the signed token before this client mounts. */
   contentType: GuidanceType;
   /** The BTY language preference, resolved server-side from `NEXT_LOCALE` (Slice R4-R5C16A). */
   savedLocale?: SavedLocale | null;
+  onExit?: { label: string; run: () => void } | null;
 }) {
   const [locale, setLocale] = useState<Locale>(() => resolveRoomLocale(savedLocale, null));
   /*
@@ -947,7 +961,16 @@ export default function FoundryGuidanceClient({
               every open-link and QR visitor — the previous behaviour is untouched, deliberately:
               a visitor who never came from the app has no app context to be returned to.
             */}
-            {(claimed || xp === "awarded") && (
+            {onExit ? (
+              <button
+                type="button"
+                onClick={onExit.run}
+                data-testid="in-shell-return"
+                className="mt-4 inline-block rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
+              >
+                {onExit.label}
+              </button>
+            ) : (claimed || xp === "awarded") ? (
               <a
                 href={roomReturn ?? "/"}
                 data-testid={roomReturn ? "assigned-return" : "continue-to-bty"}
@@ -955,7 +978,7 @@ export default function FoundryGuidanceClient({
               >
                 {roomReturn ? t.backToLearn : t.continueToBty}
               </a>
-            )}
+            ) : null}
           </div>
         </Centered>
       </Frame>

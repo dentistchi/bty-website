@@ -5,6 +5,7 @@ import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
+import InShellLearnerRoom from "@/components/foundry/learner/InShellLearnerRoom";
 import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import { parseTodayDeepLink, type TodayTarget } from "@/components/app-shell/todayDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
@@ -1247,8 +1248,21 @@ function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greeti
 export default function BtyDailyAppShell({
   locale,
   onLocaleChanged,
+  initialTrainingTarget = null,
 }: {
   locale: Locale;
+  /**
+   * TEAMS-NATIVE TRAINING DELIVERY V1 — the training a personal-tab deep link named.
+   *
+   * Supplied ONLY by `/teams`, which has already parsed `context.page.subPageId` through the one
+   * approved grammar (`parseTrainingTarget`) and completed its Teams bootstrap. Absent everywhere
+   * else, so the web shell is byte-identical to what it was.
+   *
+   * It is read in the state initialiser below, never in an effect: a training that arrives after
+   * the first paint means the learner sees Today flash first and then be replaced, and a
+   * deep-link destination that is derived post-render is the exact defect 3.2G-R3 removed.
+   */
+  initialTrainingTarget?: { joinToken: string } | null;
   /**
    * Present ⇒ the HOST owns the resolved locale and this shell must not navigate to change it.
    * Only `/teams` passes it: its document is framed, and any navigation off `/teams` is opened in
@@ -1258,6 +1272,15 @@ export default function BtyDailyAppShell({
   onLocaleChanged?: (next: "en" | "ko") => void;
 }) {
   const [tab, setTab] = useState<AppTabKey>("today");
+  /*
+    THE DEEP-LINKED TRAINING, COMMITTED AT MOUNT (Slice Teams-Native Delivery V1).
+
+    A lazy initialiser, not an effect — see the prop's note. Closing the room clears this and
+    lands the learner on Learn, which is where a finished training belongs.
+  */
+  const [trainingTarget, setTrainingTarget] = useState<{ joinToken: string } | null>(
+    () => initialTrainingTarget,
+  );
   // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
   // authenticated read-only review inside the Foundry tab. Null = normal Foundry surface.
   const [reviewId, setReviewId] = useState<string | null>(null);
@@ -1685,6 +1708,35 @@ export default function BtyDailyAppShell({
   // No shell-level threshold: /start is the canonical (and only) Threshold Door (B2). After
   // the /start Orb hold routes to /{locale}/app, Today renders IMMEDIATELY — the earlier
   // direct-/en/app-era OrbThreshold gate was removed to fix the B2 double-door defect.
+
+  /*
+    THE TRAINING OWNS THE SCREEN WHILE IT IS OPEN (Slice Teams-Native Delivery V1).
+
+    Returned BEFORE the tabbed shell rather than layered inside it, and deliberately so: a learner
+    part-way through a video, a PDF or a quiz must not be able to tab away mid-attempt and come
+    back to a half-restored room. Exiting is one explicit action, and it lands on Learn.
+
+    The document does not change. This is a state branch, not a navigation, which is what keeps
+    the Teams framing and session model valid for the whole training.
+  */
+  if (trainingTarget) {
+    return (
+      <div
+        data-bty-app-root=""
+        data-testid="in-shell-training"
+        className="btyFadeIn relative flex h-[100dvh] flex-col overflow-y-auto bg-[#0B1F3A] text-white antialiased"
+      >
+        <InShellLearnerRoom
+          target={trainingTarget}
+          locale={locale === "ko" ? "ko" : "en"}
+          onExit={() => {
+            setTrainingTarget(null);
+            setTab("learn");
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
