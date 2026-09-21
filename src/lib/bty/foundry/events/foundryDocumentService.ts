@@ -4,8 +4,8 @@ import { readContentType, isGuidanceContentType } from "@/domain/foundry/events/
 import { getOwnerGuidanceSnapshot, type ManagerGuidanceSnapshot } from "./foundryGuidanceService";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
 import { programIdForNewRun, programErrorReason } from "./foundryProgramService";
+import { planCompletionEvidence, storedCompletionPrompt } from "@/domain/foundry/events/quickTrainingMaterial";
 import {
-  validateCompletionPrompt,
   validateResponse,
   resolveSharedResponse,
   projectManagerRosterStatus,
@@ -79,7 +79,8 @@ type DocContentRow = {
   page_count: number;
   min_read_seconds: number;
   intro: string | null;
-  completion_prompt: string;
+  /** NULL exactly when this training is completed by its attached quiz. */
+  completion_prompt: string | null;
   shared_question: string | null;
 };
 
@@ -182,7 +183,8 @@ export type ManagerDocumentSnapshot = {
       page_count: number;
       min_read_seconds: number;
       intro: string | null;
-      completion_prompt: string;
+      /** NULL exactly when this training is completed by its attached quiz. */
+      completion_prompt: string | null;
     } | null;
   };
   participants: ManagerDocumentParticipant[];
@@ -194,6 +196,12 @@ export type CreateDocumentInput = {
   title?: unknown;
   intro?: unknown;
   completion_prompt?: unknown;
+  /**
+   * A reviewed quiz will be attached to this training, so the learner's scored attempt is the
+   * completion evidence and no completion question is asked. Omitted ⇒ the completion question
+   * is required, exactly as it always was.
+   */
+  quiz_attached?: boolean;
   /**
    * Server-verified canonical document — produced by the upload route from the
    * actual bytes and carried in a signed staging ticket (verified by the route
@@ -267,7 +275,7 @@ export async function createDocumentEvent(
     await cleanupUpload();
     return { ok: false, reason: pageCount.reason };
   }
-  const prompt = validateCompletionPrompt(input.completion_prompt);
+  const prompt = planCompletionEvidence(input.completion_prompt, Boolean(input.quiz_attached));
   if (!prompt.ok) {
     await cleanupUpload();
     return { ok: false, reason: prompt.reason };
@@ -317,7 +325,7 @@ export async function createDocumentEvent(
     page_count_verified: c.pageCountVerified,
     min_read_seconds: minReadSeconds,
     intro: intro.value,
-    completion_prompt: prompt.value,
+    completion_prompt: storedCompletionPrompt(prompt.value),
   });
   if (contentErr) {
     // Compensate — never leave a document event without its content, a stranded file,

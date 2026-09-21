@@ -71,6 +71,8 @@ export const PUBLIC_REASON_STATUS: Record<string, number> = {
   guidance_unavailable: 404,
   study_required: 409,
   quiz_missing: 404,
+  /* The room is completed by its quiz; the written-response path is not the way out of it. */
+  quiz_required: 409,
   attempt_write_failed: 500,
   completion_write_failed: 500,
   attempt_mismatch: 409,

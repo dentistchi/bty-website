@@ -3,30 +3,79 @@ import { requireManager, managerJson, attachJoinUrl } from "@/lib/bty/foundry/ev
 import { listOwnerEvents } from "@/lib/bty/foundry/events/foundryEventService";
 import { createTrainingEvent } from "@/lib/bty/foundry/events/foundryTrainingService";
 import { createDocumentEvent } from "@/lib/bty/foundry/events/foundryDocumentService";
+import { createQuickTextEvent } from "@/lib/bty/foundry/events/quickTrainingTextService";
 import { verifyDocumentUploadTicket } from "@/lib/bty/foundry/events/documentUploadTicket";
-import { attachReviewedQuiz } from "@/lib/bty/foundry/events/quickTrainingQuizService";
+import {
+  attachReviewedQuiz,
+  readQuizSourceKind,
+  readReviewedQuiz,
+} from "@/lib/bty/foundry/events/quickTrainingQuizService";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QuizSourceKind } from "@/domain/foundry/events/quickTrainingQuiz";
 
 export const runtime = "nodejs";
 
 /**
  * Foundry Training Rooms — manager collection.
  *
- * POST /api/bty/foundry/events  — create a room. Branches on content_type:
- *   - 'youtube' (default): body { title, youtube_url, completion_prompt }.
- *   - 'document': body { title, content_type:'document', completion_prompt,
- *     document:{ bucket, path, byteSize, fileName }, page_count } — the PDF was
- *     already staged via POST /events/upload.
- *   Both store event + content atomically (compensating delete on failure) and
- *   return the control-room snapshot incl. join_url. 201 on success, 400 on bad input.
- * GET  /api/bty/foundry/events  — list the caller's own events (newest first) with
- *   joined counts. Never returns another owner's events (service is owner-scoped).
+ * POST /api/bty/foundry/events  — create a Quick Training. Branches on content_type:
+ *   - 'youtube' (default): body { title, youtube_url, completion_prompt? }.
+ *   - 'document': body { title, content_type:'document', completion_prompt?, intro?,
+ *     staging_ticket } — the PDF was already staged via POST /events/upload.
+ *   - 'written_guidance': body { title, content_type:'written_guidance', material_text,
+ *     completion_prompt? } — TEXT material, on the existing written-guidance runtime.
+ *
+ *   All three accept an OPTIONAL reviewed quiz: { quiz, quiz_source: 'manual'|'csv'|'generated' }.
+ *
+ * THE QUIZ DECIDES WHETHER A COMPLETION QUESTION IS ASKED, and that decision is made HERE, once,
+ * from the payload — before anything is created. With a quiz the learner's scored attempt is the
+ * completion evidence and `completion_prompt` is stored NULL; without one the completion question
+ * is required exactly as it always was. A placeholder question is never invented.
+ *
+ * ATOMIC: the event and its material are created first, then the quiz. A failed quiz insert
+ * COMPENSATES by deleting the event it was to belong to (cascade drops the content/snapshot row),
+ * so a training that was meant to be completed by a quiz never goes live without one — which
+ * would be a room with no completion check at all.
+ *
+ * GET  /api/bty/foundry/events  — list the caller's own events (newest first) with joined counts.
  */
+
+/** Refuse before creating anything: a malformed quiz, or one that will not say where it came from. */
+type QuizIntent = { attached: false } | { attached: true; quiz: unknown; sourceKind: QuizSourceKind };
+
+function readQuizIntent(body: unknown): QuizIntent | { error: string } {
+  const raw = (body as { quiz?: unknown; quiz_source?: unknown } | null)?.quiz;
+  if (raw === undefined || raw === null) return { attached: false };
+  const quiz = readReviewedQuiz(raw);
+  if (!quiz) return { error: "quiz_invalid" };
+  const sourceKind = readQuizSourceKind((body as { quiz_source?: unknown }).quiz_source);
+  if (!sourceKind) return { error: "quiz_source_invalid" };
+  return { attached: true, quiz, sourceKind };
+}
+
+/** Persist the quiz, or undo the event it was to belong to. */
+async function attachQuizOrCompensate(
+  admin: SupabaseClient,
+  eventId: string,
+  ownerUserId: string,
+  intent: Extract<QuizIntent, { attached: true }>,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const attached = await attachReviewedQuiz(admin, eventId, ownerUserId, intent.quiz, intent.sourceKind);
+  if (attached.ok) return { ok: true };
+  await admin.from("foundry_events").delete().eq("id", eventId).eq("owner_user_id", ownerUserId);
+  return { ok: false, reason: attached.reason };
+}
+
 export async function POST(req: NextRequest) {
   const gate = await requireManager(req);
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 
   const body = await req.json().catch(() => ({}));
+
+  const quizIntent = readQuizIntent(body);
+  if ("error" in quizIntent) return managerJson(base, req, { error: quizIntent.error }, 400);
+  const quizAttached = quizIntent.attached;
 
   if (body?.content_type === "document") {
     // The staging ticket carries the SERVER-derived canonical values; the client
@@ -41,6 +90,7 @@ export async function POST(req: NextRequest) {
       title: body?.title,
       intro: body?.intro,
       completion_prompt: body?.completion_prompt,
+      quiz_attached: quizAttached,
       canonical: {
         bucket: p.bucket,
         path: p.path,
@@ -54,7 +104,25 @@ export async function POST(req: NextRequest) {
       },
     });
     if (!result.ok) return managerJson(base, req, { error: result.reason }, 400);
-    if (body?.quiz) { const quiz = await attachReviewedQuiz(admin, result.value.event.id, user.id, body.quiz, body.quiz_source === "generated" ? "generated" : body.quiz_source === "csv" ? "csv" : "manual"); if (!quiz.ok) { await admin.from("foundry_events").delete().eq("id", result.value.event.id).eq("owner_user_id", user.id); return managerJson(base, req, { error: quiz.reason }, 400); } }
+    if (quizIntent.attached) {
+      const quiz = await attachQuizOrCompensate(admin, result.value.event.id, user.id, quizIntent);
+      if (!quiz.ok) return managerJson(base, req, { error: quiz.reason }, 400);
+    }
+    return managerJson(base, req, attachJoinUrl(req, result.value), 201);
+  }
+
+  if (body?.content_type === "written_guidance") {
+    const result = await createQuickTextEvent(admin, user.id, {
+      title: body?.title,
+      material_text: body?.material_text,
+      completion_prompt: body?.completion_prompt,
+      quiz_attached: quizAttached,
+    });
+    if (!result.ok) return managerJson(base, req, { error: result.reason }, 400);
+    if (quizIntent.attached) {
+      const quiz = await attachQuizOrCompensate(admin, result.value.event.id, user.id, quizIntent);
+      if (!quiz.ok) return managerJson(base, req, { error: quiz.reason }, 400);
+    }
     return managerJson(base, req, attachJoinUrl(req, result.value), 201);
   }
 
@@ -62,9 +130,13 @@ export async function POST(req: NextRequest) {
     title: body?.title,
     youtube_url: body?.youtube_url,
     completion_prompt: body?.completion_prompt,
+    quiz_attached: quizAttached,
   });
   if (!result.ok) return managerJson(base, req, { error: result.reason }, 400);
-  if (body?.quiz) { const quiz = await attachReviewedQuiz(admin, result.value.event.id, user.id, body.quiz, body.quiz_source === "generated" ? "generated" : body.quiz_source === "csv" ? "csv" : "manual"); if (!quiz.ok) { await admin.from("foundry_events").delete().eq("id", result.value.event.id).eq("owner_user_id", user.id); return managerJson(base, req, { error: quiz.reason }, 400); } }
+  if (quizIntent.attached) {
+    const quiz = await attachQuizOrCompensate(admin, result.value.event.id, user.id, quizIntent);
+    if (!quiz.ok) return managerJson(base, req, { error: quiz.reason }, 400);
+  }
 
   return managerJson(base, req, attachJoinUrl(req, result.value), 201);
 }

@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isParticipantAccountCompatible, mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
 import {
-  validateCompletionPrompt,
   validateSharedQuestionOptional,
   resolveSharedResponse,
   validateResponse,
@@ -17,6 +16,7 @@ import {
   resolveReflectionResponse,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
+import { planCompletionEvidence, storedCompletionPrompt } from "@/domain/foundry/events/quickTrainingMaterial";
 import { programIdForNewRun, programErrorReason, type ProgramLineage } from "./foundryProgramService";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
@@ -63,7 +63,8 @@ type ContentRow = {
   youtube_title: string | null;
   youtube_channel_title: string | null;
   youtube_thumbnail_url: string | null;
-  completion_prompt: string;
+  /** NULL exactly when this training is completed by its attached quiz. */
+  completion_prompt: string | null;
   shared_question: string | null;
 };
 
@@ -106,7 +107,8 @@ export type ManagerTrainingSnapshot = {
       youtube_video_id: string;
       youtube_title: string | null;
       youtube_thumbnail_url: string;
-      completion_prompt: string;
+      /** NULL exactly when this training is completed by its attached quiz. */
+      completion_prompt: string | null;
     } | null;
   };
   participants: ManagerTrainingParticipant[];
@@ -127,11 +129,23 @@ async function getContent(admin: SupabaseClient, eventId: string): Promise<Conte
  * Create a training event: validate the three fields, parse the canonical video
  * id, insert the event + content. If the content insert fails, the event row is
  * compensated (deleted) so no partial event is left behind.
+ *
+ * `quiz_attached` names the ONE thing that changes the completion contract: with a quiz the
+ * learner's scored attempt is the completion evidence, so the completion question is not asked
+ * and `completion_prompt` is stored NULL. Omitted (every existing caller, including the Guided
+ * publish path) the completion question is required exactly as it always was, with the same
+ * `prompt_required` / `prompt_too_long` reasons.
  */
 export async function createTrainingEvent(
   admin: SupabaseClient,
   ownerUserId: string,
-  input: { title?: unknown; youtube_url?: unknown; completion_prompt?: unknown; shared_question?: unknown },
+  input: {
+    title?: unknown;
+    youtube_url?: unknown;
+    completion_prompt?: unknown;
+    shared_question?: unknown;
+    quiz_attached?: boolean;
+  },
   lineage?: ProgramLineage,
 ): Promise<ServiceResult<ManagerTrainingSnapshot>> {
   const title = validateEventTitle(input.title);
@@ -140,7 +154,7 @@ export async function createTrainingEvent(
   const videoId = parseYoutubeVideoId(input.youtube_url);
   if (!videoId) return { ok: false, reason: "youtube_url_invalid" };
 
-  const prompt = validateCompletionPrompt(input.completion_prompt);
+  const prompt = planCompletionEvidence(input.completion_prompt, Boolean(input.quiz_attached));
   if (!prompt.ok) return { ok: false, reason: prompt.reason };
 
   // Shared Understanding question (Slice 3.1B-3G) — OPTIONAL; NULL ⇒ no shared question.
@@ -182,7 +196,7 @@ export async function createTrainingEvent(
   const { error: contentErr } = await admin.from("foundry_event_training_content").insert({
     event_id: event.id,
     youtube_video_id: videoId,
-    completion_prompt: prompt.value,
+    completion_prompt: storedCompletionPrompt(prompt.value),
     shared_question: sharedQ.value,
   });
   if (contentErr) {

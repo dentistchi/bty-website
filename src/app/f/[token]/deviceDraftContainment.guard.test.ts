@@ -49,6 +49,8 @@ describe("T14 — no server draft was built", () => {
       "20260915000000_bty_host_track_history_retention_v1.sql",
       "20260916000000_bty_action_capture_saved_removed_v1.sql",
       "20260917000000_bty_foundry_event_history_dismissal_v1.sql",
+      // Quick Training Authoring V1 — registered here deliberately, which is the signal this list exists for.
+      "20260924000000_quick_training_quiz_authoring_v1.sql",
     ];
     const newer = migs.filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
     expect(newer, "R4-R5C4A must add no migration").toEqual([]);

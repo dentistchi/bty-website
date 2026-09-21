@@ -1,24 +1,48 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { Fragment, useCallback, useRef, useState } from "react";
 import { parseQuizCsv } from "@/domain/foundry/events/quickTrainingQuizCsv";
-import type { Quiz } from "@/domain/foundry/events/quickTrainingQuiz";
+import type { Quiz, QuizSourceKind } from "@/domain/foundry/events/quickTrainingQuiz";
+import {
+  blankQuizDraft,
+  draftFromQuiz,
+  quizFromDraft,
+  type QuizDraft,
+} from "@/domain/foundry/events/quickTrainingQuizDraft";
+import { QuizEditor } from "./QuizEditor";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
 import type { ManagerSnapshot } from "./types";
 
 /**
- * Create form. First the host chooses what participants will do — "Watch a video"
- * or "Read a document" — in plain language (no content-type jargon). Video keeps
- * the original YouTube flow untouched. Document collects a PDF, an optional intro,
- * and one reflection question; on submit it reads the page count locally, uploads
- * the PDF to the private bucket, then creates the event. System-fixed XP (no XP
- * input). On success the parent routes straight into the control room.
+ * Quick Training create form.
+ *
+ * FIRST: what participants will DO — watch a video, read a document, or read a short text — in
+ * plain language, never content-type jargon. Video keeps the original YouTube flow untouched.
+ * Document collects a PDF and uploads it before creating. Text goes to the EXISTING
+ * written-guidance runtime (`content_type: 'written_guidance'`); it is not a second text system.
+ *
+ * SECOND: whether there is a quiz, stated as two named choices rather than an optional box.
+ * The choice changes what the learner is asked at the end, so it is asked, not implied:
+ *
+ *   No quiz   → the completion question stays, required, exactly as it always has been.
+ *   Add quiz  → the completion question is HIDDEN and not sent. Submitting the quiz is the
+ *               completion check, and the server stores no completion prompt for that training.
+ *               `response_text` is never fabricated.
+ *
+ * THIRD, only with a quiz: how the questions are made — Manual, CSV, or generated from study
+ * content. All three produce the same `QuizDraft` and land in the SAME editor, which is the
+ * whole point: what a manager can fix must not depend on how the quiz arrived. Nothing is
+ * published from the CSV or the model directly.
+ *
+ * System-fixed XP (no XP input). On success the parent routes straight into the control room.
  */
-type Mode = "video" | "document";
-type FieldError = null | "title" | "youtube" | "prompt" | "pdf" | "docPrompt";
+type Mode = "video" | "document" | "text";
+type FieldError = null | "title" | "youtube" | "prompt" | "pdf" | "docPrompt" | "text" | "textPrompt" | "quiz";
+type QuizMethod = "manual" | "csv" | "generated";
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
+const MATERIAL_TEXT_MAX = 2000;
 
 export function CreateFoundryEventForm({
   locale,
@@ -37,26 +61,77 @@ export function CreateFoundryEventForm({
   const [intro, setIntro] = useState("");
   const [docPrompt, setDocPrompt] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
-  const [quizError, setQuizError] = useState<string | null>(null);
-  const [quizSource, setQuizSource] = useState("");
-  const [quizCount, setQuizCount] = useState<5 | 10>(5);
-  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [materialText, setMaterialText] = useState("");
+  const [textPrompt, setTextPrompt] = useState("");
+
+  // --- Quiz authoring state ---
+  const [quizOn, setQuizOn] = useState(false);
+  const [quizMethod, setQuizMethod] = useState<QuizMethod>("manual");
+  const [quizDraft, setQuizDraft] = useState<QuizDraft>(() => blankQuizDraft());
+  /*
+    PROVENANCE, NOT THE CURRENT TAB. `source_kind` records where the QUESTIONS came from, so it
+    changes only when the draft is REPLACED — by a CSV import or by a generation — and never
+    because the manager clicked a different method afterwards. A quiz an AI drafted stays
+    `generated` however much the manager then edited it.
+  */
+  const [quizSource, setQuizSource] = useState<QuizSourceKind>("manual");
+  const [quizMsg, setQuizMsg] = useState<string | null>(null);
+  const [showQuizErrors, setShowQuizErrors] = useState(false);
+  const [sourceText, setSourceText] = useState("");
+  const [questionCount, setQuestionCount] = useState<5 | 10>(5);
+  const [generating, setGenerating] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [error, setError] = useState<FieldError>(null);
   const [youtubeMsg, setYoutubeMsg] = useState<string | null>(null);
   const [pdfMsg, setPdfMsg] = useState<string | null>(null);
+  const [textMsg, setTextMsg] = useState<string | null>(null);
   const submittingRef = useRef(false);
 
-  // --- Video (YouTube) submit — unchanged behavior. ---
+  /**
+   * The quiz part of the create payload, or a refusal. Called first by every submit path, so an
+   * incomplete quiz never triggers a PDF upload or a YouTube embed check.
+   */
+  const resolveQuizPayload = useCallback(():
+    | { ok: true; body: Record<string, unknown> }
+    | { ok: false } => {
+    if (!quizOn) return { ok: true, body: {} };
+    const built = quizFromDraft(quizDraft);
+    if (!built.ok) {
+      setShowQuizErrors(true);
+      setQuizMsg(t.quizIncompleteError);
+      setError("quiz");
+      return { ok: false };
+    }
+    return { ok: true, body: { quiz: built.quiz, quiz_source: quizSource } };
+  }, [quizOn, quizDraft, quizSource, t.quizIncompleteError]);
+
+  /** The completion question, or nothing at all when the quiz is the completion check. */
+  const completionBody = useCallback(
+    (value: string) => (quizOn ? {} : { completion_prompt: value.trim() }),
+    [quizOn],
+  );
+
+  const handleCreateFailure = useCallback((reason: string | undefined, fallback: FieldError) => {
+    if (reason === "quiz_invalid" || reason === "quiz_insert_failed" || reason === "quiz_source_invalid") {
+      setQuizMsg(t.quizIncompleteError);
+      setError("quiz");
+      return;
+    }
+    setError(fallback);
+  }, [t.quizIncompleteError]);
+
+  // --- Video (YouTube) submit — unchanged behavior apart from the quiz branch. ---
   const submitVideo = useCallback(async () => {
     if (title.trim().length < 1) return setError("title");
     if (youtube.trim().length < 1) {
       setYoutubeMsg(null);
       return setError("youtube");
     }
-    if (prompt.trim().length < 1) return setError("prompt");
+    if (!quizOn && prompt.trim().length < 1) return setError("prompt");
+    const quiz = resolveQuizPayload();
+    if (!quiz.ok) return;
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -70,7 +145,8 @@ export function CreateFoundryEventForm({
         body: JSON.stringify({
           title: title.trim(),
           youtube_url: youtube.trim(),
-          completion_prompt: prompt.trim(), ...(quiz ? { quiz, quiz_source: "csv" } : {}),
+          ...completionBody(prompt),
+          ...quiz.body,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -86,14 +162,14 @@ export function CreateFoundryEventForm({
         setYoutubeMsg(ytMsg[reason]);
         setError("youtube");
       } else if (reason === "prompt_required" || reason === "prompt_too_long") setError("prompt");
-      else setError("title");
+      else handleCreateFailure(reason, "title");
     } catch {
       setError("title");
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [title, youtube, prompt, onCreated, t]);
+  }, [title, youtube, prompt, quizOn, resolveQuizPayload, completionBody, handleCreateFailure, onCreated, t]);
 
   // --- Document (PDF) submit — read pages, upload, then create. ---
   const submitDocument = useCallback(async () => {
@@ -106,7 +182,9 @@ export function CreateFoundryEventForm({
       setPdfMsg(t.pdfTooLargeError);
       return setError("pdf");
     }
-    if (docPrompt.trim().length < 1) return setError("docPrompt");
+    if (!quizOn && docPrompt.trim().length < 1) return setError("docPrompt");
+    const quiz = resolveQuizPayload();
+    if (!quiz.ok) return;
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -160,8 +238,9 @@ export function CreateFoundryEventForm({
           title: title.trim(),
           content_type: "document",
           intro: intro.trim() || null,
-          completion_prompt: docPrompt.trim(),
-          staging_ticket: upData.ticket, ...(quiz ? { quiz, quiz_source: "csv" } : {}),
+          ...completionBody(docPrompt),
+          staging_ticket: upData.ticket,
+          ...quiz.body,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -178,7 +257,7 @@ export function CreateFoundryEventForm({
       ) {
         setPdfMsg(t.pdfReadError);
         setError("pdf");
-      } else setError("title");
+      } else handleCreateFailure(reason, "title");
     } catch {
       setError("title");
     } finally {
@@ -186,13 +265,120 @@ export function CreateFoundryEventForm({
       setSubmitting(false);
       setProgressMsg(null);
     }
-  }, [title, pdfFile, docPrompt, intro, onCreated, t]);
+  }, [title, pdfFile, docPrompt, intro, quizOn, resolveQuizPayload, completionBody, handleCreateFailure, onCreated, t]);
+
+  // --- Text submit — the EXISTING written-guidance runtime, created from three fields. ---
+  const submitText = useCallback(async () => {
+    if (title.trim().length < 1) return setError("title");
+    if (materialText.trim().length < 1) {
+      setTextMsg(t.textError);
+      return setError("text");
+    }
+    if (materialText.trim().length > MATERIAL_TEXT_MAX) {
+      setTextMsg(t.textTooLongError);
+      return setError("text");
+    }
+    if (!quizOn && textPrompt.trim().length < 1) return setError("textPrompt");
+    const quiz = resolveQuizPayload();
+    if (!quiz.ok) return;
+
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/bty/foundry/events", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          content_type: "written_guidance",
+          material_text: materialText.trim(),
+          ...completionBody(textPrompt),
+          ...quiz.body,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      const reason = data?.error as string | undefined;
+      if (res.ok && data?.event) onCreated(data as ManagerSnapshot);
+      else if (reason === "prompt_required" || reason === "prompt_too_long") setError("textPrompt");
+      else if (reason === "material_text_required") {
+        setTextMsg(t.textError);
+        setError("text");
+      } else if (reason === "material_text_too_long") {
+        setTextMsg(t.textTooLongError);
+        setError("text");
+      } else handleCreateFailure(reason, "title");
+    } catch {
+      setError("title");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }, [title, materialText, textPrompt, quizOn, resolveQuizPayload, completionBody, handleCreateFailure, onCreated, t]);
 
   const onSubmit = useCallback(() => {
     if (submittingRef.current) return;
     if (mode === "document") void submitDocument();
+    else if (mode === "text") void submitText();
     else void submitVideo();
-  }, [mode, submitDocument, submitVideo]);
+  }, [mode, submitDocument, submitText, submitVideo]);
+
+  /** CSV import POPULATES THE EDITOR. It never creates anything and never publishes. */
+  const onCsvFile = useCallback(
+    (file: File | null) => {
+      if (!file) return;
+      void file.text().then((text) => {
+        try {
+          const parsed: Quiz = parseQuizCsv(text);
+          setQuizDraft(draftFromQuiz(parsed));
+          setQuizSource("csv");
+          setShowQuizErrors(false);
+          setQuizMsg(t.quizCsvLoaded(parsed.questions.length));
+          if (error === "quiz") setError(null);
+        } catch {
+          setQuizMsg(t.quizCsvError);
+        }
+      });
+    },
+    [error, t],
+  );
+
+  /** Generation POPULATES THE EDITOR too — the manager reviews before anything is stored. */
+  const onGenerate = useCallback(async () => {
+    if (generating || sourceText.trim().length < 1) return;
+    setGenerating(true);
+    setQuizMsg(null);
+    try {
+      const res = await fetch("/api/bty/foundry/quiz/generate", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceText, questionCount, locale }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.quiz) {
+        setQuizDraft(draftFromQuiz(data.quiz as Quiz));
+        setQuizSource("generated");
+        setShowQuizErrors(false);
+        setQuizMsg(null);
+        if (error === "quiz") setError(null);
+        return;
+      }
+      const code = data?.code as string | undefined;
+      if (code === "source_too_short") setQuizMsg(t.quizGenShortError(Number(data?.requiredChars ?? 0)));
+      else if (code === "source_ungrounded") setQuizMsg(t.quizGenUngroundedError);
+      else if (code === "timeout") setQuizMsg(t.quizGenTimeoutError);
+      else if (code === "invalid_output") setQuizMsg(t.quizGenOutputError);
+      else setQuizMsg(t.quizGenProviderError);
+    } catch {
+      setQuizMsg(t.quizGenProviderError);
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, sourceText, questionCount, locale, error, t]);
 
   const textField = (
     label: string,
@@ -224,17 +410,15 @@ export function CreateFoundryEventForm({
     </label>
   );
 
-  const modeButton = (m: Mode, label: string) => (
+  const choiceButton = (selected: boolean, label: string, onClick: () => void, testId?: string) => (
     <button
       type="button"
-      onClick={() => {
-        setMode(m);
-        setError(null);
-      }}
-      aria-pressed={mode === m}
+      onClick={onClick}
+      aria-pressed={selected}
+      data-testid={testId}
       className={
         "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors " +
-        (mode === m
+        (selected
           ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-white"
           : "border-white/[0.12] bg-white/[0.03] text-white/60 hover:text-white/90")
       }
@@ -242,6 +426,17 @@ export function CreateFoundryEventForm({
       {label}
     </button>
   );
+
+  const modeButton = (m: Mode, label: string, testId: string) =>
+    choiceButton(
+      mode === m,
+      label,
+      () => {
+        setMode(m);
+        setError(null);
+      },
+      testId,
+    );
 
   return (
     <div className="btyFadeIn flex flex-col gap-6">
@@ -252,8 +447,9 @@ export function CreateFoundryEventForm({
       <div className="flex flex-col gap-2">
         <span className="text-sm text-white/70">{t.chooseActivity}</span>
         <div className="flex gap-3">
-          {modeButton("video", t.activityVideo)}
-          {modeButton("document", t.activityDocument)}
+          {modeButton("video", t.activityVideo, "material-video")}
+          {modeButton("document", t.activityDocument, "material-pdf")}
+          {modeButton("text", t.activityText, "material-text")}
         </div>
       </div>
 
@@ -266,12 +462,21 @@ export function CreateFoundryEventForm({
       >
         {textField(t.nameLabel, title, setTitle, t.namePlaceholder, "title", 80, t.titleError, true)}
 
+        {/*
+          KEYED ON THE MATERIAL. The three branches occupy the same position, and without a key
+          React reconciles one material's input into the next one's — a file input becoming a
+          controlled text input, which React warns about and which would carry the previous
+          material's DOM state into the new one. The key makes a material switch a remount.
+        */}
+        <Fragment key={mode}>
         {mode === "video" ? (
           <>
             {textField(t.youtubeLabel, youtube, setYoutube, t.youtubePlaceholder, "youtube", 400, youtubeMsg ?? t.youtubeError)}
-            {textField(t.promptLabel, prompt, setPrompt, t.promptPlaceholder, "prompt", 300, t.promptError)}
+            {!quizOn
+              ? textField(t.promptLabel, prompt, setPrompt, t.promptPlaceholder, "prompt", 300, t.promptError)
+              : null}
           </>
-        ) : (
+        ) : mode === "document" ? (
           <>
             <label className="flex flex-col gap-2">
               <span className="text-sm text-white/70">{t.pdfLabel}</span>
@@ -304,21 +509,143 @@ export function CreateFoundryEventForm({
               />
             </label>
 
-            {textField(t.docPromptLabel, docPrompt, setDocPrompt, t.docPromptPlaceholder, "docPrompt", 300, t.promptError)}
+            {!quizOn
+              ? textField(t.docPromptLabel, docPrompt, setDocPrompt, t.docPromptPlaceholder, "docPrompt", 300, t.promptError)
+              : null}
+          </>
+        ) : (
+          <>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-white/70">{t.textLabel}</span>
+              <textarea
+                maxLength={MATERIAL_TEXT_MAX}
+                rows={7}
+                value={materialText}
+                onChange={(e) => {
+                  setMaterialText(e.target.value);
+                  setTextMsg(null);
+                  if (error === "text") setError(null);
+                }}
+                placeholder={t.textPlaceholder}
+                aria-label={t.textLabel}
+                aria-invalid={error === "text"}
+                data-testid="material-text-input"
+                className="w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+              />
+              {error === "text" ? <span className="text-xs text-white/50">{textMsg ?? t.textError}</span> : null}
+            </label>
+
+            {!quizOn
+              ? textField(t.textPromptLabel, textPrompt, setTextPrompt, t.textPromptPlaceholder, "textPrompt", 300, t.promptError)
+              : null}
           </>
         )}
+        </Fragment>
 
-        <label className="flex flex-col gap-2 rounded-xl border border-white/[0.1] p-4">
-          <span className="text-sm font-medium text-white/80">퀴즈 추가 <span className="font-normal text-white/45">(선택)</span></span>
-          <span className="text-xs text-white/50">퀴즈 파일 올리기 · question, option_a, option_b, option_c, option_d, correct_option, explanation</span>
-          <input type="file" accept=".csv,text/csv" aria-label="퀴즈 파일 올리기" onChange={(e) => { const file=e.target.files?.[0]; if (!file) return; void file.text().then((text) => { try { setQuiz(parseQuizCsv(text)); setQuizError(null); } catch { setQuiz(null); setQuizError("CSV 형식을 확인해 주세요."); } }); }} className="text-sm text-white/70" />
-          {quiz ? <div className="flex flex-col gap-2 text-xs text-white/65"><span>문제 검토 · {quiz.questions.length}문제</span>{quiz.questions.map((q) => <label key={q.id} className="flex flex-col gap-1"><input value={q.text} onChange={(e) => setQuiz((old) => old ? { ...old, questions: old.questions.map((x) => x.id === q.id ? { ...x, text: e.target.value } : x) } : old)} className="rounded border border-white/15 bg-white/[0.04] px-2 py-1 text-white" /></label>)}</div> : null}
-          {quizError ? <span className="text-xs text-red-300">{quizError}</span> : null}
-        </label>
+        {/* ---- Quiz: is there one at all? ---- */}
         <div className="flex flex-col gap-2 rounded-xl border border-white/[0.1] p-4">
-          <span className="text-sm font-medium text-white/80">내용으로 퀴즈 만들기</span>
-          <textarea value={quizSource} onChange={(e) => setQuizSource(e.target.value)} rows={4} placeholder="퀴즈를 만들 내용을 붙여 넣으세요" className="resize-none rounded border border-white/15 bg-white/[0.04] p-2 text-white" />
-          <div className="flex gap-2"><button type="button" onClick={() => setQuizCount(5)} className="text-sm text-white/70">5문제</button><button type="button" onClick={() => setQuizCount(10)} className="text-sm text-white/70">10문제</button><button type="button" disabled={!quizSource.trim() || generatingQuiz} onClick={() => void (async () => { setGeneratingQuiz(true); setQuizError(null); try { const r=await fetch("/api/bty/foundry/quiz/generate",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({sourceText:quizSource,questionCount:quizCount,locale})}); const d=await r.json(); if(r.ok&&d.quiz)setQuiz(d.quiz); else setQuizError("퀴즈를 만들지 못했습니다. CSV 파일을 사용할 수 있습니다."); } catch { setQuizError("퀴즈를 만들지 못했습니다. CSV 파일을 사용할 수 있습니다."); } finally { setGeneratingQuiz(false); } })()} className="ml-auto rounded bg-[#C9A66B] px-3 py-1 text-sm text-[#0B1F3A]">{generatingQuiz ? "만드는 중…" : "만들기"}</button></div>
+          <span className="text-sm font-medium text-white/80">{t.quizSectionLabel}</span>
+          <div className="flex gap-3">
+            {choiceButton(!quizOn, t.quizNone, () => {
+              setQuizOn(false);
+              setQuizMsg(null);
+              setShowQuizErrors(false);
+              if (error === "quiz") setError(null);
+            }, "quiz-none")}
+            {choiceButton(quizOn, t.quizAdd, () => {
+              setQuizOn(true);
+              setQuizMsg(null);
+              if (error === "prompt" || error === "docPrompt" || error === "textPrompt") setError(null);
+            }, "quiz-add")}
+          </div>
+          <p className="text-xs leading-5 text-white/50" data-testid="quiz-mode-note">
+            {quizOn ? t.quizAddNote : t.quizNoneNote}
+          </p>
+
+          {quizOn ? (
+            <div className="mt-3 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-white/70">{t.quizMethodLabel}</span>
+                <div className="flex flex-wrap gap-2">
+                  {choiceButton(quizMethod === "manual", t.quizMethodManual, () => setQuizMethod("manual"), "quiz-method-manual")}
+                  {choiceButton(quizMethod === "csv", t.quizMethodCsv, () => setQuizMethod("csv"), "quiz-method-csv")}
+                  {choiceButton(
+                    quizMethod === "generated",
+                    t.quizMethodGenerate,
+                    () => setQuizMethod("generated"),
+                    "quiz-method-generate",
+                  )}
+                </div>
+              </div>
+
+              {quizMethod === "csv" ? (
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm text-white/70">{t.quizCsvLabel}</span>
+                  <span className="text-xs text-white/45">{t.quizCsvHint}</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    aria-label={t.quizCsvLabel}
+                    data-testid="quiz-csv-input"
+                    onChange={(e) => onCsvFile(e.target.files?.[0] ?? null)}
+                    className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white/80 file:mr-3 file:rounded-lg file:border-0 file:bg-[#C9A66B] file:px-3 file:py-2 file:text-sm file:font-medium file:text-[#0B1F3A]"
+                  />
+                </label>
+              ) : null}
+
+              {quizMethod === "generated" ? (
+                <div className="flex flex-col gap-2">
+                  {/*
+                    THIS BOX IS SOURCE MATERIAL. It is what the employee should study — the only
+                    text the questions may be built from — and never a quiz question itself.
+                  */}
+                  <span className="text-sm text-white/70">{t.quizSourceLabel}</span>
+                  <span className="text-xs text-white/45" data-testid="quiz-source-note">
+                    {t.quizSourceNote}
+                  </span>
+                  <textarea
+                    rows={6}
+                    maxLength={8000}
+                    value={sourceText}
+                    onChange={(e) => setSourceText(e.target.value)}
+                    placeholder={t.quizSourcePlaceholder}
+                    aria-label={t.quizSourceLabel}
+                    data-testid="quiz-source-input"
+                    className="w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    {choiceButton(questionCount === 5, t.quizCount(5), () => setQuestionCount(5))}
+                    {choiceButton(questionCount === 10, t.quizCount(10), () => setQuestionCount(10))}
+                    <button
+                      type="button"
+                      disabled={!sourceText.trim() || generating}
+                      onClick={() => void onGenerate()}
+                      data-testid="quiz-generate"
+                      className="rounded-xl bg-[#C9A66B] px-4 py-3 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
+                    >
+                      {generating ? t.quizGenerating : t.quizGenerate}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {quizMsg ? (
+                <p className="text-xs text-white/60" data-testid="quiz-message">
+                  {quizMsg}
+                </p>
+              ) : null}
+
+              <QuizEditor
+                draft={quizDraft}
+                onChange={(next) => {
+                  setQuizDraft(next);
+                  if (error === "quiz") setError(null);
+                }}
+                t={t}
+                showErrors={showQuizErrors}
+              />
+            </div>
+          ) : null}
         </div>
 
         {progressMsg ? <span className="text-xs text-white/50">{progressMsg}</span> : null}

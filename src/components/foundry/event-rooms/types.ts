@@ -21,7 +21,8 @@ export type ManagerTraining = {
   youtube_video_id: string;
   youtube_title: string | null;
   youtube_thumbnail_url: string;
-  completion_prompt: string;
+  /** NULL exactly when this training is completed by its attached quiz. */
+  completion_prompt: string | null;
 };
 
 export type ManagerDocument = {
@@ -30,14 +31,17 @@ export type ManagerDocument = {
   page_count: number;
   min_read_seconds: number;
   intro: string | null;
-  completion_prompt: string;
+  /** NULL exactly when this training is completed by its attached quiz. */
+  completion_prompt: string | null;
 };
 
 export type ManagerEvent = {
   id: string;
   title: string;
   status: FoundryEventStatus;
-  content_type?: "youtube" | "document";
+  content_type?: "youtube" | "document" | "written_guidance" | "live_discussion";
+  /** The frozen learner-facing text of a guidance room (Text Quick Training / written guidance). */
+  guidance?: { material_text: string; completion_prompt: string | null } | null;
   join_url: string;
   created_at: string;
   closed_at: string | null;
