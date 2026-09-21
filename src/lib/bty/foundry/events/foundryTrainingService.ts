@@ -759,6 +759,59 @@ export async function linkLearnerIdentity(
 }
 
 /**
+ * Run the canonical consequences of a durable Foundry completion.
+ *
+ * The completion evidence is committed before this function is called.  Every
+ * consequence below is independently idempotent, which deliberately makes this
+ * safe to retry after a transient failure without changing the evidence that
+ * earned it.  Quiz completion uses this same finalizer after it has persisted
+ * its immutable attempt; text responses never stand in for quiz evidence.
+ */
+export async function finalizeCanonicalTrainingCompletion(
+  admin: SupabaseClient,
+  input: {
+    event: EventRow;
+    participant: ParticipantRow;
+    progressId: string;
+    completedAt: string;
+    authUserId: string | null;
+    deviceTz?: string | null;
+  },
+): Promise<{ xpOverride?: PublicXpStatus; applyWindowResult: MaterializeApplyResult; claimCode?: string; claimExpiresAt?: string }> {
+  const { event, participant, progressId, completedAt, authUserId, deviceTz } = input;
+  const linkableUserId = mayAttributeToAccount(participant.user_id, authUserId) ? authUserId : null;
+  await linkLearnerIdentity(admin, progressId, linkableUserId);
+
+  let xpOverride: PublicXpStatus | undefined;
+  if (linkableUserId) {
+    const outcome = await awardTrainingCoreXp(admin, linkableUserId, event.id, event.owner_user_id, progressId);
+    if (outcome === "awarded") {
+      await admin.from("foundry_event_training_progress")
+        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
+        .eq("id", progressId).is("xp_awarded_at", null);
+    }
+    xpOverride = outcomeToXpStatus(outcome);
+  }
+
+  let applyWindowResult: MaterializeApplyResult = "skipped";
+  const deferredClaim = linkableUserId ? null : await issueCompletionClaim(admin, progressId);
+  if (linkableUserId) {
+    await materializeFollowupObligation(admin, {
+      eventId: event.id, progressId, authUserId: linkableUserId, completedAtIso: completedAt, deviceTz,
+    });
+    applyWindowResult = await materializeApplyWindow(admin, {
+      eventId: event.id, progressId, authUserId: linkableUserId, completedAtIso: completedAt, deviceTz,
+    });
+    await claimAssignmentForParticipant(admin, event.id, participant.id, linkableUserId);
+  }
+  return {
+    xpOverride,
+    applyWindowResult,
+    ...(deferredClaim ? { claimCode: deferredClaim.code, claimExpiresAt: deferredClaim.expiresAt } : {}),
+  };
+}
+
+/**
  * Submit the completion response. Server-gated: requires the video to be
  * server-marked complete; rejects if the event is closed and not already
  * complete; idempotent (a second submit returns the existing result). If the
@@ -782,8 +835,15 @@ export async function completeTraining(
   const prog = await ensureProgress(admin, r.event.id, r.participant.id);
   if (!prog) return { ok: false, reason: "progress_failed" };
 
-  // Already complete → idempotent (do not re-award, do not overwrite the response).
-  if (prog.completed_at) return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
+  // Already complete: do not overwrite evidence, but retry idempotent downstream
+  // consequences. This is the same recovery contract Quiz V1 relies on.
+  if (prog.completed_at) {
+    const finalized = await finalizeCanonicalTrainingCompletion(admin, {
+      event: r.event, participant: r.participant, progressId: prog.id,
+      completedAt: prog.completed_at, authUserId, deviceTz,
+    });
+    return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, finalized.xpOverride), ...applyNarration(finalized.applyWindowResult), claimCode: finalized.claimCode, claimExpiresAt: finalized.claimExpiresAt };
+  }
 
   if (r.event.status === "closed") return { ok: false, reason: "event_closed" };
   if (!prog.video_completed_at) return { ok: false, reason: "video_not_complete" };

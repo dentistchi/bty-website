@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { parseQuizCsv } from "@/domain/foundry/events/quickTrainingQuizCsv";
+import type { Quiz } from "@/domain/foundry/events/quickTrainingQuiz";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
 import type { ManagerSnapshot } from "./types";
@@ -35,6 +37,8 @@ export function CreateFoundryEventForm({
   const [intro, setIntro] = useState("");
   const [docPrompt, setDocPrompt] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [error, setError] = useState<FieldError>(null);
@@ -63,7 +67,7 @@ export function CreateFoundryEventForm({
         body: JSON.stringify({
           title: title.trim(),
           youtube_url: youtube.trim(),
-          completion_prompt: prompt.trim(),
+          completion_prompt: prompt.trim(), ...(quiz ? { quiz, quiz_source: "csv" } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -154,7 +158,7 @@ export function CreateFoundryEventForm({
           content_type: "document",
           intro: intro.trim() || null,
           completion_prompt: docPrompt.trim(),
-          staging_ticket: upData.ticket,
+          staging_ticket: upData.ticket, ...(quiz ? { quiz, quiz_source: "csv" } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -300,6 +304,14 @@ export function CreateFoundryEventForm({
             {textField(t.docPromptLabel, docPrompt, setDocPrompt, t.docPromptPlaceholder, "docPrompt", 300, t.promptError)}
           </>
         )}
+
+        <label className="flex flex-col gap-2 rounded-xl border border-white/[0.1] p-4">
+          <span className="text-sm font-medium text-white/80">퀴즈 추가 <span className="font-normal text-white/45">(선택)</span></span>
+          <span className="text-xs text-white/50">퀴즈 파일 올리기 · question, option_a, option_b, option_c, option_d, correct_option, explanation</span>
+          <input type="file" accept=".csv,text/csv" aria-label="퀴즈 파일 올리기" onChange={(e) => { const file=e.target.files?.[0]; if (!file) return; void file.text().then((text) => { try { setQuiz(parseQuizCsv(text)); setQuizError(null); } catch { setQuiz(null); setQuizError("CSV 형식을 확인해 주세요."); } }); }} className="text-sm text-white/70" />
+          {quiz ? <div className="flex flex-col gap-2 text-xs text-white/65"><span>문제 검토 · {quiz.questions.length}문제</span>{quiz.questions.map((q) => <label key={q.id} className="flex flex-col gap-1"><input value={q.text} onChange={(e) => setQuiz((old) => old ? { ...old, questions: old.questions.map((x) => x.id === q.id ? { ...x, text: e.target.value } : x) } : old)} className="rounded border border-white/15 bg-white/[0.04] px-2 py-1 text-white" /></label>)}</div> : null}
+          {quizError ? <span className="text-xs text-red-300">{quizError}</span> : null}
+        </label>
 
         {progressMsg ? <span className="text-xs text-white/50">{progressMsg}</span> : null}
 

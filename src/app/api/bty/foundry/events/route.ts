@@ -4,6 +4,7 @@ import { listOwnerEvents } from "@/lib/bty/foundry/events/foundryEventService";
 import { createTrainingEvent } from "@/lib/bty/foundry/events/foundryTrainingService";
 import { createDocumentEvent } from "@/lib/bty/foundry/events/foundryDocumentService";
 import { verifyDocumentUploadTicket } from "@/lib/bty/foundry/events/documentUploadTicket";
+import { attachReviewedQuiz } from "@/lib/bty/foundry/events/quickTrainingQuizService";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
       },
     });
     if (!result.ok) return managerJson(base, req, { error: result.reason }, 400);
+    if (body?.quiz) { const quiz = await attachReviewedQuiz(admin, result.value.event.id, user.id, body.quiz, body.quiz_source === "generated" ? "generated" : body.quiz_source === "csv" ? "csv" : "manual"); if (!quiz.ok) { await admin.from("foundry_events").delete().eq("id", result.value.event.id).eq("owner_user_id", user.id); return managerJson(base, req, { error: quiz.reason }, 400); } }
     return managerJson(base, req, attachJoinUrl(req, result.value), 201);
   }
 
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
     completion_prompt: body?.completion_prompt,
   });
   if (!result.ok) return managerJson(base, req, { error: result.reason }, 400);
+  if (body?.quiz) { const quiz = await attachReviewedQuiz(admin, result.value.event.id, user.id, body.quiz, body.quiz_source === "generated" ? "generated" : body.quiz_source === "csv" ? "csv" : "manual"); if (!quiz.ok) { await admin.from("foundry_events").delete().eq("id", result.value.event.id).eq("owner_user_id", user.id); return managerJson(base, req, { error: quiz.reason }, 400); } }
 
   return managerJson(base, req, attachJoinUrl(req, result.value), 201);
 }
