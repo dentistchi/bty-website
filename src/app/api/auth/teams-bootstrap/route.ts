@@ -4,6 +4,7 @@ import { verifyTeamsTabSsoToken } from "@/lib/bty/teams/tabSsoTokenVerifier.serv
 import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge.server";
 import { bindAnnouncementRecipients } from "@/lib/bty/announcement/trackAnnouncement.server";
 import { evaluateMicrosoftManagerEntitlement } from "@/lib/bty/foundry/events/microsoftManagerSync.server";
+import { bindDirectoryAuthorityUser } from "@/lib/bty/microsoft/directoryAuthority.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       verified.identity.tenantId,
       verified.identity.aadObjectId,
     );
+    await bindDirectoryAuthorityUser(admin, result.userId, verified.identity.tenantId, verified.identity.aadObjectId);
     /*
       Microsoft Manager Authority V1 — settle Host entitlement at ACTIVATION.
 
