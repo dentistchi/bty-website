@@ -24,7 +24,7 @@ function authorityDb(tables: Tables, failedTable?: keyof Tables) {
 }
 
 const userId = "user-1";
-const microsoft = (is_provider: boolean, is_manager = false): Tables => ({ bty_microsoft_authority_snapshots: { is_provider, is_manager, sync_status: "success" } });
+const microsoft = (is_provider: boolean, is_manager = false): Tables => ({ bty_microsoft_directory_authority: { is_provider, is_manager, sync_status: "success", account_enabled: true, user_type: "Member" } } as Tables);
 
 beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => {}));
 

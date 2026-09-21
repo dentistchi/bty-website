@@ -171,3 +171,28 @@ export async function probeProfessionalProfile(token: string, aadObjectId: strin
     return { ok: false, reason: "network" };
   }
 }
+
+export type DirectoryUser = { id: string; accountEnabled: boolean; userType: string; jobTitle: string | null; employeeType: string | null };
+
+/** Page through authority fields only; directory population is independent of BTY auth users. */
+export async function listDirectoryUsers(token: string): Promise<{ ok: true; users: DirectoryUser[] } | { ok: false }> {
+  const users: DirectoryUser[] = [];
+  let url: string | null = GRAPH + "/v1.0/users?$select=id,accountEnabled,userType,jobTitle,employeeType&$top=100";
+  try {
+    while (url) {
+      const res = await fetch(url, { headers: { authorization: "Bearer " + token, accept: "application/json" } });
+      if (!res.ok) return { ok: false };
+      const body = (await res.json()) as { value?: unknown[]; "@odata.nextLink"?: unknown };
+      for (const item of body.value ?? []) {
+        const row = item as Record<string, unknown>;
+        if (typeof row.id !== "string" || !GUID.test(row.id.toLowerCase())) continue;
+        users.push({ id: row.id.toLowerCase(), accountEnabled: row.accountEnabled === true,
+          userType: typeof row.userType === "string" ? row.userType : "",
+          jobTitle: typeof row.jobTitle === "string" ? row.jobTitle : null,
+          employeeType: typeof row.employeeType === "string" ? row.employeeType : null });
+      }
+      url = typeof body["@odata.nextLink"] === "string" ? body["@odata.nextLink"] : null;
+    }
+    return { ok: true, users };
+  } catch { return { ok: false }; }
+}
