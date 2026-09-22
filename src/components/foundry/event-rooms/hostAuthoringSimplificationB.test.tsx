@@ -403,6 +403,8 @@ describe("R4-R8B — publish truth is re-anchored, not relaxed", () => {
       "20260924000000_quick_training_quiz_authoring_v1.sql",
       // Teams Chat-Native Training V1 — registered deliberately, which is the signal this list is for.
       "20260925000000_teams_chat_native_training_v1.sql",
+      // Teams Delivery Diagnostics V1 — additive audit table, registered deliberately.
+      "20260926000000_teams_training_delivery_attempts_v1.sql",
     ];
     expect(known.filter((f) => f > newest && !KNOWN_LATER.includes(f))).toEqual([]);
   });

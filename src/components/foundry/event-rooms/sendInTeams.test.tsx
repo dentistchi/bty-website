@@ -164,21 +164,57 @@ describe("★ the chat-compose and deep-link invitation are gone", () => {
 });
 
 describe("a mixed or failed send is reported honestly", () => {
-  it("names who could not receive it, without a Microsoft error string", async () => {
+  it("★ shows the EXACT product reason per cause — the client no longer discards it", async () => {
     sendResponse = () =>
       new Response(
-        JSON.stringify({ ok: true, sent: 2, alreadySent: 1, undeliverable: [{ displayName: "Cam Doe", reason: "not_installed" }] }),
+        JSON.stringify({
+          ok: true, sent: 2, alreadySent: 1,
+          undeliverable: [
+            { displayName: "Cam Doe", reason: "not_installed" },
+            { displayName: "Dee Ray", reason: "not_installed" },
+            { displayName: "Eli Fox", reason: "not_eligible" },
+            { displayName: null, reason: "unknown" },
+          ],
+        }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     await inTeams();
     fireEvent.click(screen.getByTestId("send-in-teams"));
     await waitFor(() => expect(screen.getByTestId("send-in-teams-confirm-cta")).toBeTruthy());
     fireEvent.click(screen.getByTestId("send-in-teams-confirm-cta"));
-    await waitFor(() => expect(screen.getByTestId("send-in-teams-status")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("send-in-teams-failures")).toBeTruthy());
+
     const status = screen.getByTestId("send-in-teams-status").textContent ?? "";
-    expect(status).toContain(en.sendInTeamsMixed(2, 1));
-    expect(status).toContain("Cam Doe");
-    expect(status).not.toMatch(/not_installed|403|forbidden/i);
+    expect(status).toContain(en.sendInTeamsMixed(2, 4));
+
+    const failures = screen.getByTestId("send-in-teams-failures").textContent ?? "";
+    // The three distinct causes each get their own ordinary-language sentence...
+    expect(failures).toContain(en.sendReasonNotInstalled);
+    expect(failures).toContain(en.sendReasonNotEligible);
+    expect(failures).toContain(en.sendReasonUnknown);
+    // ...with the affected names under the right one, and no cause stated twice.
+    expect(failures).toContain("Cam Doe, Dee Ray");
+    expect(failures).toContain("Eli Fox");
+    expect(failures.split(en.sendReasonNotInstalled).length - 1).toBe(1);
+    // And never a Microsoft string.
+    expect(failures).not.toMatch(/not_installed|not_eligible|403|forbidden|roster/i);
+  });
+
+  it("the app-not-installed case is distinguishable from every other failure", async () => {
+    sendResponse = () =>
+      new Response(
+        JSON.stringify({ ok: true, sent: 0, alreadySent: 0, undeliverable: [{ displayName: "Cam Doe", reason: "not_installed" }] }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    await inTeams();
+    fireEvent.click(screen.getByTestId("send-in-teams"));
+    await waitFor(() => expect(screen.getByTestId("send-in-teams-confirm-cta")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("send-in-teams-confirm-cta"));
+    await waitFor(() => expect(screen.getByTestId("send-in-teams-failures")).toBeTruthy());
+    const failures = screen.getByTestId("send-in-teams-failures").textContent ?? "";
+    expect(failures).toContain(en.sendReasonNotInstalled);
+    expect(failures).not.toContain(en.sendReasonUnknown);
+    expect(failures).not.toContain(en.sendReasonFailed);
   });
 
   it("a refused send says so rather than claiming success", async () => {

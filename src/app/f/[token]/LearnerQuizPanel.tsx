@@ -108,6 +108,59 @@ export function useLearnerQuiz(token: string, active: boolean): LearnerQuiz | fa
   return quiz;
 }
 
+/**
+ * THE RESULT OF A QUIZ THIS LEARNER ALREADY SUBMITTED, for a room they have come back to.
+ * Slice Teams Delivery Diagnostics V1 (§7).
+ *
+ * ★ THE DEFECT THIS CLOSES. `useLearnerQuiz` only probes at the `response` stage, and once a
+ * learner is completed the room renders its terminal — XP, claim, follow-up — and never mentions
+ * the quiz again. So a learner who finished a quiz-backed training and returned could not see what
+ * they had scored: the attempt was durable, immutable and invisible.
+ *
+ * READ-ONLY, AND NEVER A RETAKE. The attempt is immutable by design and remains so; this only
+ * renders what the server already returns for a submitted attempt. There is no action on it.
+ */
+export function useLearnerQuizResult(token: string, active: boolean): QuizResult | false | null {
+  const [result, setResult] = useState<QuizResult | false | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setResult(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch(api(token, "/quiz"), { credentials: "include", cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setResult(data?.submitted && data?.result ? (data.result as QuizResult) : false);
+      })
+      .catch(() => {
+        if (!cancelled) setResult(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, token]);
+  return result;
+}
+
+/**
+ * The factual score, restored on a terminal screen. A fact and nothing else — no pass, no fail, no
+ * label, and nothing to press.
+ */
+export function LearnerQuizResultSummary({ result, locale }: { result: QuizResult; locale: Locale }) {
+  const t = COPY[locale];
+  return (
+    <section className="mt-4 rounded-xl border border-white/15 p-4" data-testid="quiz-result-summary">
+      <Eyebrow>{t.resultEyebrow}</Eyebrow>
+      <p className="mt-2 text-xl font-semibold text-white">
+        {result.correctCount} / {result.totalCount}
+      </p>
+      <p className="text-sm text-[#C9A66B]">{t.correct(result.scorePercent)}</p>
+    </section>
+  );
+}
+
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{children}</span>

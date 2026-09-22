@@ -58,7 +58,12 @@ import { JourneyReading, type Journey } from "./JourneyReading";
 import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
-import { LearnerQuizPanel, useLearnerQuiz } from "./LearnerQuizPanel";
+import {
+  LearnerQuizPanel,
+  LearnerQuizResultSummary,
+  useLearnerQuiz,
+  useLearnerQuizResult,
+} from "./LearnerQuizPanel";
 
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
@@ -438,6 +443,15 @@ export default function FoundryJoinClient({
     Asked only once the learner has reached the completion step, and answered by the server.
   */
   const quiz = useLearnerQuiz(token, snapshot?.stage === "response");
+  /*
+    §7 — THE FACTUAL SCORE, RESTORED ON RETURN. A completed quiz-backed room used to render its
+    terminal and never mention the quiz again, so an immutable attempt became invisible to the
+    person who made it. Read-only: there is no retake, and the attempt is untouched.
+  */
+  const quizResult = useLearnerQuizResult(
+    token,
+    snapshot?.stage === "completed_awarded" || snapshot?.stage === "completed_claimable",
+  );
   const [loaded, setLoaded] = useState(false);
   /*
     R4-R5C9A — the server's Apply outcome, captured from the completion/claim response and held
@@ -1023,6 +1037,12 @@ export default function FoundryJoinClient({
 
           <div className="flex flex-col gap-4">
           <Eyebrow>{t.trainingComplete}</Eyebrow>
+
+          {/*
+            §7 — THE FACTUAL SCORE, RESTORED. Read-only: the attempt is immutable and there is
+            nothing here to press. Absent for every non-quiz training, which renders exactly as before.
+          */}
+          {quizResult ? <LearnerQuizResultSummary result={quizResult} locale={locale} /> : null}
           {assignmentConnected ? (
             <p className="rounded-lg border border-[#C9A66B]/30 bg-[#C9A66B]/[0.08] px-4 py-2.5 text-sm leading-6 text-[#E5B769]" data-testid="assignment-connected">
               {t.assignmentConnected}
