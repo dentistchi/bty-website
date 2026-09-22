@@ -116,13 +116,6 @@ const COPY: Record<Locale, {
    * account. It lives HERE, in the surface that owns completed learning, rather than in Me or on
    * the Learn landing: one door, in the place the result will appear.
    */
-  claimTitle: string;
-  claimHint: string;
-  claimLabel: string;
-  claimCta: string;
-  claimWorking: string;
-  claimDone: string;
-  claimBad: string;
 }> = {
   en: {
     title: "My Learning",
@@ -138,13 +131,6 @@ const COPY: Record<Locale, {
     completedOn: "Completed",
     video: "Video",
     document: "PDF",
-    claimTitle: "Add a training you finished",
-    claimHint: "Finished a training without signing in? Enter the completion code you were given.",
-    claimLabel: "Completion code",
-    claimCta: "Add it",
-    claimWorking: "Adding…",
-    claimDone: "Added to your account.",
-    claimBad: "That code did not work. Check it and submit it again.",
     empty: "No completed trainings yet.",
     emptyHint: "When you finish a training, it appears here with what you understood.",
     // Default parent = the Learn/Required-learning origin. An explicit `backLabel` overrides this
@@ -181,13 +167,6 @@ const COPY: Record<Locale, {
     completedOn: "완료",
     video: "영상",
     document: "PDF",
-    claimTitle: "완료한 학습 가져오기",
-    claimHint: "로그인 없이 학습을 마치셨나요? 그때 받은 완료 코드를 입력하세요.",
-    claimLabel: "완료 코드",
-    claimCta: "가져오기",
-    claimWorking: "가져오는 중…",
-    claimDone: "학습을 내 계정에 연결했습니다.",
-    claimBad: "코드가 맞지 않습니다. 다시 확인해 주세요.",
     empty: "아직 완료한 교육이 없습니다.",
     emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
     backDefault: "필수 학습",
@@ -257,8 +236,6 @@ export default function FoundryMyLearning({
     given a code and nothing else; this is the only place in the app that spends it. The raw code
     is held for the length of one submit and never stored.
   */
-  const [claimInput, setClaimInput] = useState("");
-  const [claimState, setClaimState] = useState<"idle" | "working" | "done" | "bad">("idle");
   const focusRef = useRef<HTMLLIElement | null>(null);
 
   /*
@@ -421,27 +398,6 @@ export default function FoundryMyLearning({
     };
   }, [load, loadReviewedPlans, loadEvidence]);
 
-  const submitClaim = useCallback(async () => {
-    if (claimState === "working" || !claimInput.trim()) return;
-    setClaimState("working");
-    try {
-      const res = await fetch("/api/bty/foundry/completion-claim", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: claimInput, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
-      });
-      if (!res.ok) return setClaimState("bad");
-      setClaimState("done");
-      setClaimInput("");
-      // The claimed training belongs in this list now, so the list is what proves it worked.
-      await load();
-    } catch {
-      setClaimState("bad");
-    }
-  }, [claimInput, claimState, load]);
-
   return (
     <section data-testid="foundry-my-learning" className="flex flex-col gap-4 px-4 py-4">
       <div className="flex items-center justify-between gap-2">
@@ -460,56 +416,18 @@ export default function FoundryMyLearning({
       </div>
 
       {/*
-        ONE DOOR, IN THE PLACE THE RESULT APPEARS. Not on the Learn landing and not in Me: a
-        learner looking for a training they finished looks where their finished trainings are, and
-        a second entry would be a second thing to keep consistent. Secondary by weight — it sits
-        under the heading and above the list, and never competes with the learning itself.
-      */}
-      <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3" data-testid="my-learning-claim">
-        <p className="text-sm font-medium text-white/80">{t.claimTitle}</p>
-        <p className="text-xs leading-5 text-white/50">{t.claimHint}</p>
-        <div className="mt-1 flex items-center gap-2">
-          <input
-            value={claimInput}
-            onChange={(e) => {
-              setClaimInput(e.target.value);
-              if (claimState !== "idle") setClaimState("idle");
-            }}
-            aria-label={t.claimLabel}
-            placeholder="XXXX-XXXX-XXXX"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            data-testid="my-learning-claim-input"
-            /*
-              16px MINIMUM, BECAUSE iOS ZOOMS ANYTHING SMALLER. Founder device, Capacitor
-              WKWebView: tapping this field zoomed the whole app and it stayed zoomed after
-              submitting — force-quit was the only way back. `text-sm` resolves to .875rem = 14px,
-              which is under the threshold iOS applies to a focused form control.
+        THE COMPLETION-CODE DOOR IS GONE (Slice No-Browser-Escape V1, Founder decision).
 
-              The other way to stop it is `maximum-scale=1` / `user-scalable=no` on the viewport,
-              which fixes this screen by removing pinch-zoom from every screen. One input at 16px
-              costs nothing and leaves that alone. `min-w-0 flex-1` absorbs the wider text so the
-              row still shrinks instead of overflowing.
-            */
-            className="min-w-0 flex-1 rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 font-mono text-base tracking-[0.1em] text-white placeholder-white/25 outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => void submitClaim()}
-            disabled={claimState === "working" || claimInput.trim().length === 0}
-            data-testid="my-learning-claim-submit"
-            className="shrink-0 rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
-          >
-            {claimState === "working" ? t.claimWorking : t.claimCta}
-          </button>
-        </div>
-        {claimState === "done" ? (
-          <p className="text-xs text-[#E5B769]" data-testid="my-learning-claim-done">{t.claimDone}</p>
-        ) : claimState === "bad" ? (
-          <p className="text-xs text-white/60" data-testid="my-learning-claim-bad">{t.claimBad}</p>
-        ) : null}
-      </div>
+        It existed for someone who finished a training without signing in and then wanted it on
+        their account. Every production learner now arrives with an authenticated BTY account, so
+        the surface was asking a real person to solve a problem they do not have — and a code
+        field is a thing to get wrong, not a feature.
+
+        The SERVER path is deliberately left in place: `/api/bty/foundry/completion-claim` and its
+        minting still work, and two unexpired codes exist in production against two anonymous
+        completions. Removing redemption as well would strand them, which is a separate decision
+        about historical records rather than a consequence of taking a field off a screen.
+      */}
 
       {items === null ? (
         <p className="text-sm text-white/40" role="status">{t.loading}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
@@ -1552,197 +1553,211 @@ export default function BtyDailyAppShell({
   // UUID-ish shape (the server does the real authz). Params are consumed via replaceState
   // so a re-render / back never re-triggers them and no navigation loop forms.
   useEffect(() => {
-    const search = window.location.search;
-    const requestedTab = resolveInitialAppTab(search);
-    // Raw (pre-alias) tab value — lets legacy `?tab=center` open the Center feed inside Me.
-    let rawTab: string | null = null;
-    try {
-      rawTab = new URLSearchParams(search).get("tab");
-    } catch {
-      rawTab = null;
-    }
-    let reviewParam: string | null = null;
-    let viewParam: string | null = null;
-    try {
-      const sp = new URLSearchParams(search);
-      reviewParam = sp.get("review");
-      viewParam = sp.get("view");
-    } catch {
-      reviewParam = null;
-      viewParam = null;
-    }
-    let entryParam: string | null = null;
-    try {
-      entryParam = new URLSearchParams(search).get("entry");
-    } catch {
-      entryParam = null;
-    }
-    let followupParam: string | null = null;
-    try {
-      followupParam = new URLSearchParams(search).get("followup");
-    } catch {
-      followupParam = null;
-    }
-    let actionReviewParam: string | null = null;
-    try {
-      actionReviewParam = new URLSearchParams(search).get("actionReview");
-    } catch {
-      actionReviewParam = null;
-    }
-    let fieldActionAssignmentParam: string | null = null;
-    let fieldActionContractParam: string | null = null;
-    let fieldActionParam: string | null = null;
-    try {
-      const sp = new URLSearchParams(search);
-      fieldActionAssignmentParam = sp.get("fieldActionAssignment");
-      fieldActionContractParam = sp.get("fieldActionContract");
-      fieldActionParam = sp.get("fieldAction");
-    } catch {
-      fieldActionAssignmentParam = null;
-      fieldActionContractParam = null;
-      fieldActionParam = null;
-    }
-    const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
-    const wantsMyLearning = viewParam === "my-learning";
-    const wantsReflections = viewParam === "reflections";
-    const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
-    // R4-R5C1 — the assignment a Today Required Learning card named. Same UUID-ish gate as its
-    // siblings; a malformed or stale value focuses nothing and Learn opens normally.
-    let assignmentParam: string | null = null;
-    try {
-      assignmentParam = new URLSearchParams(search).get("assignment");
-    } catch {
-      assignmentParam = null;
-    }
-    const validAssignment =
-      assignmentParam && /^[0-9a-fA-F-]{16,}$/.test(assignmentParam) ? assignmentParam : null;
-    const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
-    const validActionReview =
-      actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
-    const validFieldActionAssignment =
-      fieldActionAssignmentParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionAssignmentParam) ? fieldActionAssignmentParam : null;
-    const validFieldActionContract =
-      fieldActionContractParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionContractParam) ? fieldActionContractParam : null;
-    const validFieldAction =
-      fieldActionParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionParam) ? fieldActionParam : null;
-    // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
-    // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
-    const hostLink = parseHostDeepLink(search);
-    const draftLink = parseDraftDeepLink(search);
-    if (
-      !requestedTab &&
-      !validReview &&
-      !wantsMyLearning &&
-      !wantsReflections &&
-      !validFollowup &&
-      !validActionReview &&
-      !validFieldActionAssignment &&
-      !validFieldActionContract &&
-      !validFieldAction &&
-      !hostLink &&
-      !draftLink &&
-      !validAssignment
-    )
-      return;
-    if (validFieldAction) {
-      // Field Actions Focused Surface V1: open the focused Field Actions surface under Practice,
-      // scrolled to this specific action (never generic Today).
-      setTab("practice");
-      setPracticeFieldActionId(validFieldAction);
-    } else if (validFieldActionAssignment) {
-      // Foundry completion "Apply this in real life" → open the Today-owned Field Action producer.
-      setTab("today");
-      setFieldActionAssignmentId(validFieldActionAssignment);
-    } else if (validFieldActionContract) {
-      // Backward-compat: a legacy ?tab=today&fieldActionContract= link still opens the focused form.
-      setTab("today");
-      setFieldActionContractId(validFieldActionContract);
-    } else if (validActionReview) {
-      // Canonical Today Action-review deep link → open the read-only in-shell review detail.
-      setTab("today");
-      setActionReviewId(validActionReview);
-    } else if (validFollowup) {
-      // Canonical Today FOLLOW_UP_DUE deep link (?tab=foundry&followup=) → Learn (=Foundry) follow-up.
-      setTab("learn");
-      setFollowupId(validFollowup);
-    } else if (draftLink) {
-      // Canonical draft deep link → Learn (=Foundry) with the Builder opened on that draft.
-      setTab("learn");
-      setHostDraftId(draftLink.draftId);
-      setHostDraftView(draftLink.view);
-    } else if (hostLink) {
-      // Canonical Host attention deep link → Learn (=Foundry) control room + section + focused row.
-      setTab("learn");
-      setHostEventId(hostLink.eventId);
-      setHostSection(hostLink.section);
-      setHostFocusId(hostLink.focusId);
-      // Origin-aware return (3.2G-R1): only a Today-tagged link carries an origin; Learn/My-events/
-      // direct entry has none → the existing safe Learn-home back is preserved.
-      setHostReturnTab(hostLink.returnTab);
-    } else if (validReview) {
-      setTab("learn");
-      setReviewId(validReview);
-    } else if (wantsMyLearning) {
-      // R4-R5C1: `entry` was parsed and validated here all along and then dropped on the floor for
-      // this branch, so an Apply card opened an unfocused list. My Learning keys its rows on the
-      // same `foundry_event_training_progress.id` this carries.
-      setTab("learn");
-      setFoundryView("my-learning");
-      setMyLearningFocus(validEntry);
-    } else if (validAssignment) {
-      // R4-R5C1: Learn, with the named assignment card brought into view. Required Learning is the
-      // Learn ROOT surface, so `foundryView` stays "rooms".
-      setTab("learn");
-      setFoundryView("rooms");
-      setLearnAssignmentFocus(validAssignment);
-    } else if (wantsReflections) {
-      // Legacy ?view=reflections normalizes to the single Center feed — now inside Me (Center folded in).
-      setTab("me");
-      setMeView("center");
-      setCenterFocusEntry(validEntry);
-    } else if (requestedTab) {
-      setTab(requestedTab);
-      // Legacy ?tab=center[&entry=<id>] resolves to Me → open the Center feed (focused when entry present).
-      if (rawTab === "center") {
-        setMeView("center");
-        if (validEntry) setCenterFocusEntry(validEntry);
+    /*
+      ONE INTERPRETER, TWO ENTRY POINTS (Slice No-Browser-Escape V1).
+
+      This used to run only on mount. Inside Teams that is not enough: `/teams` is the only route
+      the frame may render, so a BTY destination cannot be reached by navigating — it is written
+      into this document's own query and re-read. Extracting the body rather than duplicating it
+      is the point: a cold open and an in-shell handoff resolve the SAME deep link the same way,
+      so the two can never drift apart.
+    */
+    const applyDeepLink = () => {
+      const search = window.location.search;
+      const requestedTab = resolveInitialAppTab(search);
+      // Raw (pre-alias) tab value — lets legacy `?tab=center` open the Center feed inside Me.
+      let rawTab: string | null = null;
+      try {
+        rawTab = new URLSearchParams(search).get("tab");
+      } catch {
+        rawTab = null;
       }
-    }
-    try {
-      const params = new URLSearchParams(search);
-      /*
-        A draft review link is NOT consumed here (Slice 3.2L-R11.4E-R2). Every other deep link is
-        a one-shot instruction; this one is an address. Erasing it made the URL stop describing
-        the page, so a reload of a bookmarked review reopened the Host's last saved step instead.
-        It is narrowed by `narrowDraftDeepLink` at the moment it stops being true, not on arrival.
-      */
-      if (draftLink) {
-        draftUrlLiveRef.current = true;
+      let reviewParam: string | null = null;
+      let viewParam: string | null = null;
+      try {
+        const sp = new URLSearchParams(search);
+        reviewParam = sp.get("review");
+        viewParam = sp.get("view");
+      } catch {
+        reviewParam = null;
+        viewParam = null;
+      }
+      let entryParam: string | null = null;
+      try {
+        entryParam = new URLSearchParams(search).get("entry");
+      } catch {
+        entryParam = null;
+      }
+      let followupParam: string | null = null;
+      try {
+        followupParam = new URLSearchParams(search).get("followup");
+      } catch {
+        followupParam = null;
+      }
+      let actionReviewParam: string | null = null;
+      try {
+        actionReviewParam = new URLSearchParams(search).get("actionReview");
+      } catch {
+        actionReviewParam = null;
+      }
+      let fieldActionAssignmentParam: string | null = null;
+      let fieldActionContractParam: string | null = null;
+      let fieldActionParam: string | null = null;
+      try {
+        const sp = new URLSearchParams(search);
+        fieldActionAssignmentParam = sp.get("fieldActionAssignment");
+        fieldActionContractParam = sp.get("fieldActionContract");
+        fieldActionParam = sp.get("fieldAction");
+      } catch {
+        fieldActionAssignmentParam = null;
+        fieldActionContractParam = null;
+        fieldActionParam = null;
+      }
+      const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
+      const wantsMyLearning = viewParam === "my-learning";
+      const wantsReflections = viewParam === "reflections";
+      const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
+      // R4-R5C1 — the assignment a Today Required Learning card named. Same UUID-ish gate as its
+      // siblings; a malformed or stale value focuses nothing and Learn opens normally.
+      let assignmentParam: string | null = null;
+      try {
+        assignmentParam = new URLSearchParams(search).get("assignment");
+      } catch {
+        assignmentParam = null;
+      }
+      const validAssignment =
+        assignmentParam && /^[0-9a-fA-F-]{16,}$/.test(assignmentParam) ? assignmentParam : null;
+      const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
+      const validActionReview =
+        actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
+      const validFieldActionAssignment =
+        fieldActionAssignmentParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionAssignmentParam) ? fieldActionAssignmentParam : null;
+      const validFieldActionContract =
+        fieldActionContractParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionContractParam) ? fieldActionContractParam : null;
+      const validFieldAction =
+        fieldActionParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionParam) ? fieldActionParam : null;
+      // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
+      // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
+      const hostLink = parseHostDeepLink(search);
+      const draftLink = parseDraftDeepLink(search);
+      if (
+        !requestedTab &&
+        !validReview &&
+        !wantsMyLearning &&
+        !wantsReflections &&
+        !validFollowup &&
+        !validActionReview &&
+        !validFieldActionAssignment &&
+        !validFieldActionContract &&
+        !validFieldAction &&
+        !hostLink &&
+        !draftLink &&
+        !validAssignment
+      )
         return;
+      if (validFieldAction) {
+        // Field Actions Focused Surface V1: open the focused Field Actions surface under Practice,
+        // scrolled to this specific action (never generic Today).
+        setTab("practice");
+        setPracticeFieldActionId(validFieldAction);
+      } else if (validFieldActionAssignment) {
+        // Foundry completion "Apply this in real life" → open the Today-owned Field Action producer.
+        setTab("today");
+        setFieldActionAssignmentId(validFieldActionAssignment);
+      } else if (validFieldActionContract) {
+        // Backward-compat: a legacy ?tab=today&fieldActionContract= link still opens the focused form.
+        setTab("today");
+        setFieldActionContractId(validFieldActionContract);
+      } else if (validActionReview) {
+        // Canonical Today Action-review deep link → open the read-only in-shell review detail.
+        setTab("today");
+        setActionReviewId(validActionReview);
+      } else if (validFollowup) {
+        // Canonical Today FOLLOW_UP_DUE deep link (?tab=foundry&followup=) → Learn (=Foundry) follow-up.
+        setTab("learn");
+        setFollowupId(validFollowup);
+      } else if (draftLink) {
+        // Canonical draft deep link → Learn (=Foundry) with the Builder opened on that draft.
+        setTab("learn");
+        setHostDraftId(draftLink.draftId);
+        setHostDraftView(draftLink.view);
+      } else if (hostLink) {
+        // Canonical Host attention deep link → Learn (=Foundry) control room + section + focused row.
+        setTab("learn");
+        setHostEventId(hostLink.eventId);
+        setHostSection(hostLink.section);
+        setHostFocusId(hostLink.focusId);
+        // Origin-aware return (3.2G-R1): only a Today-tagged link carries an origin; Learn/My-events/
+        // direct entry has none → the existing safe Learn-home back is preserved.
+        setHostReturnTab(hostLink.returnTab);
+      } else if (validReview) {
+        setTab("learn");
+        setReviewId(validReview);
+      } else if (wantsMyLearning) {
+        // R4-R5C1: `entry` was parsed and validated here all along and then dropped on the floor for
+        // this branch, so an Apply card opened an unfocused list. My Learning keys its rows on the
+        // same `foundry_event_training_progress.id` this carries.
+        setTab("learn");
+        setFoundryView("my-learning");
+        setMyLearningFocus(validEntry);
+      } else if (validAssignment) {
+        // R4-R5C1: Learn, with the named assignment card brought into view. Required Learning is the
+        // Learn ROOT surface, so `foundryView` stays "rooms".
+        setTab("learn");
+        setFoundryView("rooms");
+        setLearnAssignmentFocus(validAssignment);
+      } else if (wantsReflections) {
+        // Legacy ?view=reflections normalizes to the single Center feed — now inside Me (Center folded in).
+        setTab("me");
+        setMeView("center");
+        setCenterFocusEntry(validEntry);
+      } else if (requestedTab) {
+        setTab(requestedTab);
+        // Legacy ?tab=center[&entry=<id>] resolves to Me → open the Center feed (focused when entry present).
+        if (rawTab === "center") {
+          setMeView("center");
+          if (validEntry) setCenterFocusEntry(validEntry);
+        }
       }
-      params.delete("tab");
-      params.delete("review");
-      params.delete("view");
-      params.delete("entry");
-      params.delete("assignment");
-      params.delete("followup");
-      params.delete("actionReview");
-      params.delete("fieldActionAssignment");
-      params.delete("fieldActionContract");
-      params.delete("fieldAction");
-      params.delete("event");
-      params.delete("section");
-      params.delete("focus");
-      params.delete("from");
-      const qs = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
-      );
-    } catch {
-      /* history unavailable — the tab still opened; nothing else to do */
-    }
+      try {
+        const params = new URLSearchParams(search);
+        /*
+          A draft review link is NOT consumed here (Slice 3.2L-R11.4E-R2). Every other deep link is
+          a one-shot instruction; this one is an address. Erasing it made the URL stop describing
+          the page, so a reload of a bookmarked review reopened the Host's last saved step instead.
+          It is narrowed by `narrowDraftDeepLink` at the moment it stops being true, not on arrival.
+        */
+        if (draftLink) {
+          draftUrlLiveRef.current = true;
+          return;
+        }
+        params.delete("tab");
+        params.delete("review");
+        params.delete("view");
+        params.delete("entry");
+        params.delete("assignment");
+        params.delete("followup");
+        params.delete("actionReview");
+        params.delete("fieldActionAssignment");
+        params.delete("fieldActionContract");
+        params.delete("fieldAction");
+        params.delete("event");
+        params.delete("section");
+        params.delete("focus");
+        params.delete("from");
+        const qs = params.toString();
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+        );
+      } catch {
+        /* history unavailable — the tab still opened; nothing else to do */
+      }
+    };
+    applyDeepLink();
+    window.addEventListener(BTY_SHELL_DESTINATION_EVENT, applyDeepLink);
+    return () => window.removeEventListener(BTY_SHELL_DESTINATION_EVENT, applyDeepLink);
   }, []);
   const t = COPY[locale];
 
