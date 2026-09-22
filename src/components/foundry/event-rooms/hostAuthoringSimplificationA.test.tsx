@@ -619,6 +619,7 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
       "20260925000000_teams_chat_native_training_v1.sql",
       // Teams Delivery Diagnostics V1 — additive audit table, registered deliberately.
       "20260926000000_teams_training_delivery_attempts_v1.sql",
+      "20260927000000_foundry_host_followup_contacts_v1.sql",
     ];
     const newer = [...known]
       .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")

@@ -254,7 +254,7 @@ export function FoundryEventControlRoom({
               removingId={removingId}
               t={t}
             />
-            <FoundryQuizResults eventId={eventId} participantIds={participants} />
+            <FoundryQuizResults eventId={eventId} participantIds={participants} locale={locale} t={t} />
             {/* Shared Understanding review (Slice 3.1B-3G) — self-gates: renders only when a shared
                 question is configured AND a learner has submitted a shared response. Never shows
                 private Reflection. */}

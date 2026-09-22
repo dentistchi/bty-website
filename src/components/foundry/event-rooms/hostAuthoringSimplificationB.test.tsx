@@ -405,6 +405,7 @@ describe("R4-R8B — publish truth is re-anchored, not relaxed", () => {
       "20260925000000_teams_chat_native_training_v1.sql",
       // Teams Delivery Diagnostics V1 — additive audit table, registered deliberately.
       "20260926000000_teams_training_delivery_attempts_v1.sql",
+      "20260927000000_foundry_host_followup_contacts_v1.sql",
     ];
     expect(known.filter((f) => f > newest && !KNOWN_LATER.includes(f))).toEqual([]);
   });

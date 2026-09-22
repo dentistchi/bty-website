@@ -191,6 +191,25 @@ export type EventRoomsCopy = {
   sendReasonNoRoute: string;
   sendReasonUnknown: string;
   sendReasonFailed: string;
+  /*
+    A SCORE IS NOT THE DESTINATION. These name the surface behind one learner's score — what they
+    missed, and the one tap that turns a number into a conversation with the person.
+  */
+  quizHeader: string;
+  quizProgress: (done: number, total: number) => string;
+  quizAverage: (percent: number) => string;
+  resultDetailBack: string;
+  resultDetailAllCorrect: string;
+  resultDetailMissedHeader: string;
+  resultDetailTheyChose: string;
+  resultDetailCorrectAnswer: string;
+  resultDetailNoAnswer: string;
+  resultDetailLoading: string;
+  resultDetailUnavailable: string;
+  messageInTeams: string;
+  messageInTeamsOpening: string;
+  messageInTeamsNoIdentity: string;
+  messageInTeamsUnavailable: string;
   closeFallback: string;
   rotateQr: string;
   rotateConfirm: string;
@@ -406,6 +425,21 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendReasonNoRoute: "BTY can't reach Teams for this organization yet.",
     sendReasonUnknown: "Teams couldn't confirm delivery.",
     sendReasonFailed: "BTY couldn't send the training.",
+    quizHeader: "Quiz",
+    quizProgress: (done, total) => `${done} of ${total} completed the quiz`,
+    quizAverage: (percent) => ` · average ${percent}%`,
+    resultDetailBack: "Back to results",
+    resultDetailAllCorrect: "Answered every question correctly.",
+    resultDetailMissedHeader: "Worth going over",
+    resultDetailTheyChose: "They chose",
+    resultDetailCorrectAnswer: "Correct answer",
+    resultDetailNoAnswer: "No answer",
+    resultDetailLoading: "Opening result…",
+    resultDetailUnavailable: "This result can't be opened right now.",
+    messageInTeams: "Message in Teams",
+    messageInTeamsOpening: "Opening Teams…",
+    messageInTeamsNoIdentity: "This learner didn't join through Teams, so there's no chat to open.",
+    messageInTeamsUnavailable: "Teams chat can't be opened right now.",
     closeFallback: "Close",
     rotateQr: "Rotate QR",
     rotateConfirm: "Replace the current QR? The old QR will stop working.",
@@ -607,6 +641,21 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendReasonNoRoute: "아직 이 조직의 Teams에 연결할 수 없습니다.",
     sendReasonUnknown: "Teams가 전달을 확인하지 못했습니다.",
     sendReasonFailed: "훈련을 보내지 못했습니다.",
+    quizHeader: "퀴즈",
+    quizProgress: (done, total) => `퀴즈 완료 ${done} / ${total}`,
+    quizAverage: (percent) => ` · 평균 점수 ${percent}%`,
+    resultDetailBack: "결과로 돌아가기",
+    resultDetailAllCorrect: "모든 문항을 맞혔습니다.",
+    resultDetailMissedHeader: "같이 확인하면 좋은 문항",
+    resultDetailTheyChose: "선택한 답",
+    resultDetailCorrectAnswer: "정답",
+    resultDetailNoAnswer: "답변 없음",
+    resultDetailLoading: "결과를 여는 중…",
+    resultDetailUnavailable: "지금은 이 결과를 열 수 없습니다.",
+    messageInTeams: "Teams에서 메시지 보내기",
+    messageInTeamsOpening: "Teams를 여는 중…",
+    messageInTeamsNoIdentity: "이 학습자는 Teams로 참여하지 않아 열 수 있는 대화가 없습니다.",
+    messageInTeamsUnavailable: "지금은 Teams 대화를 열 수 없습니다.",
     closeFallback: "닫기",
     rotateQr: "QR 재발급",
     createArenaPractice: "연습 만들기",
