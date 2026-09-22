@@ -12,7 +12,7 @@ import { finalizeCanonicalTrainingCompletion, resolvePublic } from "./foundryTra
 import type { EventRow, ParticipantRow } from "./foundryEventService";
 
 type Progress = { id: string; video_completed_at: string | null; document_read_completed_at: string | null; written_guidance_read_at: string | null; completed_at: string | null; quiz_attempt_id: string | null };
-type Attempt = { id: string; answers: LearnerAnswer[]; correct_count: number; total_count: number; submitted_at: string };
+export type Attempt = { id: string; answers: LearnerAnswer[]; correct_count: number; total_count: number; submitted_at: string };
 /**
  * Is this payload a quiz the server will accept? Pure structural read, used by the create route
  * BEFORE anything is written, so "a quiz is attached" and "the completion question is not asked"
@@ -70,7 +70,15 @@ export async function attachReviewedQuiz(
 }
 export const quizStudyComplete = (p: Omit<Progress, "id" | "completed_at" | "quiz_attempt_id">) => Boolean(p.video_completed_at || p.document_read_completed_at || p.written_guidance_read_at);
 
-function learnerResult(quiz: Quiz, attempt: Attempt) {
+/**
+ * The learner's own result: their choice, the correct choice, and the author's explanation, per
+ * question. EXPORTED (Slice My Learning Canonical History) so the authenticated review surface and
+ * the room surface show the SAME thing — there is one projection of a quiz result in this product,
+ * and no second place where "what I answered" could be computed slightly differently.
+ *
+ * Scoring is untouched: this reads a SUBMITTED attempt and never grades anything.
+ */
+export function learnerResult(quiz: Quiz, attempt: Attempt) {
   const byQuestion = new Map(attempt.answers.map((answer) => [answer.questionId, answer.choiceId]));
   return { correctCount: attempt.correct_count, totalCount: attempt.total_count, scorePercent: Math.round((attempt.correct_count * 100) / attempt.total_count), submittedAt: attempt.submitted_at, questions: quiz.questions.map((q) => ({ id: q.id, text: q.text, choices: q.choices, selectedChoiceId: byQuestion.get(q.id) ?? null, correctChoiceId: q.correctChoiceId, explanation: q.explanation ?? null })) };
 }

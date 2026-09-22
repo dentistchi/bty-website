@@ -147,6 +147,7 @@ export type TrainingCardCopy = {
   next: string;
   questionOf: (n: number, total: number) => string;
   completeTitle: string;
+  viewInMyLearning: string;
   readLead: string;
 };
 
@@ -156,6 +157,7 @@ export const TRAINING_CARD_COPY: Record<"en" | "ko", TrainingCardCopy> = {
     next: "Next",
     questionOf: (n, total) => `Question ${n} of ${total}`,
     completeTitle: "Training complete",
+    viewInMyLearning: "View in My Learning",
     readLead: "Read this first:",
   },
   ko: {
@@ -163,6 +165,7 @@ export const TRAINING_CARD_COPY: Record<"en" | "ko", TrainingCardCopy> = {
     next: "다음",
     questionOf: (n, total) => `${total}문제 중 ${n}번`,
     completeTitle: "훈련 완료",
+    viewInMyLearning: "내 학습에서 보기",
     readLead: "먼저 아래 내용을 읽어 주세요:",
   },
 };
@@ -227,17 +230,28 @@ export function buildQuestionCard(input: {
 }
 
 /**
- * The terminal card. A FACT and nothing else — no pass, no fail, no label, no ranking, no link,
- * and nothing to sign in to.
+ * The terminal card. A FACT — no pass, no fail, no label, no ranking, and nothing to sign in to.
+ *
+ * ★ IT STILL DOES NOT REVIEW THE QUIZ, AND MUST NOT. A chat is a stream; the question a learner
+ * asks three weeks later — what did I get wrong, and why — belongs where they return, which is My
+ * Learning. Putting the review here would build a second, worse copy of that surface inside a
+ * conversation nobody scrolls back through.
+ *
+ * ★ THE ONE LINK (Slice My Learning — Canonical Training History V1). `reviewUrl` is OPTIONAL and,
+ * when present, opens the BTY Personal App at THIS training's detail — never a web page. A caller
+ * with nothing specific to open passes nothing and the card stays exactly as it was: the bot is
+ * the trigger, the app is the experience, and a generic link into a browser is neither.
  */
 export function buildCompletionCard(input: {
   correctCount: number;
   totalCount: number;
   scorePercent: number;
   locale?: "en" | "ko";
+  /** Teams personal-app deep link to this completed training. A web URL is not accepted. */
+  reviewUrl?: string | null;
 }): Card {
   const t = TRAINING_CARD_COPY[input.locale ?? "en"];
-  return shell([
+  const card = shell([
     { type: "TextBlock", text: t.completeTitle, wrap: true, weight: "Bolder", size: "Medium" },
     {
       type: "TextBlock",
@@ -248,6 +262,16 @@ export function buildCompletionCard(input: {
     },
     { type: "TextBlock", text: `${input.scorePercent}%`, wrap: true, isSubtle: true, spacing: "None" },
   ]);
+  /*
+    ONLY A PERSONAL-APP LINK EARNS A BUTTON. A `https://arena.btydaily.com/...` URL here would
+    open a browser from inside Teams, which is the exact escape this product forbids — so the
+    check is on the value, not on the caller's good intentions.
+  */
+  const review = (input.reviewUrl ?? "").trim();
+  if (review.startsWith("https://teams.microsoft.com/l/entity/")) {
+    card.actions = [{ type: "Action.OpenUrl", title: t.viewInMyLearning, url: review }];
+  }
+  return card;
 }
 
 /** A calm one-line card, for every refusal and for the unsupported material types. */
