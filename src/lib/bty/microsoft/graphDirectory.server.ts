@@ -288,3 +288,42 @@ export async function listDirectoryUsers(token: string): Promise<{ ok: true; use
     return { ok: true, users };
   } catch { return { ok: false }; }
 }
+
+/**
+ * The address a Teams chat window can be opened against. Slice Training Result → Human Teams Chat.
+ *
+ * ★ THIS IS A TRANSPORT ADDRESS, NOT AN IDENTITY. `peopleSelection.ts` states the rule this
+ * function serves: an Entra object id is the coordinate BTY joins on, and a UPN is only ever an
+ * envelope. So the oid goes IN (it is what we know about the learner) and a UPN comes OUT, to be
+ * handed to `chat.openChat` and then forgotten. Nothing stores it, nothing looks a BTY account up
+ * by it, and nothing compares it to one.
+ *
+ * ★ WHY NOT REUSE probeRecipientEligibility. That answers "may BTY send this person an internal
+ * training", and its callers act on the answer. This answers "where would a chat window point",
+ * which decides nothing. Keeping them apart stops a UPN from drifting into the delivery path,
+ * where identity is decided, simply because it was convenient to add one field to a `$select`.
+ *
+ * Reading `userPrincipalName` is inside `User.Read.All`, the one Graph application permission this
+ * product holds. No scope is widened by this.
+ */
+export async function readChatAddress(token: string, aadObjectId: string): Promise<string | null> {
+  const oid = (aadObjectId ?? "").trim().toLowerCase();
+  if (!GUID.test(oid)) return null;
+  try {
+    const res = await fetch(`${GRAPH}/v1.0/users/${oid}?$select=userPrincipalName`, {
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    });
+    // Status only. A Graph error body can echo the object id and the tenant.
+    if (!res.ok) {
+      console.error("[graph] chat address read failed", { status: res.status });
+      return null;
+    }
+    const body = (await res.json()) as { userPrincipalName?: unknown };
+    const upn = typeof body.userPrincipalName === "string" ? body.userPrincipalName.trim() : "";
+    // Shaped like an address or it is not one. A display name is not an address.
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(upn) && upn.length <= 320 ? upn : null;
+  } catch {
+    console.error("[graph] chat address read threw");
+    return null;
+  }
+}
