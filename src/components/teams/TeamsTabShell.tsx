@@ -7,7 +7,12 @@ import { getSupabase } from "@/lib/supabase";
 import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
 import { readTrainingRequest, type TrainingRequest } from "@/domain/teams/trainingRequest";
 import { BTY_TEAMS_PERSONAL_TAB_ENTITY_ID } from "@/domain/teams/trainingTarget";
-import { clearTeamsSubPage, readTeamsSubPageId } from "@/lib/bty/teams/teamsTabNavigation";
+import {
+  clearTeamsSubPage,
+  clearTrainingQueryParam,
+  currentSearch,
+  readTeamsSubPageId,
+} from "@/lib/bty/teams/teamsTabNavigation";
 import {
   installTeamsApiTransport,
   installTeamsFrameContainment,
@@ -197,13 +202,36 @@ export default function TeamsTabShell() {
       This read alone was the bug: see the refresh effect below for why a cold read cannot be the
       only one.
     */
+    /*
+      TWO TRANSPORTS, ONE GRAMMAR, AND THE SAME GATE.
+
+      `page.subPageId` is what a client that navigates the tab target supplies. Teams iOS was
+      measured supplying NOTHING — it opened the BTY app full-screen from `webUrl` instead — so
+      the same signed target now also rides `/teams?training=…`, and both are read here.
+
+      BOTH ARE READ ONLY HERE, after the bootstrap above has produced a real session. A query
+      parameter is not permission: outside a valid Teams host this line is never reached, the
+      request is never set, and the account-backed room is never opened. There is no browser
+      auth fallback and no anonymous substitution — the learner gets the ordinary Teams gate.
+    */
     try {
       const ctx = await app.getContext();
       ctxLocale = localeFromTeams(ctx?.app?.locale);
       const page = ctx?.page as { subPageId?: unknown; subEntityId?: unknown } | undefined;
-      setTrainingRequest(readTrainingRequest(page?.subPageId ?? page?.subEntityId, "bootstrap", 0));
+      setTrainingRequest(
+        readTrainingRequest(
+          { subPageId: page?.subPageId ?? page?.subEntityId, search: currentSearch() },
+          "bootstrap",
+          0,
+        ),
+      );
     } catch {
-      /* context is a convenience here, never an authority */
+      /*
+        The context could not be read — but the session above already succeeded, so the fallback
+        transport is still a legitimate statement of which training was meant, and reading it is
+        exactly the case this slice exists for.
+      */
+      setTrainingRequest(readTrainingRequest({ search: currentSearch() }, "bootstrap", 0));
     }
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
@@ -272,7 +300,14 @@ export default function TeamsTabShell() {
         const raw = await readTeamsSubPageId();
         if (cancelled) return;
         occurrenceRef.current += 1;
-        setTrainingRequest(readTrainingRequest(raw, "refresh", occurrenceRef.current));
+        /*
+          The URL is re-read on every refresh too, not just at bootstrap: an iOS client that
+          reopens the tab from `webUrl` delivers the training there and nowhere else, and it may
+          do so while this tab is already running.
+        */
+        setTrainingRequest(
+          readTrainingRequest({ subPageId: raw, search: currentSearch() }, "refresh", occurrenceRef.current),
+        );
       })();
     };
     const onVisibility = () => {
@@ -302,6 +337,17 @@ export default function TeamsTabShell() {
   */
   const onTrainingExit = useCallback(() => {
     setTrainingRequest(null);
+    /*
+      ★ THE QUERY MUST GO FIRST, AND UNCONDITIONALLY.
+
+      The fallback target lives in this document's own URL. Left there, the very next focus would
+      re-read it, produce a new occurrence and put the learner straight back into the training
+      they just finished — the local exit would look broken. `history.replaceState` removes it
+      without navigating, so the document stays `/teams` and no history entry is added.
+
+      Only then is the Teams host asked to drop its subpage, which still fails soft.
+    */
+    clearTrainingQueryParam();
     void clearTeamsSubPage(BTY_TEAMS_PERSONAL_TAB_ENTITY_ID);
   }, []);
 

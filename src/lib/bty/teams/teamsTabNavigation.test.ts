@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 /**
  * Re-reading and clearing the Teams host's navigation state.
  * Slice Teams iOS Deep-Link Resume.
@@ -96,5 +97,43 @@ describe("clearing the subpage uses stable navigation and fails soft", () => {
     const sdk = (await import("@microsoft/teams-js")) as unknown as Record<string, unknown>;
     // Only `pages.currentApp` is touched; nothing from a beta/lifecycle namespace is referenced.
     expect(Object.keys(sdk).sort()).toEqual(["app", "pages"]);
+  });
+});
+
+/*
+  The URL transport's own cleanup (Slice Teams iOS webUrl Fallback). The fallback target lives in
+  this document's address, so leaving a training must remove it — otherwise the next focus reads it
+  again and puts the learner back inside the training they just finished.
+*/
+describe("clearing the ?training= fallback target", () => {
+  const at = (search: string) => window.history.replaceState({}, "", `/teams${search}`);
+
+  it("removes only the target, without navigating and without a history entry", async () => {
+    const { clearTrainingQueryParam, currentSearch } = await import("./teamsTabNavigation");
+    at("?diag=1&training=foundry-training%3Abtyfr1.a.b&keep=yes");
+    const before = window.history.length;
+
+    expect(clearTrainingQueryParam()).toBe(true);
+
+    expect(window.location.pathname).toBe("/teams");
+    expect(currentSearch()).not.toContain("training=");
+    expect(currentSearch()).toContain("diag=1");
+    expect(currentSearch()).toContain("keep=yes");
+    expect(window.history.length).toBe(before);
+  });
+
+  it("is a no-op when there is nothing to clear", async () => {
+    const { clearTrainingQueryParam } = await import("./teamsTabNavigation");
+    at("?diag=1");
+    expect(clearTrainingQueryParam()).toBe(false);
+    expect(window.location.search).toBe("?diag=1");
+  });
+
+  it("reports the current search, empty when there is none", async () => {
+    const { currentSearch } = await import("./teamsTabNavigation");
+    at("");
+    expect(currentSearch()).toBe("");
+    at("?training=x");
+    expect(currentSearch()).toBe("?training=x");
   });
 });

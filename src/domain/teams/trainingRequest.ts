@@ -24,13 +24,27 @@
  * when one observation should become a new one.
  */
 
-import { parseTrainingTarget } from "./trainingTarget";
+import { parseTrainingFromSearch, parseTrainingTarget } from "./trainingTarget";
 
 export type TrainingRequest = {
   target: { joinToken: string };
   /** Unique per OCCURRENCE. Never derived from the target alone. */
   requestKey: string;
+  /** Which transport delivered it. Diagnostic only — never changes what is allowed. */
+  transport: TrainingTransport;
 };
+
+/**
+ * The two ways the SAME signed target reaches the tab.
+ *
+ *   context  `page.subPageId` / `subEntityId` — what a client that navigates the tab target supplies.
+ *   query    `?training=` on `/teams` — what a client that opens `webUrl` instead supplies.
+ *
+ * Teams iOS was measured doing the second: it opened the BTY app full-screen and delivered no
+ * `subPageId` at all. Both carry the identical `foundry-training:<signed token>` string and both
+ * go through the same grammar; neither grants anything the other does not.
+ */
+export type TrainingTransport = "context" | "query";
 
 /** Where an observation came from — the two moments a target can be seen. */
 export type ObservationSource = "bootstrap" | "refresh";
@@ -44,15 +58,23 @@ export type ObservationSource = "bootstrap" | "refresh";
  * as a fresh occurrence rather than a repeat.
  */
 export function readTrainingRequest(
-  rawSubPageId: unknown,
+  observation: { subPageId?: unknown; search?: string | null },
   source: ObservationSource,
   occurrence: number,
 ): TrainingRequest | null {
-  const parsed = parseTrainingTarget(rawSubPageId);
+  /*
+    CONTEXT WINS. When a client supplies both, the tab target is the more precise statement of
+    what Teams is navigating to; the query is the fallback for clients that supply nothing. They
+    carry the same string in practice, and preferring one deterministically means a client that
+    somehow disagrees with itself cannot produce a different outcome on different runs.
+  */
+  const fromContext = parseTrainingTarget(observation.subPageId);
+  const parsed = fromContext ?? parseTrainingFromSearch(observation.search);
   if (!parsed) return null;
   return {
     target: { joinToken: parsed.joinToken },
     requestKey: `${source}:${occurrence}`,
+    transport: fromContext ? "context" : "query",
   };
 }
 

@@ -14,6 +14,7 @@ import {
   buildTrainingInviteMessage,
   buildTrainingTarget,
   joinTokenFromParticipantUrl,
+  parseTrainingFromSearch,
   parseTrainingTarget,
 } from "./trainingTarget";
 
@@ -82,9 +83,21 @@ describe("the deep link addresses the BTY PERSONAL TAB, never the web room", () 
     });
   });
 
-  it("the webUrl fallback is the TAB, so an old client never lands in the web room", () => {
+  it("★ the webUrl fallback is SELF-CONTAINED: the TAB, carrying the same signed target", () => {
+    /*
+      MEASURED ON A REAL IPHONE (Slice Teams iOS webUrl Fallback): Teams iOS opened the BTY app
+      full-screen from `webUrl` and supplied no `subPageId` at all, so a bare `/teams` fallback
+      opened BTY and forgot which training. The fallback now names the training too.
+    */
     const url = new URL(buildTrainingDeepLink({ joinToken: TOKEN, title: "T", origin: ORIGIN })!);
-    expect(url.searchParams.get("webUrl")).toBe(`${ORIGIN}/teams`);
+    const webUrl = new URL(url.searchParams.get("webUrl")!);
+    expect(webUrl.origin + webUrl.pathname).toBe(`${ORIGIN}/teams`);
+    expect(webUrl.searchParams.get("training")).toBe(`foundry-training:${TOKEN}`);
+    // It is the SAME capability the context carries, not a second one.
+    expect(webUrl.searchParams.get("training")).toBe(
+      JSON.parse(url.searchParams.get("context")!).subEntityId,
+    );
+    // And still never the public web room.
     expect(url.searchParams.get("webUrl")).not.toMatch(/\/f\//);
   });
 
@@ -142,5 +155,49 @@ describe("the join token is read back out of the canonical room URL", () => {
     ]) {
       expect(joinTokenFromParticipantUrl(bad), String(bad)).toBeNull();
     }
+  });
+});
+
+describe("the query transport is the same grammar, read back", () => {
+  it("reads a valid target out of a /teams search string", () => {
+    const encoded = encodeURIComponent(`foundry-training:${TOKEN}`);
+    expect(parseTrainingFromSearch(`?training=${encoded}`)).toEqual({
+      kind: "foundry-training",
+      joinToken: TOKEN,
+    });
+    // Unencoded and alongside other parameters both work.
+    expect(parseTrainingFromSearch(`training=foundry-training:${TOKEN}`)?.joinToken).toBe(TOKEN);
+    expect(parseTrainingFromSearch(`?diag=1&training=${encoded}&x=2`)?.joinToken).toBe(TOKEN);
+  });
+
+  it("refuses everything the context transport refuses — one grammar, two transports", () => {
+    for (const bad of [
+      "",
+      "?",
+      "?training=",
+      "?training=/en/app",
+      "?training=conversations",
+      "?training=foundry-training:",
+      "?training=foundry-training:../../admin",
+      "?training=foundry-training:not-a-token",
+      `?training=${encodeURIComponent("https://evil.example/f/btyfr1.a.b")}`,
+      `?other=${encodeURIComponent(`foundry-training:${TOKEN}`)}`,
+      null,
+      undefined,
+    ]) {
+      expect(parseTrainingFromSearch(bad), String(bad)).toBeNull();
+    }
+  });
+
+  it("cannot smuggle an event id, a user or a path — the grammar has no room for them", () => {
+    for (const bad of [
+      "?training=foundry-training:11111111-1111-4111-8111-111111111111",
+      "?training=foundry-training:user-A",
+      `?training=foundry-training:${TOKEN}&userId=user-B`,
+    ]) {
+      const parsed = parseTrainingFromSearch(bad);
+      if (parsed) expect(Object.keys(parsed).sort()).toEqual(["joinToken", "kind"]);
+    }
+    expect(parseTrainingFromSearch("?training=foundry-training:user-A")).toBeNull();
   });
 });

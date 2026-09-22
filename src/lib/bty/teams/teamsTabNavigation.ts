@@ -1,5 +1,7 @@
 "use client";
 
+import { TRAINING_QUERY_PARAM } from "@/domain/teams/trainingTarget";
+
 /**
  * Teams personal-tab NAVIGATION helpers. BROWSER ONLY. Slice Teams iOS Deep-Link Resume.
  *
@@ -32,6 +34,38 @@ export async function readTeamsSubPageId(): Promise<unknown> {
   } catch {
     // A context that cannot be read is not an error state for the tab — it simply names no training.
     return null;
+  }
+}
+
+/** This document's current query string, or "" when there is no document. */
+export function currentSearch(): string {
+  if (typeof window === "undefined") return "";
+  return window.location.search ?? "";
+}
+
+/**
+ * Remove `?training=…` from this document's URL WITHOUT navigating.
+ *
+ * The web-url fallback delivers the training in the tab's own address, so after the learner
+ * leaves a training the address still names it — and the next focus would re-read it and reopen
+ * the room behind them. `history.replaceState` drops the parameter in place: the document stays
+ * `/teams`, no navigation happens, no history entry is added, and every other parameter (a
+ * `?diag=1`, for instance) is preserved.
+ *
+ * Returns true when the URL changed. Never throws: a host that forbids history manipulation must
+ * not be able to fail the learner's exit.
+ */
+export function clearTrainingQueryParam(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(TRAINING_QUERY_PARAM)) return false;
+    url.searchParams.delete(TRAINING_QUERY_PARAM);
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", next);
+    return true;
+  } catch {
+    return false;
   }
 }
 
