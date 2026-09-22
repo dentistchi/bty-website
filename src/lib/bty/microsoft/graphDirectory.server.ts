@@ -45,15 +45,52 @@ const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export type GraphConfig = { tenantId: string; clientId: string; clientSecret: string };
 
 /**
- * Reuses the existing Entra registration by default so no new secret has to be provisioned or
- * rotated, while allowing a dedicated daemon app to be split out later without a code change.
+ * Resolve the client-credentials identity Graph is called with.
+ *
+ * THREE TIERS, HIGHEST FIRST, resolved FIELD BY FIELD so a partial split-out still works:
+ *
+ *   1. MS_GRAPH_*          a dedicated daemon registration, if one is ever split out
+ *   2. AZURE_AD_*          the web sign-in registration
+ *   3. TEAMS_BOT_*         the BTY Teams bot registration
+ *
+ * ★ WHY TIER 3 EXISTS (Commander authorization, Teams Chat-Native Training V1).
+ *
+ * MEASURED ON PRODUCTION before this change: no `MS_GRAPH_*` and no `AZURE_AD_*` value exists as
+ * a Worker secret or var, `graphConfigFromEnv` therefore returned null, and both Graph-fed tables
+ * (`bty_microsoft_directory_authority`, `bty_microsoft_authority_snapshots`) held ZERO rows with
+ * no timestamps at all — despite the hourly directory cron having run for days. Graph had never
+ * once worked in production, and every feature that depends on it was inert.
+ *
+ * BTY already holds exactly one usable Entra credential pair: the Teams bot registration
+ * (`TEAMS_BOT_APP_ID` / `TEAMS_BOT_APP_PASSWORD`) in tenant `TEAMS_BOT_TENANT_ID`. The Commander
+ * authorized granting that SAME registration the one application permission this file already
+ * specifies — `User.Read.All` — with tenant admin consent, explicitly rather than provisioning a
+ * new app or rotating a new secret. This tier is what lets that consent take effect with no new
+ * secret to manage and no second registration to keep in step.
+ *
+ * NOTHING ELSE CHANGES. The requested permission set is still exactly
+ * {@link REQUIRED_GRAPH_APPLICATION_PERMISSIONS} — one entry, asserted by test. No write scope, no
+ * Chat, no Channel, no Mail, no directory-wide read. A different credential does not widen what
+ * that credential is allowed to do: the roles live on the app registration's consent, and this
+ * function only decides which registration is asked.
+ *
+ * FIELD BY FIELD, NOT SET BY SET, deliberately: a deployment that splits out only a daemon client
+ * id and secret while keeping one tenant id is a real configuration, and the existing behaviour
+ * already supported it.
  */
 export function graphConfigFromEnv(
   env: Record<string, string | undefined> = process.env,
 ): GraphConfig | null {
-  const tenantId = (env.MS_GRAPH_TENANT_ID ?? env.AZURE_AD_TENANT_ID ?? "").trim().toLowerCase();
-  const clientId = (env.MS_GRAPH_CLIENT_ID ?? env.AZURE_AD_CLIENT_ID ?? "").trim();
-  const clientSecret = (env.MS_GRAPH_CLIENT_SECRET ?? env.AZURE_AD_CLIENT_SECRET ?? "").trim();
+  const tenantId = (env.MS_GRAPH_TENANT_ID ?? env.AZURE_AD_TENANT_ID ?? env.TEAMS_BOT_TENANT_ID ?? "")
+    .trim()
+    .toLowerCase();
+  const clientId = (env.MS_GRAPH_CLIENT_ID ?? env.AZURE_AD_CLIENT_ID ?? env.TEAMS_BOT_APP_ID ?? "").trim();
+  const clientSecret = (
+    env.MS_GRAPH_CLIENT_SECRET ??
+    env.AZURE_AD_CLIENT_SECRET ??
+    env.TEAMS_BOT_APP_PASSWORD ??
+    ""
+  ).trim();
   if (!GUID.test(tenantId) || !clientId || !clientSecret) return null;
   return { tenantId, clientId, clientSecret };
 }
