@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
+import { BTY_SHELL_DESTINATION_EVENT, decodeShellSubEntityId } from "@/domain/teams/btyDestination";
 import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
@@ -137,6 +137,29 @@ export default function TeamsTabShell() {
   }, []);
 
   /**
+   * A personal-tab deep link can name a SHELL destination instead of a training — "open My Learning
+   * at this completed training", for instance. Apply it the same way an in-app link is applied:
+   * write the query onto this document and tell the mounted shell to re-read it.
+   *
+   * ★ WHY THIS EXISTS. `subPageId` was previously fed only to `readTrainingRequest`, which parses a
+   * signed training target. Anything else fell through it silently and the learner landed on the
+   * default surface — the bot's button would have opened BTY and then lost the destination on the
+   * way in. Returning false leaves the value to the training parser, which is the other legitimate
+   * kind of subPageId; it is never swallowed.
+   */
+  const applyShellSubEntityId = useCallback((raw: unknown): boolean => {
+    const search = decodeShellSubEntityId(raw);
+    if (!search) return false;
+    try {
+      window.history.replaceState({}, "", `${window.location.pathname}${search}`);
+      window.dispatchEvent(new Event(BTY_SHELL_DESTINATION_EVENT));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /**
    * Tell the server WHICH pre-bootstrap step failed (Slice A0-RUNTIME).
    *
    * A failure before the token exists sends no request, so a live tail sees nothing — which is
@@ -243,13 +266,14 @@ export default function TeamsTabShell() {
       const ctx = await app.getContext();
       ctxLocale = localeFromTeams(ctx?.app?.locale);
       const page = ctx?.page as { subPageId?: unknown; subEntityId?: unknown } | undefined;
-      setTrainingRequest(
-        readTrainingRequest(
-          { subPageId: page?.subPageId ?? page?.subEntityId, search: currentSearch() },
-          "bootstrap",
-          0,
-        ),
-      );
+      const sub = page?.subPageId ?? page?.subEntityId;
+      /*
+        A shell destination is applied and consumed here; only a training target continues to the
+        training parser below. One value, two kinds, each read by what understands it.
+      */
+      if (!applyShellSubEntityId(sub)) {
+        setTrainingRequest(readTrainingRequest({ subPageId: sub, search: currentSearch() }, "bootstrap", 0));
+      }
     } catch {
       /*
         The context could not be read — but the session above already succeeded, so the fallback
@@ -324,6 +348,8 @@ export default function TeamsTabShell() {
       void (async () => {
         const raw = await readTeamsSubPageId();
         if (cancelled) return;
+        // Same division on a resumed tab: a destination is applied, a training is delivered.
+        if (applyShellSubEntityId(raw)) return;
         occurrenceRef.current += 1;
         /*
           The URL is re-read on every refresh too, not just at bootstrap: an iOS client that

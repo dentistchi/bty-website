@@ -45,15 +45,33 @@ afterEach(() => {
 });
 
 describe("LEVEL 2 — detail shows sections, never quiz content", () => {
-  it("shows title, date and score, and no question text at all", async () => {
+  it("shows title and date, and no question text at all", async () => {
     mock(MISSED);
     render2();
     await waitFor(() => expect(screen.getByTestId("training-detail-title")).toBeTruthy());
-    expect(screen.getByTestId("training-detail-score").textContent).toContain("4 / 5");
     const body = screen.getByTestId("training-detail").textContent ?? "";
     expect(body).not.toContain("Who unlocks the back door?");
     expect(body).not.toContain("First person in");
     expect(body).not.toContain("The opening lead carries the key.");
+  });
+
+  it("prints the score ONCE, under the row it labels", async () => {
+    mock(MISSED);
+    render2();
+    await waitFor(() => expect(screen.getByTestId("training-detail-quiz")).toBeTruthy());
+    expect(screen.getByTestId("training-detail-quiz").textContent).toContain("4 / 5 · 80%");
+    // No second copy at the top of the screen.
+    expect(screen.queryByTestId("training-detail-score")).toBeNull();
+  });
+
+  it("does NOT expand the training text until it is asked for", async () => {
+    mock(MISSED);
+    render2();
+    await waitFor(() => expect(screen.getByTestId("training-detail-material")).toBeTruthy());
+    expect(screen.queryByTestId("training-material-text")).toBeNull();
+    fireEvent.click(screen.getByTestId("training-detail-material"));
+    expect((await screen.findByTestId("training-material-text")).textContent)
+      .toBe("Open the back door first.");
   });
 
   it("says how many items are worth reviewing, without naming them", async () => {
@@ -118,13 +136,52 @@ describe("LEVEL 4 — one question, the only place answers appear", () => {
   });
 });
 
+describe("the follow-up loop survives the list simplification", () => {
+  /*
+    `canCheckInAgain` is about a SETTLED obligation and the domain says it belongs to My Learning —
+    Today shows only PENDING ones. When the list stopped rendering it, this became the learner's
+    only door back to a NOT_YET they have since acted on.
+  */
+  it("offers Check in again, and opens THAT follow-up", async () => {
+    const onOpenFollowUp = vi.fn();
+    mock({ ...MISSED, checkInAgain: [{ followupId: "f7", followUpDays: 7, outcome: "NOT_YET" }] });
+    render(
+      <FoundryTrainingDetail entryId="e1" locale="en" onBack={() => {}} reflectionHref="/en/app?tab=center&entry=e1" onOpenFollowUp={onOpenFollowUp} />,
+    );
+    const row = await screen.findByTestId("training-detail-check-in-again");
+    expect(row.textContent).toContain("Check in again");
+    fireEvent.click(row);
+    expect(onOpenFollowUp).toHaveBeenCalledWith("f7");
+  });
+
+  it("offers an unanswered follow-up whose checkpoint has arrived", async () => {
+    const onOpenFollowUp = vi.fn();
+    mock({ ...MISSED, openFollowUp: [{ followupId: "f30", followUpDays: 30 }] });
+    render(
+      <FoundryTrainingDetail entryId="e1" locale="en" onBack={() => {}} reflectionHref="/x" onOpenFollowUp={onOpenFollowUp} />,
+    );
+    fireEvent.click(await screen.findByTestId("training-detail-open-follow-up"));
+    expect(onOpenFollowUp).toHaveBeenCalledWith("f30");
+  });
+
+  it("shows no follow-up row when there is none open", async () => {
+    mock(MISSED);
+    render(
+      <FoundryTrainingDetail entryId="e1" locale="en" onBack={() => {}} reflectionHref="/x" onOpenFollowUp={vi.fn()} />,
+    );
+    await waitFor(() => expect(screen.getByTestId("training-detail")).toBeTruthy());
+    expect(screen.queryByTestId("training-detail-check-in-again")).toBeNull();
+    expect(screen.queryByTestId("training-detail-open-follow-up")).toBeNull();
+  });
+});
+
 describe("the honest states", () => {
-  it("5/5 says so and invents no review", async () => {
+  it("5/5 shows the score and invents no review", async () => {
     mock(PERFECT);
     render2();
     await waitFor(() => expect(screen.getByTestId("training-detail-quiz")).toBeTruthy());
     const sub = screen.getByTestId("training-detail-quiz").textContent ?? "";
-    expect(sub).toContain("You answered every question correctly.");
+    expect(sub).toContain("5 / 5 · 100%");
     expect(sub).not.toContain("to review");
     fireEvent.click(screen.getByTestId("training-detail-quiz"));
     await waitFor(() => expect(screen.getByTestId("training-quiz-review")).toBeTruthy());
@@ -139,12 +196,15 @@ describe("the honest states", () => {
     expect(screen.queryByTestId("training-detail-score")).toBeNull();
   });
 
-  it("a learner who wrote no reflection is told so, with nothing to open", async () => {
+  it("shows NO reflection section when the training never produced one", async () => {
+    /*
+      The device finding this pins: a quiz-backed training has no reflection step, so a row
+      reading "you didn't write a reflection" reported a gap that never existed.
+    */
     mock({ ...MISSED, hasReflection: false });
     render2();
-    await waitFor(() => expect(screen.getByTestId("training-detail-reflection")).toBeTruthy());
-    const row = screen.getByTestId("training-detail-reflection");
-    expect(row.tagName).not.toBe("A");
-    expect(row.textContent).toContain("You didn't write a reflection");
+    await waitFor(() => expect(screen.getByTestId("training-detail")).toBeTruthy());
+    expect(screen.queryByTestId("training-detail-reflection")).toBeNull();
+    expect(screen.getByTestId("training-detail").textContent ?? "").not.toContain("reflection");
   });
 });

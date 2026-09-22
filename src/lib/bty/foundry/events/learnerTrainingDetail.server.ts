@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { learnerResult, type Attempt } from "./quickTrainingQuizService";
 import { readGuidanceContent } from "./foundryGuidanceService";
+import { listMyEvidence, type CheckInAgainTarget, type OpenFollowUpTarget } from "./learnerEvidenceService";
 import type { Quiz } from "@/domain/foundry/events/quickTrainingQuiz";
 
 /**
@@ -27,7 +28,6 @@ type ProgressRow = {
   participant_id: string;
   completed_at: string | null;
   learner_reflection_text: string | null;
-  response_text: string | null;
 };
 
 export type LearnerTrainingDetail = {
@@ -42,17 +42,29 @@ export type LearnerTrainingDetail = {
   quiz: ReturnType<typeof learnerResult> | null;
   /** Whether a private reflection exists. The TEXT is never returned here — Center renders it. */
   hasReflection: boolean;
+  /**
+   * A follow-up on this training that is still open to a later report.
+   *
+   * ★ WHY THIS SURFACE CARRIES IT. `canCheckInAgain` is about a SETTLED obligation, and the domain
+   * says in as many words that it "belongs to My Learning" — Today deliberately shows only PENDING
+   * ones. So when the list stopped rendering it, this became the learner's ONLY door back to a
+   * NOT_YET they later did act on. The rule is not re-implemented here: this reuses
+   * `listMyEvidence`, which is the surface that owns the predicate.
+   */
+  checkInAgain: readonly CheckInAgainTarget[];
+  /** A follow-up whose checkpoint has arrived and that has never been answered. */
+  openFollowUp: readonly OpenFollowUpTarget[];
 };
 
 export async function readLearnerTrainingDetail(
   admin: SupabaseClient,
-  input: { userId: string; entryId: string },
+  input: { userId: string; entryId: string; timezone?: string | null },
 ): Promise<{ ok: true; detail: LearnerTrainingDetail } | { ok: false; reason: "not_found" }> {
   if (!input.userId || !input.entryId) return { ok: false, reason: "not_found" };
 
   const { data: progress } = await admin
     .from("foundry_event_training_progress")
-    .select("id, event_id, participant_id, completed_at, learner_reflection_text, response_text")
+    .select("id, event_id, participant_id, completed_at, learner_reflection_text")
     .eq("id", input.entryId)
     .eq("linked_user_id", input.userId)
     .not("completed_at", "is", null)
@@ -89,6 +101,27 @@ export async function readLearnerTrainingDetail(
     if (quizRow?.quiz_snapshot) quiz = learnerResult(quizRow.quiz_snapshot, attempt);
   }
 
+  /*
+    The follow-up doors for THIS record, decided by the surface that owns the rule. A failure here
+    is additive-only: a learner reviewing a training must still see it when follow-up assembly is
+    unavailable, so the doors are simply absent rather than an error.
+  */
+  let checkInAgain: readonly CheckInAgainTarget[] = [];
+  let openFollowUp: readonly OpenFollowUpTarget[] = [];
+  try {
+    /*
+      The clock and the reader's frame are ARGUMENTS to that service by design — a follow-up door
+      is a "has the checkpoint arrived?" question, and the same reader-tz authority must answer it
+      here as answers it on Today. A missing device tz falls back to UTC rather than to a guess.
+    */
+    const evidence = await listMyEvidence(admin, input.userId, new Date(), (input.timezone ?? "").trim() || "UTC");
+    const mine = evidence.find((e) => e.entryId === progress.id);
+    checkInAgain = mine?.checkInAgain ?? [];
+    openFollowUp = mine?.openFollowUp ?? [];
+  } catch {
+    /* additive — never blocks the review */
+  }
+
   return {
     ok: true,
     detail: {
@@ -103,8 +136,18 @@ export async function readLearnerTrainingDetail(
         PRESENCE, NOT CONTENT. Private Reflection is the learner's own and Center is where they
         read it; this surface only needs to know whether there is something to open, so the body
         never travels here at all.
+
+        ★ `response_text` IS NOT A REFLECTION, and including it here was wrong. It is the answer to
+        the COMPLETION QUESTION — the thing a learner types to finish a non-quiz training — and it
+        is written by a different step for a different purpose. A quiz-backed training has no
+        completion question at all (`completionPrompt` is null exactly when `completionEvidence`
+        is `"quiz"`), so conflating the two would have claimed a reflection existed for a learner
+        who was never asked for one. Only `learner_reflection_text`, written by the journey's
+        REFLECT step, is a reflection.
       */
-      hasReflection: Boolean((progress.learner_reflection_text ?? "").trim() || (progress.response_text ?? "").trim()),
+      hasReflection: Boolean((progress.learner_reflection_text ?? "").trim()),
+      checkInAgain,
+      openFollowUp,
     },
   };
 }

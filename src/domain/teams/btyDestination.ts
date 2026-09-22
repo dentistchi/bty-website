@@ -108,3 +108,45 @@ export function leavesTeamsDocument(rawUrl: string, origin: string): boolean {
  * already runs on a cold open. One destination vocabulary, one interpreter, two entry points.
  */
 export const BTY_SHELL_DESTINATION_EVENT = "bty:shell-destination";
+
+/**
+ * A shell destination carried through a Teams personal-tab deep link's `context.subEntityId`.
+ *
+ * ★ WHY A PREFIX. `subEntityId` already carries ONE thing — a signed training target, parsed by
+ * `readTrainingRequest`. A bare query string would be silently handed to that parser, fail to be a
+ * training, and leave the learner on the default surface with nothing explaining why. The `q:`
+ * prefix makes the two kinds tellable apart, so each is read by the thing that understands it.
+ *
+ * ★ IT IS NOT PERMISSION, AND IT IS NOT IDENTITY. The value comes from the Teams client and anyone
+ * can craft one. It names a SURFACE — which tab, which view, which entry — and every one of those
+ * destinations does its own owner-scoped read. Nothing here grants access to anything.
+ */
+export const SHELL_DESTINATION_PREFIX = "q:";
+
+/** Encode a shell query as a `subEntityId`. Empty query → null, because there is nothing to say. */
+export function encodeShellSubEntityId(search: string): string | null {
+  const raw = (search ?? "").trim().replace(/^\?/, "");
+  return raw ? `${SHELL_DESTINATION_PREFIX}${raw}` : null;
+}
+
+/**
+ * Read a shell destination back out of a `subEntityId`, as a query string (leading `?`).
+ *
+ * Returns null for anything that is not one — a training target, a stale value, a crafted string —
+ * so a caller can tell "not a destination" from "a destination that happens to be empty".
+ */
+export function decodeShellSubEntityId(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  if (!v.startsWith(SHELL_DESTINATION_PREFIX)) return null;
+  const query = v.slice(SHELL_DESTINATION_PREFIX.length);
+  // A query only: no scheme, no host, no path. This can never become a navigation target.
+  if (!query || /[\s#/\\]/.test(query) || query.includes("://")) return null;
+  try {
+    const params = new URLSearchParams(query);
+    const out = params.toString();
+    return out ? `?${out}` : null;
+  } catch {
+    return null;
+  }
+}

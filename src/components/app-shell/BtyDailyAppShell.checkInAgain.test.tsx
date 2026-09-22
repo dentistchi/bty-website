@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 /**
- * SLICE 3.2R-R3-R1 — My Learning → "Check in again" → the follow-up, in-shell.
+ * SLICE 3.2R-R3-R1 — My Learning → training → "Check in again" → the follow-up, in-shell.
+ *
+ * RETARGETED by Slice My Learning Simplification: the list became title + date + a door, so the
+ * check-in moved one tap in, onto the training's own screen. The destination and the reason are
+ * unchanged, which is why this test was retargeted rather than retired.
  *
  * The service has accepted a later check-in since 3.2M-3 and the product could not reach it: the
  * only `?followup=` link in the app is the Today row, and Today drops RESPONDED obligations. This
@@ -77,6 +81,17 @@ function stub() {
                   },
                 ],
               }
+            : u.includes("/api/bty/foundry/history/entry/")
+              ? {
+                  ok: true,
+                  title: historyRow.eventTitle,
+                  completedAt: historyRow.completedAt,
+                  content: { materialText: "Open the back door first." },
+                  quiz: null,
+                  hasReflection: false,
+                  checkInAgain: [{ followupId: FOLLOWUP, followUpDays: 7, outcome: "NOT_YET" }],
+                  openFollowUp: [],
+                }
             : u.includes("/api/bty/foundry/history")
               ? { history: [historyRow], thread: null, threadStatus: "none" }
               : u.includes(`/api/bty/foundry/followups/${FOLLOWUP}`)
@@ -100,7 +115,13 @@ describe("3.2R-R3-R1 — the return route, in-shell", () => {
     stub();
     renderAt("?tab=foundry&view=my-learning");
 
-    const cta = await screen.findByTestId("my-learning-check-in-again");
+    /*
+      ONE TAP FURTHER IN (Slice My Learning Simplification). The list is now title + date + a door;
+      the check-in lives on the training's own screen. The ROUTE is what this test protects, and
+      the route still ends in the same place.
+    */
+    fireEvent.click(await screen.findByTestId("my-learning-open-detail"));
+    const cta = await screen.findByTestId("training-detail-check-in-again");
     expect(cta.tagName).toBe("BUTTON"); // an app-shell command, never a raw href (3.2G-R2)
 
     fireEvent.click(cta); // FIRST activation — no retry
@@ -116,7 +137,8 @@ describe("3.2R-R3-R1 — the return route, in-shell", () => {
   it("Back from a Learn origin returns to My Learning, not to the Foundry home", async () => {
     stub();
     renderAt("?tab=foundry&view=my-learning");
-    fireEvent.click(await screen.findByTestId("my-learning-check-in-again"));
+    fireEvent.click(await screen.findByTestId("my-learning-open-detail"));
+    fireEvent.click(await screen.findByTestId("training-detail-check-in-again"));
     await waitFor(() => expect(screen.getByTestId("foundry-followup-response")).toBeTruthy());
 
     fireEvent.click(screen.getByTestId("followup-back"));
@@ -142,7 +164,8 @@ describe("3.2R-R3-R1 — the return route, in-shell", () => {
   it("walking the whole route writes NOTHING — every request is a read", async () => {
     stub();
     renderAt("?tab=foundry&view=my-learning");
-    fireEvent.click(await screen.findByTestId("my-learning-check-in-again"));
+    fireEvent.click(await screen.findByTestId("my-learning-open-detail"));
+    fireEvent.click(await screen.findByTestId("training-detail-check-in-again"));
     await waitFor(() => expect(screen.getByTestId("followup-check-in-again")).toBeTruthy());
     fireEvent.click(screen.getByTestId("followup-back"));
     await waitFor(() => expect(screen.getByTestId("foundry-my-learning")).toBeTruthy());

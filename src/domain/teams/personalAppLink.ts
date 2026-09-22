@@ -1,4 +1,5 @@
 import { BTY_TEAMS_APP_ID, BTY_TEAMS_PERSONAL_TAB_ENTITY_ID } from "./trainingTarget";
+import { encodeShellSubEntityId } from "./btyDestination";
 
 /**
  * A link that opens the BTY PERSONAL APP INSIDE TEAMS, not a web page about BTY. PURE.
@@ -42,7 +43,8 @@ export function buildPersonalAppLink(input: {
     context tells the host to navigate to a subpage that does not exist, which some clients honour
     by showing nothing at all.
   */
-  if (search) params.set("context", JSON.stringify({ subEntityId: `q:${search}` }));
+  const subEntityId = encodeShellSubEntityId(search);
+  if (subEntityId) params.set("context", JSON.stringify({ subEntityId }));
 
   return `https://teams.microsoft.com/l/entity/${BTY_TEAMS_APP_ID}/${BTY_TEAMS_PERSONAL_TAB_ENTITY_ID}?${params.toString()}`;
 }

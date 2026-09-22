@@ -55,7 +55,13 @@ describe("product code does not scatter absolute BTY web URLs", () => {
 
 describe("the known regression points keep classifying as BTY_INTERNAL", () => {
   const cases: [string, RegExp][] = [
-    ["components/foundry/event-rooms/FoundryMyLearning.tsx", /href=\{`(\/\$\{loc\}\/app\?tab=center[^`]*)`\}/],
+    /*
+      The Center reflection link MOVED from the My Learning list to the training detail (Slice My
+      Learning Simplification). The destination and the containment rule are unchanged — it is
+      still a real anchor to an in-shell `/app?tab=center` address — so this case follows it rather
+      than being deleted.
+    */
+    ["components/foundry/event-rooms/FoundryMyLearning.tsx", /reflectionHref=\{`(\/\$\{loc\}\/app\?tab=center[^`]*)`\}/],
     ["components/foundry/event-rooms/FoundryCompletionReview.tsx", /href=\{`(\/\$\{loc\}\/app\?tab=today[^`]*)`\}/],
     ["components/app-shell/TodayPersonalBrief.tsx", /href=\{`(\/\$\{locale\}\/app\?tab=today[^`]*)`\}/],
     ["components/app-shell/FieldActionForm.tsx", /href=\{`(\/\$\{loc\}\/app\?tab=foundry[^`]*)`\}/],
