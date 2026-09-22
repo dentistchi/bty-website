@@ -66,6 +66,73 @@ describe("configuration", () => {
     expect(graphConfigFromEnv({})).toBeNull();
   });
 
+  /*
+    ★ THE TEAMS BOT REGISTRATION AS A GRAPH CREDENTIAL (Commander authorization).
+
+    Measured before this: production had no MS_GRAPH_* and no AZURE_AD_* value of any kind, so
+    Graph was unconfigured and both Graph-fed tables held zero rows for their whole lifetime. The
+    bot registration is the one Entra credential pair BTY already holds, and it was granted
+    User.Read.All rather than a new app being provisioned.
+  */
+  it("falls back to the TEAMS BOT registration when no Graph or sign-in credential is set", () => {
+    expect(
+      graphConfigFromEnv({
+        TEAMS_BOT_TENANT_ID: TENANT,
+        TEAMS_BOT_APP_ID: "bot-app-id",
+        TEAMS_BOT_APP_PASSWORD: "bot-secret",
+      }),
+    ).toEqual({ tenantId: TENANT, clientId: "bot-app-id", clientSecret: "bot-secret" });
+  });
+
+  it("the bot credential is the LAST resort — every higher tier still wins", () => {
+    const bot = {
+      TEAMS_BOT_TENANT_ID: "99999999-9999-4999-8999-999999999999",
+      TEAMS_BOT_APP_ID: "bot-app-id",
+      TEAMS_BOT_APP_PASSWORD: "bot-secret",
+    };
+    // Tier 2 beats tier 3.
+    expect(
+      graphConfigFromEnv({ ...bot, AZURE_AD_TENANT_ID: TENANT, AZURE_AD_CLIENT_ID: "signin", AZURE_AD_CLIENT_SECRET: "signin-secret" }),
+    ).toEqual({ tenantId: TENANT, clientId: "signin", clientSecret: "signin-secret" });
+    // Tier 1 beats both.
+    expect(
+      graphConfigFromEnv({
+        ...bot,
+        AZURE_AD_TENANT_ID: "88888888-8888-4888-8888-888888888888",
+        AZURE_AD_CLIENT_ID: "signin",
+        AZURE_AD_CLIENT_SECRET: "signin-secret",
+        MS_GRAPH_TENANT_ID: TENANT,
+        MS_GRAPH_CLIENT_ID: "daemon",
+        MS_GRAPH_CLIENT_SECRET: "daemon-secret",
+      }),
+    ).toEqual({ tenantId: TENANT, clientId: "daemon", clientSecret: "daemon-secret" });
+  });
+
+  it("resolves FIELD by field, so a half-split configuration still works", () => {
+    // Only the secret is split out; tenant and client id still come from the bot registration.
+    expect(
+      graphConfigFromEnv({
+        TEAMS_BOT_TENANT_ID: TENANT,
+        TEAMS_BOT_APP_ID: "bot-app-id",
+        TEAMS_BOT_APP_PASSWORD: "bot-secret",
+        MS_GRAPH_CLIENT_SECRET: "rotated-secret",
+      }),
+    ).toEqual({ tenantId: TENANT, clientId: "bot-app-id", clientSecret: "rotated-secret" });
+  });
+
+  it("an INCOMPLETE bot credential is still refused rather than half-configured", () => {
+    expect(graphConfigFromEnv({ TEAMS_BOT_TENANT_ID: TENANT, TEAMS_BOT_APP_ID: "bot-app-id" })).toBeNull();
+    expect(graphConfigFromEnv({ TEAMS_BOT_APP_ID: "bot-app-id", TEAMS_BOT_APP_PASSWORD: "bot-secret" })).toBeNull();
+    expect(
+      graphConfigFromEnv({ TEAMS_BOT_TENANT_ID: "not-a-guid", TEAMS_BOT_APP_ID: "a", TEAMS_BOT_APP_PASSWORD: "b" }),
+    ).toBeNull();
+  });
+
+  it("a different credential does NOT widen what Graph is asked for", () => {
+    // The permission specification is independent of which registration is used.
+    expect(REQUIRED_GRAPH_APPLICATION_PERMISSIONS).toEqual(["User.Read.All"]);
+  });
+
   it("prefers a dedicated daemon registration when one is configured", () => {
     const cfg = graphConfigFromEnv({
       AZURE_AD_TENANT_ID: TENANT,
