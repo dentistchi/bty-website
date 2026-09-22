@@ -5,6 +5,7 @@ import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge
 import { bindAnnouncementRecipients } from "@/lib/bty/announcement/trackAnnouncement.server";
 import { evaluateMicrosoftManagerEntitlement } from "@/lib/bty/foundry/events/microsoftManagerSync.server";
 import { bindDirectoryAuthorityUser } from "@/lib/bty/microsoft/directoryAuthority.server";
+import { bindTeamsTrainingParticipants } from "@/lib/bty/foundry/teams/bindTeamsParticipants.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +100,21 @@ export async function POST(req: NextRequest) {
       verified.identity.aadObjectId,
     );
     await bindDirectoryAuthorityUser(admin, result.userId, verified.identity.tenantId, verified.identity.aadObjectId);
+    /*
+      Teams Chat-Native Training V1 — settle any training this person completed in a Teams chat
+      BEFORE they had a BTY account.
+
+      Same place, same reasoning, same guarantees as the two bindings above: the identity has just
+      been verified and resolved, nothing is created, a row already bound to someone else is never
+      re-pointed, and a failure is swallowed rather than allowed to fail a sign-in. What it adds is
+      the account side of a completion that was already real — the XP that had nobody to belong to.
+    */
+    await bindTeamsTrainingParticipants(
+      admin,
+      result.userId,
+      verified.identity.tenantId,
+      verified.identity.aadObjectId,
+    );
     /*
       Microsoft Manager Authority V1 — settle Host entitlement at ACTIVATION.
 

@@ -112,6 +112,8 @@ describe("T13 — the participant name stays a historical snapshot", () => {
       "20260917000000_bty_foundry_event_history_dismissal_v1.sql",
       // Quick Training Authoring V1 — registered here deliberately, which is the signal this list exists for.
       "20260924000000_quick_training_quiz_authoring_v1.sql",
+      // Teams Chat-Native Training V1 — registered deliberately, which is the signal this list is for.
+      "20260925000000_teams_chat_native_training_v1.sql",
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
