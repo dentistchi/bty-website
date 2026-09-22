@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildPersonalAppLink } from "@/domain/teams/personalAppLink";
 import type { LearnerAnswer, Quiz } from "@/domain/foundry/events/quickTrainingQuiz";
 import {
   buildCompletionCard,
@@ -165,9 +164,6 @@ async function ensureProgress(
     .maybeSingle<ProgressRow>();
   return data ?? (await read());
 }
-
-/** The deployment these cards link back into. */
-const BTY_ORIGIN = "https://arena.btydaily.com";
 
 type Loaded = {
   delivery: DeliveryRow;
@@ -377,24 +373,8 @@ export async function handleTrainingCardAction(
       correctCount: finalized.result.correctCount,
       totalCount: finalized.result.totalCount,
       scorePercent: finalized.result.scorePercent,
-      reviewUrl: reviewLinkFor(loaded),
     }),
   };
-}
-
-/**
- * Where "View in My Learning" points: the BTY Personal App, at THIS completed training.
- *
- * `loaded.progress.id` is the entry id the learner's own history is keyed by, and
- * `?tab=learn&view=my-learning&entry=<id>` is the shell's existing deep-link contract — the same
- * one Today already uses. No new destination vocabulary, and no web URL.
- */
-function reviewLinkFor(loaded: Loaded): string | null {
-  return buildPersonalAppLink({
-    origin: BTY_ORIGIN,
-    search: `?tab=learn&view=my-learning&entry=${encodeURIComponent(loaded.progress.id)}`,
-    label: loaded.title,
-  });
 }
 
 /** The completion card for a training already finished, read from the canonical attempt. */
@@ -410,6 +390,5 @@ async function completionCardFor(admin: SupabaseClient, loaded: Loaded): Promise
     correctCount: data.correct_count,
     totalCount: data.total_count,
     scorePercent: Math.round((data.correct_count * 100) / data.total_count),
-    reviewUrl: reviewLinkFor(loaded),
   });
 }
