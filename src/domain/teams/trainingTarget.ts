@@ -73,12 +73,48 @@ export function parseTrainingTarget(raw: unknown): TrainingTarget | null {
   return { kind: "foundry-training", joinToken };
 }
 
+/** The query parameter the web-url fallback carries the SAME signed target in. */
+export const TRAINING_QUERY_PARAM = "training";
+
+/**
+ * Read a training target out of a `/teams` location search string, or null.
+ *
+ * ★ WHY A SECOND TRANSPORT EXISTS (Slice Teams iOS webUrl Fallback).
+ *
+ * MEASURED ON A REAL IPHONE: tapping the invitation opened the BTY personal app full-screen — so
+ * Teams app routing succeeded — but the tab landed on ordinary Today. `page.subPageId` never
+ * arrived. Re-reading the context on resume (the previous slice) cannot help when the value is
+ * not in the context at all.
+ *
+ * Microsoft documents `webUrl` as what a client falls back to when it cannot render or navigate
+ * the tab target, and ours named the bare tab — so the fallback opened BTY and forgot which
+ * training. It now carries the SAME `foundry-training:<signed token>` string in a query
+ * parameter, and this reads it back.
+ *
+ * IT IS THE SAME CAPABILITY, NOT A SECOND ONE. The value goes through `parseTrainingTarget`
+ * exactly like the context one: a signed room token or nothing. No event id, no user id, no
+ * email, no path — the query cannot express any of them, and the server still verifies the
+ * signature and authorizes the caller as it always has.
+ */
+export function parseTrainingFromSearch(search: string | null | undefined): TrainingTarget | null {
+  const raw = (search ?? "").trim();
+  if (!raw) return null;
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  } catch {
+    return null;
+  }
+  return parseTrainingTarget(params.get(TRAINING_QUERY_PARAM));
+}
+
 /**
  * The Teams personal-tab deep link for a training.
  *
- * `webUrl` is the Teams TAB's own address, never `/f/<token>`: it is what a client that cannot
- * honour the deep link falls back to, and falling back to the web room is precisely the browser
- * handoff this slice exists to remove. A learner who lands there gets the ordinary tab.
+ * `webUrl` is the Teams TAB's own address, never `/f/<token>`: falling back to the web room is
+ * precisely the browser handoff this feature exists to remove. It carries the training as a query
+ * parameter so the fallback is SELF-CONTAINED — a client that opens `webUrl` instead of
+ * navigating the tab target still knows which training was meant.
  *
  * `openInMeeting=false` keeps the training out of a meeting side panel, where a personal tab has
  * no business appearing.
@@ -99,7 +135,8 @@ export function buildTrainingDeepLink(input: {
 
   const label = (input.title ?? "").trim().slice(0, 120) || "BTY";
   const params = new URLSearchParams({
-    webUrl: `${origin}/teams`,
+    // The SAME signed target as `context.subEntityId`, as a second transport for the same capability.
+    webUrl: `${origin}/teams?${TRAINING_QUERY_PARAM}=${encodeURIComponent(subEntityId)}`,
     label,
     context: JSON.stringify({ subEntityId }),
     openInMeeting: "false",

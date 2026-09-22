@@ -55,7 +55,7 @@ vi.mock("@/components/app-shell/BtyDailyAppShell", async () => {
   return {
     default: (props: Record<string, unknown>) => {
       H.shellProps.push(props);
-      const request = props.trainingRequest as { target: { joinToken: string }; requestKey: string } | null;
+      const request = props.trainingRequest as import("@/domain/teams/trainingRequest").TrainingRequest | null;
       const [open, setOpen] = React.useState<string | null>(() => request?.target.joinToken ?? null);
       const handled = React.useRef<string | null>(request?.requestKey ?? null);
       const openRef = React.useRef<string | null>(request?.target.joinToken ?? null);
@@ -201,6 +201,7 @@ describe("A–H · the exact production failure", () => {
     expect(H.shellProps[0]!.trainingRequest).toEqual({
       target: { joinToken: TOKEN },
       requestKey: "bootstrap:0",
+      transport: "context",
     });
   });
 

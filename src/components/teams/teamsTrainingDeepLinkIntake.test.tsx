@@ -34,7 +34,7 @@ vi.mock("@/lib/supabase", () => ({
 vi.mock("@/components/app-shell/BtyDailyAppShell", () => ({
   default: (props: Record<string, unknown>) => {
     H.shellProps.push(props);
-    const req = props.trainingRequest as { target: { joinToken: string }; requestKey: string } | null;
+    const req = props.trainingRequest as import("@/domain/teams/trainingRequest").TrainingRequest | null;
     return (
       <div
         data-testid="shell"
@@ -102,6 +102,7 @@ describe("an invitation opens the training inside the tab", () => {
     expect(H.shellProps[0]!.trainingRequest).toEqual({
       target: { joinToken: TOKEN },
       requestKey: "bootstrap:0",
+      transport: "context",
     });
   });
 

@@ -29,7 +29,8 @@ import BtyDailyAppShell from "./BtyDailyAppShell";
 
 const TOKEN = "btyfr1.eyJ0eXBlIjoiZm91bmRyeV9yb29tIn0.c2lnbmF0dXJlLXZhbHVl";
 const TOKEN_B = "btyfr1.eyJiIjoxfQ.c2Vjb25kLXNpZ25hdHVyZQ";
-const request = (joinToken: string, requestKey: string) => ({ target: { joinToken }, requestKey });
+const request = (joinToken: string, requestKey: string) =>
+  ({ target: { joinToken }, requestKey, transport: "context" }) as const;
 
 beforeEach(() => {
   H.roomProps.length = 0;
