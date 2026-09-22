@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyBtyHref, leavesTeamsDocument, shellSearchFor } from "./btyDestination";
+import { classifyBtyHref, decodeShellSubEntityId, encodeShellSubEntityId, leavesTeamsDocument, shellSearchFor } from "./btyDestination";
 import { buildPersonalAppLink } from "./personalAppLink";
 
 const ORIGIN = "https://arena.btydaily.com";
@@ -104,5 +104,53 @@ describe("buildPersonalAppLink — the bot opens the APP, not a web page", () =>
   it("refuses a non-https origin or a malformed search instead of emitting a broken link", () => {
     expect(buildPersonalAppLink({ origin: "http://arena.btydaily.com" })).toBeNull();
     expect(buildPersonalAppLink({ origin: ORIGIN, search: "tab=center" })).toBeNull();
+  });
+});
+
+describe("the entity-link handoff does not lose the destination", () => {
+  /*
+    THE BOUNDARY THIS PINS. `subEntityId` already carried a signed TRAINING target. A bare query
+    put there was handed to the training parser, failed to be a training, and left the learner on
+    the default surface — the bot's button opened BTY and lost the destination on the way in.
+  */
+  it("round-trips a shell destination through the deep link's context", () => {
+    const search = "?tab=learn&view=my-learning&entry=e1";
+    const link = buildPersonalAppLink({ origin: ORIGIN, search })!;
+    const context = JSON.parse(new URL(link).searchParams.get("context")!) as { subEntityId: string };
+    expect(decodeShellSubEntityId(context.subEntityId)).toBe(search);
+  });
+
+  it("both transports name the SAME destination", () => {
+    const search = "?tab=learn&view=my-learning&entry=e1";
+    const link = buildPersonalAppLink({ origin: ORIGIN, search })!;
+    const params = new URL(link).searchParams;
+    const fromContext = decodeShellSubEntityId(JSON.parse(params.get("context")!).subEntityId);
+    const fromWebUrl = new URL(params.get("webUrl")!).search;
+    expect(fromContext).toBe(fromWebUrl);
+  });
+
+  it("refuses a training target, so each kind is read by what understands it", () => {
+    expect(decodeShellSubEntityId("btyt1:abc.def")).toBeNull();
+    expect(decodeShellSubEntityId("")).toBeNull();
+    expect(decodeShellSubEntityId(null)).toBeNull();
+    expect(decodeShellSubEntityId(42)).toBeNull();
+  });
+
+  it("can never become a navigation target", () => {
+    for (const crafted of [
+      "q:https://evil.example.com",
+      "q:tab=learn&x=a/b",
+      "q:tab=learn#frag",
+      "q:tab=learn b",
+      "q://evil",
+    ]) {
+      expect(decodeShellSubEntityId(crafted), crafted).toBeNull();
+    }
+  });
+
+  it("encodes nothing when there is nothing to say", () => {
+    expect(encodeShellSubEntityId("")).toBeNull();
+    expect(encodeShellSubEntityId("?")).toBeNull();
+    expect(encodeShellSubEntityId("?tab=me")).toBe("q:tab=me");
   });
 });

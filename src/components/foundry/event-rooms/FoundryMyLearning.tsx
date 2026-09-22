@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 import { contentTypeLabel } from "./contentTypeLabel";
 import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
-import { EVIDENCE_DISPLAY_ORDER, LEARNER_RUNG_LABEL } from "./evidenceLadderCopy";
 
 /**
  * Foundry → My Learning (Slice 3.1B-3I re-placement).
@@ -86,8 +85,6 @@ const COPY: Record<Locale, {
   title: string;
   subtitle: string;
   decisionLabel: string;
-  evidenceLabel: string;
-  evidenceHint: string;
   sharedLabel: string;
   noShared: string;
   viewInCenter: string;
@@ -124,10 +121,8 @@ const COPY: Record<Locale, {
     title: "My Learning",
     subtitle: "What you understood, in your own words.",
     decisionLabel: "What I decided",
-    evidenceLabel: "Since this training",
     // Deliberately does NOT say "nothing here is overdue": naming the anxiety in order to deny it
     // is what plants it. States what the strip is, and lets the absence of urgency speak.
-    evidenceHint: "This fills in over time, as things happen at work.",
     sharedLabel: "What I understood",
     noShared: "No shared understanding was recorded for this training.",
     viewInCenter: "View my private reflection in Center",
@@ -164,8 +159,6 @@ const COPY: Record<Locale, {
     title: "내 학습",
     subtitle: "내가 이해한 내용을 나의 말로.",
     decisionLabel: "내가 결정한 것",
-    evidenceLabel: "이 교육 이후",
-    evidenceHint: "시간이 지나면서 실제 현장에서 일어난 일들이 하나씩 채워집니다.",
     sharedLabel: "내가 이해한 것",
     noShared: "이 교육에는 공유 이해 답변이 없습니다.",
     viewInCenter: "Center에서 나의 비공개 성찰 보기",
@@ -259,7 +252,6 @@ export default function FoundryMyLearning({
   const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
   // entryId → established rungs. Absent = not loaded / unavailable → the strip simply does not
   // render for that row. Evidence is secondary; its absence must never blank a completion.
-  const [evidence, setEvidence] = useState<Map<string, EvidenceLevel[]>>(new Map());
   // entryId → follow-ups the SERVER says can still take a later check-in (Slice 3.2R-R3-R1).
   // Absent/empty = no CTA. This surface never decides eligibility; it renders what it was told.
   const [checkInAgain, setCheckInAgain] = useState<Map<string, CheckInAgainTarget[]>>(new Map());
@@ -295,63 +287,10 @@ export default function FoundryMyLearning({
   }, []);
 
   /*
-    Evidence rungs (Slice 3.2R-R1) — a SEPARATE owner-scoped fetch, for the same reason the
-    reviewed plans below are: this list must render the learner's completions even if evidence
-    assembly is slow or unavailable. A failed load leaves the map empty and the strip hidden;
-    it never blanks a row and never shows an error, because "not established" and "not loaded"
-    must not look different to someone reading their own history.
+    The evidence-rung fetch was REMOVED with the strip it fed (Slice My Learning Simplification).
+    It ran on mount, on focus and on every visibility change; leaving it would have kept paying
+    for a private request on a surface that no longer renders a single thing from it.
   */
-  const loadEvidence = useCallback(async () => {
-    try {
-      const res = await fetch("/api/bty/foundry/evidence/mine", { credentials: "include", cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        items?: Array<{
-          entryId?: string;
-          established?: string[];
-          checkInAgain?: Array<{ followupId?: string; followUpDays?: number; outcome?: string }>;
-          openFollowUp?: Array<{ followupId?: string; followUpDays?: number }>;
-        }>;
-      };
-      const next = new Map<string, EvidenceLevel[]>();
-      const nextCheckIn = new Map<string, CheckInAgainTarget[]>();
-      const nextOpen = new Map<string, OpenFollowUpTarget[]>();
-      for (const it of Array.isArray(data?.items) ? data.items : []) {
-        const id = String(it.entryId ?? "");
-        if (!id) continue;
-        // Filter against the canonical order so an unknown value can never render as a rung.
-        next.set(
-          id,
-          (Array.isArray(it.established) ? it.established : []).filter((v): v is EvidenceLevel =>
-            (EVIDENCE_DISPLAY_ORDER as readonly string[]).includes(v),
-          ),
-        );
-        // Carried verbatim, identity first: a target with no durable id is dropped rather than
-        // reconstructed from anything else on the row.
-        const targets = (Array.isArray(it.checkInAgain) ? it.checkInAgain : [])
-          .map((c) => ({
-            followupId: String(c.followupId ?? ""),
-            followUpDays: typeof c.followUpDays === "number" ? c.followUpDays : 0,
-            outcome: String(c.outcome ?? ""),
-          }))
-          .filter((c) => c.followupId !== "");
-        if (targets.length > 0) nextCheckIn.set(id, targets);
-        // Identity first, same as above: no durable id → no door, rather than a door to a guess.
-        const open = (Array.isArray(it.openFollowUp) ? it.openFollowUp : [])
-          .map((c) => ({
-            followupId: String(c.followupId ?? ""),
-            followUpDays: typeof c.followUpDays === "number" ? c.followUpDays : 0,
-          }))
-          .filter((c) => c.followupId !== "");
-        if (open.length > 0) nextOpen.set(id, open);
-      }
-      setEvidence(next);
-      setCheckInAgain(nextCheckIn);
-      setOpenFollowUp(nextOpen);
-    } catch {
-      /* evidence is additive — never surface a failure on this surface */
-    }
-  }, []);
 
   // Reviewed Action Plans (Slice 3.1B-3N-5D.1) — a DIFFERENT evidence stage from completion,
   // fetched independently so its failure never affects the completion list. Deduped by contractId.
@@ -385,18 +324,15 @@ export default function FoundryMyLearning({
   useEffect(() => {
     void load();
     void loadReviewedPlans();
-    void loadEvidence();
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void load();
         void loadReviewedPlans();
-        void loadEvidence();
       }
     };
     const onFocus = () => {
       void load();
       void loadReviewedPlans();
-      void loadEvidence();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
@@ -404,7 +340,7 @@ export default function FoundryMyLearning({
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [load, loadReviewedPlans, loadEvidence]);
+  }, [load, loadReviewedPlans]);
 
   /*
     LEVEL 2 REPLACES LEVEL 1 IN PLACE. This surface lives inside the app shell, so opening a
@@ -417,6 +353,7 @@ export default function FoundryMyLearning({
         locale={loc}
         onBack={() => setOpenEntryId(null)}
         reflectionHref={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(openEntryId)}`}
+        onOpenFollowUp={onOpenFollowUp}
         /*
           NO "Since this training" SECTION HERE, DELIBERATELY. That history already has a home: the
           Slice 3.2R-R1 section on the card this detail was opened from, where it is expressed in
@@ -478,179 +415,34 @@ export default function FoundryMyLearning({
               data-entry-id={it.entryId}
               data-focused={focused ? "1" : undefined}
               className={
-                "flex flex-col gap-2 rounded-2xl border bg-white/[0.03] px-4 py-3 " +
+                "rounded-2xl border bg-white/[0.03] " +
                 (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/[0.08]")
               }
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
-                <span className="shrink-0 rounded-md bg-white/[0.06] px-2 py-0.5 text-[0.7rem] uppercase tracking-wide text-white/55">
-                  {contentTypeLabel(it.contentType, loc)}
-                </span>
-              </div>
-              <span className="text-xs text-emerald-300/70">
-                {t.completedOn} · {formatDate(it.completedAt, loc)}
-              </span>
-              {/* PRIMARY artifact: the learner's own Shared Understanding (Host-reviewable). */}
-              <div className="mt-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
-                <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
-                  {t.sharedLabel}
-                </span>
-                {it.sharedUnderstanding ? (
-                  <p data-testid="my-learning-shared" className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-white/85">
-                    {it.sharedUnderstanding}
-                  </p>
-                ) : (
-                  <p className="mt-1.5 text-sm leading-6 text-white/40">{t.noShared}</p>
-                )}
-              </div>
               {/*
-                WHAT I DECIDED (Slice 3.2R-R1.1) — rendered ONLY when a decision was actually
-                recorded, so a training that never asked for one shows no section rather than an
-                empty heading. This is the sentence behind the DECIDED chip below: R1 shipped the
-                chip with nothing to open, which is the same gap R8D-R1 closed for the reflection.
+                THE WHOLE ROW IS THE DOOR, AND THE ROW IS ALL THERE IS.
 
-                Distinct from "What I understood" above it by SOURCE and by MEANING — that is the
-                Shared Understanding answer to the Host's question, this is what the learner
-                committed to do next. Neither is a fallback for the other; if a training records
-                only one, only one renders.
-              */}
-              {it.decisionResponse ? (
-                <div data-testid="my-learning-decision" className="mt-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
-                  <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
-                    {t.decisionLabel}
-                  </span>
-                  <p data-testid="my-learning-decision-text" className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-white/85">
-                    {it.decisionResponse}
-                  </p>
-                </div>
-              ) : null}
-              {it.quizScore ? <p className="text-sm text-[#C9A66B]" data-testid="my-learning-quiz-score">{it.quizScore.correctCount} / {it.quizScore.totalCount} · {it.quizScore.scorePercent}%</p> : null}
-              {/*
-                THE DOOR TO THE REVIEW — and the list's LAST word on the quiz.
-
-                A learning history gets long. Everything a learner needs to recognise this training
-                is already above: title, date, score. What they got wrong, what they chose and why
-                it was wrong live one tap away, because a hundred completed trainings must still
-                open a calm screen rather than a feed of answers.
+                A learning history is read by someone scanning for one training among a hundred.
+                Everything that used to sit here — the content-type badge, what they understood,
+                the score, the follow-up state, the reflection link — answered a question they had
+                not asked yet, and answering it in the list meant the list could never be scanned.
+                Each of those now lives one tap in, where it is the thing being looked at.
               */}
               <button
                 type="button"
                 onClick={() => setOpenEntryId(it.entryId)}
                 data-testid="my-learning-open-detail"
                 data-entry-id={it.entryId}
-                className="mt-0.5 flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
               >
-                <span className="text-xs text-white/55">
-                  {it.quizScore && it.quizScore.correctCount < it.quizScore.totalCount
-                    ? t.itemsToReview(it.quizScore.totalCount - it.quizScore.correctCount)
-                    : t.learned}
-                </span>
-                <span aria-hidden className="text-white/30">›</span>
-              </button>
-              {/*
-                SINCE THIS TRAINING (Slice 3.2R-R1) — secondary to the completion above it.
-
-                ESTABLISHED RUNGS ONLY. The first draft rendered all seven with the unearned ones
-                dimmed, and that is the mistake 3.2N already named: a training that published no
-                observable standard can NEVER reach OBSERVED, so greying it tells the learner they
-                failed to be seen when in fact nobody was ever given the standing to look. The
-                same is true of PRACTICED with no published practice, and APPLIED with no
-                follow-up window. A dimmed rung is a claim about applicability that this component
-                has no authority to make.
-
-                So it states what happened, and the hint line carries the rest. Nothing is greyed,
-                so there is nothing to feel behind on — no count, no fraction, no bar, no red.
-              */}
-              {(evidence.get(it.entryId)?.length ?? 0) > 0 ? (
-                <div data-testid="my-learning-evidence" className="mt-1">
-                  <span className="text-[0.66rem] font-medium uppercase tracking-[0.14em] text-white/35">
-                    {t.evidenceLabel}
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
+                  <span className="text-xs text-white/45">
+                    {t.completedOn} · {formatDate(it.completedAt, loc)}
                   </span>
-                  <ul className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                    {EVIDENCE_DISPLAY_ORDER.filter((level) => (evidence.get(it.entryId) ?? []).includes(level)).map(
-                      (level) => (
-                        <li
-                          key={level}
-                          data-testid={`evidence-rung-${level}`}
-                          className="flex items-center gap-1.5 rounded-full bg-[#C9A66B]/[0.12] px-2 py-0.5 text-[0.72rem] text-[#C9A66B]/95"
-                        >
-                          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A66B]/80" />
-                          {LEARNER_RUNG_LABEL[loc][level]}
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                  <p className="mt-1.5 text-[0.68rem] leading-4 text-white/30">{t.evidenceHint}</p>
-                </div>
-              ) : null}
-              {/*
-                CHECK IN AGAIN (Slice 3.2R-R3-R1) — the required return route.
-
-                This is the ONLY way back to a follow-up the learner has already answered
-                non-terminally: Today drops RESPONDED rows by design, and D2 is explicit that a
-                non-terminal answer must not drag the card back into Today. So the way back lives
-                where the learner's own record lives.
-
-                IT IS NOT A TASK. One quiet control at the bottom of a record, rendered only when
-                the SERVER says this exact obligation can still take a report — no count, no
-                badge, no due date, no red. A record with nothing open shows nothing, which is the
-                same rule the evidence strip above it follows.
-              */}
-              {/*
-                FOLLOW UP (Slice 3.2R-R3-R2) — the door for a question with no answer yet.
-
-                Today now stops asking after the 7-day attention window, and without this the bound
-                would quietly become "you can no longer answer" for the three live obligations that
-                are already past it. So the durable obligation gets a durable door, here, where the
-                learner's own record lives and nothing expires.
-
-                IT SAYS "FOLLOW UP", NOT "CHECK IN AGAIN". Nothing was reported, so there is no
-                "again" and nothing to have reported "earlier". It opens the SAME first-response
-                surface the Today card opened, with the same durable followup id — the experience
-                on the other side is unchanged, only the way in is new.
-
-                NO DATE, NO BADGE, NO RED — including for a row nineteen days past its checkpoint.
-                An obligation that outlived Today's attention is not thereby a failure, and this
-                surface has no authority to score one.
-              */}
-              {onOpenFollowUp
-                ? (openFollowUp.get(it.entryId) ?? []).map((target, _i, all) => (
-                    <button
-                      key={target.followupId}
-                      type="button"
-                      data-testid="my-learning-open-follow-up"
-                      data-followup-id={target.followupId}
-                      onClick={() => onOpenFollowUp(target.followupId)}
-                      className="self-start rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-3 py-1.5 text-xs font-medium text-[#E5B769]"
-                    >
-                      {all.length > 1 ? t.followUpAt(target.followUpDays) : t.followUp}
-                    </button>
-                  ))
-                : null}
-              {onOpenFollowUp
-                ? (checkInAgain.get(it.entryId) ?? []).map((target, _i, all) => (
-                    <button
-                      key={target.followupId}
-                      type="button"
-                      data-testid="my-learning-check-in-again"
-                      data-followup-id={target.followupId}
-                      onClick={() => onOpenFollowUp(target.followupId)}
-                      className="self-start rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-3 py-1.5 text-xs font-medium text-[#E5B769]"
-                    >
-                      {/* The checkpoint is named only when there is more than one to tell apart. */}
-                      {all.length > 1 ? t.checkInAgainAt(target.followUpDays) : t.checkInAgain}
-                    </button>
-                  ))
-                : null}
-              {/* Private Reflection is NOT shown here — it lives in Center. Deep-link to the exact entry. */}
-              <a
-                href={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(it.entryId)}`}
-                data-testid="view-reflection-in-center"
-                className="self-start text-xs font-medium text-[#C9A66B]/80 underline underline-offset-4"
-              >
-                {t.viewInCenter} →
-              </a>
+                </span>
+                <span aria-hidden className="shrink-0 text-white/30">›</span>
+              </button>
             </li>
             );
           })}

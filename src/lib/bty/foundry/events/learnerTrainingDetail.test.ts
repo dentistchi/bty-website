@@ -84,6 +84,25 @@ describe("readLearnerTrainingDetail", () => {
     expect(r.ok && r.detail.hasReflection).toBe(false);
   });
 
+  it("a COMPLETION ANSWER is not a reflection", async () => {
+    /*
+      `response_text` is what a learner types to finish a non-quiz training. Counting it here once
+      claimed a reflection existed for someone who was never asked for one.
+    */
+    const { admin } = fakeAdmin({
+      ...OWNED,
+      progress: { ...OWNED.progress, learner_reflection_text: null, response_text: "I read it." },
+    });
+    const r = await readLearnerTrainingDetail(admin, { userId: "u1", entryId: "e1" });
+    expect(r.ok && r.detail.hasReflection).toBe(false);
+  });
+
+  it("never even selects the completion answer", async () => {
+    const { admin, selected } = fakeAdmin(OWNED);
+    await readLearnerTrainingDetail(admin, { userId: "u1", entryId: "e1" });
+    expect(selected.join(" ")).not.toContain("response_text");
+  });
+
   it("refuses another learner's entry the same way it refuses one that does not exist", async () => {
     const { admin } = fakeAdmin({ ...OWNED, progress: null });
     expect(await readLearnerTrainingDetail(admin, { userId: "someone-else", entryId: "e1" }))

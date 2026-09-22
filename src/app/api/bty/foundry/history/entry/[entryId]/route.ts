@@ -36,7 +36,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ entryId: st
   }
 
   const { entryId } = await ctx.params;
-  const result = await readLearnerTrainingDetail(admin, { userId: user.id, entryId });
+  /*
+    The reader's own frame, for the "has this checkpoint arrived?" question only. It is a display
+    concern supplied by the device, never identity and never authorization.
+  */
+  const timezone = req.nextUrl.searchParams.get("tz");
+  const result = await readLearnerTrainingDetail(admin, { userId: user.id, entryId, timezone });
   const res = result.ok
     ? NextResponse.json({ ok: true, ...result.detail })
     : NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });

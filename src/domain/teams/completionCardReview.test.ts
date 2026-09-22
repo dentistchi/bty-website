@@ -62,16 +62,31 @@ describe("buildCompletionCard", () => {
 });
 
 describe("My Learning stays quiet at level 1", () => {
-  it("the list renders no question, answer or explanation of any kind", () => {
+  it("the list renders a title, a date and a door — and nothing else", () => {
     const src = readFileSync(
       join(process.cwd(), "src/components/foundry/event-rooms/FoundryMyLearning.tsx"),
       "utf8",
     );
-    for (const leak of ["explanation", "correctChoiceId", "selectedChoiceId", "question.text", "quiz.questions"]) {
+    /*
+      Everything below was on the card and answered a question the learner had not asked yet, which
+      is what made a hundred-item history unscannable. Each now lives one tap in.
+    */
+    for (const gone of [
+      "my-learning-quiz-score",      // the score
+      "my-learning-shared",          // WHAT I UNDERSTOOD
+      "my-learning-decision",        // the decision block
+      "my-learning-evidence",        // SINCE THIS TRAINING
+      "view-reflection-in-center",   // the reflection link
+      "contentTypeLabel(it.contentType", // the GUIDANCE badge
+      "/api/bty/foundry/evidence/mine",  // and the fetch that fed the strip
+    ]) {
+      expect(src, gone).not.toContain(gone);
+    }
+    for (const leak of ["explanation", "correctChoiceId", "selectedChoiceId", "quiz.questions"]) {
       expect(src, leak).not.toContain(leak);
     }
-    // The score summary and the door to the review are what the list IS allowed to show.
-    expect(src).toContain("my-learning-quiz-score");
+    // What the row IS.
     expect(src).toContain("my-learning-open-detail");
+    expect(src).toContain("{t.completedOn}");
   });
 });

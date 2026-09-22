@@ -7,16 +7,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
  * ★ PROGRESSIVE DISCLOSURE, BECAUSE A LEARNING HISTORY GETS LONG. Someone with a hundred completed
  * trainings must still open a calm screen. So nothing here shows a question until it is asked for:
  *
- *     detail      what this training was, and four doors            (this screen)
- *     review      the questions as a list of ticks and one flag     (one tap)
- *     question    the question, their answer, the right one, why    (one more tap)
+ *     detail      the title, the date, and a row per thing there is to see   (this screen)
+ *     material    the training text                                          (one tap)
+ *     review      the questions as a list of ticks and one flag              (one tap)
+ *     question    the question, their answer, the right one, why             (one more tap)
  *
- * Each level answers one thing and offers the next. Dumping the quiz onto the detail would make
- * the common case — "I just want to see what I did" — scroll past a wall of answers.
+ * Each level answers one thing and offers the next, and NOTHING is expanded before it is asked
+ * for — not the training text, not the questions, not an answer. Dumping any of it onto the detail
+ * would make the common case, "I just want to see what I did", scroll past a wall of content.
  *
- * ★ IT NEVER INVENTS A VERDICT. A learner who answered everything correctly is told exactly that,
- * with no "needs review" manufactured to fill the section; a training with no quiz shows no quiz
- * section at all rather than an empty `0 / 0`.
+ * ★ IT NEVER INVENTS A VERDICT, OR A GAP. A training with no quiz shows no quiz section rather
+ * than an empty `0 / 0`, and a training that never asked for a reflection shows no reflection
+ * section rather than telling the learner they did not write one. An absence nobody asked for is
+ * not news.
  *
  * ★ PRIVATE REFLECTION IS NOT SHOWN HERE. The server sends only whether one exists. Reading it
  * happens in Center, which is the surface that owns it, reached as an in-shell destination — so
@@ -38,6 +41,9 @@ type Detail = {
   content: { materialText?: string } | null;
   quiz: { correctCount: number; totalCount: number; scorePercent: number; questions: Question[] } | null;
   hasReflection: boolean;
+  /** Follow-up doors for this record, decided server-side by the surface that owns the rule. */
+  checkInAgain?: { followupId: string; followUpDays: number; outcome: string }[];
+  openFollowUp?: { followupId: string; followUpDays: number }[];
 };
 
 const COPY = {
@@ -54,11 +60,11 @@ const COPY = {
       `${total} question${total === 1 ? "" : "s"} · ${correct} correct`,
     reflection: "Private reflection",
     reflectionSub: "View in Center",
-    reflectionNone: "You didn't write a reflection for this training.",
-    since: "Since this training",
+    followUpOpen: "Follow-up",
+    followUpAgain: "Check in again",
+    followUpAt: (d: number) => `${d}-day checkpoint`,
     question: (n: number) => `Question ${n}`,
     review: "Review",
-    allCorrect: "You answered every question correctly.",
     oneToReview: (n: number) => `${n} item${n === 1 ? "" : "s"} to review`,
     yourAnswer: "Your answer",
     correctAnswer: "Correct answer",
@@ -77,11 +83,11 @@ const COPY = {
     quizSub: (total: number, correct: number) => `${total}문항 · ${correct}개 정답`,
     reflection: "비공개 기록",
     reflectionSub: "Center에서 보기",
-    reflectionNone: "이 학습에는 기록을 남기지 않으셨습니다.",
-    since: "이 학습 이후",
+    followUpOpen: "후속 확인",
+    followUpAgain: "다시 확인하기",
+    followUpAt: (d: number) => `${d}일 후 확인`,
     question: (n: number) => `${n}번 문항`,
     review: "다시 보기",
-    allCorrect: "모든 문항을 맞히셨습니다.",
     oneToReview: (n: number) => `다시 볼 문항 ${n}개`,
     yourAnswer: "내가 고른 답",
     correctAnswer: "정답",
@@ -160,21 +166,21 @@ export function FoundryTrainingDetail({
   locale,
   onBack,
   reflectionHref,
-  sinceSummary,
+  onOpenFollowUp,
 }: {
   entryId: string;
   locale: "en" | "ko";
   onBack: () => void;
   /** The learner's Center reflection, as an in-shell BTY destination. */
   reflectionHref: string;
-  /** Existing application/follow-up state from the list. Never recomputed here. */
-  sinceSummary?: string | null;
+  /** Opens the focused follow-up response surface. Same callback the list used to pass. */
+  onOpenFollowUp?: (followupId: string) => void;
 }) {
   const t = COPY[locale];
   const [detail, setDetail] = useState<Detail | null>(null);
   const [failed, setFailed] = useState(false);
   /** detail → review → one question. The only navigation this screen has. */
-  const [level, setLevel] = useState<"detail" | "review">("detail");
+  const [level, setLevel] = useState<"detail" | "material" | "review">("detail");
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -183,7 +189,10 @@ export function FoundryTrainingDetail({
     setFailed(false);
     setLevel("detail");
     setOpenQuestionId(null);
-    void fetch(`/api/bty/foundry/history/entry/${encodeURIComponent(entryId)}`, {
+    const tz = (() => {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; }
+    })();
+    void fetch(`/api/bty/foundry/history/entry/${encodeURIComponent(entryId)}${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, {
       credentials: "include",
       cache: "no-store",
     })
@@ -238,6 +247,21 @@ export function FoundryTrainingDetail({
             {openQuestion.explanation}
           </p>
         ) : null}
+      </section>
+    );
+  }
+
+  // ---- The training itself, on request. Never expanded before it is asked for. ----
+  if (level === "material" && material) {
+    return (
+      <section className="flex flex-col gap-3 px-4 py-4" data-testid="training-material">
+        <button type="button" onClick={() => setLevel("detail")} data-testid="training-material-back" className="self-start text-xs text-white/45 hover:text-white/70">
+          {t.back}
+        </button>
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.training}</p>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-white/80" data-testid="training-material-text">
+          {material}
+        </p>
       </section>
     );
   }
@@ -298,49 +322,74 @@ export function FoundryTrainingDetail({
             <p className="text-xs text-white/50">
               {t.completed} · {formatDay(detail.completedAt, locale)}
             </p>
-            {detail.quiz ? (
-              <p className="text-sm text-[#C9A66B]" data-testid="training-detail-score">
-                {detail.quiz.correctCount} / {detail.quiz.totalCount} · {detail.quiz.scorePercent}%
-              </p>
-            ) : null}
+
           </div>
 
           <SectionRow
             label={t.training}
             sub={material ? t.trainingSub : t.trainingEmpty}
             testId="training-detail-material"
-            onOpen={material ? () => setLevel("detail") : undefined}
+            onOpen={material ? () => setLevel("material") : undefined}
           />
-          {material ? (
-            <p className="whitespace-pre-wrap rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm leading-6 text-white/75" data-testid="training-detail-material-text">
-              {material}
-            </p>
-          ) : null}
 
           {/* A training with no quiz has no quiz section. An empty result is a claim about them. */}
           {detail.quiz ? (
             <SectionRow
               label={t.quizReview}
+              /*
+                THE SCORE LIVES HERE, once. It was also printed at the top of this screen, which
+                meant the same three numbers appeared twice on a surface whose whole job is to be
+                scannable. Under the row it labels, it is the reason to open that row.
+              */
               sub={
                 missedCount === 0
-                  ? t.allCorrect
-                  : `${t.quizSub(detail.quiz.totalCount, detail.quiz.correctCount)} · ${t.oneToReview(missedCount)}`
+                  ? `${detail.quiz.correctCount} / ${detail.quiz.totalCount} · ${detail.quiz.scorePercent}%`
+                  : `${detail.quiz.correctCount} / ${detail.quiz.totalCount} · ${detail.quiz.scorePercent}% · ${t.oneToReview(missedCount)}`
               }
               testId="training-detail-quiz"
               onOpen={() => setLevel("review")}
             />
           ) : null}
 
-          <SectionRow
-            label={t.reflection}
-            sub={detail.hasReflection ? t.reflectionSub : t.reflectionNone}
-            testId="training-detail-reflection"
-            href={detail.hasReflection ? reflectionHref : undefined}
-          />
-
-          {sinceSummary ? (
-            <SectionRow label={t.since} sub={sinceSummary} testId="training-detail-since" />
+          {/*
+            NO REFLECTION, NO SECTION. This training never asked for one — a quiz-backed Quick
+            Training has no reflection step at all — so a row saying "you didn't write a
+            reflection" reported a gap that never existed and implied the learner had missed
+            something. Absence of a prompt is not an absence to tell someone about.
+          */}
+          {detail.hasReflection ? (
+            <SectionRow
+              label={t.reflection}
+              sub={t.reflectionSub}
+              testId="training-detail-reflection"
+              href={reflectionHref}
+            />
           ) : null}
+
+          {/*
+            THE FOLLOW-UP DOORS, MOVED HERE FROM THE LIST — not removed with it.
+
+            `canCheckInAgain` is about a SETTLED obligation, and the domain states that it belongs
+            to My Learning; Today deliberately shows only PENDING ones. So this is the learner's
+            only way back to a follow-up they answered NOT_YET and have since acted on. Taking it
+            off the list made the list scannable; taking it out of the product would have stranded
+            a loop that works.
+          */}
+          {onOpenFollowUp
+            ? [
+                ...(detail.openFollowUp ?? []).map((f) => ({ ...f, kind: "open" as const })),
+                ...(detail.checkInAgain ?? []).map((f) => ({ ...f, kind: "again" as const })),
+              ].map((f) => (
+                <SectionRow
+                  key={`${f.kind}:${f.followupId}`}
+                  label={f.kind === "open" ? t.followUpOpen : t.followUpAgain}
+                  sub={t.followUpAt(f.followUpDays)}
+                  testId={f.kind === "open" ? "training-detail-open-follow-up" : "training-detail-check-in-again"}
+                  onOpen={() => onOpenFollowUp(f.followupId)}
+                />
+              ))
+            : null}
+
         </>
       ) : null}
     </section>
