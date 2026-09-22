@@ -65,46 +65,21 @@ type OpenFollowUpTarget = {
   followUpDays: number;
 };
 
-/**
- * Reviewed Action Plan card (Slice 3.1B-3N-5D.1). An approved Field Action = a reviewer
- * reviewed & ACCEPTED the learner's submitted PLAN. Deliberately carries NO reviewer identity,
- * NO audit internals, NO private reflection — and the copy never implies Applied/Observed.
- */
-type ReviewedPlanCard = {
-  contractId: string;
-  who: string | null;
-  what: string | null;
-  how: string | null;
-  stepWhen: string | null;
-  moduleTitle: string | null;
-  moduleVersion: number | null;
-  reviewedAt: string | null;
-};
 
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
   decisionLabel: string;
-  sharedLabel: string;
   noShared: string;
   viewInCenter: string;
   completedOn: string;
-  learned: string;
-  itemsToReview: (n: number) => string;
   video: string;
   document: string;
   empty: string;
   emptyHint: string;
   backDefault: string;
   loading: string;
-  reviewedTitle: string;
-  reviewedStatus: string;
-  labelWho: string;
-  labelWhat: string;
-  labelHow: string;
-  labelWhen: string;
   reviewedOn: string;
-  moduleVersion: (v: number) => string;
   /** Slice 3.2R-R3-R1 — the return route to a follow-up that can still take a later report. */
   checkInAgain: string;
   checkInAgainAt: (days: number) => string;
@@ -123,12 +98,9 @@ const COPY: Record<Locale, {
     decisionLabel: "What I decided",
     // Deliberately does NOT say "nothing here is overdue": naming the anxiety in order to deny it
     // is what plants it. States what the strip is, and lets the absence of urgency speak.
-    sharedLabel: "What I understood",
     noShared: "No shared understanding was recorded for this training.",
     viewInCenter: "View my private reflection in Center",
     completedOn: "Completed",
-    learned: "Learned",
-    itemsToReview: (n) => `${n} item${n === 1 ? "" : "s"} to review`,
     video: "Video",
     document: "PDF",
     empty: "No completed trainings yet.",
@@ -138,14 +110,7 @@ const COPY: Record<Locale, {
     // returns to Me, never leaking "Required learning" as its parent.
     backDefault: "Required learning",
     loading: "Loading…",
-    reviewedTitle: "Reviewed action plans",
-    reviewedStatus: "Action plan reviewed & accepted",
-    labelWho: "Who",
-    labelWhat: "What",
-    labelHow: "How",
-    labelWhen: "When",
     reviewedOn: "Reviewed",
-    moduleVersion: (v) => `Module v${v}`,
     checkInAgain: "Check in again",
     // Only used when a record carries more than one checkpoint, so the two CTAs are tellable apart.
     checkInAgainAt: (days) => `Check in again · ${days}-day follow-up`,
@@ -159,26 +124,16 @@ const COPY: Record<Locale, {
     title: "내 학습",
     subtitle: "내가 이해한 내용을 나의 말로.",
     decisionLabel: "내가 결정한 것",
-    sharedLabel: "내가 이해한 것",
     noShared: "이 교육에는 공유 이해 답변이 없습니다.",
     viewInCenter: "Center에서 나의 비공개 성찰 보기",
     completedOn: "완료",
-    learned: "학습 완료",
-    itemsToReview: (n) => `다시 볼 문항 ${n}개`,
     video: "영상",
     document: "PDF",
     empty: "아직 완료한 교육이 없습니다.",
     emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
     backDefault: "필수 학습",
     loading: "불러오는 중…",
-    reviewedTitle: "검토·승인된 행동 계획",
-    reviewedStatus: "행동 계획이 검토되고 승인되었습니다",
-    labelWho: "누구",
-    labelWhat: "무엇",
-    labelHow: "어떻게",
-    labelWhen: "언제",
     reviewedOn: "검토됨",
-    moduleVersion: (v) => `모듈 v${v}`,
     checkInAgain: "다시 확인하기",
     checkInAgainAt: (days) => `다시 확인하기 · ${days}일 후 확인`,
     // "다시"(again) is deliberately absent — there is no earlier answer.
@@ -249,7 +204,6 @@ export default function FoundryMyLearning({
     const el = focusRef.current;
     if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center" });
   }, [focusEntryId, items]);
-  const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
   // entryId → established rungs. Absent = not loaded / unavailable → the strip simply does not
   // render for that row. Evidence is secondary; its absence must never blank a completion.
   // entryId → follow-ups the SERVER says can still take a later check-in (Slice 3.2R-R3-R1).
@@ -286,53 +240,16 @@ export default function FoundryMyLearning({
     }
   }, []);
 
-  /*
-    The evidence-rung fetch was REMOVED with the strip it fed (Slice My Learning Simplification).
-    It ran on mount, on focus and on every visibility change; leaving it would have kept paying
-    for a private request on a surface that no longer renders a single thing from it.
-  */
-
-  // Reviewed Action Plans (Slice 3.1B-3N-5D.1) — a DIFFERENT evidence stage from completion,
-  // fetched independently so its failure never affects the completion list. Deduped by contractId.
-  const loadReviewedPlans = useCallback(async () => {
-    try {
-      const res = await fetch("/api/bty/action-contract/reviewed-plans", { credentials: "include", cache: "no-store" });
-      if (!res.ok) {
-        setReviewedPlans([]);
-        return;
-      }
-      const data = (await res.json()) as { items?: ReviewedPlanCard[] };
-      const seen = new Set<string>();
-      const mapped: ReviewedPlanCard[] = (Array.isArray(data?.items) ? data.items : [])
-        .map((p) => ({
-          contractId: String(p.contractId ?? ""),
-          who: p.who ?? null,
-          what: p.what ?? null,
-          how: p.how ?? null,
-          stepWhen: p.stepWhen ?? null,
-          moduleTitle: p.moduleTitle ?? null,
-          moduleVersion: typeof p.moduleVersion === "number" ? p.moduleVersion : null,
-          reviewedAt: p.reviewedAt ?? null,
-        }))
-        .filter((p) => p.contractId && !seen.has(p.contractId) && seen.add(p.contractId));
-      setReviewedPlans(mapped);
-    } catch {
-      setReviewedPlans([]);
-    }
-  }, []);
 
   useEffect(() => {
     void load();
-    void loadReviewedPlans();
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void load();
-        void loadReviewedPlans();
       }
     };
     const onFocus = () => {
       void load();
-      void loadReviewedPlans();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
@@ -340,7 +257,7 @@ export default function FoundryMyLearning({
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [load, loadReviewedPlans]);
+  }, [load]);
 
   /*
     LEVEL 2 REPLACES LEVEL 1 IN PLACE. This surface lives inside the app shell, so opening a
@@ -355,11 +272,11 @@ export default function FoundryMyLearning({
         reflectionHref={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(openEntryId)}`}
         onOpenFollowUp={onOpenFollowUp}
         /*
-          NO "Since this training" SECTION HERE, DELIBERATELY. That history already has a home: the
-          Slice 3.2R-R1 section on the card this detail was opened from, where it is expressed in
-          the learner's language. The only other thing available is `completionState`, a raw
-          `pass | review | incomplete` enum — turning that into a sentence would be BTY deciding
-          what their follow-up meant, which is exactly the status this slice must not invent.
+          NO "Since this training" SECTION, ANYWHERE. The only datum available for one is
+          `completionState`, a raw `pass | review | incomplete` enum, and turning that into a
+          sentence would be BTY deciding what a learner's follow-up meant. What IS actionable —
+          an unanswered follow-up, or one still open to a later check-in — is passed through
+          below and shown only when there is genuinely something to do.
         */
       />
     );
@@ -449,61 +366,18 @@ export default function FoundryMyLearning({
         </ul>
       )}
 
-      {reviewedPlans.length > 0 ? (
-        <div data-testid="reviewed-plans" className="mt-1 flex flex-col gap-3">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">
-            {t.reviewedTitle}
-          </span>
-          <ul className="flex flex-col gap-3">
-            {reviewedPlans.map((p) => (
-              <li
-                key={p.contractId}
-                data-testid="reviewed-plan-item"
-                className="flex flex-col gap-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] px-4 py-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    data-testid="reviewed-plan-status"
-                    className="rounded-md border border-emerald-400/25 px-2 py-0.5 text-[0.72rem] font-medium text-emerald-200/85"
-                  >
-                    {t.reviewedStatus}
-                  </span>
-                  {p.reviewedAt ? (
-                    <span className="text-[0.72rem] text-white/45">
-                      {t.reviewedOn} · {formatDate(p.reviewedAt, loc)}
-                    </span>
-                  ) : null}
-                </div>
-                {p.moduleTitle ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 break-words text-[0.95rem] font-medium text-white/90">{p.moduleTitle}</span>
-                    {p.moduleVersion != null ? (
-                      <span className="shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 text-[0.66rem] text-white/50">
-                        {t.moduleVersion(p.moduleVersion)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <dl className="mt-0.5 flex flex-col gap-1.5">
-                  {([
-                    [t.labelWho, p.who],
-                    [t.labelWhat, p.what],
-                    [t.labelHow, p.how],
-                    [t.labelWhen, p.stepWhen],
-                  ] as const)
-                    .filter(([, v]) => (v ?? "").trim() !== "")
-                    .map(([label, v]) => (
-                      <div key={label} className="flex flex-col gap-0.5">
-                        <dt className="text-[0.66rem] font-medium uppercase tracking-[0.12em] text-white/40">{label}</dt>
-                        <dd className="whitespace-pre-wrap break-words text-base leading-6 text-white/85">{v}</dd>
-                      </div>
-                    ))}
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {/*
+        REVIEWED ACTION PLANS REMOVED from the learner history (Founder decision).
+
+        It was a Host-workflow artefact — "Reviewed action plans", with module versions and
+        who/what/how/when rows — sitting under a list whose job is to answer "what have I
+        completed". Reviewing is something that happens TO a plan, and naming that state here
+        made the learner read an internal workflow label to find their own learning.
+
+        Deliberately NOT renamed into a learner-facing section: there is no measured need for a
+        distinct concept here, and inventing one would be a new product idea rather than the
+        removal that was asked for. The reviewed-plans API is untouched.
+      */}
     </section>
   );
 }

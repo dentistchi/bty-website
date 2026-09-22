@@ -79,14 +79,22 @@ describe("My Learning stays quiet at level 1", () => {
       "view-reflection-in-center",   // the reflection link
       "contentTypeLabel(it.contentType", // the GUIDANCE badge
       "/api/bty/foundry/evidence/mine",  // and the fetch that fed the strip
+      'data-testid="reviewed-plans"',    // the Host-workflow artefact
+      "/api/bty/action-contract/reviewed-plans", // and the fetch behind it
+      "t.reviewedTitle",                 // "Reviewed action plans"
     ]) {
       expect(src, gone).not.toContain(gone);
     }
     for (const leak of ["explanation", "correctChoiceId", "selectedChoiceId", "quiz.questions"]) {
       expect(src, leak).not.toContain(leak);
     }
-    // What the row IS.
+    // No internal workflow vocabulary survives as rendered copy.
+    for (const label of ["Reviewed action plans", "What I understood", "Since this training", "Learned"]) {
+      expect(src.replace(/\/\*[\s\S]*?\*\//g, ""), label).not.toContain(label);
+    }
+    // What the row IS — and the only thing it fetches.
     expect(src).toContain("my-learning-open-detail");
     expect(src).toContain("{t.completedOn}");
+    expect(src.match(/fetch\(/g) ?? []).toHaveLength(1);
   });
 });
