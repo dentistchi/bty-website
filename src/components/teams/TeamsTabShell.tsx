@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
 import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
@@ -95,16 +96,40 @@ export default function TeamsTabShell() {
   /** Install the transport + containment exactly once, before any shell fetch can run. */
   useEffect(() => {
     const uninstallTransport = installTeamsApiTransport(() => accessTokenRef.current);
-    const uninstallContainment = installTeamsFrameContainment((url) => {
-      void (async () => {
+    const uninstallContainment = installTeamsFrameContainment(
+      (url) => {
+        /*
+          LEAVING IS NOW THE EXCEPTION, NOT THE RULE. Only destinations that are not ours, or ours
+          with no in-shell representation yet, reach this opener.
+        */
+        void (async () => {
+          try {
+            const { app } = await import("@microsoft/teams-js");
+            await app.openLink(url);
+          } catch {
+            window.open(url, "_blank", "noopener,noreferrer");
+          }
+        })();
+      },
+      /*
+        A BTY DESTINATION STAYS HERE. The shell rendering this tab is the same `BtyDailyAppShell`
+        the web serves, and it already reads its destination from the document's query. So the
+        query is written onto `/teams` with `replaceState` — no navigation, no history entry, the
+        document never changes — and the shell is told to re-read it.
+
+        Returning false hands the link back to the opener rather than swallowing the click: a tap
+        that does nothing is worse than a tap that opens a browser.
+      */
+      (search) => {
         try {
-          const { app } = await import("@microsoft/teams-js");
-          await app.openLink(url);
+          window.history.replaceState({}, "", `${window.location.pathname}${search}`);
+          window.dispatchEvent(new Event(BTY_SHELL_DESTINATION_EVENT));
+          return true;
         } catch {
-          window.open(url, "_blank", "noopener,noreferrer");
+          return false;
         }
-      })();
-    });
+      },
+    );
     return () => {
       uninstallTransport();
       uninstallContainment();

@@ -308,25 +308,17 @@ describe("[claim · T15-T18] the endpoint", () => {
   });
 });
 
-describe("[claim · T24] the door is where the result appears", () => {
-  it("one permanent entry, in My Learning", () => {
-    const ml = read("src/components/foundry/event-rooms/FoundryMyLearning.tsx");
-    expect(ml).toContain('data-testid="my-learning-claim"');
-    expect(ml).toContain("/api/bty/foundry/completion-claim");
-    // Success reloads the list, which is the canonical destination for a claimed training.
-    expect(ml).toContain("await load();");
-    // T22 — both languages, no internal vocabulary.
-    expect(ml).toContain("완료한 학습 가져오기");
-    expect(ml).toContain("Add a training you finished");
-    for (const internal of ["progress", "participant", "lineage", "claim-xp"]) {
-      expect(ml.slice(ml.indexOf("claimTitle"), ml.indexOf("claimBad") + 400), internal).not.toContain(internal);
-    }
-  });
+/*
+  [claim · T24] RETIRED (Slice No-Browser-Escape V1, Founder decision).
 
-  it("no second door was added", () => {
-    const others = ["src/components/foundry/event-rooms/LearnDoors.tsx", "src/components/app-shell/MeEntries.tsx"];
-    for (const p of others) expect(read(p), p).not.toContain("completion-claim");
-  });
-});
+  It pinned the learner-facing completion-code door in My Learning. That door was removed because
+  every production learner now arrives with an authenticated account, so the surface asked a real
+  person to solve a problem they do not have.
+
+  The SERVICE tests above are untouched and still pass: minting, hashing, single-use redemption and
+  the one-refusal rule are all still enforced, because the server path deliberately remains. What is
+  gone is the UI, and `noBrowserEscape.guard.test.ts` now asserts its ABSENCE — so this file no
+  longer has an opinion about that screen, and the two cannot contradict each other.
+*/
 
 void vi;

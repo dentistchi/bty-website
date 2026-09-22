@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildPersonalAppLink } from "@/domain/teams/personalAppLink";
 import { buildProactiveMessage } from "@/domain/teams/proactiveMessage";
 import { getBotFrameworkToken } from "@/lib/bty/teams/botToken.server";
 import {
@@ -78,7 +79,19 @@ type BeginRow = {
   conversation_id?: string | null;
 };
 
-const OPEN_URL = "https://arena.btydaily.com/";
+/*
+  OPEN BTY MEANS OPEN THE APP, NOT A WEB PAGE (Slice No-Browser-Escape V1).
+
+  This was `https://arena.btydaily.com/`, a plain web address — so tapping "Open BTY" from inside
+  Teams launched Safari and showed the person a signed-out web page, having pressed a BTY button
+  in an app they already had installed. It now opens the BTY Personal App at the ordinary shell,
+  with a self-contained `webUrl` fallback for any client that will not navigate the tab.
+
+  The SEND path is untouched: same activity, same conversation, same delivery record.
+*/
+const OPEN_URL =
+  buildPersonalAppLink({ origin: "https://arena.btydaily.com", label: "BTY" }) ??
+  "https://arena.btydaily.com/";
 const one = <T,>(d: unknown): T | null => (Array.isArray(d) ? (d[0] as T) ?? null : (d as T) ?? null);
 
 export async function notifyRecipient(

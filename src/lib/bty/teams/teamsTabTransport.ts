@@ -26,7 +26,8 @@
  * document is framed, and framed documents have different rules.
  */
 
-import { escapesTeamsFrame, shouldAttachBearer } from "@/domain/teams/tabRuntime";
+import { shouldAttachBearer } from "@/domain/teams/tabRuntime";
+import { classifyBtyHref, leavesTeamsDocument, shellSearchFor } from "@/domain/teams/btyDestination";
 
 type Uninstall = () => void;
 
@@ -66,8 +67,19 @@ export function installTeamsApiTransport(getAccessToken: () => string | null): U
 }
 
 /**
- * Intercept clicks on links that would navigate the Teams frame off `/teams`, and open them
- * externally instead.
+ * Intercept clicks on links that would navigate the Teams frame off `/teams`.
+ *
+ * ★ WHAT CHANGED, AND WHY (Slice No-Browser-Escape V1). This guard used to open EVERY such link
+ * externally. That is right for somebody else's content and wrong for our own: "View my private
+ * reflection in Center" is a BTY destination, and sending it to Safari takes the person out of the
+ * product to show them something the product was already able to render. The guard now asks what
+ * the destination IS before deciding how to reach it.
+ *
+ *     shell          re-expressed as state in the shell that is ALREADY mounted. Never a browser.
+ *     bty_unframed   BTY-owned but with no in-shell representation yet; still opened externally,
+ *                    because a frame-denied route renders as a blank tab with nothing to go back
+ *                    to. This is a named gap, not a silent one.
+ *     external       opened externally, as intended.
  *
  * Capture phase, so it runs before React's own handlers and before the browser's default. Modified
  * clicks (⌘/ctrl/shift/alt, middle button) are left alone — the person has already said "open this
@@ -75,8 +87,13 @@ export function installTeamsApiTransport(getAccessToken: () => string | null): U
  *
  * @param openExternally how to leave Teams; the caller supplies the Teams SDK's own opener so the
  * host decides whether that is a new browser tab or its in-app browser.
+ * @param applyInShell renders a shell destination in place. Returns false when it could not, and
+ * the link is then treated as unframed rather than swallowed — a click must always do something.
  */
-export function installTeamsFrameContainment(openExternally: (url: string) => void): Uninstall {
+export function installTeamsFrameContainment(
+  openExternally: (url: string) => void,
+  applyInShell?: (search: string) => boolean,
+): Uninstall {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
   const origin = window.location.origin;
 
@@ -87,10 +104,20 @@ export function installTeamsFrameContainment(openExternally: (url: string) => vo
     if (!el) return;
     if (el.target === "_blank") return; // already leaving, on purpose
     const href = el.getAttribute("href") ?? "";
-    if (!escapesTeamsFrame(href, origin)) return;
+    if (!leavesTeamsDocument(href, origin)) return;
 
     ev.preventDefault();
     ev.stopPropagation();
+
+    /*
+      OURS AND RENDERABLE: stay. The shell is already mounted and already understands this
+      destination's query, so the person simply arrives where they asked to go.
+    */
+    if (applyInShell && classifyBtyHref(href, origin) === "shell") {
+      const search = shellSearchFor(href, origin);
+      if (search !== null && applyInShell(search)) return;
+    }
+
     try {
       openExternally(new URL(href, origin).toString());
     } catch {
