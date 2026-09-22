@@ -209,6 +209,61 @@ export async function probeProfessionalProfile(token: string, aadObjectId: strin
   }
 }
 
+/**
+ * RECIPIENT ELIGIBILITY — may BTY's bot be pointed at this person? (Teams Chat-Native Training V1.)
+ *
+ * ONE USER, BY OBJECT ID. No enumeration, no filter, no directory-wide read: the caller already
+ * knows exactly whom the Host picked, and the only question is whether that object id names a real,
+ * enabled, internal member of this tenant. `User.Read.All` is the same single application
+ * permission this module already requires; nothing is widened to answer this.
+ *
+ * THE TENANT IS ENFORCED BY THE TOKEN. An app-only Graph token is issued FOR one tenant, so
+ * `/users/{oid}` can only ever resolve an object in that tenant and a foreign one answers 404 —
+ * which this reports as `not_found`. The caller additionally refuses a request whose tenant is not
+ * the configured one before it ever gets here, so the boundary is stated twice.
+ *
+ * `displayName` is returned for PRESENTATION ONLY — a Host needs to be told which of their chosen
+ * colleagues could not be reached. It is never an identity and never a lookup key.
+ *
+ * INDETERMINATE IS NOT INELIGIBLE. A transport failure returns `http_error`/`network`, and the
+ * caller must treat that as "we do not know" rather than as a refusal — the same discipline the
+ * revocation half of the directory sync already follows.
+ */
+export type RecipientEligibility =
+  | { ok: true; eligible: true; displayName: string | null }
+  | { ok: true; eligible: false; reason: "disabled" | "not_member" }
+  | { ok: false; reason: "invalid_oid" | "not_found" | "http_error" | "network" };
+
+export async function probeRecipientEligibility(
+  token: string,
+  aadObjectId: string,
+): Promise<RecipientEligibility> {
+  const oid = (aadObjectId ?? "").trim().toLowerCase();
+  if (!GUID.test(oid)) return { ok: false, reason: "invalid_oid" };
+  try {
+    const res = await fetch(`${GRAPH}/v1.0/users/${oid}?$select=id,accountEnabled,userType,displayName`, {
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    });
+    if (res.status === 404) return { ok: false, reason: "not_found" };
+    if (!res.ok) {
+      // Status only. A Graph error body can echo the object id and the tenant.
+      console.error("[graph] recipient eligibility probe failed", { status: res.status });
+      return { ok: false, reason: "http_error" };
+    }
+    const body = (await res.json()) as { accountEnabled?: unknown; userType?: unknown; displayName?: unknown };
+    if (body.accountEnabled !== true) return { ok: true, eligible: false, reason: "disabled" };
+    // Guests and any non-Member type are refused: an internal training is for internal members.
+    if (body.userType !== "Member") return { ok: true, eligible: false, reason: "not_member" };
+    const displayName = typeof body.displayName === "string" && body.displayName.trim()
+      ? body.displayName.trim().slice(0, 120)
+      : null;
+    return { ok: true, eligible: true, displayName };
+  } catch {
+    console.error("[graph] recipient eligibility probe threw");
+    return { ok: false, reason: "network" };
+  }
+}
+
 export type DirectoryUser = { id: string; accountEnabled: boolean; userType: string; jobTitle: string | null; employeeType: string | null };
 
 /** Page through authority fields only; directory population is independent of BTY auth users. */

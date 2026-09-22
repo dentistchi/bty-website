@@ -10,12 +10,7 @@ import {
   buildTeamsMessage,
   buildTeamsShareUrl,
 } from "@/lib/bty/foundry/events/foundryInvitation";
-import {
-  buildTrainingDeepLink,
-  buildTrainingInviteMessage,
-  joinTokenFromParticipantUrl,
-} from "@/domain/teams/trainingTarget";
-import { isInsideTeamsTab, sendTrainingInTeams } from "@/lib/bty/teams/sendTrainingInTeams";
+import { isInsideTeamsTab, pickTrainingRecipients } from "@/lib/bty/teams/sendTrainingInTeams";
 
 /**
  * "Share this room" — Copy invitation + Share to Teams. Both encode the SAME
@@ -49,36 +44,22 @@ export function FoundryShareControls({
     unchanged and only a real Teams tab ever takes the Teams-native branch.
   */
   const [insideTeams, setInsideTeams] = useState(false);
-  const [teamsHostName, setTeamsHostName] = useState<string | null>(null);
-  const [sendState, setSendState] = useState<"idle" | "choosing">("idle");
+  /*
+    TEAMS CHAT-NATIVE DELIVERY V1 — the Host chooses, CONFIRMS, and only then does the server send.
+    `pending` holds the chosen Entra object ids between those two steps; nothing has been sent
+    while it is set.
+  */
+  const [sendState, setSendState] = useState<"idle" | "choosing" | "sending">("idle");
+  const [pending, setPending] = useState<{ ids: string[]; names: string[] } | null>(null);
   const manualRef = useRef<HTMLTextAreaElement | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setNative(isNative()), []);
 
-  /*
-    The Host's own name, for the first line of the draft ("<Host> shared training with you"). It
-    comes from the Teams context and is PRESENTATION ONLY — nothing is looked up with it and
-    nothing is authorized by it. Absent is fine: the message has a hostless form.
-  */
+  // Resolved after mount (like `native`), so SSR/hydration are unchanged and only a real Teams
+  // tab ever takes the Teams-native branch.
   useEffect(() => {
-    if (!isInsideTeamsTab()) return;
-    setInsideTeams(true);
-    let alive = true;
-    void (async () => {
-      try {
-        const { app } = await import("@microsoft/teams-js");
-        await app.initialize();
-        const ctx = await app.getContext();
-        const name = ctx?.user?.displayName;
-        if (alive && typeof name === "string" && name.trim()) setTeamsHostName(name.trim());
-      } catch {
-        /* a missing name never blocks sending */
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+    if (isInsideTeamsTab()) setInsideTeams(true);
   }, []);
 
   /*
@@ -96,20 +77,6 @@ export function FoundryShareControls({
   });
   const teamsMessage = buildTeamsMessage({ locale, title: event.title });
   const teamsUrl = buildTeamsShareUrl({ participantUrl: event.join_url, message: teamsMessage });
-  /*
-    THE TEAMS-NATIVE INVITATION. It addresses the BTY PERSONAL TAB, never `/f/<token>` — a raw web
-    URL inside a Teams chat is the "Link not supported" dialog on mobile and a Safari handoff
-    everywhere else, which is the whole defect this slice removes. Null when the room URL is not a
-    Foundry room URL, in which case the Teams-native button is not offered at all.
-  */
-  const trainingJoinToken = joinTokenFromParticipantUrl(event.join_url);
-  const teamsDeepLink =
-    trainingJoinToken && typeof window !== "undefined"
-      ? buildTrainingDeepLink({ joinToken: trainingJoinToken, title: event.title, origin: window.location.origin })
-      : null;
-  const teamsNativeMessage = teamsDeepLink
-    ? buildTrainingInviteMessage({ hostName: teamsHostName, title: event.title, deepLink: teamsDeepLink, locale })
-    : null;
   // Share-sheet body: the URL rides in the native share's separate `url` field, so
   // it must NOT be duplicated in the text.
   const shareText = buildFoundryInvitation({
@@ -172,45 +139,72 @@ export function FoundryShareControls({
   }, [writeClipboard, flashCopied, manualValue, event.join_url, t.linkCopied, t.invitationCopied]);
 
   /*
-    SEND IN TEAMS — the Teams-native path. Never `teams.microsoft.com/share`, never a popup, never
-    Safari: Teams' own people picker chooses the recipients and Teams' own chat opens with the
-    invitation drafted. The Host presses Send; BTY never sends as them.
-
-    Every non-composed outcome falls back to copying the PERSONAL-TAB DEEP LINK — not the raw web
-    room URL. A Host who pastes the fallback into a chat is still delivering a Teams-native
-    invitation.
+    SEND IN TEAMS — step one: CHOOSE. Teams' own People Picker, and nothing else happens here.
+    Only the Entra object ids are kept; email, UPN and display name never leave the browser,
+    because the server derives everything it needs about a recipient from Graph.
   */
-  const onSendInTeams = useCallback(async () => {
-    if (!teamsNativeMessage || !teamsDeepLink) return;
+  const onPickRecipients = useCallback(async () => {
     setSendState("choosing");
-    setStatus(t.sendInTeamsChoosing);
-    const outcome = await sendTrainingInTeams(teamsNativeMessage);
+    setStatus("");
+    const outcome = await pickTrainingRecipients();
     setSendState("idle");
-
-    if (outcome.k === "composed") {
-      setTeamsState("idle");
-      setStatus(t.sendInTeamsComposed);
+    if (outcome.k === "picked") {
+      setPending({ ids: outcome.selection.entraIds, names: outcome.selection.displayNames });
       return;
     }
     if (outcome.k === "cancelled") {
-      setTeamsState("idle");
-      setStatus("");
+      setPending(null);
       return;
     }
-    const copied = await writeClipboard(teamsDeepLink);
-    setTeamsState("fallback");
-    setStatus(outcome.k === "unsupported" ? t.sendInTeamsUnsupported : t.sendInTeamsFailed);
-    if (!copied) revealManual(teamsNativeMessage);
-  }, [
-    teamsNativeMessage,
-    teamsDeepLink,
-    writeClipboard,
-    revealManual,
-    t.sendInTeamsChoosing,
-    t.sendInTeamsComposed,
-    t.sendInTeamsUnsupported,
-    t.sendInTeamsFailed,
-  ]);
+    setStatus(t.sendInTeamsUnavailable);
+  }, [t.sendInTeamsUnavailable]);
+
+  /*
+    Step two: CONFIRM. The Host pressing this is what authorizes BTY's bot to message those
+    employees — nothing is sent on selection alone. The server then does the whole delivery:
+    Graph eligibility, conversation reuse-or-create, the card.
+  */
+  const onConfirmSend = useCallback(async () => {
+    if (!pending) return;
+    setSendState("sending");
+    setStatus(t.sendInTeamsSending);
+    try {
+      const res = await fetch("/api/bty/foundry/teams/training/send", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, aadObjectIds: pending.ids }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: true; sent: number; alreadySent: number; undeliverable: { displayName: string | null }[] }
+        | { error?: string }
+        | null;
+      if (!res.ok || !data || !("ok" in data)) {
+        setStatus(t.sendInTeamsUnavailable);
+        return;
+      }
+      const failed = data.undeliverable.length;
+      /*
+        THE HOST IS TOLD THE TRUTH, including who could not receive it — a Host needs to know whom
+        to follow up with. The product reason is never a Microsoft error string; those stay in the
+        server log.
+      */
+      const parts: string[] = [];
+      if (failed > 0 && data.sent > 0) parts.push(t.sendInTeamsMixed(data.sent, failed));
+      else if (failed > 0 && data.sent === 0) parts.push(t.sendInTeamsNoneCta);
+      else parts.push(t.sendInTeamsSent(data.sent));
+      if (data.alreadySent > 0) parts.push(t.sendInTeamsAlready(data.alreadySent));
+      const names = data.undeliverable.map((u) => u.displayName).filter((n): n is string => Boolean(n));
+      if (names.length > 0) parts.push(names.join(", "));
+      setStatus(parts.join(" "));
+    } catch {
+      setStatus(t.sendInTeamsUnavailable);
+    } finally {
+      setSendState("idle");
+      setPending(null);
+    }
+  }, [pending, event.id, t]);
 
   const onShareTeams = useCallback(async () => {
     // NATIVE shell (Capacitor WKWebView): open the iOS SYSTEM SHARE SHEET so the
@@ -290,36 +284,58 @@ export function FoundryShareControls({
     <section className="flex flex-col gap-2" aria-label={t.shareRoomHeader}>
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.shareRoomHeader}</h2>
 
-      {insideTeams && teamsNativeMessage ? (
+      {insideTeams ? (
         /*
-          INSIDE TEAMS. One primary action, and the secondary copies the DEEP LINK rather than the
-          web URL — inside Teams there is no reason to hand anyone a browser address.
+          INSIDE TEAMS. Choose people, confirm, and BTY's bot delivers the training into each
+          person's own chat. There is no link to copy and no draft to send: the employee reads the
+          text and answers the quiz in Teams, which is the whole point of this path.
         */
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onSendInTeams}
-            disabled={sendState === "choosing"}
-            aria-label={t.sendInTeams}
-            data-testid="send-in-teams"
-            className="w-full rounded-xl bg-[#C9A66B] px-4 py-3 text-sm font-semibold text-[#0B1F3A] transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            {sendState === "choosing" ? t.sendInTeamsChoosing : t.sendInTeams}
-          </button>
-          <button
-            type="button"
-            data-testid="copy-teams-link"
-            onClick={() => {
-              void (async () => {
-                const ok = await writeClipboard(teamsDeepLink!);
-                if (ok) flashCopied(t.teamsLinkCopied);
-                else revealManual(teamsNativeMessage);
-              })();
-            }}
-            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
-          >
-            {copyState === "copied" ? t.teamsLinkCopied : t.copyInvitation}
-          </button>
+          {pending ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-white/[0.12] bg-white/[0.03] p-3">
+              <p className="text-sm text-white/85" data-testid="send-in-teams-confirm">
+                {t.sendInTeamsConfirm(pending.ids.length)}
+              </p>
+              {pending.names.length > 0 ? (
+                <p className="text-xs text-white/50">{pending.names.join(", ")}</p>
+              ) : null}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPending(null)}
+                  data-testid="send-in-teams-cancel"
+                  className="rounded-lg border border-white/[0.12] px-3 py-2 text-xs text-white/60"
+                >
+                  {t.sendInTeamsCancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirmSend}
+                  disabled={sendState === "sending"}
+                  data-testid="send-in-teams-confirm-cta"
+                  className="flex-1 rounded-lg bg-[#C9A66B] px-3 py-2 text-xs font-semibold text-[#0B1F3A] disabled:opacity-60"
+                >
+                  {sendState === "sending" ? t.sendInTeamsSending : t.sendInTeamsConfirmCta}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onPickRecipients}
+              disabled={sendState !== "idle"}
+              aria-label={t.sendInTeams}
+              data-testid="send-in-teams"
+              className="w-full rounded-xl bg-[#C9A66B] px-4 py-3 text-sm font-semibold text-[#0B1F3A] transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {sendState === "choosing" ? t.sendInTeamsChoosing : t.sendInTeams}
+            </button>
+          )}
+          {status ? (
+            <p className="text-xs text-white/60" data-testid="send-in-teams-status">
+              {status}
+            </p>
+          ) : null}
         </div>
       ) : native ? (
         // Native: the primary action opens the iOS system share sheet (app-neutral

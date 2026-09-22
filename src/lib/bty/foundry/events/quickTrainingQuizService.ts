@@ -9,6 +9,7 @@ import {
   type QuizSourceKind,
 } from "@/domain/foundry/events/quickTrainingQuiz";
 import { finalizeCanonicalTrainingCompletion, resolvePublic } from "./foundryTrainingService";
+import type { EventRow, ParticipantRow } from "./foundryEventService";
 
 type Progress = { id: string; video_completed_at: string | null; document_read_completed_at: string | null; written_guidance_read_at: string | null; completed_at: string | null; quiz_attempt_id: string | null };
 type Attempt = { id: string; answers: LearnerAnswer[]; correct_count: number; total_count: number; submitted_at: string };
@@ -92,7 +93,52 @@ export async function publicQuiz(admin: SupabaseClient, token: string, sessionTo
   return attempt ? { ok: true as const, submitted: true as const, result: learnerResult(quiz, attempt) } : { ok: true as const, submitted: false as const, quiz: learnerQuizPayload(quiz) };
 }
 
-/** Persist once, then retry only canonical finalization from the same attempt. */
+/**
+ * ★ THE CANONICAL QUIZ FINALIZER — ONE IMPLEMENTATION, TWO DOORS.
+ *
+ * Extracted from `submitPublicQuiz` (Slice Teams Chat-Native Training V1) so the Teams-chat
+ * learner and the web learner settle a quiz through the SAME code: the same immutable attempt, the
+ * same idempotent reuse, the same canonical completion finalizer, the same XP path. There is no
+ * second scoring engine and no second completion record anywhere in the product, and this function
+ * existing separately is what keeps that true rather than merely intended.
+ *
+ * Every caller has ALREADY established who the learner is and that they engaged the material —
+ * the web path through the room token plus participant session, the Teams path through a verified
+ * Bot Framework activity. This function decides nothing about identity.
+ *
+ * SCORING IS SERVER-SIDE AND READS THE IMMUTABLE EVENT QUIZ. No score, total, or correct answer is
+ * ever accepted from a caller, and `answers` carries only the learner's own chosen choice ids.
+ */
+export async function finalizeQuizAttempt(
+  admin: SupabaseClient,
+  input: {
+    event: EventRow;
+    participant: ParticipantRow;
+    progress: Progress;
+    quiz: Quiz;
+    answers: LearnerAnswer[];
+    authUserId: string | null;
+    deviceTz?: string | null;
+  },
+) {
+  const { event, participant, quiz, answers, authUserId, deviceTz } = input;
+  const progress = input.progress;
+  let attempt = await readAttempt(admin, event.id, participant.id);
+  let reused = Boolean(attempt);
+  if (!attempt) {
+    const scored = scoreQuiz(quiz, answers); if (!scored.ok) return scored;
+    const { data, error } = await admin.from("foundry_event_quiz_attempts").insert({ event_id: event.id, participant_id: participant.id, answers, correct_count: scored.correctCount, total_count: scored.totalCount, submitted_at: new Date().toISOString() }).select("id,answers,correct_count,total_count,submitted_at").maybeSingle<Attempt>();
+    if (error || !data) { attempt = await readAttempt(admin, event.id, participant.id); reused = true; if (!attempt) return { ok: false as const, reason: "attempt_write_failed" }; } else attempt = data;
+  }
+  if (!progress.completed_at) {
+    const { data: completed } = await admin.from("foundry_event_training_progress").update({ quiz_attempt_id: attempt.id, completed_at: attempt.submitted_at, updated_at: new Date().toISOString() }).eq("id", progress.id).is("completed_at", null).select("completed_at,quiz_attempt_id").maybeSingle<{ completed_at: string; quiz_attempt_id: string | null }>();
+    if (!completed) { const { data: reread } = await admin.from("foundry_event_training_progress").select("completed_at,quiz_attempt_id").eq("id", progress.id).single<{ completed_at: string | null; quiz_attempt_id: string | null }>(); if (!reread?.completed_at || reread.quiz_attempt_id !== attempt.id) return { ok: false as const, reason: "completion_write_failed" }; progress.completed_at = reread.completed_at; progress.quiz_attempt_id = reread.quiz_attempt_id; } else { progress.completed_at = completed.completed_at; progress.quiz_attempt_id = completed.quiz_attempt_id; }
+  }
+  if (progress.quiz_attempt_id && progress.quiz_attempt_id !== attempt.id) return { ok: false as const, reason: "attempt_mismatch" };
+  const finalized = await finalizeCanonicalTrainingCompletion(admin, { event, participant, progressId: progress.id, completedAt: progress.completed_at ?? attempt.submitted_at, authUserId, deviceTz });
+  return { ok: true as const, alreadySubmitted: reused, result: learnerResult(quiz, attempt), ...finalized };
+}
+
 export async function submitPublicQuiz(admin: SupabaseClient, token: string, sessionToken: string | null | undefined, authUserId: string | null, answers: LearnerAnswer[], deviceTz?: string | null) {
   const resolved = await resolvePublic(admin, token, sessionToken);
   if (!resolved.ok) return resolved;
@@ -101,18 +147,8 @@ export async function submitPublicQuiz(admin: SupabaseClient, token: string, ses
   if (!progress || !quizStudyComplete(progress)) return { ok: false as const, reason: "study_required" };
   const quiz = await readQuiz(admin, resolved.event.id);
   if (!quiz) return { ok: false as const, reason: "quiz_missing" };
-  let attempt = await readAttempt(admin, resolved.event.id, resolved.participant.id);
-  let reused = Boolean(attempt);
-  if (!attempt) {
-    const scored = scoreQuiz(quiz, answers); if (!scored.ok) return scored;
-    const { data, error } = await admin.from("foundry_event_quiz_attempts").insert({ event_id: resolved.event.id, participant_id: resolved.participant.id, answers, correct_count: scored.correctCount, total_count: scored.totalCount, submitted_at: new Date().toISOString() }).select("id,answers,correct_count,total_count,submitted_at").maybeSingle<Attempt>();
-    if (error || !data) { attempt = await readAttempt(admin, resolved.event.id, resolved.participant.id); reused = true; if (!attempt) return { ok: false as const, reason: "attempt_write_failed" }; } else attempt = data;
-  }
-  if (!progress.completed_at) {
-    const { data: completed } = await admin.from("foundry_event_training_progress").update({ quiz_attempt_id: attempt.id, completed_at: attempt.submitted_at, updated_at: new Date().toISOString() }).eq("id", progress.id).is("completed_at", null).select("completed_at,quiz_attempt_id").maybeSingle<{ completed_at: string; quiz_attempt_id: string | null }>();
-    if (!completed) { const { data: reread } = await admin.from("foundry_event_training_progress").select("completed_at,quiz_attempt_id").eq("id", progress.id).single<{ completed_at: string | null; quiz_attempt_id: string | null }>(); if (!reread?.completed_at || reread.quiz_attempt_id !== attempt.id) return { ok: false as const, reason: "completion_write_failed" }; progress.completed_at = reread.completed_at; progress.quiz_attempt_id = reread.quiz_attempt_id; } else { progress.completed_at = completed.completed_at; progress.quiz_attempt_id = completed.quiz_attempt_id; }
-  }
-  if (progress.quiz_attempt_id && progress.quiz_attempt_id !== attempt.id) return { ok: false as const, reason: "attempt_mismatch" };
-  const finalized = await finalizeCanonicalTrainingCompletion(admin, { event: resolved.event, participant: resolved.participant, progressId: progress.id, completedAt: progress.completed_at ?? attempt.submitted_at, authUserId, deviceTz });
-  return { ok: true as const, alreadySubmitted: reused, result: learnerResult(quiz, attempt), ...finalized };
+  return finalizeQuizAttempt(admin, { event: resolved.event, participant: resolved.participant, progress, quiz, answers, authUserId, deviceTz });
 }
+
+/** Retained for the Teams path, which reads the quiz before it knows whether to ask a question. */
+export const readEventQuiz = readQuiz;

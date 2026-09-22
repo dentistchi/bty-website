@@ -212,6 +212,52 @@ export async function createOneOnOneConversation(params: {
 }
 
 /**
+ * Post exactly one ADAPTIVE CARD activity into an existing conversation.
+ * Slice Teams Chat-Native Text Training + Quiz V1.
+ *
+ * The same transport, timeout, classification and logging discipline as {@link sendProactiveMessage}
+ * — only the activity body differs, because a training is a card and not a sentence. It is a
+ * sibling rather than a parameter on the existing function so the announcement path, which sends
+ * text and only text, keeps a signature that cannot accidentally be handed a card.
+ *
+ * Success is the HTTP result and nothing else, and an exception is AMBIGUOUS for exactly the reason
+ * stated below: the POST had already begun.
+ */
+export async function sendProactiveCard(params: {
+  token: string;
+  serviceUrl: string;
+  conversationId: string;
+  card: unknown;
+}): Promise<SendResult> {
+  try {
+    const res = await fetch(
+      `${base(params.serviceUrl)}/v3/conversations/${encodeURIComponent(params.conversationId)}/activities`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${params.token}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "message",
+          attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", content: params.card }],
+        }),
+        signal: AbortSignal.timeout(CONNECTOR_TIMEOUT_MS),
+      },
+    );
+    if (!res.ok) {
+      const err = await classify(res);
+      logConnectorFailure("send_activity", res.status, err);
+      return { ok: false, ...err };
+    }
+    return { ok: true };
+  } catch {
+    console.error("[teams-proactive] connector failure", {
+      operation: "send_activity", status: 0, failure: "unreachable", ambiguous: true,
+      microsoft_code: "none", auth_challenge: "none",
+    });
+    return { ok: false, failure: "unreachable", ambiguous: true };
+  }
+}
+
+/**
  * Post exactly one message activity into an existing conversation.
  *
  * Success is the HTTP result and nothing else. The caller must not record a delivery on any

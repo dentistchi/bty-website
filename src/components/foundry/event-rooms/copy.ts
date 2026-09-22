@@ -167,6 +167,19 @@ export type EventRoomsCopy = {
   sendInTeamsUnsupported: string;
   sendInTeamsFailed: string;
   teamsLinkCopied: string;
+  /*
+    TEAMS CHAT-NATIVE DELIVERY V1 — the Host chooses colleagues and BTY's bot delivers the training
+    into each of their own Teams chats. Nothing is sent until the Host confirms.
+  */
+  sendInTeamsConfirm: (n: number) => string;
+  sendInTeamsConfirmCta: string;
+  sendInTeamsCancel: string;
+  sendInTeamsSending: string;
+  sendInTeamsSent: (n: number) => string;
+  sendInTeamsMixed: (sent: number, failed: number) => string;
+  sendInTeamsAlready: (n: number) => string;
+  sendInTeamsNoneCta: string;
+  sendInTeamsUnavailable: string;
   closeFallback: string;
   rotateQr: string;
   rotateConfirm: string;
@@ -368,6 +381,15 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendInTeamsUnsupported: "This Teams version can't pick people here. The BTY link is copied — paste it into a chat.",
     sendInTeamsFailed: "Teams couldn't open a chat. The BTY link is copied — paste it into a chat.",
     teamsLinkCopied: "BTY training link copied.",
+    sendInTeamsConfirm: (n) => `Send this training to ${n} ${n === 1 ? "person" : "people"}?`,
+    sendInTeamsConfirmCta: "Send",
+    sendInTeamsCancel: "Cancel",
+    sendInTeamsSending: "Sending…",
+    sendInTeamsSent: (n) => `Sent in Teams to ${n} ${n === 1 ? "person" : "people"}.`,
+    sendInTeamsMixed: (sent, failed) => `${sent} sent · ${failed} couldn't receive it.`,
+    sendInTeamsAlready: (n) => `${n} already had it.`,
+    sendInTeamsNoneCta: "Couldn't send this training.",
+    sendInTeamsUnavailable: "Teams can't send this training right now.",
     closeFallback: "Close",
     rotateQr: "Rotate QR",
     rotateConfirm: "Replace the current QR? The old QR will stop working.",
@@ -555,6 +577,15 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendInTeamsUnsupported: "이 Teams 버전에서는 여기서 사람을 선택할 수 없습니다. BTY 링크를 복사했으니 채팅에 붙여넣으세요.",
     sendInTeamsFailed: "Teams에서 채팅을 열지 못했습니다. BTY 링크를 복사했으니 채팅에 붙여넣으세요.",
     teamsLinkCopied: "BTY 훈련 링크가 복사되었습니다.",
+    sendInTeamsConfirm: (n) => `이 훈련을 ${n}명에게 보낼까요?`,
+    sendInTeamsConfirmCta: "보내기",
+    sendInTeamsCancel: "취소",
+    sendInTeamsSending: "보내는 중…",
+    sendInTeamsSent: (n) => `Teams로 ${n}명에게 보냈습니다.`,
+    sendInTeamsMixed: (sent, failed) => `${sent}명 발송 · ${failed}명은 받지 못했습니다.`,
+    sendInTeamsAlready: (n) => `${n}명은 이미 받았습니다.`,
+    sendInTeamsNoneCta: "이 훈련을 보내지 못했습니다.",
+    sendInTeamsUnavailable: "지금은 Teams로 이 훈련을 보낼 수 없습니다.",
     closeFallback: "닫기",
     rotateQr: "QR 재발급",
     createArenaPractice: "연습 만들기",

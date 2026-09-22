@@ -137,6 +137,27 @@ export function messageIdOf(raw: unknown): string {
  * Returns a typed refusal rather than throwing: an activity we cannot read is a "this message
  * couldn't be saved" for the user, never a 500 and never a partial write.
  */
+/**
+ * The VERIFIED caller's Microsoft identity, from any activity shape.
+ * Slice Teams Chat-Native Text Training + Quiz V1.
+ *
+ * The SAME two fields `parseTeamsMessageAction` reads, lifted out so activities that are not
+ * compose-extension invokes — an Adaptive Card action, an installation update — can be identified
+ * by exactly the same rule rather than by a second one that might drift.
+ *
+ * `aadObjectId` ONLY. `from.id` is a Bot Framework address (`29:…`), `from.name` is a display name
+ * and neither is identity. Email and UPN are not read here or anywhere.
+ *
+ * The caller must only use this on an activity whose Bot Framework token has already verified.
+ */
+export function readActivityIdentity(activity: unknown): { tenantId: string; aadObjectId: string } | null {
+  const a = obj(activity);
+  const tenantId = str(obj(obj(a.channelData).tenant).id);
+  const aadObjectId = str(obj(a.from).aadObjectId);
+  if (!tenantId || !aadObjectId) return null;
+  return { tenantId, aadObjectId };
+}
+
 export function parseTeamsMessageAction(activity: unknown): TeamsInvokeParse {
   const a = obj(activity);
   const name = str(a.name) as TeamsInvokeName;

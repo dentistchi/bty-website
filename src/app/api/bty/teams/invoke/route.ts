@@ -5,6 +5,7 @@ import { resolveBtyUserFromMicrosoftIdentity } from "@/lib/bty/identity-link/mic
 import { verifyBotFrameworkToken } from "@/lib/bty/teams/botTokenVerifier.server";
 import {
   parseTeamsMessageAction,
+  readActivityIdentity,
   parseTeamsTrackSubmission,
   readCommandId,
   resolveServiceUrl,
@@ -15,6 +16,9 @@ import {
 import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
 import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
 import { isCollaborationParticipant } from "@/domain/authority/collaborationParticipant";
+import { parseTrainingCardAction, adaptiveCardResponse, buildNoticeCard } from "@/domain/teams/trainingCard";
+import { handleTrainingCardAction } from "@/lib/bty/foundry/teams/teamsTrainingBot.server";
+import { rememberTenantRoute } from "@/lib/bty/teams/tenantRoute.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,6 +207,50 @@ export async function POST(req: NextRequest) {
     activity = await req.json();
   } catch {
     return say(MSG.cannotSave);
+  }
+
+  /*
+    1a. ROUTING, LEARNED FROM VERIFIED TRAFFIC ONLY (Teams Chat-Native Training V1).
+
+    A Bot Framework `serviceUrl` is per-tenant and regional, and Microsoft's guidance is that a bot
+    OBSERVES it rather than knows it. This is the one place that holds BOTH a verified token and
+    the body it authenticated, so it is the only place the value may be believed.
+
+    `resolveServiceUrl` is the EXISTING strict rule — it checks the activity's value against the
+    token's own claim and refuses a mismatch — and this records the result against the tenant the
+    same verified activity names. Deliberately BEFORE the parse: installation and conversation
+    updates carry routing too, and they are exactly the first traffic BTY sees from a new person.
+
+    Fail-soft and fire-and-forget: bookkeeping must never turn a working command into an error.
+  */
+  const identity = readActivityIdentity(activity);
+  const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
+  if (identity && routing.url) {
+    const adminForRoute = getSupabaseAdmin();
+    if (adminForRoute) {
+      await rememberTenantRoute(adminForRoute, { tenantId: identity.tenantId, serviceUrl: routing.url });
+    }
+  }
+
+  /*
+    1b. A TRAINING CARD ACTION (Teams Chat-Native Training V1).
+
+    Handled HERE — after verification, after identity — and never on a second endpoint: adding an
+    unauthenticated callback would be a way around the order this file exists to enforce. The verb
+    allow-list lives in the pure parser; anything outside it falls through to the ordinary refusal
+    below rather than being answered.
+  */
+  const cardAction = parseTrainingCardAction(activity);
+  if (cardAction.ok) {
+    if (!identity) {
+      return NextResponse.json(adaptiveCardResponse(buildNoticeCard(MSG.notInOrg)));
+    }
+    const adminForCard = getSupabaseAdmin();
+    if (!adminForCard) {
+      return NextResponse.json(adaptiveCardResponse(buildNoticeCard(MSG.serverBusy)));
+    }
+    const result = await handleTrainingCardAction(adminForCard, cardAction, identity);
+    return NextResponse.json(adaptiveCardResponse(result.card));
   }
 
   // 2. PARSE (pure). An invoke this slice does not implement gets a safe refusal — this is a
