@@ -1,5 +1,6 @@
 "use client";
 
+import { FoundryTrainingDetail } from "./FoundryTrainingDetail";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 import { contentTypeLabel } from "./contentTypeLabel";
@@ -91,6 +92,8 @@ const COPY: Record<Locale, {
   noShared: string;
   viewInCenter: string;
   completedOn: string;
+  learned: string;
+  itemsToReview: (n: number) => string;
   video: string;
   document: string;
   empty: string;
@@ -129,6 +132,8 @@ const COPY: Record<Locale, {
     noShared: "No shared understanding was recorded for this training.",
     viewInCenter: "View my private reflection in Center",
     completedOn: "Completed",
+    learned: "Learned",
+    itemsToReview: (n) => `${n} item${n === 1 ? "" : "s"} to review`,
     video: "Video",
     document: "PDF",
     empty: "No completed trainings yet.",
@@ -165,6 +170,8 @@ const COPY: Record<Locale, {
     noShared: "이 교육에는 공유 이해 답변이 없습니다.",
     viewInCenter: "Center에서 나의 비공개 성찰 보기",
     completedOn: "완료",
+    learned: "학습 완료",
+    itemsToReview: (n) => `다시 볼 문항 ${n}개`,
     video: "영상",
     document: "PDF",
     empty: "아직 완료한 교육이 없습니다.",
@@ -230,6 +237,7 @@ export default function FoundryMyLearning({
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const backText = `← ${backLabel ?? t.backDefault}`;
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
   /*
     THE DOOR BACK IN (Deferred Completion Claim V1). A learner who finished without signing in was
@@ -398,6 +406,28 @@ export default function FoundryMyLearning({
     };
   }, [load, loadReviewedPlans, loadEvidence]);
 
+  /*
+    LEVEL 2 REPLACES LEVEL 1 IN PLACE. This surface lives inside the app shell, so opening a
+    training is shell state — never a navigation, and never a link out of the product.
+  */
+  if (openEntryId) {
+    return (
+      <FoundryTrainingDetail
+        entryId={openEntryId}
+        locale={loc}
+        onBack={() => setOpenEntryId(null)}
+        reflectionHref={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(openEntryId)}`}
+        /*
+          NO "Since this training" SECTION HERE, DELIBERATELY. That history already has a home: the
+          Slice 3.2R-R1 section on the card this detail was opened from, where it is expressed in
+          the learner's language. The only other thing available is `completionState`, a raw
+          `pass | review | incomplete` enum — turning that into a sentence would be BTY deciding
+          what their follow-up meant, which is exactly the status this slice must not invent.
+        */
+      />
+    );
+  }
+
   return (
     <section data-testid="foundry-my-learning" className="flex flex-col gap-4 px-4 py-4">
       <div className="flex items-center justify-between gap-2">
@@ -496,6 +526,28 @@ export default function FoundryMyLearning({
                 </div>
               ) : null}
               {it.quizScore ? <p className="text-sm text-[#C9A66B]" data-testid="my-learning-quiz-score">{it.quizScore.correctCount} / {it.quizScore.totalCount} · {it.quizScore.scorePercent}%</p> : null}
+              {/*
+                THE DOOR TO THE REVIEW — and the list's LAST word on the quiz.
+
+                A learning history gets long. Everything a learner needs to recognise this training
+                is already above: title, date, score. What they got wrong, what they chose and why
+                it was wrong live one tap away, because a hundred completed trainings must still
+                open a calm screen rather than a feed of answers.
+              */}
+              <button
+                type="button"
+                onClick={() => setOpenEntryId(it.entryId)}
+                data-testid="my-learning-open-detail"
+                data-entry-id={it.entryId}
+                className="mt-0.5 flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
+              >
+                <span className="text-xs text-white/55">
+                  {it.quizScore && it.quizScore.correctCount < it.quizScore.totalCount
+                    ? t.itemsToReview(it.quizScore.totalCount - it.quizScore.correctCount)
+                    : t.learned}
+                </span>
+                <span aria-hidden className="text-white/30">›</span>
+              </button>
               {/*
                 SINCE THIS TRAINING (Slice 3.2R-R1) — secondary to the completion above it.
 
