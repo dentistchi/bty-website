@@ -180,6 +180,17 @@ export type EventRoomsCopy = {
   sendInTeamsAlready: (n: number) => string;
   sendInTeamsNoneCta: string;
   sendInTeamsUnavailable: string;
+  /*
+    WHY ONE PERSON DID NOT RECEIVE IT (Teams Delivery Diagnostics V1). The API already returned a
+    product reason per recipient and the client discarded it, so every failure read as the same
+    shrug. These are the five distinct things a Host can actually tell apart and act on — and none
+    of them is a Microsoft error string.
+  */
+  sendReasonNotInstalled: string;
+  sendReasonNotEligible: string;
+  sendReasonNoRoute: string;
+  sendReasonUnknown: string;
+  sendReasonFailed: string;
   closeFallback: string;
   rotateQr: string;
   rotateConfirm: string;
@@ -390,6 +401,11 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendInTeamsAlready: (n) => `${n} already had it.`,
     sendInTeamsNoneCta: "Couldn't send this training.",
     sendInTeamsUnavailable: "Teams can't send this training right now.",
+    sendReasonNotInstalled: "BTY isn't installed for this employee in Teams.",
+    sendReasonNotEligible: "This account can't receive this training.",
+    sendReasonNoRoute: "BTY can't reach Teams for this organization yet.",
+    sendReasonUnknown: "Teams couldn't confirm delivery.",
+    sendReasonFailed: "BTY couldn't send the training.",
     closeFallback: "Close",
     rotateQr: "Rotate QR",
     rotateConfirm: "Replace the current QR? The old QR will stop working.",
@@ -586,6 +602,11 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendInTeamsAlready: (n) => `${n}명은 이미 받았습니다.`,
     sendInTeamsNoneCta: "이 훈련을 보내지 못했습니다.",
     sendInTeamsUnavailable: "지금은 Teams로 이 훈련을 보낼 수 없습니다.",
+    sendReasonNotInstalled: "이 직원의 Teams에 BTY가 설치되어 있지 않습니다.",
+    sendReasonNotEligible: "이 계정은 이 훈련을 받을 수 없습니다.",
+    sendReasonNoRoute: "아직 이 조직의 Teams에 연결할 수 없습니다.",
+    sendReasonUnknown: "Teams가 전달을 확인하지 못했습니다.",
+    sendReasonFailed: "훈련을 보내지 못했습니다.",
     closeFallback: "닫기",
     rotateQr: "QR 재발급",
     createArenaPractice: "연습 만들기",

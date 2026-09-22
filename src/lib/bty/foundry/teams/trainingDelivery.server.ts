@@ -6,6 +6,7 @@ import { sendProactiveCard } from "@/lib/bty/teams/proactiveConversation.server"
 import { readTenantRoute } from "@/lib/bty/teams/tenantRoute.server";
 import { resolveTeamsConversation } from "@/lib/bty/teams/resolveTeamsConversation.server";
 import { readGuidanceContent } from "@/lib/bty/foundry/events/foundryGuidanceService";
+import { recordDeliveryAttempt } from "./deliveryAttempt.server";
 
 /**
  * SENDING A TRAINING INTO A TEAMS CHAT.
@@ -111,15 +112,36 @@ export async function sendTrainingToTeams(
       userType Member. A guest or a disabled account is not sent an internal training.
     */
     const eligibility = await probeRecipientEligibility(graphToken, aadObjectId);
+    /*
+      EVERY OUTCOME IS RECORDED, including the refusals — that is the whole point of the audit.
+      Before it, a recipient refused here left nothing behind and the Host's sentence was the only
+      evidence that anything had happened at all.
+    */
+    const audit = (stage: Parameters<typeof recordDeliveryAttempt>[1]["stage"], result: Parameters<typeof recordDeliveryAttempt>[1]["result"], displayName?: string | null, code?: unknown) =>
+      recordDeliveryAttempt(admin, {
+        eventId: event.id,
+        ownerUserId: input.ownerUserId,
+        tenantId,
+        aadObjectId,
+        displayName: displayName ?? null,
+        stage,
+        result,
+        microsoftFailureCode: code,
+      });
+
     if (!eligibility.ok) {
-      outcomes.push({ aadObjectId, status: "undeliverable", displayName: null, reason: eligibility.reason === "not_found" ? "not_eligible" : "unknown" });
+      const notEligible = eligibility.reason === "not_found";
+      await audit("graph_validation", notEligible ? "not_eligible" : "delivery_unknown", null, eligibility.reason);
+      outcomes.push({ aadObjectId, status: "undeliverable", displayName: null, reason: notEligible ? "not_eligible" : "unknown" });
       continue;
     }
     if (!eligibility.eligible) {
+      await audit("graph_validation", "not_eligible", null, eligibility.reason);
       outcomes.push({ aadObjectId, status: "undeliverable", displayName: null, reason: "not_eligible" });
       continue;
     }
     const displayName = eligibility.displayName;
+    await audit("graph_validation", "eligible", displayName);
 
     // ---- Already delivered? Report it; never message the same person twice for one training. ----
     const { data: existing } = await admin
@@ -143,17 +165,19 @@ export async function sendTrainingToTeams(
       token: botToken.token,
     });
     if (!conversation.ok) {
-      outcomes.push({
-        aadObjectId,
-        status: "undeliverable",
+      const productReason =
+        conversation.reason === "not_installed"
+          ? ("not_installed" as const)
+          : conversation.reason === "unknown" || conversation.reason === "in_progress"
+            ? ("unknown" as const)
+            : ("failed" as const);
+      await audit(
+        "conversation_resolution",
+        productReason === "not_installed" ? "not_installed" : productReason === "unknown" ? "delivery_unknown" : "conversation_failed",
         displayName,
-        reason:
-          conversation.reason === "not_installed"
-            ? "not_installed"
-            : conversation.reason === "unknown" || conversation.reason === "in_progress"
-              ? "unknown"
-              : "failed",
-      });
+        conversation.reason,
+      );
+      outcomes.push({ aadObjectId, status: "undeliverable", displayName, reason: productReason });
       continue;
     }
 
@@ -209,12 +233,15 @@ export async function sendTrainingToTeams(
         .from("foundry_teams_training_deliveries")
         .update({ delivery_status: sent.ambiguous ? "PENDING" : "UNDELIVERABLE", updated_at: new Date().toISOString() })
         .eq("id", delivery.id);
-      outcomes.push({
-        aadObjectId,
-        status: "undeliverable",
+      const productReason =
+        sent.failure === "not_installed" ? ("not_installed" as const) : sent.ambiguous ? ("unknown" as const) : ("failed" as const);
+      await audit(
+        "card_send",
+        productReason === "not_installed" ? "not_installed" : productReason === "unknown" ? "delivery_unknown" : "send_failed",
         displayName,
-        reason: sent.failure === "not_installed" ? "not_installed" : sent.ambiguous ? "unknown" : "failed",
-      });
+        (sent as { microsoftCode?: unknown }).microsoftCode ?? sent.failure,
+      );
+      outcomes.push({ aadObjectId, status: "undeliverable", displayName, reason: productReason });
       continue;
     }
 
@@ -222,6 +249,7 @@ export async function sendTrainingToTeams(
       .from("foundry_teams_training_deliveries")
       .update({ delivery_status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("id", delivery.id);
+    await audit("card_send", "delivered", displayName);
     outcomes.push({ aadObjectId, status: "sent", displayName });
   }
 

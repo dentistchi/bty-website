@@ -11,6 +11,7 @@ import {
   buildTeamsShareUrl,
 } from "@/lib/bty/foundry/events/foundryInvitation";
 import { isInsideTeamsTab, pickTrainingRecipients } from "@/lib/bty/teams/sendTrainingInTeams";
+import { groupUndeliverable } from "@/domain/teams/deliveryReason";
 
 /**
  * "Share this room" — Copy invitation + Share to Teams. Both encode the SAME
@@ -51,6 +52,12 @@ export function FoundryShareControls({
   */
   const [sendState, setSendState] = useState<"idle" | "choosing" | "sending">("idle");
   const [pending, setPending] = useState<{ ids: string[]; names: string[] } | null>(null);
+  /*
+    WHY EACH PERSON MISSED OUT, grouped by cause. Held separately from `status` because the summary
+    line and the per-reason detail answer different questions: how many got it, and what to do
+    about the ones who did not.
+  */
+  const [failures, setFailures] = useState<{ sentence: string; names: string[] }[]>([]);
   const manualRef = useRef<HTMLTextAreaElement | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -146,6 +153,7 @@ export function FoundryShareControls({
   const onPickRecipients = useCallback(async () => {
     setSendState("choosing");
     setStatus("");
+    setFailures([]);
     const outcome = await pickTrainingRecipients();
     setSendState("idle");
     if (outcome.k === "picked") {
@@ -177,29 +185,32 @@ export function FoundryShareControls({
         body: JSON.stringify({ eventId: event.id, aadObjectIds: pending.ids }),
       });
       const data = (await res.json().catch(() => null)) as
-        | { ok: true; sent: number; alreadySent: number; undeliverable: { displayName: string | null }[] }
+        | { ok: true; sent: number; alreadySent: number; undeliverable: { displayName: string | null; reason?: unknown }[] }
         | { error?: string }
         | null;
       if (!res.ok || !data || !("ok" in data)) {
         setStatus(t.sendInTeamsUnavailable);
+        setFailures([]);
         return;
       }
       const failed = data.undeliverable.length;
       /*
-        THE HOST IS TOLD THE TRUTH, including who could not receive it — a Host needs to know whom
-        to follow up with. The product reason is never a Microsoft error string; those stay in the
-        server log.
+        ★ THE REASON IS NO LONGER DISCARDED. The API has always returned one per recipient; this
+        used to drop it and print names, so "not installed" and "we never heard back" looked
+        identical to the one person who could fix the first. Now the summary counts, and each
+        distinct cause gets its own ordinary-language sentence with the affected names under it.
+        Microsoft's own codes never reach this screen — they stay in the log and the audit table.
       */
       const parts: string[] = [];
       if (failed > 0 && data.sent > 0) parts.push(t.sendInTeamsMixed(data.sent, failed));
       else if (failed > 0 && data.sent === 0) parts.push(t.sendInTeamsNoneCta);
       else parts.push(t.sendInTeamsSent(data.sent));
       if (data.alreadySent > 0) parts.push(t.sendInTeamsAlready(data.alreadySent));
-      const names = data.undeliverable.map((u) => u.displayName).filter((n): n is string => Boolean(n));
-      if (names.length > 0) parts.push(names.join(", "));
       setStatus(parts.join(" "));
+      setFailures(groupUndeliverable(data.undeliverable, t));
     } catch {
       setStatus(t.sendInTeamsUnavailable);
+      setFailures([]);
     } finally {
       setSendState("idle");
       setPending(null);
@@ -335,6 +346,16 @@ export function FoundryShareControls({
             <p className="text-xs text-white/60" data-testid="send-in-teams-status">
               {status}
             </p>
+          ) : null}
+          {failures.length > 0 ? (
+            <ul className="flex flex-col gap-1.5" data-testid="send-in-teams-failures">
+              {failures.map((f) => (
+                <li key={f.sentence} className="text-xs leading-5 text-white/55">
+                  <span className="text-white/75">{f.sentence}</span>
+                  {f.names.length > 0 ? <span className="block text-white/45">{f.names.join(", ")}</span> : null}
+                </li>
+              ))}
+            </ul>
           ) : null}
         </div>
       ) : native ? (

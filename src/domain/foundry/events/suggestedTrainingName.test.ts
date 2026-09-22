@@ -114,6 +114,8 @@ describe("T13 — the participant name stays a historical snapshot", () => {
       "20260924000000_quick_training_quiz_authoring_v1.sql",
       // Teams Chat-Native Training V1 — registered deliberately, which is the signal this list is for.
       "20260925000000_teams_chat_native_training_v1.sql",
+      // Teams Delivery Diagnostics V1 — additive audit table, registered deliberately.
+      "20260926000000_teams_training_delivery_attempts_v1.sql",
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));

@@ -11,7 +11,12 @@ import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
-import { LearnerQuizPanel, useLearnerQuiz } from "./LearnerQuizPanel";
+import {
+  LearnerQuizPanel,
+  LearnerQuizResultSummary,
+  useLearnerQuiz,
+  useLearnerQuizResult,
+} from "./LearnerQuizPanel";
 
 /**
  * Foundry PDF Study Room — participant experience.
@@ -649,6 +654,11 @@ export default function FoundryDocumentClient({
     so neither surface is shown before the server has said which one applies.
   */
   const quiz = useLearnerQuiz(token, stage === "response");
+  /* §7 — the factual score, restored read-only when a completed learner returns. */
+  const quizResult = useLearnerQuizResult(
+    token,
+    stage === "completed_awarded" || stage === "completed_claimable",
+  );
 
   // Fetch a signed url once we're a participant who needs the document.
   useEffect(() => {
@@ -1020,6 +1030,12 @@ export default function FoundryDocumentClient({
       <Frame>
         <Centered>
           <Eyebrow>{t.trainingComplete}</Eyebrow>
+
+          {/*
+            §7 — THE FACTUAL SCORE, RESTORED. Read-only: the attempt is immutable and there is
+            nothing here to press. Absent for every non-quiz training, which renders exactly as before.
+          */}
+          {quizResult ? <LearnerQuizResultSummary result={quizResult} locale={locale} /> : null}
           <h1 className="mt-3 text-xl font-semibold">{snapshot.event?.title}</h1>
           <div className="mt-8 w-full">
             {xp === "awarded" && (
