@@ -76,6 +76,78 @@ describe("the default list stays calm", () => {
   });
 });
 
+describe("an unreadable obligation state archives nothing", () => {
+  /*
+    THE LOCKED RULE: actionable trainings are always visible. If obligations cannot be read the
+    product does not KNOW which are actionable, so it must not treat them as settled and archive
+    them. Fail toward more visibility, never less.
+  */
+  function mockObligationsFailing(count: number, mode: "throw" | "500") {
+    // @ts-expect-error test shim
+    global.fetch = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("/evidence/mine")) {
+        if (mode === "throw") throw new Error("network");
+        return { ok: false, status: 500, json: async () => ({}) };
+      }
+      if (u.includes("/api/bty/foundry/history")) {
+        return { ok: true, status: 200, json: async () => ({ ok: true, history: history(count) }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    });
+  }
+
+  it.each(["throw", "500"] as const)(
+    "keeps the WHOLE history visible when the obligation read fails (%s)",
+    async (mode) => {
+      mockObligationsFailing(46, mode);
+      renderList();
+      await waitFor(() => expect(screen.getAllByTestId("my-learning-item")).toHaveLength(46));
+      // Nothing was archived, so there is no archive door at all.
+      expect(screen.queryByTestId("my-learning-archived-open")).toBeNull();
+    },
+  );
+
+  it("does not archive a potentially actionable training it could not ask about", async () => {
+    mockObligationsFailing(46, "500");
+    renderList();
+    await waitFor(() => expect(screen.getAllByTestId("my-learning-item")).toHaveLength(46));
+    // The oldest record — the first thing the settled projection would have archived — is present.
+    expect(titles().join(" ")).toContain("Training 46");
+  });
+
+  it("resumes the normal 10 + actionable projection after a successful retry", async () => {
+    let failing = true;
+    // @ts-expect-error test shim
+    global.fetch = vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes("/evidence/mine")) {
+        if (failing) return { ok: false, status: 500, json: async () => ({}) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, items: [{ entryId: "e46", openFollowUp: [{ followupId: "f46", followUpDays: 7 }] }] }),
+        };
+      }
+      if (u.includes("/api/bty/foundry/history")) {
+        return { ok: true, status: 200, json: async () => ({ ok: true, history: history(46) }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    });
+
+    renderList();
+    await waitFor(() => expect(screen.getAllByTestId("my-learning-item")).toHaveLength(46));
+
+    // The retry rides the existing focus lifecycle — no new mechanism.
+    failing = false;
+    fireEvent.focus(window);
+
+    await waitFor(() => expect(screen.getAllByTestId("my-learning-item")).toHaveLength(11));
+    expect(titles().join(" ")).toContain("Training 46");
+    expect(screen.getByTestId("my-learning-archived-open").textContent).toContain("Archived 35");
+  });
+});
+
 describe("the archive is a place, not a state", () => {
   it("opens the older completions, and they are all still there", async () => {
     mockApi(46);

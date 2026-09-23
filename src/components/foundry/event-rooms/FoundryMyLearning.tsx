@@ -232,6 +232,13 @@ export default function FoundryMyLearning({
   // entryId → follow-ups the SERVER says are still awaiting a FIRST answer (Slice 3.2R-R3-R2).
   // Kept apart from the map above so the two CTAs can never be rendered with each other's words.
   const [openFollowUp, setOpenFollowUp] = useState<Map<string, OpenFollowUpTarget[]>>(new Map());
+  /*
+    HAVE WE ACTUALLY BEEN TOLD? Both maps above are empty in two completely different situations —
+    "every training is settled" and "the obligation read has not succeeded" — and archiving treats
+    those as opposites. This flag is set ONLY by a successful read, so an empty map can never be
+    mistaken for an answer.
+  */
+  const [obligationsKnown, setObligationsKnown] = useState(false);
 
   /*
     OBLIGATIONS, FOR ONE DECISION ONLY: is this record still actionable, and therefore never
@@ -243,6 +250,7 @@ export default function FoundryMyLearning({
   const loadObligations = useCallback(async () => {
     try {
       const res = await fetch("/api/bty/foundry/evidence/mine", { credentials: "include", cache: "no-store" });
+      // A non-OK response is a read that did not happen, exactly like a thrown one.
       if (!res.ok) return;
       const data = (await res.json()) as {
         items?: Array<{
@@ -265,8 +273,14 @@ export default function FoundryMyLearning({
       }
       setCheckInAgain(again);
       setOpenFollowUp(open);
+      setObligationsKnown(true);
     } catch {
-      /* additive — an obligation read must never blank a completion */
+      /*
+        DELIBERATELY NOT setObligationsKnown(true), AND DELIBERATELY NOT CLEARING THE MAPS. A failed
+        read leaves the last known answer in place if there was one, and leaves the flag false if
+        there was not — so nothing is archived on the strength of a read that did not happen. The
+        focus/visibility refresh retries it.
+      */
     }
   }, []);
 
@@ -323,10 +337,20 @@ export default function FoundryMyLearning({
   */
   const { visible, archived } = useMemo(
     () =>
-      splitLearningHistory(items ?? [], (it) =>
-        (checkInAgain.get(it.entryId)?.length ?? 0) > 0 || (openFollowUp.get(it.entryId)?.length ?? 0) > 0,
+      splitLearningHistory(
+        items ?? [],
+        /*
+          NULL UNTIL WE KNOW. Passing a predicate that reads empty maps would report every training
+          as obligation-free and archive it — hiding actionable items precisely when the product
+          cannot tell which they are. Until the read succeeds the whole history stays visible.
+        */
+        obligationsKnown
+          ? (it) =>
+              (checkInAgain.get(it.entryId)?.length ?? 0) > 0 ||
+              (openFollowUp.get(it.entryId)?.length ?? 0) > 0
+          : null,
       ),
-    [items, checkInAgain, openFollowUp],
+    [items, checkInAgain, openFollowUp, obligationsKnown],
   );
   const rows = showArchived ? archived : visible;
 
