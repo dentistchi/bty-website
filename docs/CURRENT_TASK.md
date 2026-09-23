@@ -1,3 +1,13 @@
+**[MEMBERSHIPS-M3.3]**: [x] **완료·배포.** 도달 불가능했던 weekly AIR 크론 삭제(대체 아님, 순수 제거).
+- 편집 전 도달성 감사: `runWeeklyAirReportCron` 호출자 0, `fetchActiveUserIds` 모듈 외 참조 0, `scheduled` Worker 핸들러 없음, `wrangler.toml` 에 `[triggers]`/`crons` 없음, 스크립트·워크플로 없음, **이 모듈을 참조하는 테스트 자체가 0건**, 동적 import 없음.
+- 삭제 경계(§2 두 번째 분기): 서비스 전체가 아니라 **죽은 멤버십 기반 경로만**. `getWeeklyReport`·`mondayUtcWeekOf` 는 라이브 호출자 다수(`/api/center/weekly-report-card`, integrity 대시보드, Center 카드 UI, forced-reset 평가기)라 보존.
+- 제거: `runWeeklyAirReportCron`, `fetchActiveUserIds`, `buildReportForUser`, `emitReady`, `RunWeeklyAirReportResult`, 그리고 이들만 쓰던 import 4개 (211 → 110줄).
+- **대체 데이터 소스 없음.** `arena_profiles`·`bty_org_memberships`·`auth.users` 어느 것으로도 repoint 하지 않음 — 아무도 실행하지 않는 리포트의 대상자를 새로 고르는 것은 제품 결정이며 결정된 바 없음.
+- 보강 증거: `weekly_air_reports` 테이블 **0행** — 크론이 실제로 한 번도 돈 적 없음을 데이터가 확인.
+- 잔존 `.from("memberships")` 3 → **2** (leaderboard role scope ×2 뿐).
+- **후속 기록:** `onWeeklyReportReady` 리스너 레지스트리는 emitter 가 없어짐(이전에도 도달 가능한 emitter 는 없었음). 구독 해제는 `notification-router.service.ts` 수정이 필요해 이번 은퇴 범위 밖으로 두고 기록만 함.
+- 검증: tsc 클린 · integrity/center/integration/leadership-engine 25파일 186 통과 · 가드 2종 그린 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+
 **[MEMBERSHIPS-M3.2]**: [x] **완료·배포.** Arena 반성 커리큘럼의 **역할 기반 트랙 추론 폐기**(매핑 이전이 아니라 삭제).
 - 근거(실측): `getEffectiveTrack` 이 인식하는 어휘(`doctor`/`senior_doctor`/`partner`/`office_manager`…)는 운영 데이터에 **존재한 적이 없음**. 실제로 쓰이는 값은 폼의 `staff`/`leader` 두 개와 레거시 enum `dentist` 뿐이고 셋 다 어느 목록에도 없음 → 모든 실사용자가 기본값 `staff` 로 떨어짐. 리더 사다리는 역할로 도달 불가였고 `JOB_MAX_LEVEL_CAP` 은 누구에게도 적용된 적 없음(3개 중 2개는 구조상 무효, 나머지는 해당자 0).
 - 변경: `/api/arena/reflect` 에서 레거시 `memberships` 읽기 삭제, `getEffectiveTrack` 호출 삭제(track = 리터럴 `"staff"`), `JOB_MAX_LEVEL_CAP` 미적용, `l4_access` 읽기 삭제(리더 트랙 전용이라 사문화). `arena_membership_requests` 는 `joined_at`/`leader_started_at`(=연혁, 역할 아님)만 유지하고 `job_function` 은 select 에서도 제거.
