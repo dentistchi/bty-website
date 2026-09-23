@@ -1,3 +1,15 @@
+**[FOUNDER-N4]**: [x] **완료 (데이터 전용, 배포 없음).** Founder 캐노니컬 조직 정체성 생성.
+- 라이브 스키마 재확인 후 착수: `role_started_on` **nullable**(required 목록에 없음) → 날짜를 만들어내지 않고 NULL 로 생성. `identity_source` 허용값에 `admin_curated` 포함.
+- 생성: `bty_org_memberships` 1행 (user=A, org=BTY_LEGACY `c373f116`, status=active, is_primary=true, identity_source=`admin_curated`) — **최소 insert**, 서술 필드는 큐레이션 서비스에 위임. 가짜 `arena_membership_requests` 승인 만들지 않음.
+- 큐레이션(지원되는 서비스/RPC 사용): `curateMembershipIdentity` → CLINICAL_PROVIDER / GENERAL_DENTIST (ROLE_TO_FAMILY 불변식 사전 증명), `curateMembershipResponsibility` ×2 → CLINICAL_DIRECTOR, PARTNER (둘 다 active, started_on NULL, assigned_by=A).
+- 사전 게이트: `resolveManageableOrganizations(A)` = [BTY_LEGACY] 를 **쓰기 전에** 확인.
+- 결과 검증: A 멤버십 정확히 1행, 활성 responsibility 키 정확히 2개(추가 키 없음), `resolveOwnOrganizationId(A)` = BTY_LEGACY.
+- **권한 무변경 확인:** platform admin 2행 그대로, foundry host 4행 그대로, `bty_org_action_review_authority` 여전히 0행, A core_xp 10 그대로. responsibility 는 어떤 권한도 부여하지 않음.
+- **제품 표면 증거:** `/api/bty/foundry/audience/leaders-preview` (A 인증) → 조직 해석 성공, `eligibleCount: 1`. 이전에는 조직 미해석으로 0.
+- Today 인사말은 여전히 "Dr. Chi" 이지만 이는 **레거시 descriptive source** 경유이며 M3 증거가 아님.
+- B/C 무변경: C 멤버십 `updated_at` 까지 동일, programs 6 / events 3 그대로, legacy memberships 1행, MS 스냅샷 17행.
+- 검증: org/responsibility/authority/Foundry 포커스 241파일 2354 통과 · tsc 클린 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline. 소스 변경 0.
+
 **[FOUNDER-N3]**: [x] **완료 (데이터 전용, 배포 없음).** 캐노니컬 Founder 계정 A(`18b1ee80`, hc@bty-dso.com)에 Foundry Host 권한 활성화.
 - 쓰기 전 게이트 통과 증명: `effectiveHostStatus` = manual OR microsoft, `planManagerSync.toRevoke` 는 `manualGranted` 를 입력으로 쓰지 않으며 불완전 동기화는 아무도 revoke 하지 않음 → `is_manager=false` 동기화가 수동 권한을 지울 수 없음.
 - 쓰기: 저장소 자체 함수 `grantFoundryHost(admin, A, A)` 사용(원시 upsert 아님). 결과 `manual_granted=true`, `microsoft_manager_granted=false`(조작하지 않음), `status=active`, `granted_by_user_id=A`. 2회 실행 동일 → 멱등. `revokeFoundryHost` 로 되돌릴 수 있음.
