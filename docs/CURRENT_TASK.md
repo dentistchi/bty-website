@@ -1,3 +1,12 @@
+**[MEMBERSHIPS-M3.2]**: [x] **완료·배포.** Arena 반성 커리큘럼의 **역할 기반 트랙 추론 폐기**(매핑 이전이 아니라 삭제).
+- 근거(실측): `getEffectiveTrack` 이 인식하는 어휘(`doctor`/`senior_doctor`/`partner`/`office_manager`…)는 운영 데이터에 **존재한 적이 없음**. 실제로 쓰이는 값은 폼의 `staff`/`leader` 두 개와 레거시 enum `dentist` 뿐이고 셋 다 어느 목록에도 없음 → 모든 실사용자가 기본값 `staff` 로 떨어짐. 리더 사다리는 역할로 도달 불가였고 `JOB_MAX_LEVEL_CAP` 은 누구에게도 적용된 적 없음(3개 중 2개는 구조상 무효, 나머지는 해당자 0).
+- 변경: `/api/arena/reflect` 에서 레거시 `memberships` 읽기 삭제, `getEffectiveTrack` 호출 삭제(track = 리터럴 `"staff"`), `JOB_MAX_LEVEL_CAP` 미적용, `l4_access` 읽기 삭제(리더 트랙 전용이라 사문화). `arena_membership_requests` 는 `joined_at`/`leader_started_at`(=연혁, 역할 아님)만 유지하고 `job_function` 은 select 에서도 제거.
+- **대체 없음:** `bty_org_memberships`·`primary_role_key`·`job_family_key`·responsibilities·Entra 직함·grant 어느 것도 읽지 않음. 조직 사실은 커리큘럼이 아니며 L1-L4 콘텐츠는 보존되어 이후 Capability/Practice Pack 설계가 명시적으로 연결.
+- 관찰 행동 불변: Founder A 변경 전후 모두 staff/S1. 라이브에서 추론 결과가 명시적 `levelId=S1` 응답과 동일함을 확인, 명시적 `L2` 는 여전히 리더 콘텐츠 반환.
+- §5/§6 재스캔 결과 **보존**: `getEffectiveTrack`(unlocked-scenarios·core-xp 가 호출), `JOB_MAX_LEVEL_CAP`·`STAFF_/LEADER_JOB_FUNCTIONS`(unlock.ts 경유 동일 2개 라우트). 죽은 코드가 아니므로 삭제하지 않음.
+- 잔존 `.from("memberships")` 4 → **3** (leaderboard ×2, dormant weekly AIR).
+- 검증: tsc 클린 · Arena/guard/greeting 241파일 2103 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline. 아티팩트 증거: reflect 고유 리터럴 `select("job_function")` 직전 릴리스 소스 1회 → 현재 배포 번들 **0회**.
+
 **[MEMBERSHIPS-M3.1]**: [x] **완료·배포.** Today 인사말의 직업 호칭 근거를 레거시 `public.memberships` → **캐노니컬 `bty_org_memberships`** 로 교체.
 - 서비스: 사용자의 **active + is_primary** 캐노니컬 멤버십에서 `job_family_key`, `primary_role_key` 2컬럼만 읽음. 레거시/arena_membership_requests/Entra 스냅샷/grant 는 읽지 않음. **폴백 레이어링 없음**(소스 교체이지 중첩이 아님).
 - 규칙: `job_family_key === CLINICAL_PROVIDER` **AND** `primary_role_key ∈ {GENERAL_DENTIST, ORTHODONTIST}`. 측정된 ORTHODONTIST 누락을 해소(구 단어매칭은 'doctor'/'dentist' 가 없어 영원히 놓쳤음). CLINICAL_DIRECTOR·PARTNER·TRAINER·TEAM_LEAD·PEOPLE_MANAGER 는 **책임(leadership)** 이지 자격이 아니므로 호칭을 만들지 않음.
