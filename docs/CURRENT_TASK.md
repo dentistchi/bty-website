@@ -1,3 +1,13 @@
+**[MEMBERSHIPS-M2]**: [x] **완료·배포.** 레거시 `public.memberships` 를 읽는 **인가 경로 0** 달성.
+- **선행 감사 정정:** `/api/admin/organizations` 는 고장난 적이 없었음. 분기 2개 중 실제 호출자(파라미터 없는 요청)는 canonical platform-admin 게이트를 타고 **200** 반환. 이전 보고의 "항상 400"·"항상 403" 은 각각 아무도 호출하지 않는 경로를 설명한 것이었음 — 편집 전 STOP 후 실측으로 확정.
+- 삭제: `/api/admin/members`(호출자 0), `/api/admin/organizations` 의 `if (orgId && regionId)` 분기(단일 org 조회 기능은 **의도적으로 폐기**, 재게이트 안 함), `requireAdmin`, `requireRegionAccess`, `parseScope`, 그 안의 `workforce_profiles` 폴백, re-export 2건.
+- 유지: `requireAdminEmail`·`requirePlatformAdmin`·6개 호출자, 그리고 **role hierarchy**(`MembershipRole`/`ROLE_RANK`/`hasRoleAtLeast`/`canGrantRole`) — 선언된 어휘이지 삭제 대상 체인이 아님.
+- 신규 가드 `authorizationNoMemberships.guard.test.ts`: 인가 표면을 3가지 방식(코어 파일/경로 표식/게이트 형태 export)으로 도출해 그 중 어느 것도 레거시 테이블을 읽지 않음을 의미 기반으로 증명. 주석 제거 후 **코드만** 스캔(묘비 주석 오탐 방지). authz.ts 에 게이트를 주입해 탐지력 증명.
+- 잔존 프로덕션 read 7 → **5**, 전부 서술적(arena/reflect job_function, greeting, leaderboard role scope ×2, dormant weekly AIR). 인가 관련 0건.
+- 문서: `ARENA_DOMAIN_SPEC.md` 의 `/api/me/access` 행을 RETIRED 로 정정. 과거 릴리스 기록은 손대지 않음.
+- 검증: tsc 클린 · admin/auth 포커스 18파일 162 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+- 라이브: members **404** · orgs **200**(admin, 목록 동일) / **401**(미인증) / **403**(비-admin, `Forbidden: Admin access required`) / `?orgId&regionId` 는 레거시 분기 부활 없이 목록 반환 · `/api/admin/users` 200 · greeting "Good morning, Dr. Chi." · Arena 200 · admin organizations 페이지 실브라우저 렌더 확인.
+
 **[MEMBERSHIPS-M0-M1A]**: [x] **완료·배포.** 레거시 `public.memberships` 은퇴 1단계 — 호출자가 0인 의존만 제거.
 - 전제 재측정 후 착수: `assertRegionAccess`·`listAccessibleOffices` 정의 외 참조 0, `/api/me/access`·`/api/me/region` 은 src/e2e/scripts/docs/네이티브 쉘 어디서도 호출 없음, 제품 코드의 쓰기 경로 0.
 - 삭제: `src/lib/authz-utils.ts` 전체(두 함수 + `OfficeAssignment` 타입, import 하는 파일 자체가 없음), `/api/me/access`, `/api/me/region` 및 그 두 라우트만 고정하던 테스트 2개.

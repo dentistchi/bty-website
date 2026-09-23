@@ -256,7 +256,7 @@ lib/bty/arena/domain.ts ──────── domain/rules import + re-export
 | POST | `/api/journey/bounce-back` | comeback 시 `bounce_back_count` +1. Bearer **또는** 쿠키·401·503·500 @contract |
 | GET | `/api/me/elite` | EliteGetResponse·badges 빈배열·`Cache-Control private max-age=60 stale-while-revalidate=120`·401·500 |
 | POST | `/api/me/mentor-request` | **249:** 400 `{ error: "message_too_long" }`·201·401·403·500 |
-| GET | `/api/me/access` | **251:** 401 `Unauthorized`·503 `Server not configured`·200 user+memberships |
+| ~~GET~~ | ~~`/api/me/access`~~ | **RETIRED 2026-09-23** (memberships retirement M1A). 호출자 0으로 측정되어 삭제됨 — 현재 **404**. 레거시 `public.memberships` 메타데이터만 반환하던 엔드포인트. |
 
 ### 4-12. BTY (Healing / Awakening)
 
