@@ -1,3 +1,12 @@
+**[MEMBERSHIPS-M0-M1A]**: [x] **완료·배포.** 레거시 `public.memberships` 은퇴 1단계 — 호출자가 0인 의존만 제거.
+- 전제 재측정 후 착수: `assertRegionAccess`·`listAccessibleOffices` 정의 외 참조 0, `/api/me/access`·`/api/me/region` 은 src/e2e/scripts/docs/네이티브 쉘 어디서도 호출 없음, 제품 코드의 쓰기 경로 0.
+- 삭제: `src/lib/authz-utils.ts` 전체(두 함수 + `OfficeAssignment` 타입, import 하는 파일 자체가 없음), `/api/me/access`, `/api/me/region` 및 그 두 라우트만 고정하던 테스트 2개.
+- 추가: `src/lib/membershipsReadOnly.guard.test.ts` — 개수 스냅샷이 아니라 **의미 기반** 불변식(모든 `from("memberships")` 의 첫 동사는 select / 쓰기 동사 체이닝 없음 / SQL insert·update·delete 없음). 주입 테스트로 탐지력 증명.
+- 잔존 프로덕션 참조 11 → **7** (authz.ts, /api/admin/members, arena/reflect, greetingIdentity, leaderboardService ×2, weekly-air-report).
+- 검증: tsc 클린 · 포커스/auth·API 스위트 16파일 134 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+- 배포: `bd961d41` → Worker `bd8a5e34-8173-43bc-9604-9ca5130257f6`. 라이브: 삭제된 2개 라우트 404, 나머지 표면 401/403/200 이전과 동일, Founder 인사말 "Good morning, Dr. Chi." 그대로.
+- 미변경: weekly AIR 서비스, `requireRegionAccess`/`requireAdmin`, `/api/admin/{members,organizations}`, `/api/arena/reflect`, greetingIdentity, leaderboardService, RLS, 마이그레이션, 운영 데이터, Founder 정체성.
+
 **[ARENA-TENURE-1]**: [x] **완료·배포.** Arena tenure 기준을 membership 행 생성일이 아닌 계정 자체 연혁으로 교정.
 - 결함: `/api/arena/reflect`가 active membership이 있으면 `memberships.created_at`을 join date로 덮어씀 → 관리자 insert가 new-joiner 창을 리셋. 실측: 계정 2026-09-01, membership 2026-09-23.
 - 수정(최소): `joinedAt`은 `auth.users.created_at` → (memberships 이전부터 쓰던 폴백) now. `created_at`은 SELECT 목록에서도 제거해 재발 경로 차단. `job_function`(역할 사실)은 계속 읽음. 승인된 `arena_membership_requests.joined_at`은 여전히 우선(선언된 입사일이지 행 생성일이 아님).
