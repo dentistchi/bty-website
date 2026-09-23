@@ -1,3 +1,12 @@
+**[MEMBERSHIPS-M4]**: [~] **작성 완료·게이트 그린·미적용(Founder 적용 대기).** `regions`/`offices` 의 레거시 `public.memberships` RLS 의존 제거.
+- 라이브 실측(적용 전): `regions` service 4 / 멤버십 보유 authed **1** / 미보유 0 / anon 0 · `offices` 10 / **2** / 0 / 0. 모두 HTTP 200 + 빈 배열(42501 아님) → anon·authenticated 에 SELECT 권한은 존재하고 거부는 전적으로 정책이 만들어냄.
+- 마이그레이션 `20260918000000_regions_offices_drop_membership_rls_v1.sql`: 두 정책(`regions_select_via_memberships`, `offices_select_via_memberships`) DROP + anon·authenticated 의 SELECT **REVOKE**, RLS 는 계속 ENABLED, `service_role` 은 이름조차 넣지 않음. `using (true)` 없음, 새 정책 없음 → Founder 가시 행이 1→0, 2→0 으로 **좁아지기만** 함.
+- 미적용 사유: 이 워크스페이스에 DDL 자격 증명이 없음(access token·DB password·SQL 실행 RPC 전무). 저장소 관례대로 Founder 적용.
+- 범위 밖 무변경: `public.memberships` 테이블·`memberships_select_own`·그 1행, `office_assignments`, `organizations`, `bty_org_memberships`, grant 일체.
+- 애플리케이션 도달성 재확인: `from("regions")`/`from("offices")` 리더 **0건**(src·e2e·scripts·네이티브 쉘 전부). M3.4 에서 마지막 리더였던 leaderboard office 경로가 사라진 결과.
+- 스키마 의도 테스트 7개(정책 2개만 DROP / RLS 유지 / 새 정책·`using(true)`·client GRANT 금지 / service_role 미언급 / 데이터·타 테이블 무변경 / 디렉터리 마지막 / 실측치 기록).
+- 마이그레이션 가드 대응: `KNOWN_LATER` 5개 파일에 새 파일명을 **의도적으로** 등재하고 `openSourceLink` 의 14자리 앵커를 20260918 로 상향 — 각 가드가 요구하는 바로 그 신호. 이후 전체 baseline 18실패/9파일 복귀.
+
 **[MEMBERSHIPS-M3.4]**: [x] **완료·배포.** 리더보드 role/office 스코프 은퇴 → **레거시 `public.memberships` 프로덕션 읽기 0건 달성**.
 - 전제 재측정: role 스코프=`memberships`(1행), office 스코프=`office_assignments`(**0행**) → office 보드는 전원 공백, role 보드는 Founder 1인 리스트 + 나머지 19계정 `scopeUnavailable`. `?scope=` 를 보내는 호출자는 리더보드 페이지 하나뿐.
 - 제거: 탭 그룹·탭 문구, 스코프 라벨 줄, `scopeUnavailable` 빈 상태, `getScopeFilter`/`ScopeFilterResult`, 응답의 `scopeLabel`/`scopeUnavailable`, `parseLeaderboardScope`·`LEADERBOARD_SCOPE_TYPES`(호출자 0), `roleToScopeLabel`, `arenaLeaderboardScopeRoleLabel` 도메인 규칙 + 테스트.
