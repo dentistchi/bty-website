@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 /**
- * The canonical identity behind the Today greeting: which EXISTING sources are read, and what a
- * missing or broken one degrades to.
+ * The canonical identity behind the Today greeting: which sources are read, how the roster query
+ * is scoped, and what a missing or broken one degrades to.
  */
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,13 +11,13 @@ const USER = "11111111-1111-1111-1111-111111111111";
 
 type Script = {
   profileFullName?: string | null;
-  memberships?: Array<{ role?: string | null; job_function?: string | null }>;
-  approvedRequest?: { job_function?: string | null } | null;
+  /** The row `bty_org_memberships` returns for the ACTIVE+PRIMARY filter, or null. */
+  membership?: Record<string, unknown> | null;
   /** Tables whose reads throw, to prove each source is independently fail-soft. */
   throwOn?: string[];
 };
 
-type Capture = { tables: string[]; filters: Array<[string, unknown]> };
+type Capture = { tables: string[]; filters: Array<[string, unknown]>; columns: string[] };
 
 function makeAdmin(script: Script, cap: Capture): SupabaseClient {
   const client = {
@@ -27,12 +27,13 @@ function makeAdmin(script: Script, cap: Capture): SupabaseClient {
         if (script.throwOn?.includes(table)) throw new Error(`read failed: ${table}`);
       };
       const builder: Record<string, unknown> = {
-        select: () => {
+        select: (cols: string) => {
+          cap.columns.push(`${table}:${cols}`);
           boom();
           return builder;
         },
         eq: (col: string, val: unknown) => {
-          cap.filters.push([col, val]);
+          cap.filters.push([`${table}.${col}`, val]);
           return builder;
         },
         maybeSingle: () => {
@@ -40,14 +41,9 @@ function makeAdmin(script: Script, cap: Capture): SupabaseClient {
           if (table === "arena_profiles") {
             return Promise.resolve({
               data: script.profileFullName === undefined ? null : { full_name: script.profileFullName },
-              error: null,
             });
           }
-          return Promise.resolve({ data: script.approvedRequest ?? null, error: null });
-        },
-        then: (resolve: (v: { data: unknown[]; error: null }) => void) => {
-          boom();
-          resolve({ data: script.memberships ?? [], error: null });
+          return Promise.resolve({ data: script.membership ?? null });
         },
       };
       return builder;
@@ -56,81 +52,110 @@ function makeAdmin(script: Script, cap: Capture): SupabaseClient {
   return client as unknown as SupabaseClient;
 }
 
-const run = (script: Script, metadata: Record<string, unknown> | null = null) => {
-  const cap: Capture = { tables: [], filters: [] };
+const run = (script: Script, metadata: Record<string, unknown> | null = { full_name: "Hanbit Chi" }) => {
+  const cap: Capture = { tables: [], filters: [], columns: [] };
   return resolveGreetingIdentity(makeAdmin(script, cap), USER, metadata).then((address) => ({ address, cap }));
 };
 
-describe("resolveGreetingIdentity", () => {
-  it("a doctor role on the canonical membership earns the doctor form", async () => {
-    const { address } = await run(
-      { memberships: [{ role: "doctor", job_function: "senior_doctor" }] },
-      { full_name: "Hanbit Chi" },
-    );
+describe("resolveGreetingIdentity — canonical roster as the professional source", () => {
+  it("CLINICAL_PROVIDER + GENERAL_DENTIST earns the doctor form", async () => {
+    const { address } = await run({
+      membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" },
+    });
     expect(address).toEqual({ kind: "doctor", addressee: "Chi" });
   });
 
-  it("the approved Arena membership request is also read for the position", async () => {
-    const { address, cap } = await run(
-      { memberships: [], approvedRequest: { job_function: "Lead Dentist" } },
+  it("CLINICAL_PROVIDER + ORTHODONTIST earns it too", async () => {
+    const { address } = await run({
+      membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "ORTHODONTIST" },
+    });
+    expect(address).toEqual({ kind: "doctor", addressee: "Chi" });
+  });
+
+  it("READS THE CANONICAL TABLE ONLY — never the legacy one", async () => {
+    const { cap } = await run({ membership: null });
+    expect(cap.tables).toContain("bty_org_memberships");
+    expect(cap.tables).not.toContain("memberships");
+    expect(cap.tables).not.toContain("arena_membership_requests");
+    // Only the two descriptive keys are selected — no organization, dates or provenance.
+    expect(cap.columns).toContain("bty_org_memberships:job_family_key, primary_role_key");
+  });
+
+  it("G/H. the query is scoped to the user's ACTIVE PRIMARY membership", async () => {
+    const { cap } = await run({ membership: null });
+    expect(cap.filters).toEqual(
+      expect.arrayContaining([
+        ["bty_org_memberships.user_id", USER],
+        ["bty_org_memberships.status", "active"],
+        ["bty_org_memberships.is_primary", true],
+      ]),
+    );
+  });
+
+  it("no membership row → personal form", async () => {
+    const { address } = await run({ membership: null });
+    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
+  });
+
+  it("membership with null role keys → personal form", async () => {
+    const { address } = await run({ membership: { job_family_key: null, primary_role_key: null } });
+    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
+  });
+
+  it("a non-provider canonical role → personal form", async () => {
+    const { address } = await run({
+      membership: { job_family_key: "CLINICAL_SUPPORT", primary_role_key: "DENTAL_ASSISTANT" },
+    });
+    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
+  });
+
+  it("K. a failed roster read costs only the honorific, never the person's name", async () => {
+    const { address } = await run({ throwOn: ["bty_org_memberships"], membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" } });
+    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
+  });
+
+  it("a failed NAME read costs the name; the roster still decides the form", async () => {
+    const { address } = await run(
+      { throwOn: ["arena_profiles"], membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" } },
       { full_name: "Hanbit Chi" },
     );
     expect(address).toEqual({ kind: "doctor", addressee: "Chi" });
-    expect(cap.tables).toContain("arena_membership_requests");
-  });
-
-  it("every read is owner-scoped to the signed-in user", async () => {
-    const { cap } = await run({ memberships: [] }, { full_name: "Hanbit Chi" });
-    expect(cap.tables).toEqual(expect.arrayContaining(["arena_profiles", "memberships", "arena_membership_requests"]));
-    expect(cap.filters).toEqual(expect.arrayContaining([["user_id", USER]]));
-  });
-
-  it("a non-clinical role is the plain first-name form", async () => {
-    const { address } = await run(
-      { memberships: [{ role: "office_manager", job_function: "office_manager" }] },
-      { full_name: "Hanna Kim" },
-    );
-    expect(address).toEqual({ kind: "personal", addressee: "Hanna" });
-  });
-
-  it("no role rows at all → the safe non-doctor form, never a guess", async () => {
-    const { address } = await run({ memberships: [] }, { full_name: "Hanbit Chi" });
-    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
-  });
-
-  it("the real name BTY holds beats the provider name", async () => {
-    const { address } = await run({ profileFullName: "Hanbit Chi", memberships: [] }, { full_name: "hchi" });
-    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
-  });
-
-  it("a broken role read only costs the honorific; a broken name read costs the name", async () => {
-    const both = await run(
-      { throwOn: ["memberships", "arena_membership_requests"], memberships: [{ role: "doctor" }] },
-      { full_name: "Hanbit Chi" },
-    );
-    expect(both.address).toEqual({ kind: "personal", addressee: "Hanbit" });
-
-    const noName = await run(
-      { throwOn: ["arena_profiles"], memberships: [{ role: "doctor" }] },
-      { full_name: "Hanbit Chi" },
-    );
-    expect(noName.address).toEqual({ kind: "doctor", addressee: "Chi" });
   });
 
   it("no identity material anywhere → the generic greeting", async () => {
-    const { address } = await run({ memberships: [{ role: "doctor" }] }, null);
+    const { address } = await run(
+      { membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" } },
+      null,
+    );
     expect(address).toEqual({ kind: "generic", addressee: null });
   });
 
-  it("the ROLE STRING never rides along — only the form of address and the name", async () => {
+  it("the real name BTY holds still beats the provider name", async () => {
+    const { address } = await run({ profileFullName: "Hanbit Chi", membership: null }, { full_name: "hchi" });
+    expect(address).toEqual({ kind: "personal", addressee: "Hanbit" });
+  });
+
+  it("I. the Founder's real provider name resolves to 'Chi'", async () => {
     const { address } = await run(
-      { memberships: [{ role: "doctor", job_function: "Regional Clinical Director" }] },
-      { full_name: "Hanbit Chi" },
+      { membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" } },
+      { full_name: "Dr. Hanbit Chi (hc)" },
     );
-    // `kind` is the form of address ("doctor"), which the copy layer turns into "Dr.". The
-    // position that CHOSE it must not be reachable from the payload in any form.
+    expect(address).toEqual({ kind: "doctor", addressee: "Chi" });
+  });
+
+  it("J. an email-shaped name is refused at every tier", async () => {
+    const { address } = await run(
+      { profileFullName: "hc@bty-dso.com", membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" } },
+      { full_name: "hc@bty-dso.com", name: "hchi@bty-dso.com" },
+    );
+    expect(address).toEqual({ kind: "generic", addressee: null });
+  });
+
+  it("the ROLE KEY never rides along — only the form of address and the name", async () => {
+    const { address } = await run({
+      membership: { job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST" },
+    });
     expect(Object.keys(address).sort()).toEqual(["addressee", "kind"]);
-    expect(address.addressee).toBe("Chi");
-    expect(JSON.stringify(address)).not.toMatch(/director|clinical|job_function|role/i);
+    expect(JSON.stringify(address)).not.toMatch(/clinical|dentist|provider|job_family|primary_role/i);
   });
 });

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   resolveGreetingAddress,
   GENERIC_GREETING_ADDRESS,
+  type CanonicalProfessionalIdentity,
   type GreetingAddress,
 } from "@/domain/daily/greetingAddress";
 
@@ -16,10 +17,11 @@ import {
  *             record (the same two keys `teamsAccountLabel` and `resolveSuggestedTrainingName`
  *             already read). MEASURED 2026-09-23: 20/20 accounts carry `full_name`.
  *
- *   POSITION  `memberships.role` ("doctor" is one of four canonical values) and
- *             `memberships.job_function`, plus `arena_membership_requests.job_function` — the
- *             same role vocabulary the Arena program config already interprets
- *             (`STAFF_JOB_FUNCTIONS` / `LEADER_JOB_FUNCTIONS`).
+ *   POSITION  the person's ACTIVE PRIMARY row in `bty_org_memberships` — `job_family_key` and
+ *             `primary_role_key`, the CHECK-constrained canonical taxonomy. This REPLACED the
+ *             legacy free-text read (`memberships.role` / `job_function` /
+ *             `arena_membership_requests.job_function`) in M3.1; there is no fallback to it,
+ *             because a second source is how two answers to one question start.
  *
  * MEASURED ABSENCE, stated so nobody re-derives it: BTY stores no first name, no last name, no
  * preferred name and no job-title column, and the stored Microsoft identity carries only one
@@ -40,38 +42,34 @@ import {
 
 type UserMetadata = Record<string, unknown> | null | undefined;
 
-/** Read the user's own canonical role/position strings. Owner-scoped; [] on any failure. */
-async function readRoleValues(admin: SupabaseClient, userId: string): Promise<string[]> {
-  const out: string[] = [];
-
+/**
+ * The user's own ACTIVE PRIMARY canonical membership, as the pure rule wants it.
+ *
+ * Owner-scoped, and `null` on absence OR failure — deliberately the same answer, because an
+ * unreadable roster and an empty one both mean "we do not know that this person is a provider",
+ * and the safe reply to that is their first name, not an error. Only the two descriptive keys are
+ * selected; the organization, dates, provenance and responsibilities are none of the greeting's
+ * business.
+ */
+async function readCanonicalProfessionalIdentity(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<CanonicalProfessionalIdentity | null> {
   try {
     const { data } = await admin
-      .from("memberships")
-      .select("role, job_function")
+      .from("bty_org_memberships")
+      .select("job_family_key, primary_role_key")
       .eq("user_id", userId)
-      .eq("status", "active");
-    for (const r of (data ?? []) as Array<{ role?: unknown; job_function?: unknown }>) {
-      if (typeof r.role === "string") out.push(r.role);
-      if (typeof r.job_function === "string") out.push(r.job_function);
-    }
-  } catch {
-    /* no membership row readable → no role, not an error */
-  }
-
-  try {
-    const { data } = await admin
-      .from("arena_membership_requests")
-      .select("job_function")
-      .eq("user_id", userId)
-      .eq("status", "approved")
+      .eq("status", "active")
+      .eq("is_primary", true)
       .maybeSingle();
-    const jf = (data as { job_function?: unknown } | null)?.job_function;
-    if (typeof jf === "string") out.push(jf);
+    if (!data) return null;
+    const row = data as { job_family_key?: unknown; primary_role_key?: unknown };
+    return { jobFamilyKey: row.job_family_key ?? null, primaryRoleKey: row.primary_role_key ?? null };
   } catch {
-    /* same */
+    // No membership readable → no professional claim, not an error surface.
+    return null;
   }
-
-  return out;
 }
 
 /** Read `arena_profiles.full_name` for the user. null on any failure. */
@@ -93,8 +91,8 @@ async function readProfileFullName(admin: SupabaseClient, userId: string): Promi
  * Resolve how Today should address this user.
  *
  * @param metadata the signed-in user's own `user_metadata`, obtained server-side by the caller.
- * @returns the addressee + form of address. NEVER a role string — the position is used to choose
- *          the form and is then discarded inside the domain rule.
+ * @returns the addressee + form of address. NEVER a role key — the position is used to choose the
+ *          form and is then discarded inside the domain rule.
  */
 export async function resolveGreetingIdentity(
   admin: SupabaseClient,
@@ -102,9 +100,9 @@ export async function resolveGreetingIdentity(
   metadata: UserMetadata,
 ): Promise<GreetingAddress> {
   try {
-    const [profileFullName, roleValues] = await Promise.all([
+    const [profileFullName, professionalIdentity] = await Promise.all([
       readProfileFullName(admin, userId),
-      readRoleValues(admin, userId),
+      readCanonicalProfessionalIdentity(admin, userId),
     ]);
     const meta = (metadata ?? {}) as Record<string, unknown>;
     return resolveGreetingAddress({
@@ -113,7 +111,7 @@ export async function resolveGreetingIdentity(
       name: meta.name,
       // No canonical preferred-name source exists today. The domain rule already honours one.
       preferredName: undefined,
-      roleValues,
+      professionalIdentity,
     });
   } catch {
     return GENERIC_GREETING_ADDRESS;
