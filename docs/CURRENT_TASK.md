@@ -1,3 +1,9 @@
+**[MEMBERSHIPS-M4-LEDGER]**: [x] **완료.** 적용된 프로덕션 ledger 버전에 저장소 파일명 정합.
+- 프로덕션 적용 버전: **`20260923162305_regions_offices_drop_membership_rls_v1`**. 저장소에는 `20260918000000_…` 이 있었음 → **rename** 으로 정합(마이그레이션 신규 생성·재적용·DB 변경 전부 없음).
+- SQL **바이트 동일** 증명: rename 전후 sha256 `cb6c14006f1c1c52be119d802776d771a1451c03583016a6d08c8e03b04ca6e5` 일치. git 도 순수 rename(0 변경)으로 인식.
+- 구버전을 참조하던 것만 갱신: 스키마 테스트 `FILE` 상수, `KNOWN_LATER` 5곳, `openSourceLink` 14자리 앵커(→ `20260923162305`). 스키마 테스트 헤더의 "미적용" 문구도 적용 사실로 교체.
+- 디렉터리에 M4 마이그레이션은 **1개**, 중복 없음. 검증: tsc 클린 · 영향 7파일 120 테스트 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+
 **[MEMBERSHIPS-M4-DRIFT]**: [x] **마이그레이션 패치 완료 (여전히 미적용).** 라이브 정책 이름 불일치 교정.
 - Founder 가 프로덕션 카탈로그를 직접 조회한 결과, 실제 설치된 정책은 `regions_select_by_membership` / `offices_select_by_membership_region` 이며 `004` 가 선언한 `*_select_via_memberships` 가 **아님**. USING 절도 더 풍부함(`org_id` AND `region_id` AND `m.status='active'`).
 - 기존 초안대로였다면 SELECT 권한만 REVOKE 하고 **진짜 교차 테이블 정책 2개는 그대로 남았을 것**. 게다가 REVOKE 가 실패를 **가려버림** — SELECT 권한이 없는 롤은 어떤 정책이 필터링하는지 보여줄 수 없어 4방향 프로브가 똑같이 0을 반환했을 것.
@@ -8,7 +14,7 @@
 
 **[MEMBERSHIPS-M4]**: [~] **작성 완료·게이트 그린·미적용(Founder 적용 대기).** `regions`/`offices` 의 레거시 `public.memberships` RLS 의존 제거.
 - 라이브 실측(적용 전): `regions` service 4 / 멤버십 보유 authed **1** / 미보유 0 / anon 0 · `offices` 10 / **2** / 0 / 0. 모두 HTTP 200 + 빈 배열(42501 아님) → anon·authenticated 에 SELECT 권한은 존재하고 거부는 전적으로 정책이 만들어냄.
-- 마이그레이션 `20260918000000_regions_offices_drop_membership_rls_v1.sql`: 두 정책(`regions_select_via_memberships`, `offices_select_via_memberships`) DROP + anon·authenticated 의 SELECT **REVOKE**, RLS 는 계속 ENABLED, `service_role` 은 이름조차 넣지 않음. `using (true)` 없음, 새 정책 없음 → Founder 가시 행이 1→0, 2→0 으로 **좁아지기만** 함.
+- 마이그레이션 `20260923162305_regions_offices_drop_membership_rls_v1.sql`: 두 정책(`regions_select_via_memberships`, `offices_select_via_memberships`) DROP + anon·authenticated 의 SELECT **REVOKE**, RLS 는 계속 ENABLED, `service_role` 은 이름조차 넣지 않음. `using (true)` 없음, 새 정책 없음 → Founder 가시 행이 1→0, 2→0 으로 **좁아지기만** 함.
 - 미적용 사유: 이 워크스페이스에 DDL 자격 증명이 없음(access token·DB password·SQL 실행 RPC 전무). 저장소 관례대로 Founder 적용.
 - 범위 밖 무변경: `public.memberships` 테이블·`memberships_select_own`·그 1행, `office_assignments`, `organizations`, `bty_org_memberships`, grant 일체.
 - 애플리케이션 도달성 재확인: `from("regions")`/`from("offices")` 리더 **0건**(src·e2e·scripts·네이티브 쉘 전부). M3.4 에서 마지막 리더였던 leaderboard office 경로가 사라진 결과.
