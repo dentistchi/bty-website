@@ -1,3 +1,13 @@
+**[MEMBERSHIPS-M3.4]**: [x] **완료·배포.** 리더보드 role/office 스코프 은퇴 → **레거시 `public.memberships` 프로덕션 읽기 0건 달성**.
+- 전제 재측정: role 스코프=`memberships`(1행), office 스코프=`office_assignments`(**0행**) → office 보드는 전원 공백, role 보드는 Founder 1인 리스트 + 나머지 19계정 `scopeUnavailable`. `?scope=` 를 보내는 호출자는 리더보드 페이지 하나뿐.
+- 제거: 탭 그룹·탭 문구, 스코프 라벨 줄, `scopeUnavailable` 빈 상태, `getScopeFilter`/`ScopeFilterResult`, 응답의 `scopeLabel`/`scopeUnavailable`, `parseLeaderboardScope`·`LEADERBOARD_SCOPE_TYPES`(호출자 0), `roleToScopeLabel`, `arenaLeaderboardScopeRoleLabel` 도메인 규칙 + 테스트.
+- **대체 없음:** `bty_org_memberships`·`primary_role_key`·`job_family_key`·responsibilities·새 office 모델 어느 것도 세그먼트로 쓰지 않음. 경쟁은 Weekly/League XP 그대로.
+- **조용한 재해석 금지:** `scope=role`/`scope=office` 는 기존 계약대로 **400 `INVALID_SCOPE`**. 무효 스코프를 overall 로 바꿔주던 `parseLeaderboardScope` 도 같은 이유로 삭제.
+- 가드 전환: 두 가드의 "아직 읽는 곳이 있어야 한다" liveness 단언을 **"읽는 곳이 0이어야 한다"** 로 뒤집음. 프로덕션 파일에 읽기를 주입해 두 가드 모두 파일명과 함께 실패함을 증명 후 제거.
+- 라이브: 페이지 스코프 버튼 0개, Role/Office 탭 없음, 은퇴 스코프는 보드를 반환하지 않음(400), greeting `Dr. Chi`·Arena·Today 불변. 배포 번들 내 `from("memberships")` **0회**.
+- 검증: tsc 클린 · arena/leaderboard/domain-rules/guards 386+ 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+- **작업 위생 메모:** 커밋 중 `git add -A src/` 로 무관한 leadership-mirror WIP 이 한 번 섞였다가 즉시 `reset --soft` 후 해당 18개 파일만 재커밋. 배포 번들에는 포함되지 않음.
+
 **[MEMBERSHIPS-M3.3]**: [x] **완료·배포.** 도달 불가능했던 weekly AIR 크론 삭제(대체 아님, 순수 제거).
 - 편집 전 도달성 감사: `runWeeklyAirReportCron` 호출자 0, `fetchActiveUserIds` 모듈 외 참조 0, `scheduled` Worker 핸들러 없음, `wrangler.toml` 에 `[triggers]`/`crons` 없음, 스크립트·워크플로 없음, **이 모듈을 참조하는 테스트 자체가 0건**, 동적 import 없음.
 - 삭제 경계(§2 두 번째 분기): 서비스 전체가 아니라 **죽은 멤버십 기반 경로만**. `getWeeklyReport`·`mondayUtcWeekOf` 는 라이브 호출자 다수(`/api/center/weekly-report-card`, integrity 대시보드, Center 카드 UI, forced-reset 평가기)라 보존.
