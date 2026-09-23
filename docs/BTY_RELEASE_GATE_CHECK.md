@@ -1,3 +1,17 @@
+**ARENA-TENURE-1 — ARENA TENURE SOURCE CORRECTION — DEPLOYED · NO MIGRATION · NO DATA CHANGE (2026-09-23)**
+
+- **Release identity.** DEPLOYED. Inner commit `dfadba1a`, Worker `bty-arena-staging` version **`9af4e055-36ba-4527-ad16-cee81019b8b1`**, active 100% at 2026-09-23T16:25:29Z (`wrangler deployments list`). **No migration, no SQL, no production data written.**
+- **A) Auth / cookies / session:** UNCHANGED. **B) Forced reset / weekly reset:** UNCHANGED. **C) Leaderboard / XP / Season:** UNCHANGED — `leaderboardService.getScopeFilter` is not in the diff. **D) Migration:** NONE. **E) API contract:** UNCHANGED — no route added, removed or renamed; `/api/arena/reflect` keeps every documented status and body shape.
+- **The whole diff is 18 lines in one file**, 14 of which are the comment explaining the rule. One SELECT narrowed (`created_at, role, job_function` → `job_function`) and one assignment deleted (`joinedAt = membership.created_at`).
+- **★ WHAT CHANGED SEMANTICALLY.** Tenure is the account's own chronology. `memberships.created_at` is the day an administrator inserted a row; reading it as a join date let an administrative act rewind a person's new-joiner window. Precedence is now what it was before `memberships` was ever consulted: `auth.users.created_at` → now(). An approved `arena_membership_requests.joined_at` still wins, because that is a DECLARED join date. The membership's `job_function` is still read — it says what the person does, not when they arrived.
+- **★ THE COLUMN IS NO LONGER FETCHED.** `created_at` was removed from the SELECT, so the value cannot be reached for this purpose again by accident.
+- **F) Verify.** 8 new tests; **3 of them proven to FAIL against the pre-fix code** and 5 are no-regression guards that pass on both sides. Arena test group: **190 files / 1511 tests pass**. `tsc --noEmit` clean. Terminology **44 = baseline**, none in changed files. Full suite **18 failures / 9 files = baseline unchanged, 0 new** (14,285 pass). ESLint still blocked by the pre-existing repo-wide `ajv` crash.
+- **★ DEPLOY FRESHNESS PROVEN BY STRING LITERAL, NOT IDENTIFIER.** The uploaded artifact contains **0** occurrences of `created_at, role, job_function` (the literal appears once in the pre-fix source at `HEAD~1`) and 4 of `select("job_function")`.
+- **★ LIVE DISCRIMINATION IS NOT POSSIBLE TODAY, AND THAT IS STATED RATHER THAN PAPERED OVER.** The Founder's account is 21.8 days old and his membership row is 0.0 days old — both inside the 30-day new-joiner window — so the response is identical under either basis. The bases diverge at **2026-10-01T22:12:13Z**, when the account passes 30 days while the row does not. Live evidence is therefore: the tenure-inference path runs for him (no `arena_membership_requests` row → the `memberships` branch), and `POST /api/arena/reflect` with no `levelId` returns 200 on the deployed version.
+- **Untouched, deliberately:** `memberships` rows, RLS, role hierarchy, admin gates, the Today greeting, leaderboard scope behaviour, AccountBlock, Founder identity split.
+
+---
+
 **TODAY-GREETING-1 — TODAY PERSONAL GREETING (ADDRESSEE ONLY) — DEPLOYED · PRODUCTION-VERIFIED · NO MIGRATION (2026-09-23)**
 
 - **Release identity.** DEPLOYED. Inner commit `5dfd8846`, Worker `bty-arena-staging` version **`b495ec1a-d6bd-409e-bb2d-037e7f88bda5`**, active 100% at 2026-09-23T15:57:40Z (`wrangler deployments list`, not a `versions list` guess). **No migration** — no SQL, no schema change, no new identity storage of any kind. ONE data row was written (see DATA below).

@@ -1,3 +1,11 @@
+**[ARENA-TENURE-1]**: [x] **완료·배포.** Arena tenure 기준을 membership 행 생성일이 아닌 계정 자체 연혁으로 교정.
+- 결함: `/api/arena/reflect`가 active membership이 있으면 `memberships.created_at`을 join date로 덮어씀 → 관리자 insert가 new-joiner 창을 리셋. 실측: 계정 2026-09-01, membership 2026-09-23.
+- 수정(최소): `joinedAt`은 `auth.users.created_at` → (memberships 이전부터 쓰던 폴백) now. `created_at`은 SELECT 목록에서도 제거해 재발 경로 차단. `job_function`(역할 사실)은 계속 읽음. 승인된 `arena_membership_requests.joined_at`은 여전히 우선(선언된 입사일이지 행 생성일이 아님).
+- 테스트 8개(3개는 수정 전 코드에서 실패 확인), Arena 그룹 190파일/1511 테스트 통과, tsc·terminology 클린, 전체 baseline 18실패/9파일 불변.
+- 배포: inner `dfadba1a` → Worker `9af4e055-36ba-4527-ad16-cee81019b8b1` (active 100%).
+- **라이브 한계 명시:** 오늘은 두 기준 모두 30일 창 안(계정 21.8일 / membership 0.0일)이라 응답으로 구분 불가. 실제 분기 시점은 2026-10-01T22:12Z. 배포 신선도는 아티팩트 문자열 리터럴로 증명(`created_at, role, job_function` 0회).
+- 미변경: memberships 데이터·RLS·admin gate·role 서열·greeting·leaderboard scope·AccountBlock.
+
 **[TODAY-GREETING-1]**: [x] **완료.** Today 인사말을 사람 이름으로 개인화 (문안 호명 대상만 변경, daypart/서브라인/화면 구조 불변).
 - 새 저장소 없음 — 이름은 `arena_profiles.full_name` → `user_metadata.full_name`/`name`, 직책은 `memberships.role`/`job_function` + `arena_membership_requests.job_function`.
 - 직책 문자열은 호칭 형태(doctor/personal)를 고르는 데만 쓰이고 클라이언트로 나가지 않음. 이메일에서 이름 유도 금지, 이름으로 doctor 추정 금지, "Dr. Dr." 방지, 성(姓) 없으면 안전 폴백.
