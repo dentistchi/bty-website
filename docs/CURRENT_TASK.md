@@ -1,3 +1,11 @@
+**[FOUNDER-N3]**: [x] **완료 (데이터 전용, 배포 없음).** 캐노니컬 Founder 계정 A(`18b1ee80`, hc@bty-dso.com)에 Foundry Host 권한 활성화.
+- 쓰기 전 게이트 통과 증명: `effectiveHostStatus` = manual OR microsoft, `planManagerSync.toRevoke` 는 `manualGranted` 를 입력으로 쓰지 않으며 불완전 동기화는 아무도 revoke 하지 않음 → `is_manager=false` 동기화가 수동 권한을 지울 수 없음.
+- 쓰기: 저장소 자체 함수 `grantFoundryHost(admin, A, A)` 사용(원시 upsert 아님). 결과 `manual_granted=true`, `microsoft_manager_granted=false`(조작하지 않음), `status=active`, `granted_by_user_id=A`. 2회 실행 동일 → 멱등. `revokeFoundryHost` 로 되돌릴 수 있음.
+- **핵심 뉘앙스:** A는 이미 platform admin 이라 `hasHostCapability`(admin OR host) 경로는 전에도 열려 있었음. 이번 그랜트가 새로 여는 것은 **`isActiveFoundryHost` 를 직접 요구하는 표면**(leaders-preview, Today host attention) 이며, admin 상속을 받아주지 않음.
+- 라이브 증거(동시점 대조군): `/api/bty/foundry/audience/leaders-preview` → **A 200 / B 403 `Foundry Host required`**. A로 `/api/admin/users` 200, Today brief 200, greeting `Dr. Chi`, Arena 200.
+- C 무변경: Host grant 두 플래그 그대로, programs 6 / events 3 그대로. B platform-admin 그대로. 스냅샷 17행·legacy memberships 1행 그대로. provider identity·auth.users 무변경.
+- 검증: Foundry/authority/admin 스위트 112파일 1320 통과 · tsc 클린 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline. 소스 변경 0건이라 배포 없음.
+
 **[MEMBERSHIPS-M2]**: [x] **완료·배포.** 레거시 `public.memberships` 를 읽는 **인가 경로 0** 달성.
 - **선행 감사 정정:** `/api/admin/organizations` 는 고장난 적이 없었음. 분기 2개 중 실제 호출자(파라미터 없는 요청)는 canonical platform-admin 게이트를 타고 **200** 반환. 이전 보고의 "항상 400"·"항상 403" 은 각각 아무도 호출하지 않는 경로를 설명한 것이었음 — 편집 전 STOP 후 실측으로 확정.
 - 삭제: `/api/admin/members`(호출자 0), `/api/admin/organizations` 의 `if (orgId && regionId)` 분기(단일 org 조회 기능은 **의도적으로 폐기**, 재게이트 안 함), `requireAdmin`, `requireRegionAccess`, `parseScope`, 그 안의 `workforce_profiles` 폴백, re-export 2건.
