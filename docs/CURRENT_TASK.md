@@ -1,3 +1,13 @@
+**[TODAY-GREETING-1]**: [x] **완료.** Today 인사말을 사람 이름으로 개인화 (문안 호명 대상만 변경, daypart/서브라인/화면 구조 불변).
+- 새 저장소 없음 — 이름은 `arena_profiles.full_name` → `user_metadata.full_name`/`name`, 직책은 `memberships.role`/`job_function` + `arena_membership_requests.job_function`.
+- 직책 문자열은 호칭 형태(doctor/personal)를 고르는 데만 쓰이고 클라이언트로 나가지 않음. 이메일에서 이름 유도 금지, 이름으로 doctor 추정 금지, "Dr. Dr." 방지, 성(姓) 없으면 안전 폴백.
+- 파일: `src/domain/daily/greetingAddress.ts`, `src/lib/bty/daily/greetingIdentity.server.ts`, `src/app/api/me/greeting/route.ts`, `src/components/app-shell/BtyDailyAppShell.tsx` (+테스트 3종, 41 tests).
+- 검증: `npm run lint` PASS · 유닛 전체 기존 실패 18건/9파일 그대로(증가 0).
+- **배포 완료:** inner `5dfd8846` → Worker version `b495ec1a-d6bd-409e-bb2d-037e7f88bda5` (active 100%, 2026-09-23T15:57Z).
+- **라이브 증거(Founder 인증 상태):** `/api/me/greeting` → `{"ok":true,"address":{"kind":"doctor","addressee":"Chi"}}`, 실브라우저 렌더 EN "Good morning, Dr. Chi." / KO "Dr. Chi, 좋은 아침입니다.", 화면에 직책 문자열 없음.
+- **Founder 데이터 정규화:** `memberships` 테이블이 0행이었음 → `18b1ee80`(hc@bty-dso.com)에 1행 INSERT (`role='doctor'`, `job_function='dentist'`, org=btyDENTAL-Washington, region=WA). `'clinical director'`는 `public.job_function` enum 라벨이 아니므로 새 vocabulary 생성 대신 canonical `dentist` 사용. 다른 사용자 행·user_metadata·display_name 무변경.
+- **실데이터 결함 수정:** provider name `"Dr. Hanbit Chi (hc)"` → 기존 로직은 `"Dr. (hc)"`를 렌더했음. 괄호 핸들/학위 접미사/쉼표 제거 후 성(姓) 추출.
+
 ## [GOV-ARENA-REVIEWER-REPLAY-1-AMENDMENT-1] — 2026-09-18 — AMENDMENT: Phase 1b executable interface and evidence writer before Phase 2
 
 §1 WHY
