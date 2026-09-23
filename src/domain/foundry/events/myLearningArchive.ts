@@ -16,6 +16,12 @@
  * open to a later check-in, stays visible however old it is — otherwise the product would hide the
  * one thing it is asking the learner to do. Obligations are decided elsewhere, by the domain that
  * owns them; this function only asks a caller-supplied predicate.
+ *
+ * ★ AND "I DO NOT KNOW" IS NOT "THERE IS NOTHING". If obligation state could not be read, an empty
+ * predicate would report every training as obligation-free and archive it — hiding the very items
+ * the rule above exists to protect, at exactly the moment the product has least reason to trust
+ * itself. So the caller passes `null` rather than a predicate that always returns false, and this
+ * function archives NOTHING until it is told. Fail toward more visibility, never less.
  */
 
 /** How many obligation-free trainings the default list keeps. */
@@ -37,14 +43,23 @@ export type LearningSplit<T> = {
  * easier — it is kept, not promoted.
  *
  * @param isActionable does this record still have something the learner can or should do?
+ *   `null` means obligation state is UNKNOWN — not yet loaded, or the read failed — and nothing is
+ *   archived until it is known.
  */
 export function splitLearningHistory<T>(
   items: readonly T[],
-  isActionable: (item: T) => boolean,
+  isActionable: ((item: T) => boolean) | null,
   limit: number = RECENT_WITHOUT_OBLIGATION,
 ): LearningSplit<T> {
   const rows = Array.isArray(items) ? items : [];
   const keep = Math.max(0, limit);
+
+  /*
+    UNKNOWN OBLIGATION STATE ARCHIVES NOTHING. Not "assume none", not "archive the oldest anyway" —
+    the whole history stays visible until the product can tell which records are actionable. A long
+    list is a far smaller failure than a hidden obligation.
+  */
+  if (!isActionable) return { visible: [...rows], archived: [] };
 
   const visible: T[] = [];
   const archived: T[] = [];

@@ -50,6 +50,33 @@ describe("splitLearningHistory", () => {
     expect(archived).toEqual([]);
   });
 
+  it("archives NOTHING while obligation state is unknown, however long the history", () => {
+    /*
+      The defect this pins: an empty obligation map and a failed obligation read look identical to
+      a predicate, and treating them the same archives actionable trainings at the exact moment the
+      product cannot tell which they are.
+    */
+    const { visible, archived } = splitLearningHistory(rows(46, ["r46"]), null);
+    expect(visible).toHaveLength(46);
+    expect(archived).toEqual([]);
+  });
+
+  it("an always-false predicate is NOT the same as unknown — that distinction is the whole fix", () => {
+    const unknown = splitLearningHistory(rows(46), null);
+    const settled = splitLearningHistory(rows(46), () => false);
+    expect(unknown.archived).toHaveLength(0);
+    expect(settled.archived).toHaveLength(36);
+  });
+
+  it("resumes the normal projection as soon as the answer arrives", () => {
+    const all = rows(46, ["r46"]);
+    expect(splitLearningHistory(all, null).archived).toHaveLength(0);
+    const resumed = splitLearningHistory(all, act);
+    expect(resumed.visible).toHaveLength(11);
+    expect(resumed.archived).toHaveLength(35);
+    expect(ids(resumed.visible)).toContain("r46");
+  });
+
   it("archives nothing from an empty or malformed history", () => {
     expect(splitLearningHistory([], act)).toEqual({ visible: [], archived: [] });
     expect(splitLearningHistory(undefined as never, act)).toEqual({ visible: [], archived: [] });
