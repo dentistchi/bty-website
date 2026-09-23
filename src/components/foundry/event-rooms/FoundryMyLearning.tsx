@@ -1,7 +1,8 @@
 "use client";
 
 import { FoundryTrainingDetail } from "./FoundryTrainingDetail";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { splitLearningHistory } from "@/domain/foundry/events/myLearningArchive";
+import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 import { contentTypeLabel } from "./contentTypeLabel";
 import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
@@ -73,6 +74,10 @@ const COPY: Record<Locale, {
   noShared: string;
   viewInCenter: string;
   completedOn: string;
+  archived: (n: number) => string;
+  archivedTitle: string;
+  archivedBack: string;
+  archivedEmpty: string;
   video: string;
   document: string;
   empty: string;
@@ -101,6 +106,10 @@ const COPY: Record<Locale, {
     noShared: "No shared understanding was recorded for this training.",
     viewInCenter: "View my private reflection in Center",
     completedOn: "Completed",
+    archived: (n) => `Archived ${n}`,
+    archivedTitle: "Archived",
+    archivedBack: "Recent",
+    archivedEmpty: "Nothing archived yet.",
     video: "Video",
     document: "PDF",
     empty: "No completed trainings yet.",
@@ -127,6 +136,10 @@ const COPY: Record<Locale, {
     noShared: "이 교육에는 공유 이해 답변이 없습니다.",
     viewInCenter: "Center에서 나의 비공개 성찰 보기",
     completedOn: "완료",
+    archived: (n) => `보관됨 ${n}`,
+    archivedTitle: "보관됨",
+    archivedBack: "최근 학습",
+    archivedEmpty: "아직 보관된 학습이 없습니다.",
     video: "영상",
     document: "PDF",
     empty: "아직 완료한 교육이 없습니다.",
@@ -184,7 +197,14 @@ export default function FoundryMyLearning({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const backText = `← ${backLabel ?? t.backDefault}`;
+  /** Level 1b: the same rows, older. Presentation only — nothing is stored or removed. */
+  const [showArchived, setShowArchived] = useState(false);
+  /*
+    While the archive is open the header's Back leaves the archive, not the surface — so the label
+    has to say that. Otherwise a learner presses "Back to Learn" and lands somewhere they did not
+    come from.
+  */
+  const backText = showArchived ? `← ${t.archivedBack}` : `← ${backLabel ?? t.backDefault}`;
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
   /*
@@ -212,6 +232,43 @@ export default function FoundryMyLearning({
   // entryId → follow-ups the SERVER says are still awaiting a FIRST answer (Slice 3.2R-R3-R2).
   // Kept apart from the map above so the two CTAs can never be rendered with each other's words.
   const [openFollowUp, setOpenFollowUp] = useState<Map<string, OpenFollowUpTarget[]>>(new Map());
+
+  /*
+    OBLIGATIONS, FOR ONE DECISION ONLY: is this record still actionable, and therefore never
+    archived? The rows themselves show nothing about follow-ups — that lives in the training's own
+    screen. A failed load leaves both maps empty, which archives strictly MORE aggressively, so the
+    failure mode is a calmer list rather than a hidden obligation... which is why it is re-read on
+    focus: a follow-up that becomes due while the tab is open must not stay archived.
+  */
+  const loadObligations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bty/foundry/evidence/mine", { credentials: "include", cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        items?: Array<{
+          entryId?: string;
+          checkInAgain?: Array<{ followupId?: string; followUpDays?: number; outcome?: string }>;
+          openFollowUp?: Array<{ followupId?: string; followUpDays?: number }>;
+        }>;
+      };
+      const again = new Map<string, CheckInAgainTarget[]>();
+      const open = new Map<string, OpenFollowUpTarget[]>();
+      for (const row of data?.items ?? []) {
+        const id = String(row?.entryId ?? "");
+        if (!id) continue;
+        if (Array.isArray(row.checkInAgain) && row.checkInAgain.length > 0) {
+          again.set(id, row.checkInAgain as CheckInAgainTarget[]);
+        }
+        if (Array.isArray(row.openFollowUp) && row.openFollowUp.length > 0) {
+          open.set(id, row.openFollowUp as OpenFollowUpTarget[]);
+        }
+      }
+      setCheckInAgain(again);
+      setOpenFollowUp(open);
+    } catch {
+      /* additive — an obligation read must never blank a completion */
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -242,22 +299,36 @@ export default function FoundryMyLearning({
 
 
   useEffect(() => {
-    void load();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void load();
-      }
-    };
-    const onFocus = () => {
+    const refresh = () => {
       void load();
+      void loadObligations();
     };
+    refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const onFocus = () => refresh();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [load]);
+  }, [load, loadObligations]);
+
+  /*
+    WHAT THE DEFAULT LIST SHOWS. Derived on every render from two facts the product already has —
+    completion order, and whether a record still has something to do. Nothing is written, nothing
+    is flagged, and "archived" is a place in this list rather than a state on a row.
+  */
+  const { visible, archived } = useMemo(
+    () =>
+      splitLearningHistory(items ?? [], (it) =>
+        (checkInAgain.get(it.entryId)?.length ?? 0) > 0 || (openFollowUp.get(it.entryId)?.length ?? 0) > 0,
+      ),
+    [items, checkInAgain, openFollowUp],
+  );
+  const rows = showArchived ? archived : visible;
 
   /*
     LEVEL 2 REPLACES LEVEL 1 IN PLACE. This surface lives inside the app shell, so opening a
@@ -286,12 +357,12 @@ export default function FoundryMyLearning({
     <section data-testid="foundry-my-learning" className="flex flex-col gap-4 px-4 py-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-lg font-semibold text-white/90">{t.title}</h2>
+          <h2 className="text-lg font-semibold text-white/90">{showArchived ? t.archivedTitle : t.title}</h2>
           <p className="text-xs text-white/50">{t.subtitle}</p>
         </div>
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => (showArchived ? setShowArchived(false) : onBack())}
           data-testid="my-learning-back"
           className="shrink-0 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70"
         >
@@ -322,7 +393,7 @@ export default function FoundryMyLearning({
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {items.map((it) => {
+          {rows.map((it) => {
             const focused = !!focusEntryId && it.entryId === focusEntryId;
             return (
             <li
@@ -365,6 +436,26 @@ export default function FoundryMyLearning({
           })}
         </ul>
       )}
+
+      {/*
+        ARCHIVED IS A PLACE IN THIS LIST, NOT A STATE ON A ROW. Nothing was deleted and nothing was
+        marked: these are the older completions, derived from the same data, one tap away and fully
+        reviewable through the very same training detail. A learner never tidies their own history.
+      */}
+      {!showArchived && archived.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowArchived(true)}
+          data-testid="my-learning-archived-open"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.04]"
+        >
+          <span className="text-sm text-white/60">{t.archived(archived.length)}</span>
+          <span aria-hidden className="text-white/30">›</span>
+        </button>
+      ) : null}
+      {showArchived && rows.length === 0 ? (
+        <p className="text-sm text-white/40" role="status">{t.archivedEmpty}</p>
+      ) : null}
 
       {/*
         REVIEWED ACTION PLANS REMOVED from the learner history (Founder decision).

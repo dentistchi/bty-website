@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { classifyBtyHref } from "./btyDestination";
 
@@ -23,16 +23,36 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe("the bot opens the app, not a web page", () => {
-  it("the proactive notification's Open BTY link is a Personal App link", () => {
+describe("the bot links nowhere at all", () => {
+  /*
+    REVERSED, ON DEVICE EVIDENCE. This once asserted that "Open BTY" must be a Personal App entity
+    link rather than a web address. A fresh real-iPhone tap proved BOTH are wrong: an entity link
+    302s to Microsoft's `dl/launcher` web page, so the Teams client is left before BTY is evaluated
+    either way. There is no bot-side route into the personal app, so the bot carries no BTY link.
+  */
+  it("the proactive notification carries no link of any kind", () => {
     const src = readFileSync(join(ROOT, "lib/bty/announcement/notifyRecipient.server.ts"), "utf8");
-    expect(src).toContain("buildPersonalAppLink");
+    expect(src).not.toContain("buildPersonalAppLink");
+    expect(src).not.toMatch(/const OPEN_URL =/);
+    const msg = readFileSync(join(ROOT, "domain/teams/proactiveMessage.ts"), "utf8");
+    expect(msg).not.toContain("openUrl");
+    expect(msg).not.toContain("Open BTY");
+  });
+
+  it("no card action anywhere opens a URL", () => {
     /*
-      The exact shape of the original defect: a bare BTY web address used AS the link. It may still
-      appear as the `origin` argument and as a last-resort fallback, so the assertion is about the
-      assignment that made it the destination.
+      Comments are stripped first: an explanation of why `Action.OpenUrl` must not be used is not
+      an occurrence of it, and a guard that cannot tell those apart forces the reasoning out of
+      the file it belongs in.
     */
-    expect(src).not.toMatch(/const OPEN_URL = "https:\/\/arena\.btydaily\.com\/?";/);
+    const code = (file: string) => readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    for (const file of walk(join(ROOT, "domain/teams")).concat(walk(join(ROOT, "lib/bty/foundry/teams")))) {
+      expect(code(file), file.replace(ROOT, "src")).not.toContain("Action.OpenUrl");
+    }
+  });
+
+  it("the personal-app link builder is gone, so it cannot be reused by accident", () => {
+    expect(existsSync(join(ROOT, "domain/teams/personalAppLink.ts"))).toBe(false);
   });
 });
 

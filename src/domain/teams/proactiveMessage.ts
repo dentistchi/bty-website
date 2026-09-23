@@ -12,6 +12,13 @@
  * audience the original conversation never had. The Host wrote the framing FOR these people,
  * so the framing is the only body that is theirs to receive.
  *
+ * ★ NO "OPEN BTY" LINK, AND NO LINK AT ALL. One lived here and was removed on real-iPhone
+ * evidence: a BTY-owned URL tapped inside Teams leaves the Teams client before BTY is evaluated,
+ * so the person ends up in a browser looking at a signed-out page. A personal-tab entity link is
+ * no better — it 302s to Microsoft's own web launcher, which is already outside the client. There
+ * is no bot-side API that navigates someone into a personal tab, so the honest message names what
+ * was asked of them and stops; they open BTY the way they always do.
+ *
  * ★ NO Got it / Question / Need help BUTTONS. Those exist in BTY, bound to a recipient row and
  * a write-once response contract. Repeating them as card actions would be a second response
  * system that has to be kept honest against the first, and the first is the one the Host reads.
@@ -26,8 +33,6 @@ export type ProactiveMessageInput = {
   hostName: string | null;
   /** The Host's own words from the Track dialog. */
   hostFraming: string;
-  /** Where BTY opens. */
-  openUrl: string;
 };
 
 /**
@@ -45,8 +50,6 @@ export function buildProactiveMessage(input: ProactiveMessageInput): string {
     `**${who}** asked you to follow up in BTY.`,
     "",
     framing,
-    "",
-    `[Open BTY](${input.openUrl})`,
   ].join("\n");
   return text.length > PROACTIVE_TEXT_MAX ? `${text.slice(0, PROACTIVE_TEXT_MAX - 1)}…` : text;
 }

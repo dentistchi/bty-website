@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { classifyBtyHref, decodeShellSubEntityId, encodeShellSubEntityId, leavesTeamsDocument, shellSearchFor } from "./btyDestination";
-import { buildPersonalAppLink } from "./personalAppLink";
 
 const ORIGIN = "https://arena.btydaily.com";
 
@@ -79,54 +78,15 @@ describe("leavesTeamsDocument — deliberately a DIFFERENT question", () => {
   });
 });
 
-describe("buildPersonalAppLink — the bot opens the APP, not a web page", () => {
-  it("returns a Teams personal-app entity link, never a bare BTY web address", () => {
-    const link = buildPersonalAppLink({ origin: ORIGIN, label: "BTY" });
-    expect(link).toBeTruthy();
-    expect(link!.startsWith("https://teams.microsoft.com/l/entity/")).toBe(true);
-    expect(link).not.toBe(`${ORIGIN}/`);
-  });
-
-  it("carries a shell destination through BOTH transports, with the same query", () => {
-    const link = buildPersonalAppLink({ origin: ORIGIN, search: "?tab=center&entry=abc" })!;
-    const params = new URL(link).searchParams;
-    expect(params.get("webUrl")).toBe(`${ORIGIN}/teams?tab=center&entry=abc`);
-    expect(JSON.parse(params.get("context")!)).toEqual({ subEntityId: "q:tab=center&entry=abc" });
-  });
-
-  it("omits an empty context rather than naming a subpage that does not exist", () => {
-    const link = buildPersonalAppLink({ origin: ORIGIN })!;
-    const params = new URL(link).searchParams;
-    expect(params.get("context")).toBeNull();
-    expect(params.get("webUrl")).toBe(`${ORIGIN}/teams`);
-  });
-
-  it("refuses a non-https origin or a malformed search instead of emitting a broken link", () => {
-    expect(buildPersonalAppLink({ origin: "http://arena.btydaily.com" })).toBeNull();
-    expect(buildPersonalAppLink({ origin: ORIGIN, search: "tab=center" })).toBeNull();
-  });
-});
-
-describe("the entity-link handoff does not lose the destination", () => {
+describe("the shell-destination codec", () => {
   /*
-    THE BOUNDARY THIS PINS. `subEntityId` already carried a signed TRAINING target. A bare query
-    put there was handed to the training parser, failed to be a training, and left the learner on
-    the default surface — the bot's button opened BTY and lost the destination on the way in.
+    The `q:` prefix remains, and remains tested, although BTY no longer MINTS a personal-tab deep
+    link: `subPageId` is host-supplied, so the shell must still be able to tell a shell destination
+    from a signed training target — and must still refuse a crafted one.
   */
-  it("round-trips a shell destination through the deep link's context", () => {
+  it("round-trips a shell destination", () => {
     const search = "?tab=learn&view=my-learning&entry=e1";
-    const link = buildPersonalAppLink({ origin: ORIGIN, search })!;
-    const context = JSON.parse(new URL(link).searchParams.get("context")!) as { subEntityId: string };
-    expect(decodeShellSubEntityId(context.subEntityId)).toBe(search);
-  });
-
-  it("both transports name the SAME destination", () => {
-    const search = "?tab=learn&view=my-learning&entry=e1";
-    const link = buildPersonalAppLink({ origin: ORIGIN, search })!;
-    const params = new URL(link).searchParams;
-    const fromContext = decodeShellSubEntityId(JSON.parse(params.get("context")!).subEntityId);
-    const fromWebUrl = new URL(params.get("webUrl")!).search;
-    expect(fromContext).toBe(fromWebUrl);
+    expect(decodeShellSubEntityId(encodeShellSubEntityId(search)!)).toBe(search);
   });
 
   it("refuses a training target, so each kind is read by what understands it", () => {

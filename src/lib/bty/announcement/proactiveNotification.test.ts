@@ -248,13 +248,19 @@ describe("J — identity, and the account that must not be created", () => {
 
 describe("F — the message itself", () => {
   const msg = (over: Partial<Parameters<typeof buildProactiveMessage>[0]> = {}) =>
-    buildProactiveMessage({ hostName: "Dr. Chi", hostFraming: FRAMING, openUrl: "https://arena.btydaily.com/", ...over });
+    buildProactiveMessage({ hostName: "Dr. Chi", hostFraming: FRAMING, ...over });
 
-  it("answers who is asking, what they want, and where to go", async () => {
+  it("answers who is asking and what they want — and points nowhere", async () => {
+    /*
+      The "Open BTY" link was removed on real-iPhone evidence: a BTY-owned URL tapped inside Teams
+      leaves the client before BTY is evaluated, landing the person in a browser on a signed-out
+      page. There is no bot-side way into the personal app, so the message states the ask and stops.
+    */
     const t = msg();
     expect(t).toContain("Dr. Chi");
     expect(t).toContain(FRAMING);
-    expect(t).toContain("https://arena.btydaily.com/");
+    expect(t).not.toContain("http");
+    expect(t).not.toContain("Open BTY");
   });
 
   it("never carries the captured source message body", async () => {
