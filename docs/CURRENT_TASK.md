@@ -1,3 +1,14 @@
+**[MEMBERSHIPS-M3.1]**: [x] **완료·배포.** Today 인사말의 직업 호칭 근거를 레거시 `public.memberships` → **캐노니컬 `bty_org_memberships`** 로 교체.
+- 서비스: 사용자의 **active + is_primary** 캐노니컬 멤버십에서 `job_family_key`, `primary_role_key` 2컬럼만 읽음. 레거시/arena_membership_requests/Entra 스냅샷/grant 는 읽지 않음. **폴백 레이어링 없음**(소스 교체이지 중첩이 아님).
+- 규칙: `job_family_key === CLINICAL_PROVIDER` **AND** `primary_role_key ∈ {GENERAL_DENTIST, ORTHODONTIST}`. 측정된 ORTHODONTIST 누락을 해소(구 단어매칭은 'doctor'/'dentist' 가 없어 영원히 놓쳤음). CLINICAL_DIRECTOR·PARTNER·TRAINER·TEAM_LEAD·PEOPLE_MANAGER 는 **책임(leadership)** 이지 자격이 아니므로 호칭을 만들지 않음.
+- 이름 해석은 무변경(arena_profiles.full_name → provider full_name/name, 이메일형 거부, 괄호 핸들·학위 접미사 제거, 성 안전 추출).
+- 폴백: 멤버십 없음/역할키 null/비제공자/로스터 읽기 실패 → **개인 호칭(이름 유지)**. 이름 없음·전체 실패 → 기존 generic. 로스터 부재를 에러 표면으로 만들지 않음.
+- 정리: `isDoctorRole`/`DOCTOR_ROLE_VALUES` 호출자 0 → 테스트와 함께 삭제.
+- 라이브 3계정 대조: A(CLINICAL_PROVIDER/GENERAL_DENTIST) → `doctor/Chi`, C(캐노니컬 행 있으나 역할키 NULL) → `personal/Hanbit`, B(멤버십 없음) → `personal/Hanbit`. Today 실렌더 "Good afternoon, Dr. Chi." / "Dr. Chi, 좋은 오후입니다." (실제 daypart 12시).
+- 아티팩트 증거: 구 select 리터럴 `role, job_function` **0회**, 신규 `job_family_key, primary_role_key` 6회, 삭제된 어휘 `regional clinical director` **0회**.
+- 잔존 `.from("memberships")` 5 → **4** (arena/reflect, leaderboard ×2, dormant weekly AIR).
+- 검증: tsc 클린 · greeting/UI/guard 6파일 107 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+
 **[FOUNDER-N4]**: [x] **완료 (데이터 전용, 배포 없음).** Founder 캐노니컬 조직 정체성 생성.
 - 라이브 스키마 재확인 후 착수: `role_started_on` **nullable**(required 목록에 없음) → 날짜를 만들어내지 않고 NULL 로 생성. `identity_source` 허용값에 `admin_curated` 포함.
 - 생성: `bty_org_memberships` 1행 (user=A, org=BTY_LEGACY `c373f116`, status=active, is_primary=true, identity_source=`admin_curated`) — **최소 insert**, 서술 필드는 큐레이션 서비스에 위임. 가짜 `arena_membership_requests` 승인 만들지 않음.
