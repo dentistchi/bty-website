@@ -1,3 +1,13 @@
+**[ACCOUNTBLOCK-NAME]**: [x] **완료·배포 (Teams 클라이언트 실화면 확인은 미이행).** Teams 계정 행이 사람 이름을 표시하도록 수정.
+- 근본 원인: `AccountBlock` 은 처음부터 `user.user_metadata.full_name`/`.name` 을 읽고 `teamsAccountLabel` 에 넘겼으나, `GET /api/auth/session` 은 `{id, email}` 만 반환 → 전원이 "Microsoft Teams account" 폴백. 기존 컴포넌트 테스트는 **서버가 만들지 않는 shape 을 목킹**해서 통과하고 있었음.
+- 수정: 세션 라우트가 이름 재료를 **정확히 2개 키로 allow-list** 해서 전달(`full_name`, `name`). 원본 `user_metadata` 에는 `email`·`preferred_username`·`sub`·`provider_id`·`iss` 가 함께 들어있고, **주소를 보이지 않으려고 존재하는 행**이 옆 필드로 주소를 실어 보내면 안 되므로 blob 통째 전달 금지. 첫 조회·refresh 두 경로 모두 적용, 미인증 응답 shape 불변(200 / ok:false / user 없음).
+- 이름 정제는 greeting 도메인의 기존 규칙을 **재사용**(중복 구현 아님): 주소는 이름이 아님, 선행 경칭 제거, 괄호 핸들·학위 접미사는 이름 조각 아님. `"Dr. Hanbit Chi (hc)"` → **`Hanbit Chi`**.
+- **호명이 아니라 명명:** "Dr." 판정 로직은 복제하지 않음 — 누가 전문 호칭을 얻는지는 캐노니컬 로스터 질문으로 greeting 에 남음. 새 정체성 소스 없음(`bty_org_memberships`·MS 직함·responsibilities·grant 미사용), 이메일 미사용.
+- 라이브: 인증 상태 세션이 이름 재료 반환 + `provider_id`/`preferred_username`/`iss` 미노출 확인, 미인증 shape 불변, greeting `Dr. Chi` 그대로.
+- **미이행(정직하게 기록):** `/teams` 경로는 Teams SDK 부트스트랩이 필요해 일반 브라우저에서는 셸이 뜨지 않음("BTY couldn't open yet"). 실제 Teams 클라이언트에서 Me → 계정 행이 `Hanbit Chi` 로 보이는지는 **Founder 기기 확인 필요**.
+- **작업 사고 1건:** `src/domain/teams/accountLabel.test.ts` 가 이미 존재했는데 `cat >` 로 덮어써 2개 케이스(500자 값, 빈문자/공백/숫자 폴백 + "…" 금지)를 잃음 → 즉시 복원 커밋(`c8b705e7`). curated profile 케이스는 이제 그 티어도 정제되므로 기대값을 수정해 복원(원문 그대로 아님).
+- 검증: tsc 클린 · 도메인 9 + 세션 6 + 컴포넌트 17 (영향 53파일 634) 통과 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline.
+
 **[MEMBERSHIPS-M5-LEDGER]**: [x] **완료 — 레거시 `public.memberships` 제거 확정. 은퇴 프로그램 종료.**
 - 프로덕션 적용 버전: **`20260923190248_drop_legacy_memberships_v1`**. 저장소의 `20260924000000_…` 를 **rename** 으로 정합(마이그레이션 신규 생성·SQL 실행·DB 변경·테이블 복원 전부 없음).
 - SQL **바이트 동일**: rename 전후 sha256 `bce78f00e7a895d2e3a1f3e0016f50d772086b9f3b33e5ede7941841f2c9ccec` 일치. git 도 순수 rename 으로 인식.
