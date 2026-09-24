@@ -79,6 +79,10 @@ export function selectCanonicalGroupOperations(
   return targets.map((t) => {
     const value = ((): string => {
       switch (t.field) {
+        case "governedActionStatus":
+          return alt.governedActionStatus;
+        case "governedActionCandidateId":
+          return alt.governedActionCandidateRequirement === "forbidden" ? NO_CANDIDATE : fromDomain(alt.governedActionCandidateDomain, t.candidateMenu);
         case "prerequisiteStatus":
           return alt.prerequisiteStatus;
         case "temporalRelation":

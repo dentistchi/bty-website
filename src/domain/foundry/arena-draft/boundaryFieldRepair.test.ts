@@ -14,6 +14,7 @@ import {
   REPAIRABLE_BOUNDARY_FIELDS,
   IDENTITY_FIELDS,
   applyFieldRepair,
+  expandGroupAlternative,
   planFieldRepair,
   validateFieldRepairResponse,
   mergeFieldRepair,
@@ -21,7 +22,7 @@ import {
   summarizeFieldRepair,
   type FieldRepairPlan,
 } from "./boundaryFieldRepair";
-import { groupAlternativesSha256 } from "./boundaryGroupAlternatives";
+import { groupAlternativesSha256, matchGroupAlternative, type CanonicalGroupAlternative } from "./boundaryGroupAlternatives";
 import { selectPlanDerivedResponse } from "./groupAlternativeSelection.fixture";
 import { TRUTH_STATES } from "./boundaryTruthStates";
 import { deriveBoundaryVerdict, validateNarrowBoundaryReview, type BoundaryTruthAssessment } from "./narrowBoundaryReview";
@@ -670,5 +671,57 @@ describe("[R2.50][10] the counters an auditor reads", () => {
   it("the contract digest is stable", () => {
     expect(fieldRepairContractSha256()).toBe(fieldRepairContractSha256());
     expect(fieldRepairContractSha256()).toHaveLength(64);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.60 — governed-action group expansion completeness
+// ---------------------------------------------------------------------------
+
+const GOVERNED_ACTION_DOMAIN_FIXTURE: CanonicalGroupAlternative = {
+  alternativeId: "run4-governed-domain",
+  stateId: "governed_action_prerequisite_missing",
+  governedActionStatus: "present",
+  governedActionCandidateRequirement: "required",
+  governedActionCandidateDomain: ["run4-governed-action"],
+  prerequisiteStatus: "explicitly_missing",
+  temporalDomain: ["action_before_prerequisite"],
+  satisfactionCandidateRequirement: "forbidden",
+  satisfactionCandidateDomain: ["none"],
+  failureCandidateRequirement: "required",
+  failureCandidateDomain: ["run4-prerequisite-failure"],
+  reasonAuthority: "server_derived",
+  reasonConstraint: "must_be_empty",
+};
+
+describe("[R2.60] governed-action canonical expansion", () => {
+  it("handles every repairable field from the canonical alternative vocabulary", () => {
+    for (const field of REPAIRABLE_BOUNDARY_FIELDS) {
+      const expanded = expandGroupAlternative(GOVERNED_ACTION_DOMAIN_FIXTURE, [field], "");
+      expect(expanded, field).not.toBeNull();
+      expect(expanded?.[field], field).toBeDefined();
+    }
+  });
+
+  it("expands the reproduced run4 two-field group from distinct governed-action and prerequisite-failure domains", () => {
+    const fields = ["governedActionCandidateId", "prerequisiteFailureCandidateId"] as const;
+    const selection = matchGroupAlternative([GOVERNED_ACTION_DOMAIN_FIXTURE], {
+      governedActionStatus: "present",
+      governedActionCandidateId: "run4-governed-action",
+      prerequisiteStatus: "explicitly_missing",
+      temporalRelation: "action_before_prerequisite",
+      prerequisiteSatisfactionCandidateId: "none",
+      prerequisiteFailureCandidateId: "run4-prerequisite-failure",
+      reason: "",
+    });
+    expect(selection.ok).toBe(true);
+
+    const expanded = expandGroupAlternative(GOVERNED_ACTION_DOMAIN_FIXTURE, fields, "");
+    expect(expanded).toEqual({
+      governedActionCandidateId: "run4-governed-action",
+      prerequisiteFailureCandidateId: "run4-prerequisite-failure",
+    });
+    expect(expanded?.governedActionCandidateId).not.toBe(GOVERNED_ACTION_DOMAIN_FIXTURE.failureCandidateDomain[0]);
+    expect(expanded?.prerequisiteFailureCandidateId).not.toBe(GOVERNED_ACTION_DOMAIN_FIXTURE.governedActionCandidateDomain[0]);
   });
 });

@@ -278,6 +278,40 @@ describe("[25][26] pipeline order", () => {
   });
 });
 
+describe("[R2.60] governed-action field-repair expansion", () => {
+  it("accepts a canonical governed-action closure without a false repair-validation terminal", async () => {
+    const r = await runBoundaryReviewStage(
+      deps(
+        async (subject, attempt) =>
+          call(
+            subject,
+            attempt,
+            responseFor(subject, (rows) =>
+              rows.map((row) =>
+                row.surfaceRef === "primary[0]"
+                  ? {
+                      ...row,
+                      governedActionStatus: "present" as const,
+                      // This deliberately invalid triple asks the repair planner for the governed-action closure.
+                      prerequisiteStatus: "not_applicable" as const,
+                      temporalRelation: "not_applicable" as const,
+                    }
+                  : row,
+              ),
+            ),
+          ),
+        async (subject, plan, attempt) => mockFieldRepair(subject, plan, attempt),
+      ),
+      args(),
+    );
+    expect(r.fieldRepairObservability?.expandedCanonicalOperationCount).toBeGreaterThan(0);
+    expect(r.fieldRepairObservability?.suppliedOperationCount).toBe(r.fieldRepairPlan?.requiredOperationCount);
+    expect(r.fieldRepairCodes).not.toContain("field_repair_group_expansion_failed");
+    expect(r.outcome).not.toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic?.code).not.toBe("boundary_repair_validation_failed");
+  });
+});
+
 describe("[21][22] rerun authority in the stage", () => {
   it("[21] a first malformed response is rerun over the identical subject, exactly once", async () => {
     const seen: string[] = [];
