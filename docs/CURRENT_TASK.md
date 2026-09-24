@@ -1,3 +1,14 @@
+**[ARENA-GATE-AUDIT]**: [x] **완료 — 감사 전용. 코드 변경 없음. 분류 = A (ACTIVE PRODUCT WORKFLOW) → 은퇴 조건 불성립.**
+- 지시의 조건부 은퇴는 **분류 C(고아 게이트)** 일 때만 발동. **C 아님** — 요청·승인 워크플로가 **소스에 존재할 뿐 아니라 라이브에서 도달 가능**함을 실측.
+- **라이브 도달 증명(Founder 세션):** `/ko/bty-arena` → **307 → `/ko/my-page/team`** (`x-arena-membership: required`) · `/ko/my-page/team` **200** (Staff/Leader 선택 + Submit 렌더) · `/ko/admin/arena-membership` **200** (승인 콘솔 렌더) · `GET /api/arena/membership-request` **200** `{"request":null}` · `GET /api/admin/arena/membership-requests` **200** `{"requests":[]}`.
+- 즉 **403 은 막다른 길이 아님**: 레거시 Arena 경로는 사용자를 신청 폼으로 보내고, 관리자는 승인 콘솔에서 승인할 수 있음. 행이 0인 이유는 워크플로 부재가 아니라 **아무도 신청한 적이 없기 때문**.
+- **게이트 호출부 8곳**(지시가 예시한 4곳보다 많음): `run`·`beginner-run`·`quick/start`·`n/session`·`session/next`(410 뒤에 있어 도달 불가)·`middleware`(레거시 `/{locale}/bty-arena/*` 만)·`arenaPracticeGate`(**하드 게이트 아님 — capability flag**)·`/api/bty/events`(2026-09-04 에 이미 `hasHostCapability` 로 교체됨).
+- **현재 4탭 셸은 하드 게이트에 닿지 않음.** Practice 탭은 `/api/arena/practice` 를 호출하고 라이브 **200** 을 받음. 하드 게이트 엔드포인트의 클라이언트 호출부는 전부 레거시 `/{locale}/bty-arena/**` 와 `my-page/account` 에만 존재.
+- 추가 실측: `arena_runs` **0행** — 캐노니컬 Arena 런이 **단 한 번도 생성된 적 없음**. `arena_membership_requests` 0행(총/승인/대기/거절 전부 0, 컬럼·범위 확인 위해 전량 덤프).
+- 소유권: 모든 run 생성 경로의 `user_id` 는 `supabase.auth.getUser()` 에서 **서버 유도**. 클라이언트가 보낸 user id 를 받는 라우트 **0개**.
+- **구현 없음 · 마이그레이션 없음 · SQL 없음 · 프로덕션 데이터 쓰기 없음 · 소스 diff 0.** §12 job-cap 잔재도 은퇴가 없으므로 그대로(`jobFunction` 파라미터 + `JOB_MAX_LEVEL_CAP` 존치).
+- **다음 결정은 "게이트를 지울까"가 아니라 "Arena 를 4탭 셸에 정식 노출할까"** — 현재 셸에는 Arena 신청 개념 자체가 없고, 레거시 경로만 그 문을 가지고 있음.
+
 **[ARENA-M3.5-TRACK]**: [x] **완료·배포. 마지막 자동 role→track 분류기 제거.**
 - 대상: `/api/arena/unlocked-scenarios`, `/api/arena/core-xp` — M3.2 이후에도 `arena_membership_requests.job_function` 으로 staff/leader 트랙을 고르고 직군별 레벨 캡을 적용하던 두 라우트. 이제 `track` 은 리터럴 `"staff"`, 레벨은 **tenure 만**, 두 라우트 모두 `job_function` 을 **select 조차 하지 않음**.
 - §0 STOP 재측정(배포 전·후 동일): `arena_membership_requests` total **0** / approved 0 / pending 0 / rejected 0 → 진행.
