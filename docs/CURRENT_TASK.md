@@ -1,3 +1,16 @@
+**[ARENA-M3.5-TRACK]**: [x] **완료·배포. 마지막 자동 role→track 분류기 제거.**
+- 대상: `/api/arena/unlocked-scenarios`, `/api/arena/core-xp` — M3.2 이후에도 `arena_membership_requests.job_function` 으로 staff/leader 트랙을 고르고 직군별 레벨 캡을 적용하던 두 라우트. 이제 `track` 은 리터럴 `"staff"`, 레벨은 **tenure 만**, 두 라우트 모두 `job_function` 을 **select 조차 하지 않음**.
+- §0 STOP 재측정(배포 전·후 동일): `arena_membership_requests` total **0** / approved 0 / pending 0 / rejected 0 → 진행.
+- **측정 후 삭제(추정 아님):** 분류기가 인식하던 어휘(`doctor`·`senior_doctor`·`partner`·`office_manager`·`regional_om`·`director`·`dso`·`junior_doctor`·`hygienist`·`assistant`·`admin`)는 프로덕션에 **존재한 적이 없음** — 멤버십 폼은 `staff`/`leader` 만 쓰고 둘 다 어느 목록에도 없어 전부 기본값 `"staff"` 로 낙하. 승인 분기 안에서만 돌았고 그 테이블은 **0행** 이므로 누구에게도 실행된 적 없음.
+- **대체물 없음.** 캐노니컬 로스터·`job_family_key`·responsibilities·MS 직함 그 무엇도 자리를 잇지 않음.
+- 삭제(0 caller 선증명): `getEffectiveTrack`·`STAFF_JOB_FUNCTIONS`·`LEADER_JOB_FUNCTIONS`·`normalizeJobFunction`·`isNewJoiner`·`getMaxUnlockedLevel`. **`JOB_MAX_LEVEL_CAP` 는 존치** — `getUnlockedContentWindow` 안에 caller 가 **1개 남아 있음**(`jobFunction` 인자 뒤). 이제 프로덕션 호출부 중 그 인자를 채우는 곳이 없어 **도달 불가**이지만, *도달 불가 ≠ 부재* 이므로 "legacy 처럼 보여서" 지우지 않음. 후속 결정 대상은 심볼이 아니라 **파라미터**.
+- 리더 콘텐츠 불변: `arena_program.json` L1–L3 · `arena_legacy_program(.ko).json` · `loadL4Level` · `arenaTrackLevelOrdering` · `l4_access` · `/api/arena/reflect` 명시 `levelId` 문 전부 유지.
+- **Arena 입장 게이트 미변경**(별도 제품 결정): `requireApprovedMembership` 그대로 default-deny → `quick/start` 는 여전히 403 `MEMBERSHIP_REQUIRED`. 이 슬라이스가 그걸 해결한 것으로 오독되지 않도록 가드로 고정.
+- 검증: 신규 테스트 25개(라우트 9 + 리포지토리 가드 16). **사전 코드 대비 실패 증명 6건**(unlocked 3 · core-xp 3), 가드는 pre-fix 코드에 **H 8건 전부 발화**, 리더 콘텐츠 가드는 `arena_program.json` 에서 leader 트랙 제거 시 발화 확인. Arena 그룹 152파일/1196 통과 · tsc 클린 · 전체 baseline **18실패/9파일 불변** · terminology **44 = baseline**.
+- 배포: `ee60471f` / Worker **`ea48ecc3`** (`wrangler deployments list` active 100%). **아티팩트 신선도는 문자열 리터럴로 증명**: 배포된 두 라우트 청크에 `job_function` **0회**, 새 select 리터럴 존재.
+- 라이브 증거: `/api/arena/unlocked-scenarios` **142바이트 동일**, `/api/arena/core-xp` **594바이트 동일**(배포 전 캡처와 `cmp` 일치, Core XP 10 불변). `/api/arena/reflect` 명시 `L2`/`L3` 는 여전히 리더 콘텐츠 반환(추론은 S1) — 명시 문은 열려 있음.
+- **마이그레이션 없음 · SQL 없음 · 프로덕션 데이터 쓰기 없음.**
+
 **[ACCOUNTBLOCK-NAME]**: [x] **완료·배포 (Teams 클라이언트 실화면 확인은 미이행).** Teams 계정 행이 사람 이름을 표시하도록 수정.
 - 근본 원인: `AccountBlock` 은 처음부터 `user.user_metadata.full_name`/`.name` 을 읽고 `teamsAccountLabel` 에 넘겼으나, `GET /api/auth/session` 은 `{id, email}` 만 반환 → 전원이 "Microsoft Teams account" 폴백. 기존 컴포넌트 테스트는 **서버가 만들지 않는 shape 을 목킹**해서 통과하고 있었음.
 - 수정: 세션 라우트가 이름 재료를 **정확히 2개 키로 allow-list** 해서 전달(`full_name`, `name`). 원본 `user_metadata` 에는 `email`·`preferred_username`·`sub`·`provider_id`·`iss` 가 함께 들어있고, **주소를 보이지 않으려고 존재하는 행**이 옆 필드로 주소를 실어 보내면 안 되므로 blob 통째 전달 금지. 첫 조회·refresh 두 경로 모두 적용, 미인증 응답 shape 불변(200 / ok:false / user 없음).
