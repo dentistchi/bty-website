@@ -1,3 +1,16 @@
+**[PRACTICE-DISCOVERY-ALIGN]**: [x] **완료·배포. 발견(list) 규칙을 실행(open/play) 규칙과 일치시킴 — 수렴 슬라이스 1.**
+- **모순:** `resolvePracticeAccess` 는 3.2M-2 이후 **세 사람**(작성자 · 승인 Arena 멤버 · 소스 Training 수료자)을 허용했는데 `listAvailablePractices` 는 앞의 둘만 제공. 즉 **Training 을 수료한 학습자는 id 로 열어 플레이할 수 있으면서 자기 Practice 목록에서는 그 practice 를 찾을 수 없었음.**
+- §0 전제 5개 전부 재확인 후 착수: discovery 에 `completedSourceTraining` **0회** · access 에는 있음 · 발행 practice 0 · practice run 0 · membership request 0. (추가 관측: `foundry_event_training_progress` **3행**.)
+- **세 번째 길에 availability 조건 없음** — 맞출 대상인 access 규칙에도 없기 때문. Training 을 했다는 **사실**이 근거이고, 발행물이 어떻게 공유됐는지는 아님. 모든 길에 `status='published'` 는 유지(= `getPlayablePractice` 와 동일) → 은퇴한 practice 는 어느 길로도 제공되지 않음. **네 번째 길 없음 — 로그인은 길이 아님.**
+- **규칙을 복제하지 않고 공유:** 두 호출부가 `isCompletedTrainingProgressRow` 를 통과. 한쪽만 나중에 enrollment·assignment·participation·부분진행을 완료로 오인하는 drift 가 구조적으로 불가능. `completedSourceEventIds` 는 `completedSourceTraining` 의 **집합형**(같은 테이블·같은 `linked_user_id` 스코프·같은 술어).
+- **응답 계약 불변:** `source_event_id` 는 조인용으로만 select, **반환 안 함** → `PracticeLanding`/`ArenaRoom` UI 변경 0.
+- 검증: 신규 **28 테스트**. 핵심은 **매트릭스** — 한 개의 케이스 표가 **두 함수를 동시에** 구동해 케이스당 한 assertion 으로 "발견=실행"을 주장. **사전 코드 대비 5건 실패 증명.** 가짜 백엔드는 이제 **빈 `in()` 리스트에 throw** — 실제 백엔드가 그걸 "필터 없음"으로 읽으면 모든 practice 가 전원에게 유출되므로; size 가드를 제거하면 **발화 확인**.
+- 게이트: tsc 클린 · 포커스 142파일/2165 (기존 baseline 1건 제외 전부 통과) · terminology **44 = baseline** · 전체 **18실패/9파일 = baseline 불변**.
+- 배포: `d2a18a08` / Worker **`a5c1b80d`**. **신선도 리터럴 증명:** 신규 select 리터럴 2파일 존재, **구 리터럴 0**.
+- 라이브: `/api/arena/practice` **200 `{"practices":[]}`**(발행물 0이므로 가시적 변화 없음 — 예상됨) · `/ko/app?tab=practice` **200** · **생성된 행 0**(membership·run 모두 0 유지).
+- **★ 다음 콘텐츠 슬라이스 준비 상태 = 라이브 주체 1명 확정.** Founder(`18b1ee80`)가 **"Morning Office Opening"**(`6effb704`) 를 2026-09-22 에 수료 — 시스템 유일 Core XP 적립과 같은 사건. 그 Training 으로 practice 를 발행하는 순간 **Arena 멤버십 0인 상태로 path C 로 발견됨.** 나머지 2행은 anonymous(`linked_user_id` NULL)로 올바르게 아무것도 부여하지 않음.
+- **미변경:** 레거시 `/bty-arena` 셸 · `requireApprovedMembership` · `arena_membership_requests` · 관리자 승인 · `arena_runs` · XP(Core/Weekly) · role/track · 리더 콘텐츠 · Foundry assignment 권한 · 셸 탭 · 마이그레이션. **콘텐츠 발행 없음.**
+
 **[PRACTICE-ARENA-CONVERGENCE-AUDIT]**: [x] **완료 — 감사 전용. 코드 변경 0. 권고 = OPTION B (Canonical Practice + Arena engine).**
 - **핵심 실측 비대칭:** 레거시 Arena = **콘텐츠 27개**(`src/data/scenario/index.ts` core_01–core_27) + 완성된 엔진, **런 0건**. 캐노니컬 Practice = 완성된 런타임(snapshot→start→path→complete, owner-scoped·idempotent·XP 0) + Host 저작 입구, **발행된 practice 0건**. 즉 **한쪽은 문이 잠긴 도서관, 다른 쪽은 빈 서가.** "Practice 에 실데이터가 있다"는 가정은 **틀림** — 양쪽 다 0.
 - **라이브 행수:** `arena_scenarios` 5(그런데 `src/engine`·`src/lib` 어디서도 **읽지 않음** = 고아 데이터) · `arena_runs` 0 · `user_scenario_history` 0 · `pattern_signals`/`pattern_states`/`arena_events` 0 · `weekly_xp` 0 · `foundry_published_arena_practices` 0 · `foundry_arena_practice_runs` 0. **실사용은 Foundry 쪽:** `bty_action_captures` 30 · `foundry_participant_followups` 14 · `foundry_events` 3 · `leadership_engine_state` 3 · `arena_profiles` 7 · `core_xp_ledger` **1**.
