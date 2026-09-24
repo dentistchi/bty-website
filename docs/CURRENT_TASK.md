@@ -1,3 +1,14 @@
+**[PRACTICE-ARENA-CONVERGENCE-AUDIT]**: [x] **완료 — 감사 전용. 코드 변경 0. 권고 = OPTION B (Canonical Practice + Arena engine).**
+- **핵심 실측 비대칭:** 레거시 Arena = **콘텐츠 27개**(`src/data/scenario/index.ts` core_01–core_27) + 완성된 엔진, **런 0건**. 캐노니컬 Practice = 완성된 런타임(snapshot→start→path→complete, owner-scoped·idempotent·XP 0) + Host 저작 입구, **발행된 practice 0건**. 즉 **한쪽은 문이 잠긴 도서관, 다른 쪽은 빈 서가.** "Practice 에 실데이터가 있다"는 가정은 **틀림** — 양쪽 다 0.
+- **라이브 행수:** `arena_scenarios` 5(그런데 `src/engine`·`src/lib` 어디서도 **읽지 않음** = 고아 데이터) · `arena_runs` 0 · `user_scenario_history` 0 · `pattern_signals`/`pattern_states`/`arena_events` 0 · `weekly_xp` 0 · `foundry_published_arena_practices` 0 · `foundry_arena_practice_runs` 0. **실사용은 Foundry 쪽:** `bty_action_captures` 30 · `foundry_participant_followups` 14 · `foundry_events` 3 · `leadership_engine_state` 3 · `arena_profiles` 7 · `core_xp_ledger` **1**.
+- **★ Arena 엔진은 이미 캐노니컬 제품을 섬기고 있다.** 시스템 전체의 유일한 Core XP 적립 1건의 `source_type` = **`foundry_training_completion`** (Founder, 2026-09-22). `foundryTrainingService` 가 `applyDirectCoreXp` 를 호출하고, Today 는 `pattern_signals`·re-exposure 를 읽음. XP·패턴·재노출은 **공유 인프라**이며 레거시 UX 가 아님.
+- **★ 수렴 seam 은 이미 파일 안에 있다.** `resolvePracticeAccess` = 승인 멤버 **OR** 작성자 **OR `completedSourceTraining`**(3.2M-2 에서 추가). 그런데 **발견(list) 경로에는 세 번째 길이 없음** — `listAvailablePractices` 는 `own` + (승인 시 `all_members`) 만 union. 그래서 소스 Training 을 수료한 학습자는 **id 로는 플레이 가능, 목록에는 안 보임.** 이것이 가장 작은 수렴 슬라이스.
+- **입장 권한 비교:** Arena 승인이 캐노니컬 Practice 권한이 보호하지 않는 것을 보호하는가 → **오직 하나**, `availability='all_members'` 발행물의 **발견 가시성**(발행 서비스가 쓰는 유일한 literal). 승인 멤버가 0명이므로 그 티어는 **전원에게 암흑**. 실행 권한은 아님(세 번째 길이 이미 존재).
+- **job_function = 순수 잔재:** 제출 시 **필수(누락 400)** 이지만 M3.5 이후 **결정 소비자 0**. 남은 것은 저장된 문자열 + 관리자 알림 메일 한 줄 + 관리자 표의 한 칼럼.
+- **arena_runs=0 원인 = F(복합):** B(미들웨어 307 + API 403, 라이브 증명) + A(캐노니컬 셸이 `/bty-arena` 를 링크하지 않음) + C(셸이 대체). **D(런타임 고장) 아님, E(콘텐츠 경로 없음) 아님.**
+- **고급 콘텐츠:** `l4_access` 는 `arena_profiles` 의 **per-user admin capability grant** (role 아님) — 전역 Arena 멤버십이 아니라 콘텐츠/배정 레이어에서 통치 가능함이 확인됨. 명시 `levelId` 문도 열려 있음.
+- **변경 금지 전부 준수:** 탭·게이트·`arena_membership_requests`·`arena_runs`·Foundry practice·Arena 라우트·XP·리더 콘텐츠·마이그레이션·인증 **미변경. 소스 diff 0.**
+
 **[ARENA-GATE-AUDIT]**: [x] **완료 — 감사 전용. 코드 변경 없음. 분류 = A (ACTIVE PRODUCT WORKFLOW) → 은퇴 조건 불성립.**
 - 지시의 조건부 은퇴는 **분류 C(고아 게이트)** 일 때만 발동. **C 아님** — 요청·승인 워크플로가 **소스에 존재할 뿐 아니라 라이브에서 도달 가능**함을 실측.
 - **라이브 도달 증명(Founder 세션):** `/ko/bty-arena` → **307 → `/ko/my-page/team`** (`x-arena-membership: required`) · `/ko/my-page/team` **200** (Staff/Leader 선택 + Submit 렌더) · `/ko/admin/arena-membership` **200** (승인 콘솔 렌더) · `GET /api/arena/membership-request` **200** `{"request":null}` · `GET /api/admin/arena/membership-requests` **200** `{"requests":[]}`.
