@@ -73,6 +73,71 @@ function refusalFrom(message: unknown): RecoveryRefusal {
   return REFUSALS.find((code) => text.includes(code)) ?? "recovery_failed";
 }
 
+export type RecoverableSystemBlock = {
+  draftId: string;
+  blockedAttemptId: string;
+  outcome: string | null;
+  terminalReasonCode: string | null;
+  failedDeploySha: string | null;
+  currentDeploySha: string;
+};
+
+export type RecoverableListResult =
+  | { ok: true; recoverable: RecoverableSystemBlock[] }
+  | { ok: false; reason: "source_identity_unavailable" | "discovery_failed" };
+
+/**
+ * WHICH SYSTEM BLOCKS ARE STILL WAITING TO BE ACKNOWLEDGED.
+ *
+ * ★ THE SET IS DEFINED IN SQL, NOT HERE. It comes from
+ * `foundry_practice_generation_recoverable_blocks_v1`, which applies the same canonical
+ * `is_system_block_v1` predicate the admission clause applies and excludes anything already
+ * recovered. No terminal reason code is named in this file, so the vocabulary cannot fork between
+ * what governance blocks and what an operator is offered.
+ *
+ * ★ IT CARRIES BUILD IDENTITY, NOT CONTENT. Ids, the classifying outcome, and the two shas. The
+ * decision an operator makes is "may a repaired build try again", and nothing about the draft's
+ * contents informs it.
+ *
+ * ★ AN UNKNOWN RUNTIME RETURNS NOTHING, NOT AN EMPTY LIST. Without a current sha there is no
+ * recovery any of these rows could be authorized against, so offering them would be offering a
+ * button that must refuse.
+ */
+export async function listRecoverableSystemBlocks(admin: SupabaseClient): Promise<RecoverableListResult> {
+  const identity = currentSourceIdentity();
+  if (!identity?.sourceCommitSha) return { ok: false, reason: "source_identity_unavailable" };
+
+  const { data, error } = await admin.rpc("foundry_practice_generation_recoverable_blocks_v1");
+  if (error) {
+    console.error(`[practiceGenRecovery] discovery failed code=${(error as { code?: string }).code ?? "unknown"}`);
+    return { ok: false, reason: "discovery_failed" };
+  }
+
+  const rows = Array.isArray(data) ? data : [];
+  return {
+    ok: true,
+    recoverable: rows.flatMap((raw) => {
+      const r = raw as {
+        recoverable_draft_id?: string;
+        recoverable_attempt_id?: string;
+        recoverable_outcome?: string | null;
+        recoverable_terminal_reason_code?: string | null;
+        recoverable_failed_deploy_sha?: string | null;
+      };
+      // A row missing either coordinate names nothing an operator could act on.
+      if (!r.recoverable_draft_id || !r.recoverable_attempt_id) return [];
+      return [{
+        draftId: r.recoverable_draft_id,
+        blockedAttemptId: r.recoverable_attempt_id,
+        outcome: r.recoverable_outcome ?? null,
+        terminalReasonCode: r.recoverable_terminal_reason_code ?? null,
+        failedDeploySha: r.recoverable_failed_deploy_sha ?? null,
+        currentDeploySha: identity.sourceCommitSha,
+      }];
+    }),
+  };
+}
+
 export async function recoverPracticeGenerationSystemBlock(
   admin: SupabaseClient,
   input: {

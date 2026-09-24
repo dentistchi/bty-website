@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Slice Practice Generation System-Block Recovery V1 — the SERVICE boundary.
@@ -11,7 +13,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 const identity = vi.hoisted(() => ({ currentSourceIdentity: vi.fn() }));
 vi.mock("./sourceIdentity", () => identity);
 
-import { recoverPracticeGenerationSystemBlock } from "./practiceGenerationRecovery.server";
+import { listRecoverableSystemBlocks, recoverPracticeGenerationSystemBlock } from "./practiceGenerationRecovery.server";
 
 const CURRENT = "d3329f2f966dccfbd4749a823fc711bff9091734";
 const FAILED = "d2a18a081c45b0a084c202308d43da6d224615b3";
@@ -178,5 +180,63 @@ describe("the governance read is additive", () => {
     };
     const r = await recoverPracticeGenerationSystemBlock(admin as never, input());
     expect(r).toMatchObject({ ok: true, governanceState: null, canStartGeneration: null });
+  });
+});
+
+describe("discovery — the set comes from SQL, never from a list in this file", () => {
+  const row = {
+    recoverable_draft_id: DRAFT,
+    recoverable_attempt_id: ATTEMPT,
+    recoverable_outcome: "review_execution_failed",
+    recoverable_terminal_reason_code: "boundary_reviewer_terminal_failure",
+    recoverable_failed_deploy_sha: FAILED,
+  };
+
+  it("projects the canonical rows and stamps the current build", async () => {
+    const admin = { rpc: async () => ({ data: [row], error: null }) };
+    const r = await listRecoverableSystemBlocks(admin as never);
+    expect(r).toEqual({
+      ok: true,
+      recoverable: [{
+        draftId: DRAFT, blockedAttemptId: ATTEMPT,
+        outcome: "review_execution_failed",
+        terminalReasonCode: "boundary_reviewer_terminal_failure",
+        failedDeploySha: FAILED, currentDeploySha: CURRENT,
+      }],
+    });
+  });
+
+  it("calls the canonical SQL projection", async () => {
+    const seen: string[] = [];
+    const admin = { rpc: async (fn: string) => { seen.push(fn); return { data: [], error: null }; } };
+    await listRecoverableSystemBlocks(admin as never);
+    expect(seen).toEqual(["foundry_practice_generation_recoverable_blocks_v1"]);
+  });
+
+  it("names no terminal reason code in application code", () => {
+    const src = readFileSync(join(process.cwd(), "src/lib/bty/foundry/arena/practiceGenerationRecovery.server.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    for (const code of ["semantic_reviewer_terminal_failure", "boundary_reviewer_terminal_failure", "review_execution_failed"]) {
+      expect(src, code).not.toContain(code);
+    }
+  });
+
+  it("an unknown runtime returns nothing rather than an empty list", async () => {
+    identity.currentSourceIdentity.mockReturnValue(null);
+    let called = false;
+    const admin = { rpc: async () => { called = true; return { data: [], error: null }; } };
+    expect(await listRecoverableSystemBlocks(admin as never)).toEqual({ ok: false, reason: "source_identity_unavailable" });
+    expect(called).toBe(false);
+  });
+
+  it("drops a row missing either coordinate rather than rendering a half-identified block", async () => {
+    const admin = { rpc: async () => ({ data: [row, { ...row, recoverable_attempt_id: null }], error: null }) };
+    const r = await listRecoverableSystemBlocks(admin as never);
+    expect(r.ok && r.recoverable).toHaveLength(1);
+  });
+
+  it("reports a failed read instead of an empty list", async () => {
+    const admin = { rpc: async () => ({ data: null, error: { code: "42883" } }) };
+    expect(await listRecoverableSystemBlocks(admin as never)).toEqual({ ok: false, reason: "discovery_failed" });
   });
 });

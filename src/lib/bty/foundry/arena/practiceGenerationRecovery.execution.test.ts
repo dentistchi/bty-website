@@ -23,6 +23,7 @@ const CHAIN = [
   "20260806000000_foundry_practice_generation_contract_v1.sql",
   "20260924161342_practice_generation_reviewer_diagnostics_v1.sql",
   "20260925000000_practice_generation_system_block_recovery_v1.sql",
+      "20260926000000_practice_generation_recoverable_blocks_v1.sql",
 ];
 const PORT = "55444";
 const DB = "recovery_exec";
