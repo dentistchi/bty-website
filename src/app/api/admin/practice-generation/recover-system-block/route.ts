@@ -34,6 +34,7 @@ const STATUS: Record<string, number> = {
   recovery_failed: 500,
   blocked_attempt_not_found: 404,
   attempt_draft_mismatch: 404,
+  blocked_attempt_source_identity_unavailable: 409,
 };
 
 export async function POST(req: NextRequest) {

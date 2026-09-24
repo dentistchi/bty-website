@@ -31,6 +31,7 @@ export type RecoveryRefusal =
   | "attempt_draft_mismatch"
   | "attempt_not_completed"
   | "attempt_not_system_block"
+  | "blocked_attempt_source_identity_unavailable"
   | "source_identity_unchanged"
   | "support_reference_mismatch"
   | "missing_granter"
@@ -60,6 +61,7 @@ const REFUSALS: readonly RecoveryRefusal[] = [
   "attempt_draft_mismatch",
   "attempt_not_completed",
   "attempt_not_system_block",
+  "blocked_attempt_source_identity_unavailable",
   "source_identity_unchanged",
   "support_reference_mismatch",
   "missing_granter",
@@ -111,17 +113,24 @@ export async function recoverPracticeGenerationSystemBlock(
   const row = (Array.isArray(data) ? data[0] : data) as
     | { recovery_id?: string; recovered_attempt_id?: string; recovered_draft_id?: string; recovered_at?: string; already_recovered?: boolean }
     | null;
-  if (!row?.recovery_id) return { ok: false, reason: "recovery_failed" };
+  if (
+    !row ||
+    typeof row.recovery_id !== "string" || row.recovery_id.length === 0 ||
+    typeof row.recovered_attempt_id !== "string" || row.recovered_attempt_id.length === 0 ||
+    typeof row.recovered_draft_id !== "string" || row.recovered_draft_id.length === 0 ||
+    typeof row.recovered_at !== "string" || row.recovered_at.length === 0 ||
+    typeof row.already_recovered !== "boolean"
+  ) return { ok: false, reason: "recovery_failed" };
 
   const governance = await readGovernanceAfterRecovery(admin, input.draftId, input.blockedAttemptId);
 
   return {
     ok: true,
     recoveryId: row.recovery_id,
-    blockedAttemptId: row.recovered_attempt_id ?? input.blockedAttemptId,
-    draftId: row.recovered_draft_id ?? input.draftId,
-    grantedAt: row.recovered_at ?? new Date().toISOString(),
-    alreadyRecovered: row.already_recovered === true,
+    blockedAttemptId: row.recovered_attempt_id,
+    draftId: row.recovered_draft_id,
+    grantedAt: row.recovered_at,
+    alreadyRecovered: row.already_recovered,
     governanceState: governance.state,
     canStartGeneration: governance.canStart,
   };

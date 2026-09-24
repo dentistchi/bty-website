@@ -39,12 +39,12 @@ create table if not exists public.foundry_practice_generation_system_block_recov
   -- The ONE failure this authorization names. Unique, so an operator pressing twice
   -- makes one recovery and the FIRST granter stays authoritative.
   blocked_attempt_id uuid not null
-    references public.foundry_practice_generation_attempts (id) on delete cascade,
+    references public.foundry_practice_generation_attempts (id) on delete restrict,
 
   -- Denormalised for the operator projection. The attempt is still the authority on
   -- which draft it belonged to; the RPC proves the two agree before inserting.
   draft_id uuid not null
-    references public.foundry_arena_scenario_drafts (id) on delete cascade,
+    references public.foundry_arena_scenario_drafts (id) on delete restrict,
 
   granted_by_user_id uuid not null,
   granted_at timestamptz not null default now(),
@@ -455,7 +455,12 @@ begin
     repaired, and it is not treated as any. It refuses exactly one thing — recovering a
     failure while running the very build that produced it.
   */
-  if v_attempt.deploy_version is not null and v_attempt.deploy_version = p_current_deploy_sha then
+  -- A historical row without a durable source identity cannot prove it predates this
+  -- runtime. Refuse rather than reconstructing or guessing a missing fact.
+  if v_attempt.deploy_version is null or v_attempt.deploy_version !~ '^[0-9a-f]{40}$' then
+    raise exception 'blocked_attempt_source_identity_unavailable' using errcode = '22023';
+  end if;
+  if v_attempt.deploy_version = p_current_deploy_sha then
     raise exception 'source_identity_unchanged' using errcode = '22023';
   end if;
 

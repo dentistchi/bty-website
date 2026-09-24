@@ -122,6 +122,7 @@ describe("K/L/M/N/P — every database refusal is carried through by name", () =
     ["K", "attempt_draft_mismatch"],
     ["L", "attempt_not_system_block"],
     ["M", "attempt_not_completed"],
+    ["—", "blocked_attempt_source_identity_unavailable"],
     ["N", "source_identity_unchanged"],
     ["P", "fixed_deploy_sha_not_current"],
     ["—", "blocked_attempt_not_found"],
@@ -137,6 +138,24 @@ describe("K/L/M/N/P — every database refusal is carried through by name", () =
     const { admin } = fakeAdmin({ rpc: () => ({ data: null, error: { code: "XX000", message: "something else" } }) });
     expect(await recoverPracticeGenerationSystemBlock(admin, input()))
       .toEqual({ ok: false, reason: "recovery_failed" });
+  });
+
+  it.each([
+    { recovery_id: undefined },
+    { recovered_attempt_id: undefined },
+    { recovered_draft_id: undefined },
+    { recovered_at: undefined },
+    { recovered_at: "" },
+    { already_recovered: undefined },
+    { already_recovered: "false" },
+  ])("refuses incomplete audit facts rather than inventing them: %#", async (missing) => {
+    const { admin } = fakeAdmin({
+      rpc: () => ({
+        data: [{ recovery_id: "rec-1", recovered_attempt_id: ATTEMPT, recovered_draft_id: DRAFT, recovered_at: "2026-09-25T00:00:00Z", already_recovered: false, ...missing }],
+        error: null,
+      }),
+    });
+    expect(await recoverPracticeGenerationSystemBlock(admin, input())).toEqual({ ok: false, reason: "recovery_failed" });
   });
 
   it("N is the live case: recovering ON the failed build is refused", async () => {

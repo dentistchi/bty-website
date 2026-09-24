@@ -7,9 +7,9 @@ import { join } from "node:path";
  *
  * ★ WHAT THESE PROVE, AND WHAT THEY DO NOT. They read the SQL and assert its shape. They are a
  * structural proof, not a behavioural one: no database executes here, so "the helper ignores a
- * recovered attempt" is asserted as written SQL rather than as an observed row. The behavioural
- * proof is the post-deploy production check, and these exist so the shape cannot regress silently
- * between now and then.
+ * recovered attempt" is asserted as written SQL rather than as an observed row. The disposable
+ * PostgreSQL execution suite supplies that behavioural proof; these tests keep the migration
+ * shape from regressing silently between executions.
  *
  * The hazard they were written for is specific: the system-block test lives in TWO governance
  * functions whose LATEST definitions are in DIFFERENT migrations, so a clause duplicated by hand
@@ -45,6 +45,14 @@ describe("A — the recovery record is private and append-only", () => {
 });
 
 describe("B — one recovery per failure", () => {
+  it("keeps both audit references non-null and refuses implicit deletion", () => {
+    const table = THIS.slice(THIS.indexOf(`create table if not exists public.${TABLE}`), THIS.indexOf("comment on table"));
+    expect(table).toMatch(/blocked_attempt_id uuid not null\s+references public\.foundry_practice_generation_attempts \(id\) on delete (restrict|no action)/);
+    expect(table).toMatch(/draft_id uuid not null\s+references public\.foundry_arena_scenario_drafts \(id\) on delete (restrict|no action)/);
+    expect(table).not.toMatch(/on delete cascade/);
+    expect(table).not.toMatch(/on delete set null/);
+  });
+
   it("pins uniqueness to the blocked attempt", () => {
     expect(THIS).toMatch(/unique \(blocked_attempt_id\)/);
   });
@@ -135,6 +143,7 @@ describe("the RPC refuses everything it should", () => {
       "attempt_draft_mismatch",
       "attempt_not_completed",
       "attempt_not_system_block",
+      "blocked_attempt_source_identity_unavailable",
       "source_identity_unchanged",
       "support_reference_mismatch",
     ]) {
@@ -148,6 +157,11 @@ describe("the RPC refuses everything it should", () => {
 
   it("locks the attempt so a concurrent recovery cannot race the checks", () => {
     expect(THIS).toMatch(/where a\.id = p_blocked_attempt_id\s*\n\s*for update/);
+  });
+
+  it("requires a valid historical attempt SHA before comparing it to runtime", () => {
+    expect(THIS).toMatch(/v_attempt\.deploy_version is null or v_attempt\.deploy_version !~ '\^\[0-9a-f\]\{40\}\$'/);
+    expect(THIS).toContain("blocked_attempt_source_identity_unavailable");
   });
 
   it("avoids the OUT-param/column collision that only fails at runtime", () => {

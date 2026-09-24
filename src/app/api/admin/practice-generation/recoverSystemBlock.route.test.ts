@@ -95,6 +95,7 @@ describe("refusals reach the operator by name", () => {
     ["blocked_attempt_not_found", 404],
     ["attempt_draft_mismatch", 404],
     ["attempt_not_system_block", 409],
+    ["blocked_attempt_source_identity_unavailable", 409],
     ["source_identity_unchanged", 409],
   ])("%s → %i", async (reason, status) => {
     svc.recoverPracticeGenerationSystemBlock.mockResolvedValue({ ok: false, reason });
