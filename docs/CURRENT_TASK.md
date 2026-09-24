@@ -1,3 +1,12 @@
+**[MEMBERSHIPS-M5]**: [~] **작성 완료·게이트 그린·미적용(Founder 최종 검토 대기).** 레거시 `public.memberships` 최종 DROP 마이그레이션 작성.
+- 파일: `20260924000000_drop_legacy_memberships_v1.sql`. 문장 2개 — (1) **fail-closed 사전조건 DO 블록**, (2) `drop table public.memberships` (**CASCADE 없음**).
+- 사전조건 6종(각각 별도 raise): 테이블 존재 · 행 수 정확히 1 · 인바운드 FK 0 · 타 테이블 정책의 memberships 참조 0 · 자기 정책이 정확히 1개이고 이름이 `memberships_select_own` · 의존 뷰/머티리얼라이즈드 뷰 0. 생성된 row id 하드코딩 없음(맞아서 통과하는 마이그레이션은 잘못된 이유로 통과하는 것).
+- 행은 **헤더에 사실로 기록**하고 아카이브 테이블 생성·복사 없음. `bty_org_memberships` 로도 옮기지 않음 — 캐노니컬 Founder 멤버십이 이미 큐레이션된 상태로 존재하며, 대체된 레코드를 복사하면 **모순되는 두 번째 정체성 사실**을 만들게 됨.
+- enum/type DROP 없음(`membership_status`·`job_function` 은 `office_assignments` 가 사용 중, `membership_role` 도 비가역 슬라이스에 끼워넣지 않음). 이웃 테이블·함수·역할 계층·과거 마이그레이션 무변경. `memberships_select_own`·`memberships_set_updated_at` 은 테이블과 함께 사라지므로 별도 DROP 안 함.
+- 가드 2종(`membershipsReadOnly`, `authorizationNoMemberships`) 은퇴 — 유일한 대상이 곧 사라질 테이블이었음. **여전히 이빨이 있는 단언 2개는 M5 테스트로 이관**: 프로덕션 읽기 0건(=드롭의 사전조건, 적용 전까지 유효) / 삭제된 region 게이트 이름 미복귀(테이블과 무관하게 존속). 주입 프로브로 두 단언 모두 탐지력 증명.
+- 검증: 스키마 의도 테스트 13개 · tsc 클린 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline. KNOWN_LATER 5곳 + 14자리 앵커(→20260924000000) + M4 순서 단언 재정렬.
+- **SQL 미실행. CLI push 없음. 프로덕션 무변경.**
+
 **[MEMBERSHIPS-M4-LEDGER]**: [x] **완료.** 적용된 프로덕션 ledger 버전에 저장소 파일명 정합.
 - 프로덕션 적용 버전: **`20260923162305_regions_offices_drop_membership_rls_v1`**. 저장소에는 `20260918000000_…` 이 있었음 → **rename** 으로 정합(마이그레이션 신규 생성·재적용·DB 변경 전부 없음).
 - SQL **바이트 동일** 증명: rename 전후 sha256 `cb6c14006f1c1c52be119d802776d771a1451c03583016a6d08c8e03b04ca6e5` 일치. git 도 순수 rename(0 변경)으로 인식.
