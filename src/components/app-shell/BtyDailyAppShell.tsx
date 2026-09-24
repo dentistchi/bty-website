@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
 import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import { LangSwitch } from "@/components/LangSwitch";
@@ -1252,8 +1253,21 @@ export default function BtyDailyAppShell({
   onLocaleChanged,
   trainingRequest = null,
   onTrainingExit,
+  runtime = "web",
 }: {
   locale: Locale;
+  /**
+   * WHICH SHELL IS RENDERING THIS, STATED RATHER THAN DETECTED.
+   *
+   * Only `/teams` passes `"teams"`, and only after its own bootstrap has produced a real session.
+   * Every other caller gets the default, so the web shell behaves exactly as it did.
+   *
+   * ★ IT IS NEVER INFERRED. Not from `pathname`, not from a user agent, not from being framed, not
+   * from a viewport. Each of those is a guess that is right until someone opens BTY in a way nobody
+   * anticipated, and a guess is the wrong foundation for deciding whether an OPERATOR surface
+   * exists. The Teams shell knows what it is; it says so.
+   */
+  runtime?: "web" | "teams";
   /**
    * TEAMS-NATIVE TRAINING DELIVERY — the training a personal-tab deep link named, as a REQUEST.
    *
@@ -2311,6 +2325,21 @@ export default function BtyDailyAppShell({
                   </button>
                 ))}
               </nav>
+              {/*
+                ADMIN OPERATIONS — TEAMS ONLY, AND ONLY WHEN THERE IS SOMETHING TO DO.
+
+                BTY is operated inside Teams, so the product's one operator action has to be
+                reachable there rather than through a standalone page or a curl command. It sits at
+                the BOTTOM of Me and self-gates twice: the runtime must have SAID it is Teams, and
+                the component renders nothing unless the server lists a recoverable block for this
+                caller. A learner reaches this line and sees nothing at all — no placeholder, no
+                empty state, no disabled control.
+
+                No fifth tab, and no legacy /admin surface is exposed.
+              */}
+              {runtime === "teams" ? (
+                <TeamsPracticeRecoveryOperations locale={locale === "ko" ? "ko" : "en"} />
+              ) : null}
             </div>
           ))}
       </main>

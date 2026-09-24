@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePlatformAdmin } from "@/lib/authz";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { recoverPracticeGenerationSystemBlock } from "@/lib/bty/foundry/arena/practiceGenerationRecovery.server";
+import {
+  listRecoverableSystemBlocks,
+  recoverPracticeGenerationSystemBlock,
+} from "@/lib/bty/foundry/arena/practiceGenerationRecovery.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +39,35 @@ const STATUS: Record<string, number> = {
   attempt_draft_mismatch: 404,
   blocked_attempt_source_identity_unavailable: 409,
 };
+
+/**
+ * GET — which system blocks are still waiting to be acknowledged.
+ *
+ * ★ IT EXISTS SO THE OPERATOR SURFACE CAN BE ABSENT. Without it the only way to know whether there
+ * is anything to recover is to already know, which means the button either shows to everyone or
+ * shows to nobody. This answers the question, so the section can render for exactly the people and
+ * exactly the moments it is useful and stay invisible otherwise.
+ *
+ * ★ MINIMAL METADATA ONLY. Ids, the outcome that classified the block, and the two build shas. No
+ * scenario, no generated draft, no learner response, no reviewer assessment, no prompt, no repair
+ * payload, no owner email — an operator deciding whether a repaired build may be given another attempt needs none
+ * of it, and a discovery endpoint is the wrong place to widen what admin can read.
+ */
+export async function GET(req: NextRequest) {
+  const auth = await requirePlatformAdmin(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const admin = getSupabaseAdmin();
+  if (!admin) return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
+
+  const result = await listRecoverableSystemBlocks(admin);
+  if (!result.ok) {
+    // A missing source identity is the one refusal an operator can act on: the build is unknown,
+    // so nothing may be recovered against it.
+    return NextResponse.json({ error: result.reason }, { status: 503 });
+  }
+  return NextResponse.json({ recoverable: result.recoverable });
+}
 
 export async function POST(req: NextRequest) {
   const auth = await requirePlatformAdmin(req);

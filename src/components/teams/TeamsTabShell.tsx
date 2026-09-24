@@ -463,6 +463,12 @@ export default function TeamsTabShell() {
         <BtyDailyAppShell
           locale={phase.locale}
           /*
+            THE AUTHORITY ON WHICH RUNTIME THIS IS. Stated here because this component is the one
+            place that KNOWS — it completed the Teams bootstrap that produced the session below it.
+            Nothing downstream has to detect anything.
+          */
+          runtime="teams"
+          /*
             The training the invitation named, as an OCCURRENCE the shell can act on whenever one
             arrives — at mount for a cold open, and on resume for every tap after that. Null for an
             ordinary tab launch, which is every launch that did not come from an invitation.
