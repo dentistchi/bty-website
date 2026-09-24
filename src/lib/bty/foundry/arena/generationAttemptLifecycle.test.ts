@@ -315,6 +315,41 @@ describe("[R5A] every terminal branch finalizes distinctly", () => {
   });
 });
 
+describe("reviewer-terminal diagnostic persistence", () => {
+  it("persists the known non-content boundary diagnostic and the displayed support reference", async () => {
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "boundary_reviewer_terminal_failure",
+      boundaryTerminalDiagnostic: {
+        code: "boundary_repair_parse_failed",
+        stage: "boundary_repair",
+        contractVersion: 1,
+      },
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0]).toMatchObject({
+      outcome: "review_execution_failed",
+      terminal_reason_code: "boundary_reviewer_terminal_failure",
+      terminal_diagnostic_code: "boundary_repair_parse_failed",
+      terminal_diagnostic_stage: "boundary_repair",
+      terminal_diagnostic_contract_version: 1,
+    });
+    expect(attempts[0].support_reference).toMatch(/^[0-9a-f]{12}$/);
+    for (const forbidden of ["prompt_text", "response_text", "scenario_text", "stack_trace", "error_message"]) {
+      expect(attempts[0]).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("does not write a terminal diagnostic for a successful review", async () => {
+    mockGenerate.mockResolvedValue({ ok: true, value: { draft: VALID, warnings: [], source: "ai" } });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].terminal_diagnostic_code).toBeNull();
+    expect(attempts[0].terminal_diagnostic_stage).toBeNull();
+  });
+});
+
 describe("[R5A] a telemetry write failure never becomes another provider call", () => {
   it("a failed finalize preserves the generation result and issues no second request", async () => {
     mockGenerate.mockResolvedValue({ ok: true, value: { draft: VALID, warnings: [], source: "ai" } });

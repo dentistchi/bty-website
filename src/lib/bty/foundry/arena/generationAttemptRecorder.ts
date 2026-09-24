@@ -4,6 +4,8 @@ import type {
   ProviderErrorCategory,
 } from "@/domain/foundry/arena-draft/generationOutcome";
 import type { Attribution } from "@/domain/foundry/arena-draft/generationAttribution";
+import type { BoundaryReviewTerminalDiagnostic } from "@/domain/foundry/arena-draft/boundaryReviewDiagnostics";
+import { supportReference } from "@/domain/foundry/arena-draft/generationOutcome";
 
 /**
  * DURABLE PRACTICE GENERATION ATTEMPT LIFECYCLE (Slice 3.2I-R5B2-R5A).
@@ -65,6 +67,8 @@ export type FinalizeAttemptInput = {
    * as specific as its broad outcome, which is what R5B could not diagnose.
    */
   attribution?: Attribution | null;
+  /** Non-content explanation for the existing boundary reviewer terminal reason. */
+  boundaryTerminalDiagnostic?: BoundaryReviewTerminalDiagnostic | null;
 };
 
 export type StartAttemptResult = { ok: true; attemptId: string } | { ok: false };
@@ -154,6 +158,12 @@ export async function finalizeGenerationAttempt(
         primary_finding_code: input.attribution?.primaryFindingCode ?? null,
         finding_codes: input.attribution?.findingCodes ?? null,
         finding_count: input.attribution ? input.attribution.findingCount : null,
+        terminal_diagnostic_code: input.boundaryTerminalDiagnostic?.code ?? null,
+        terminal_diagnostic_stage: input.boundaryTerminalDiagnostic?.stage ?? null,
+        terminal_diagnostic_contract_version: input.boundaryTerminalDiagnostic?.contractVersion ?? null,
+        // The product shows this deterministic token to the operator. Persisting the same token
+        // makes that report joinable to the attempt without revealing its UUID.
+        support_reference: supportReference(attemptId),
       })
       .eq("id", attemptId)
       .eq("lifecycle_state", "started")

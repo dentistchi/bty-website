@@ -23,6 +23,7 @@ const PG_BIN = PG_BIN_CANDIDATES.find((p) => existsSync(join(p, "initdb")) && ex
 const MIGRATIONS = join(process.cwd(), "supabase/migrations");
 const PARENT = "20260805000000_foundry_practice_generation_attempts_v1.sql";
 const ATTRIBUTION = "20260805010000_foundry_practice_generation_refusal_attribution_v1.sql";
+const DIAGNOSTICS = "20260924161342_practice_generation_reviewer_diagnostics_v1.sql";
 
 /** Short path: a unix socket directory over ~103 bytes is rejected by libpq. */
 let dataDir = "";
@@ -109,15 +110,17 @@ describe.runIf(Boolean(PG_BIN))("[R5C-1R1] the migrations EXECUTE in PostgreSQL"
     freshDatabase();
   }, 60_000);
 
-  it("both migrations apply, each in one transaction", () => {
+  it("all migrations apply, each in one transaction", () => {
     expect(() => applyMigration(PARENT)).not.toThrow();
     // The R5C-1 form threw here: cannot use subquery in check constraint (0A000).
     expect(() => applyMigration(ATTRIBUTION)).not.toThrow();
+    expect(() => applyMigration(DIAGNOSTICS)).not.toThrow();
   });
 
   it("the attribution migration is safe to re-run", () => {
     // Both partial-application states converge: `add column if not exists` plus catalog guards.
     expect(() => applyMigration(ATTRIBUTION)).not.toThrow();
+    expect(() => applyMigration(DIAGNOSTICS)).not.toThrow();
   });
 
   it("no CHECK constraint in the live schema contains a subquery", () => {
@@ -140,6 +143,37 @@ describe.runIf(Boolean(PG_BIN))("[R5C-1R1] the migrations EXECUTE in PostgreSQL"
       DB,
     ).trim();
     expect(cols.split(",").filter(Boolean)).toHaveLength(7);
+  });
+
+  it("accepts only the closed reviewer diagnostic contract and preserves historical NULLs", () => {
+    expect(
+      accepts(
+        insert(
+          ", terminal_diagnostic_code, terminal_diagnostic_stage, terminal_diagnostic_contract_version, support_reference",
+          ", 'boundary_repair_parse_failed', 'boundary_repair', 1, 'c40b37e31b60'",
+        ),
+        DB,
+      ),
+    ).toBe(true);
+    expect(
+      accepts(
+        insert(
+          ", terminal_diagnostic_code, terminal_diagnostic_stage, terminal_diagnostic_contract_version",
+          ", 'not_a_real_diagnostic', 'boundary_repair', 1",
+        ),
+        DB,
+      ),
+    ).toBe(false);
+    expect(
+      accepts(
+        insert(
+          ", terminal_diagnostic_code, terminal_diagnostic_stage, terminal_diagnostic_contract_version",
+          ", 'boundary_repair_parse_failed', 'boundary_repair', 2",
+        ),
+        DB,
+      ),
+    ).toBe(false);
+    expect(accepts(insert("", ""), DB)).toBe(true);
   });
 
   it("RLS stays enabled and no permissive policy exists", () => {

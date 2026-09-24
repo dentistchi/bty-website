@@ -416,7 +416,7 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
         evidenceSource: "structured",
         artifactWriteResult: "pending",
       },
-      providerFailureCode: null,
+    providerFailureCode: null,
     },
   };
 }
@@ -569,6 +569,7 @@ export function mockFieldRepair(
       sanitizedError: null,
       transport,
       providerFailureCode: null,
+      parseFailed: false,
     },
   };
 }

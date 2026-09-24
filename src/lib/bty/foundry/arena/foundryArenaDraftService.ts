@@ -535,6 +535,7 @@ export async function regenerateArenaDraft(
         primaryFindingCode: generated.rejectionPrimaryCode,
         findingCodes: generated.rejectionCodes,
       }),
+      boundaryTerminalDiagnostic: generated.boundaryTerminalDiagnostic ?? null,
       providerHttpStatus: generated.fault?.kind === "http" ? generated.fault.status : null,
       providerErrorCategory:
         generated.fault?.kind === "http"

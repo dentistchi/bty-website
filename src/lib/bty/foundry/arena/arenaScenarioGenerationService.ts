@@ -42,6 +42,7 @@ import {
   runBoundaryReviewStage,
   type BoundaryReviewMetrics,
 } from "./boundaryReviewStage";
+import type { BoundaryReviewTerminalDiagnostic } from "@/domain/foundry/arena-draft/boundaryReviewDiagnostics";
 import { reviewBoundarySurfaces, reviewFieldRepair } from "./narrowBoundaryReviewer";
 import type { CallOutcome } from "@/domain/foundry/arena-draft/generationCallSequence";
 import {
@@ -171,6 +172,8 @@ export type GenerationResult =
       rejectionGate?: string;
       /** The evaluator's own headline code, preserving its ranking. */
       rejectionPrimaryCode?: string;
+      /** Present only when the boundary reviewer reached its existing terminal execution failure. */
+      boundaryTerminalDiagnostic?: BoundaryReviewTerminalDiagnostic;
       reason:
         | "generation_unavailable" // no live model configured
         | "generation_failed" // transport/exception/timeout — no usable content returned
@@ -1915,7 +1918,13 @@ export async function generateArenaScenarioDraft(
         continue;
       }
       if (boundaryStage.outcome === "boundary_review_inconclusive") return { ok: false, reason: "boundary_review_inconclusive" };
-      if (boundaryStage.outcome === "boundary_reviewer_terminal_failure") return { ok: false, reason: "boundary_reviewer_terminal_failure" };
+      if (boundaryStage.outcome === "boundary_reviewer_terminal_failure") {
+        return {
+          ok: false,
+          reason: "boundary_reviewer_terminal_failure",
+          ...(boundaryStage.terminalDiagnostic ? { boundaryTerminalDiagnostic: boundaryStage.terminalDiagnostic } : {}),
+        };
+      }
       if (boundaryStage.outcome === "boundary_review_authority_failure") return { ok: false, reason: "boundary_review_authority_failure" };
 
       let review: ReviewOutcome | null = null;
