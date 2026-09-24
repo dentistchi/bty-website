@@ -88,8 +88,8 @@ describe("G/H/I/J — recovery requires confirmation and names only the failure"
     render(<TeamsPracticeRecoveryOperations locale="en" />);
     fireEvent.click(await screen.findByTestId("teams-recovery-start"));
     await waitFor(() => expect(screen.getByTestId("teams-recovery-confirm")).toBeTruthy());
-    expect(screen.getByTestId("teams-recovery-confirm").textContent).toContain("Allow this practice to try generation again?");
-    expect(screen.getByTestId("teams-recovery-confirm").textContent).toContain("The failed attempt will remain in history.");
+    expect(screen.getByTestId("teams-recovery-confirm").textContent).toContain("Mark this system block as recovered?");
+    expect(screen.getByTestId("teams-recovery-confirm").textContent).toContain("Only continue if the system issue has been verified as repaired.");
     expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
   });
 
@@ -120,12 +120,35 @@ describe("G/H/I/J — recovery requires confirmation and names only the failure"
     expect(body).toEqual({
       draftId: ITEM.draftId,
       blockedAttemptId: ITEM.blockedAttemptId,
-      recoveryReasonCode: "boundary_repair_group_expansion_fixed",
+      recoveryReasonCode: "operator_verified_system_block_repaired",
       fixedInDeploySha: ITEM.currentDeploySha,
     });
     for (const forbidden of ["grantedByUserId", "granted_by_user_id", "ownerId", "email", "token"]) {
       expect(Object.keys(body), forbidden).not.toContain(forbidden);
     }
+  });
+});
+
+describe("actionable build identity and generic copy", () => {
+  it.each([
+    ["missing", null],
+    ["malformed", "nope"],
+    ["same", ITEM.currentDeploySha],
+  ])("does not surface a %s failed build from a defensive client response", async (_label, failedDeploySha) => {
+    mockApi({ lists: [[{ ...ITEM, failedDeploySha }]] });
+    const { container } = render(<TeamsPracticeRecoveryOperations locale="en" />);
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    expect(container.textContent).toBe("");
+  });
+
+  it("uses generic verified-repair wording without claiming the defect was automatically proven", async () => {
+    mockApi({ lists: [[ITEM]] });
+    render(<TeamsPracticeRecoveryOperations locale="en" />);
+    const surface = await screen.findByTestId("teams-recovery-operations");
+    expect(surface.textContent).toContain("A newer BTY build is running.");
+    expect(surface.textContent).not.toContain("The repaired version is ready.");
+    const src = readFileSync(join(process.cwd(), "src/components/app-shell/TeamsPracticeRecoveryOperations.tsx"), "utf8");
+    expect(src).not.toContain("boundary_repair_group_expansion_fixed");
   });
 });
 

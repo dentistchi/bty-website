@@ -86,6 +86,9 @@ export type RecoverableListResult =
   | { ok: true; recoverable: RecoverableSystemBlock[] }
   | { ok: false; reason: "source_identity_unavailable" | "discovery_failed" };
 
+/** Build identity is an authorization fact here, not display text. */
+const LOWER_SHA40 = /^[0-9a-f]{40}$/;
+
 /**
  * WHICH SYSTEM BLOCKS ARE STILL WAITING TO BE ACKNOWLEDGED.
  *
@@ -124,14 +127,22 @@ export async function listRecoverableSystemBlocks(admin: SupabaseClient): Promis
         recoverable_terminal_reason_code?: string | null;
         recoverable_failed_deploy_sha?: string | null;
       };
-      // A row missing either coordinate names nothing an operator could act on.
-      if (!r.recoverable_draft_id || !r.recoverable_attempt_id) return [];
+      // A row missing a coordinate or a usable older build names nothing an operator can act on.
+      // SQL owns system-block membership. This boundary only removes rows which the recovery RPC
+      // would necessarily refuse because no verifiable repaired-build relationship exists.
+      if (
+        !r.recoverable_draft_id ||
+        !r.recoverable_attempt_id ||
+        typeof r.recoverable_failed_deploy_sha !== "string" ||
+        !LOWER_SHA40.test(r.recoverable_failed_deploy_sha) ||
+        r.recoverable_failed_deploy_sha === identity.sourceCommitSha
+      ) return [];
       return [{
         draftId: r.recoverable_draft_id,
         blockedAttemptId: r.recoverable_attempt_id,
         outcome: r.recoverable_outcome ?? null,
         terminalReasonCode: r.recoverable_terminal_reason_code ?? null,
-        failedDeploySha: r.recoverable_failed_deploy_sha ?? null,
+        failedDeploySha: r.recoverable_failed_deploy_sha,
         currentDeploySha: identity.sourceCommitSha,
       }];
     }),

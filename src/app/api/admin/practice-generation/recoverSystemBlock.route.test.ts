@@ -20,7 +20,7 @@ import { GET, POST } from "./recover-system-block/route";
 const BODY = {
   draftId: "af921b9d-19b1-4673-a0ff-9753ecd581b1",
   blockedAttemptId: "29cfe46e-4b13-4c08-a4a2-9f639eb55195",
-  recoveryReasonCode: "boundary_repair_group_expansion_fixed",
+  recoveryReasonCode: "operator_verified_system_block_repaired",
   fixedInDeploySha: "d3329f2f966dccfbd4749a823fc711bff9091734",
 };
 const req = (body: unknown) =>

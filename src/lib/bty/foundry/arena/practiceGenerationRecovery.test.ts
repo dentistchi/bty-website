@@ -24,7 +24,7 @@ const input = (over: Record<string, unknown> = {}) => ({
   draftId: DRAFT,
   blockedAttemptId: ATTEMPT,
   grantedByUserId: "admin-1",
-  recoveryReasonCode: "boundary_repair_group_expansion_fixed",
+  recoveryReasonCode: "operator_verified_system_block_repaired",
   fixedInDeploySha: CURRENT,
   ...over,
 });
@@ -233,6 +233,21 @@ describe("discovery — the set comes from SQL, never from a list in this file",
     const admin = { rpc: async () => ({ data: [row, { ...row, recoverable_attempt_id: null }], error: null }) };
     const r = await listRecoverableSystemBlocks(admin as never);
     expect(r.ok && r.recoverable).toHaveLength(1);
+  });
+
+  it("lists a valid historical SHA that differs from the current runtime", async () => {
+    const admin = { rpc: async () => ({ data: [row], error: null }) };
+    const result = await listRecoverableSystemBlocks(admin as never);
+    expect(result.ok && result.recoverable).toHaveLength(1);
+  });
+
+  it.each([
+    ["null", null],
+    ["malformed", "not-a-sha"],
+    ["same as current", CURRENT],
+  ])("does not offer a block whose failed SHA is %s", async (_label, failedDeploySha) => {
+    const admin = { rpc: async () => ({ data: [{ ...row, recoverable_failed_deploy_sha: failedDeploySha }], error: null }) };
+    expect(await listRecoverableSystemBlocks(admin as never)).toEqual({ ok: true, recoverable: [] });
   });
 
   it("reports a failed read instead of an empty list", async () => {

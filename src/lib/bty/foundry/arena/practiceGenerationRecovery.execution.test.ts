@@ -129,7 +129,7 @@ function admission(draftId: string) {
 function recover(draftId: string, attemptId: string, current = CURRENT_SHA) {
   return q(`select recovery_id || '|' || recovered_attempt_id || '|' || recovered_draft_id || '|' || recovered_at || '|' || already_recovered
     from public.recover_foundry_practice_generation_system_block_v1(
-      '${draftId}', '${attemptId}', '${ADMIN}', 'boundary_repair_group_expansion_fixed', '${current}', '${current}', null
+      '${draftId}', '${attemptId}', '${ADMIN}', 'operator_verified_system_block_repaired', '${current}', '${current}', null
     );`);
 }
 
@@ -137,6 +137,19 @@ describe.runIf(Boolean(PG_BIN))("Practice recovery V1 executes and behaves in di
   it("applies the complete prerequisite chain and recovery migration", () => {
     expect(q("select to_regclass('public.foundry_practice_generation_system_block_recoveries') is not null;")).toBe("t");
     expect(q("select count(*) from pg_proc where proname = 'recover_foundry_practice_generation_system_block_v1';")).toBe("1");
+    expect(q("select count(*) from pg_proc where proname = 'foundry_practice_generation_recoverable_blocks_v1';")).toBe("1");
+  });
+
+  it("the read-only projection includes unrecovered canonical blocks, excludes non-system rows, and removes recovered rows", () => {
+    const recoverableDraft = draft();
+    const recoverableAttempt = completed(recoverableDraft, { system: true });
+    const nonSystemDraft = draft();
+    const nonSystemAttempt = completed(nonSystemDraft);
+    const listed = q("select recoverable_attempt_id from public.foundry_practice_generation_recoverable_blocks_v1() order by recoverable_attempt_id;");
+    expect(listed).toContain(recoverableAttempt);
+    expect(listed).not.toContain(nonSystemAttempt);
+    recover(recoverableDraft, recoverableAttempt);
+    expect(q(`select count(*) from public.foundry_practice_generation_recoverable_blocks_v1() where recoverable_attempt_id = '${recoverableAttempt}';`)).toBe("0");
   });
 
   it("A-C: a recovered system block becomes ready and the admission function admits", () => {

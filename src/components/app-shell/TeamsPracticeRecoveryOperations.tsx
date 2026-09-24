@@ -33,22 +33,29 @@ type Recoverable = {
 };
 
 const ENDPOINT = "/api/admin/practice-generation/recover-system-block";
-/** The one repair this surface acknowledges. Named, never free text from an operator. */
-const RECOVERY_REASON_CODE = "boundary_repair_group_expansion_fixed";
+/** A named operator assertion, never a claim about a particular historical defect. */
+const RECOVERY_REASON_CODE = "operator_verified_system_block_repaired";
+const LOWER_SHA40 = /^[0-9a-f]{40}$/;
+
+function isActionableUnderCurrentBuild(item: Recoverable): boolean {
+  return typeof item.failedDeploySha === "string"
+    && LOWER_SHA40.test(item.failedDeploySha)
+    && item.failedDeploySha !== item.currentDeploySha;
+}
 
 const COPY = {
   en: {
     heading: "Admin operations",
-    lead: "Practice generation stopped because of a system error.",
-    ready: "The repaired version is ready.",
+    lead: "Practice generation was stopped by a system error.",
+    ready: "A newer BTY build is running.",
     recover: "Recover",
     working: "Recovering…",
     details: "Details",
     attempt: "Attempt",
     failedBuild: "Failed build",
     currentBuild: "Current build",
-    confirm: "Allow this practice to try generation again?",
-    confirmNote: "The failed attempt will remain in history.",
+    confirm: "Mark this system block as recovered?",
+    confirmNote: "The failed attempt will remain in history. Only continue if the system issue has been verified as repaired.",
     cancel: "Cancel",
     done: "Recovery complete. Practice is ready.",
     failed: "That could not be completed. Nothing was changed.",
@@ -56,15 +63,15 @@ const COPY = {
   ko: {
     heading: "운영 작업",
     lead: "시스템 오류로 연습 생성이 중단되었습니다.",
-    ready: "복구된 버전이 준비되어 있습니다.",
+    ready: "현재는 더 새로운 BTY 버전이 실행 중입니다.",
     recover: "다시 시도 허용",
     working: "처리 중…",
     details: "상세",
     attempt: "시도",
     failedBuild: "실패한 빌드",
     currentBuild: "현재 빌드",
-    confirm: "이 연습이 생성을 다시 시도하도록 허용할까요?",
-    confirmNote: "실패한 기록은 그대로 남습니다.",
+    confirm: "이 시스템 차단을 복구 처리할까요?",
+    confirmNote: "실패 기록은 그대로 남습니다. 문제가 수정되었음을 확인한 경우에만 진행하세요.",
     cancel: "취소",
     done: "복구했습니다. 연습을 다시 시도할 수 있습니다.",
     failed: "완료하지 못했습니다. 변경된 것은 없습니다.",
@@ -101,7 +108,11 @@ export function TeamsPracticeRecoveryOperations({ locale }: { locale: "en" | "ko
         return;
       }
       const body = (await res.json()) as { recoverable?: Recoverable[] };
-      const next = Array.isArray(body?.recoverable) ? body.recoverable : [];
+      // The server owns this filter. Retain it at the UI boundary too so malformed transport data
+      // can never create a Recover button the POST contract is guaranteed to refuse.
+      const next = Array.isArray(body?.recoverable)
+        ? body.recoverable.filter(isActionableUnderCurrentBuild)
+        : [];
       setItems(next);
       if (next.length > 0) setRevealed(true);
     } catch {
