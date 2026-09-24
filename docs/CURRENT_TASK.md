@@ -1,3 +1,11 @@
+**[DEPLOY-SOURCE-RECOVERY]**: [x] **완료·배포. Worker 가 자기 커밋을 다시 식별함. 제품 로직/DB 변경 0.**
+- **래퍼 타깃을 가정하지 않고 증명:** 이름에 "staging" 이 있으나 `TARGET_WORKER` 는 고정 상수 `bty-arena-staging` 이고 `wrangler.toml` 의 Worker 와 동일, 배포 호출에 **`--env` 플래그 없음** → 현재 BTY 를 서비스하는 **바로 그 Worker**. 별도 환경 없음.
+- 배포: 소스 커밋 **`d2a18a08…`** / Worker **`a04e161d`** (active 100%). `/api/version` **`2026-04-27-api-version-endpoint-v1` → `d2a18a08…`**. `wrangler versions view` 로 **`BTY_SOURCE_COMMIT_SHA` 가 신규 버전에 존재, 직전 `a5c1b80d` 에는 0회** 대조 확인. 값이 40자 소문자 hex 라 `resolveSourceIdentity` 가 **수용**함(단순 존재가 아님).
+- **★ 진짜 위험은 untracked 쪽이었음:** 래퍼는 tracked 변경만 거부하고 **untracked 는 "dirt 아님"으로 명시 허용** → `leadership-mirror` 의 실제 page + API route 2개가 그대로 번들될 뻔함. `--include-untracked` 로 전량 stash 후 빌드, 이후 복원. **아티팩트 증명: 번들 내 'leadership-mirror' 문자열 0개, 라우트 디렉터리 0개, 라이브 `/ko/leadership-mirror` 404.**
+- **E/F 는 주장하지 않음:** `program-draft` 의 identity 검사는 attempt row 생성 + provider 호출 **직전**에 위치해, 거기에 도달하면서 쓰지 않는 probe 가 존재하지 않음. 계약대로 A–D 에서 정지. **Phase 4 의 첫 생성 호출이 최초의 안전한 테스트.**
+- 잔재: `BTY_BUILD_TIME` 은 여전히 구값(래퍼가 두 identity 변수만 교정). 기록만 하고 임의 수정하지 않음.
+- **제품 쓰기 0:** 드래프트 `411a98c6`(approved·고착) / `7118a34a`(draft·재개가능) 불변, 이벤트 0 · practice 0 · run 0 · membership 0 · Core XP 10.
+
 **[PRACTICE-FIRST-CONTENT-P3]**: [~] **STOPPED — 환경 전제 미충족. 훈련/실습 발행 0건. 코드 변경 0 · SQL 0 · 배포 0.**
 - §0 전제 전부 일치 후 착수(A 소유 이벤트 0 · A 모듈 드래프트 0 · 발행 practice 0 · practice run 0 · membership request 0 · arena_runs 0 · weekly_xp 0 · **A core_xp_total = 10** 기준선).
 - **★ 차단 원인: 라이브 Worker 가 자기 빌드를 식별하지 못함.** 프로그램 저작은 `POST /modules/[id]/program-draft` → **503 `source_identity_unavailable`**. 원인은 `BTY_SOURCE_COMMIT_SHA` 환경변수 부재. 이 변수는 전용 래퍼 `scripts/deploy-bty-arena-staging-with-source.mjs` 만 주입하고 `npm run deploy` 는 주입하지 않음. **practice 시나리오 생성도 동일 전제**(`foundryArenaDraftService.ts:397` → `generation_observability_unavailable`). 즉 **훈련 발행도 실습 생성도 배포 없이는 불가**하며, 배포는 Phase 3 가 명시적으로 금지.
