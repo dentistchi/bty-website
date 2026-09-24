@@ -1,3 +1,14 @@
+**[PRACTICE-FIRST-CONTENT-P4B]**: [~] **Training 완주 + 수료까지 완료, Practice 는 draft-level 시스템 차단으로 정지. 코드 0 · SQL 0 · 빌드 0 · 배포 0.**
+- 1–8 은 직전 턴에 이미 완료(그래서 draft `7118a34a` 는 지금 `published`). 이번 턴은 9–18 을 라이브로 실행.
+- **§11 누락 단계 발견·수행:** boundary **scope**(활성 규칙 선택)를 하지 않았었음 → `PUT /boundary-scope` 로 **2개 제약 모두 활성** 확정. revision 1→2, **generation_input_revision 2→3**(새 epoch). 제약은 하나도 약화하지 않음.
+- **§10 재시도 결과 = 여전히 차단.** 새 epoch 3 에서도 `POST /regenerate` → **503 `generation_system_blocked`**, `canStartGeneration:false`.
+- **★ 차단의 정확한 정체(마이그레이션에서 확인):** `foundry_practice_generation_is_system_block_v1(outcome, terminal_reason_code)` 가 `terminal_reason_code IN ('semantic_reviewer_terminal_failure','boundary_reviewer_terminal_failure') OR outcome='review_execution_failed'` 일 때 true. admission RPC 는 이 조건을 **draft_id 전체의 completed attempt** 에 대해 평가 — **epoch-scoped 가 아니라 draft-scoped**. 그래서 입력을 바꿔도 절대 해제되지 않음(제품 문구가 "Review setup is NOT offered as the cure" 라고 경고한 그대로).
+- **우회 불가도 실증:** `/arena-drafts` 재호출 → **HTTP 200 `opened:true`, 동일 id `af921b9d`** (one-shell unique invariant). `/arena-drafts/[id]` 에 **DELETE 없음**(GET·PATCH 뿐). 따라서 이 Training 의 Practice 는 코드 수정이나 데이터 레벨 해제 없이는 생성 불가.
+- **★ §13/§14 수료 증명 완료(정상 learner flow):** join(display_name) → declare → complete. **`xp_status: "owner_ineligible"`**, `stage: completed_claimable`. DB 실측: progress `f32c068f`, **`linked_user_id` = Founder A ✓**, `completed_at` 2026-09-24T08:12:45-07:00 ✓, **`xp_awarded_at` null ✓**, decision 응답 저장됨. **A core_xp_total 10 불변**, ledger 1행(기존 `5b061807` 그대로, 신규 적립 없음).
+- **Road C 전제 확보:** A 가 수료한 source event = `6effb704`(구 테스트) + **`3a7e1254`(신규)**. Practice 가 발행되는 순간 Road C 로 즉시 발견됨.
+- **§18 부작용 0:** membership 0 · arena_runs 0 · weekly_xp 0 · practice runs 0 · published practices 0 · Worker `a04e161d` 불변 · 소스 변경 0.
+- 학습자 응답 2건은 내가 A 로서 작성(지시가 내용을 주지 않았음) — 교육 자료에 근거한 정직한 문장이며 정책을 창작하지 않음.
+
 **[PRACTICE-FIRST-CONTENT-P4]**: [~] **부분 성공 — 첫 실제 Training 발행 완료, Practice 는 제품의 governance 거부로 정지. 코드 0 · SQL 0 · 배포 0.**
 - **★ 최초의 A 소유 실제 Training 발행:** event **`3a7e1254-c138-4ec2-a72d-9750083b91dd`** "Opening the Office Safely", `owner_user_id` = Founder A ✓, `content_type=written_guidance`, 불변 `foundry_event_module` snapshot(v1, source_draft `7118a34a`) 생성, join URL 발급. **스냅샷에 최상위 grounding 사실 전부 존재**(`problem`·`observableBehavior`·`successEvidence`·`audienceType`) — Phase 2 가 예측한 대로이며 구 테스트 이벤트에는 없던 것.
 - **§2 첫 생성 테스트 = 성공.** `POST /program-draft` → **HTTP 200**, `source_identity_unavailable` **아님**. attempt `c5d6860e`, `program_authorship_v25`, 8개 required kind 전부 생성. **Phase 3 차단 원인은 확실히 해소됨.**
