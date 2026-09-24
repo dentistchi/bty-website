@@ -1,3 +1,10 @@
+**[MEMBERSHIPS-M5-HARDENED]**: [~] **사전조건 강화 완료·미적용(Founder 최종 검토 대기).**
+- 전제 재측정: 프로덕션 읽기/쓰기/인가 참조 0, region·office RLS 의존 0(M4 파일의 `create policy` 2건은 롤백 **주석**). 가드 2종과 M5 파일은 **직전 턴(`73c829ae`)에서 이미 처리** — 미지의 drift 가 아니라 본 지시의 선행 슬라이스이므로 STOP 대신 더 엄격해진 요구사항 대조로 진행.
+- 보강 3건: (1) 타 테이블 정책 의존을 **카탈로그 근거**로 증명 — `pg_depend`×`pg_policy` (`classid='pg_policy'`, `refobjid=public.memberships`, `polrelid`로 자기 정책 제외). oid 기반이라 `bty_org_memberships`·`league_memberships`·`arena_membership_requests` 와 구조적으로 혼동 불가. 토큰 인식 텍스트 검사(`\m…\M`)는 2차 확인으로 유지(naive `%memberships%` 아님). (2) 잔존 정책은 이름뿐 아니라 **`cmd='SELECT'`** 까지 요구. (3) 인바운드 FK만 본다는 점(`confrelid` vs `conrelid`)을 주석·단언으로 고정 — memberships→regions 아웃바운드 FK 를 오인해 안전한 드롭을 거부하지 않도록.
+- 사전조건 거부 지점 **8개**, 각각 발견한 대상을 이름과 함께 raise.
+- 테스트 13 → **17**, 그리고 *탐지력 증명*: CASCADE 주입 시 2개 실패, `drop type membership_role` 주입 시 1개 실패, `drop table office_assignments` 주입 시 3개 실패. enum 3종·이웃 테이블 6종을 개별 이름으로 단언.
+- 검증: tsc 클린 · 전체 baseline 18실패/9파일 불변 · terminology 44 = baseline. **SQL 미실행·CLI push 없음·프로덕션 무변경.**
+
 **[MEMBERSHIPS-M5]**: [~] **작성 완료·게이트 그린·미적용(Founder 최종 검토 대기).** 레거시 `public.memberships` 최종 DROP 마이그레이션 작성.
 - 파일: `20260924000000_drop_legacy_memberships_v1.sql`. 문장 2개 — (1) **fail-closed 사전조건 DO 블록**, (2) `drop table public.memberships` (**CASCADE 없음**).
 - 사전조건 6종(각각 별도 raise): 테이블 존재 · 행 수 정확히 1 · 인바운드 FK 0 · 타 테이블 정책의 memberships 참조 0 · 자기 정책이 정확히 1개이고 이름이 `memberships_select_own` · 의존 뷰/머티리얼라이즈드 뷰 0. 생성된 row id 하드코딩 없음(맞아서 통과하는 마이그레이션은 잘못된 이유로 통과하는 것).
