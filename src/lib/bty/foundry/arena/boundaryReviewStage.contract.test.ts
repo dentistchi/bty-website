@@ -303,6 +303,16 @@ describe("[21][22] rerun authority in the stage", () => {
     expect(review).toHaveBeenCalledTimes(2);
     expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
     expect(r.broadReviewAllowed).toBe(false);
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_review_validation_failed", stage: "boundary_review", contractVersion: 1 });
+  });
+
+  it("records parse failure separately from structural validation after the second unusable response", async () => {
+    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) =>
+      call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_not_json"], findings: [], failureClass: "output_contract", validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] }),
+    );
+    const r = await runBoundaryReviewStage(deps(review), args());
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_review_parse_failed", stage: "boundary_review", contractVersion: 1 });
   });
 
   it("a transport failure is terminal and never a scenario verdict", async () => {
@@ -441,6 +451,72 @@ describe("[R2.52] a failed subset routes to the PATCH authority, never a second 
     expect(r.violations).toEqual([]);
     expect(r.causalAttributions).toEqual([]);
     expect(r.findings).toEqual([]);
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_repair_dependency_unavailable", stage: "boundary_repair", contractVersion: 1 });
+  });
+
+  it("records a repair parse failure without retaining its response", async () => {
+    const r = await runBoundaryReviewStage(
+      deps(
+        async (subject, attempt) => {
+          const rows = R240_LIVE_ATTEMPT_1;
+          return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, ctxFor(subject)) });
+        },
+        async (subject, plan, attempt) => ({
+          kind: "patch" as const,
+          raw: null,
+          evidence: {
+            boundaryReviewAttempt: attempt,
+            boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+            repairPlanSha256: plan.planSha256,
+            requiredOperationCount: plan.requiredOperationCount,
+            request: null,
+            parsed: null,
+            finishReason: "stop",
+            latencyMs: 1,
+            sanitizedError: "repair response was not JSON",
+            transport: emptyTransportEvidence("test-repair"),
+            providerFailureCode: null,
+            parseFailed: true,
+          },
+        }),
+      ),
+      args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
+    );
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_repair_parse_failed", stage: "boundary_repair", contractVersion: 1 });
+    expect(r.fieldRepairEvidence).not.toHaveProperty("raw");
+  });
+
+  it("records a repair validation failure separately from repair parsing", async () => {
+    const r = await runBoundaryReviewStage(
+      deps(
+        async (subject, attempt) => {
+          const rows = R240_LIVE_ATTEMPT_1;
+          return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, ctxFor(subject)) });
+        },
+        async (subject, plan, attempt) => ({
+          kind: "patch" as const,
+          raw: { repairs: [], groupSelections: [] },
+          evidence: {
+            boundaryReviewAttempt: attempt,
+            boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+            repairPlanSha256: plan.planSha256,
+            requiredOperationCount: plan.requiredOperationCount,
+            request: null,
+            parsed: { repairs: [], groupSelections: [] },
+            finishReason: "stop",
+            latencyMs: 1,
+            sanitizedError: null,
+            transport: emptyTransportEvidence("test-repair-validation"),
+            providerFailureCode: null,
+            parseFailed: false,
+          },
+        }),
+      ),
+      args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
+    );
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_repair_validation_failed", stage: "boundary_repair", contractVersion: 1 });
   });
 });
 
@@ -502,6 +578,7 @@ describe("[R2.32] reason parity, explanations and the output-contract subcode", 
     // The terminal CLASS is preserved; the precise SUBCODE travels with it.
     expect(r.outputContractFailure).toBe(true);
     expect(r.codes).toContain("boundary_output_contract_failure");
+    expect(r.terminalDiagnostic).toEqual({ code: "boundary_review_validation_failed", stage: "boundary_review", contractVersion: 1 });
     expect(r.evidences.every((e) => e.verdict.outcome === "boundary_review_malformed" && e.verdict.failureClass === "output_contract")).toBe(true);
   });
 
@@ -534,6 +611,7 @@ describe("[R2.32] reason parity, explanations and the output-contract subcode", 
       responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, governedActionEvidence: "invented text nobody wrote" } : x)));
     const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, ungrounded(s))), args());
     expect(r.outputContractFailure).toBe(false);
+    expect(r.terminalDiagnostic).toBeNull();
     expect(r.codes).not.toContain("boundary_output_contract_failure");
   });
 });

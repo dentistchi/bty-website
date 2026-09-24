@@ -15,6 +15,10 @@
  */
 
 import type { Finding } from "@/domain/foundry/arena-draft/gatePrecedence";
+import {
+  boundaryReviewDiagnostic,
+  type BoundaryReviewTerminalDiagnostic,
+} from "@/domain/foundry/arena-draft/boundaryReviewDiagnostics";
 // R2.46 — causal correction ownership. Additive: the derived rows are already final.
 import {
   summarizeCausalAttribution,
@@ -93,6 +97,8 @@ export { BOUNDARY_STAGE_OUTCOMES, type BoundaryStageOutcome } from "@/domain/fou
 
 export type BoundaryStageResult = {
   outcome: StageOutcome;
+  /** Non-content evidence for a terminal reviewer failure. Null for every other outcome. */
+  terminalDiagnostic: BoundaryReviewTerminalDiagnostic | null;
   /** Every narrow call made, in order. Empty when the stage never reached the provider. */
   evidences: NarrowBoundaryEvidence[];
   subject: NarrowBoundarySubject | null;
@@ -318,6 +324,7 @@ export function projectCausalFindings(
 
 const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult => ({
   outcome,
+  terminalDiagnostic: null,
   evidences: [],
   subject: null,
   boundaryReviewSubjectSha256: null,
@@ -575,6 +582,7 @@ export async function runBoundaryReviewStage(
           fieldRepairMetrics,
           fieldRepairCodes,
           fieldRepairObservability: fieldRepairObservation,
+          terminalDiagnostic: boundaryReviewDiagnostic("boundary_repair_dependency_unavailable", "boundary_repair"),
         };
       }
       repairMode = "field_patch";
@@ -850,6 +858,16 @@ export async function runBoundaryReviewStage(
         ...base,
         outcome: "boundary_reviewer_terminal_failure",
         codes: subcode ? [subcode] : [],
+        terminalDiagnostic:
+          repairMode === "field_patch"
+            ? fieldRepairEvidence && typeof fieldRepairEvidence === "object" && "parseFailed" in fieldRepairEvidence && fieldRepairEvidence.parseFailed === true
+              ? boundaryReviewDiagnostic("boundary_repair_parse_failed", "boundary_repair")
+              : fieldRepairMetrics.fieldRepairMergedRowInvalidCount > 0
+                ? boundaryReviewDiagnostic("boundary_repair_normalization_failed", "boundary_repair")
+                : boundaryReviewDiagnostic("boundary_repair_validation_failed", "boundary_repair")
+            : effective.outcome === "boundary_review_malformed" && (effective.codes.includes("boundary_review_not_json") || effective.codes.includes("boundary_review_truncated"))
+              ? boundaryReviewDiagnostic("boundary_review_parse_failed", "boundary_review")
+              : boundaryReviewDiagnostic("boundary_review_validation_failed", "boundary_review"),
         reruns,
       };
     }
@@ -891,6 +909,7 @@ export async function runBoundaryReviewStage(
     surfaceMapSha256: mapSha,
     calls: evidences.length,
     reruns,
+    terminalDiagnostic: boundaryReviewDiagnostic("boundary_review_budget_exhausted", "boundary_review"),
   };
 }
 

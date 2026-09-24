@@ -414,6 +414,8 @@ export type FieldRepairEvidence = {
   sanitizedError: string | null;
   transport: BoundaryTransportEvidence;
   providerFailureCode: string | null;
+  /** True only when a provider response arrived but could not be parsed as JSON. */
+  parseFailed: boolean;
 };
 
 /**
@@ -466,7 +468,13 @@ async function reviewFieldRepairCall(
   const transport = emptyTransportEvidence(`${subjectSha.slice(0, 12)}#repair${attempt}`);
   transport.requestConstructed = true;
 
-  const evidence = (parsed: unknown, finishReason: string | null, sanitizedError: string | null, providerFailureCode: string | null): FieldRepairEvidence => ({
+  const evidence = (
+    parsed: unknown,
+    finishReason: string | null,
+    sanitizedError: string | null,
+    providerFailureCode: string | null,
+    parseFailed = false,
+  ): FieldRepairEvidence => ({
     boundaryReviewAttempt: attempt,
     boundaryReviewSubjectSha256: subjectSha,
     repairPlanSha256: plan.planSha256,
@@ -478,6 +486,7 @@ async function reviewFieldRepairCall(
     sanitizedError,
     transport,
     providerFailureCode,
+    parseFailed,
   });
 
   if (!client) {
@@ -540,7 +549,7 @@ async function reviewFieldRepairCall(
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
       await settle("malformed_output");
-      return { kind: "patch", raw: null, evidence: evidence(null, finishReason, "repair response was not JSON", null) };
+      return { kind: "patch", raw: null, evidence: evidence(null, finishReason, "repair response was not JSON", null, true) };
     }
     // The repair call delivered its structured patch. Whether a later gate accepts that patch is a
     // product decision recorded on the parent; this call stays `success` either way.
