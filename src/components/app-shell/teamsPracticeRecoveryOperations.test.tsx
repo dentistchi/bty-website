@@ -28,14 +28,20 @@ type Call = { url: string; method: string; body: unknown };
 let calls: Call[] = [];
 
 /** `get` may be a list, a status, or a sequence of lists for the refresh case. */
-function mockApi(get: { status?: number; lists?: unknown[][] }, postOk = true) {
+const READY_RESPONSE = { ok: true, governanceState: "ready", canStartGeneration: true };
+
+function mockApi(
+  get: { status?: number; lists?: unknown[][] },
+  post: { httpOk?: boolean; body?: unknown } = {},
+) {
   let n = 0;
   // @ts-expect-error test shim
   global.fetch = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
     const method = init?.method ?? "GET";
     calls.push({ url: String(url), method, body: init?.body ? JSON.parse(init.body) : null });
     if (method === "POST") {
-      return { ok: postOk, status: postOk ? 200 : 409, json: async () => ({ ok: postOk }) };
+      const httpOk = post.httpOk ?? true;
+      return { ok: httpOk, status: httpOk ? 200 : 409, json: async () => post.body ?? READY_RESPONSE };
     }
     if (get.status && get.status !== 200) {
       return { ok: false, status: get.status, json: async () => ({ error: "x" }) };
@@ -153,7 +159,7 @@ describe("actionable build identity and generic copy", () => {
 });
 
 describe("K/L — success recovers, and does not generate", () => {
-  it("L — refreshes once and the item disappears", async () => {
+  it("A — a ready recovery says Practice is ready and refreshes once", async () => {
     mockApi({ lists: [[ITEM], []] });
     render(<TeamsPracticeRecoveryOperations locale="en" />);
     fireEvent.click(await screen.findByTestId("teams-recovery-start"));
@@ -163,8 +169,40 @@ describe("K/L — success recovers, and does not generate", () => {
     expect(calls.filter((c) => c.method === "GET")).toHaveLength(2);
   });
 
-  it("K — no generation, admission or navigation is triggered", async () => {
-    mockApi({ lists: [[ITEM], []] });
+  it("B — a durable but non-ready recovery is recorded without claiming readiness", async () => {
+    mockApi({ lists: [[ITEM], []] }, { body: { ok: true, governanceState: "revision_required", canStartGeneration: false } });
+    render(<TeamsPracticeRecoveryOperations locale="en" />);
+    fireEvent.click(await screen.findByTestId("teams-recovery-start"));
+    fireEvent.click(await screen.findByTestId("teams-recovery-confirm-cta"));
+    await waitFor(() => expect(screen.getByTestId("teams-recovery-note").textContent).toContain("Recovery recorded."));
+    expect(screen.getByTestId("teams-recovery-note").textContent).not.toContain("Practice is ready.");
+    expect(calls.filter((c) => c.method === "GET")).toHaveLength(2);
+  });
+
+  it("C — an unknown governance read is recorded without claiming readiness", async () => {
+    mockApi({ lists: [[ITEM], []] }, { body: { ok: true, governanceState: null, canStartGeneration: null } });
+    render(<TeamsPracticeRecoveryOperations locale="en" />);
+    fireEvent.click(await screen.findByTestId("teams-recovery-start"));
+    fireEvent.click(await screen.findByTestId("teams-recovery-confirm-cta"));
+    await waitFor(() => expect(screen.getByTestId("teams-recovery-note").textContent).toContain("Recovery recorded."));
+    expect(calls.filter((c) => c.method === "GET")).toHaveLength(2);
+  });
+
+  it("D — HTTP success without ok: true is treated as a failure and does not refresh", async () => {
+    mockApi({ lists: [[ITEM]] }, { body: { ok: false } });
+    render(<TeamsPracticeRecoveryOperations locale="en" />);
+    fireEvent.click(await screen.findByTestId("teams-recovery-start"));
+    fireEvent.click(await screen.findByTestId("teams-recovery-confirm-cta"));
+    await waitFor(() => expect(screen.getByTestId("teams-recovery-note").textContent).toContain("Nothing was changed."));
+    expect(calls.filter((c) => c.method === "GET")).toHaveLength(1);
+    expect(screen.getByTestId("teams-recovery-item")).toBeTruthy();
+  });
+
+  it.each([
+    ["ready", READY_RESPONSE],
+    ["recorded", { ok: true, governanceState: null, canStartGeneration: null }],
+  ])("K — %s recovery starts no generation, admission or navigation", async (_caseName, body) => {
+    mockApi({ lists: [[ITEM], []] }, { body });
     render(<TeamsPracticeRecoveryOperations locale="en" />);
     fireEvent.click(await screen.findByTestId("teams-recovery-start"));
     fireEvent.click(await screen.findByTestId("teams-recovery-confirm-cta"));
@@ -181,7 +219,7 @@ describe("K/L — success recovers, and does not generate", () => {
   });
 
   it("a refused POST changes nothing and says so once", async () => {
-    mockApi({ lists: [[ITEM]] }, false);
+    mockApi({ lists: [[ITEM]] }, { httpOk: false });
     render(<TeamsPracticeRecoveryOperations locale="en" />);
     fireEvent.click(await screen.findByTestId("teams-recovery-start"));
     fireEvent.click(await screen.findByTestId("teams-recovery-confirm-cta"));

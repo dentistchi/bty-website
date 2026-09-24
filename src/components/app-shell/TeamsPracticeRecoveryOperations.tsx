@@ -58,6 +58,7 @@ const COPY = {
     confirmNote: "The failed attempt will remain in history. Only continue if the system issue has been verified as repaired.",
     cancel: "Cancel",
     done: "Recovery complete. Practice is ready.",
+    recorded: "Recovery recorded.",
     failed: "That could not be completed. Nothing was changed.",
   },
   ko: {
@@ -74,6 +75,7 @@ const COPY = {
     confirmNote: "실패 기록은 그대로 남습니다. 문제가 수정되었음을 확인한 경우에만 진행하세요.",
     cancel: "취소",
     done: "복구했습니다. 연습을 다시 시도할 수 있습니다.",
+    recorded: "복구 기록을 남겼습니다.",
     failed: "완료하지 못했습니다. 변경된 것은 없습니다.",
   },
 } as const;
@@ -155,7 +157,18 @@ export function TeamsPracticeRecoveryOperations({ locale }: { locale: "en" | "ko
         setNote(t.failed);
         return;
       }
-      setNote(t.done);
+      const body = (await res.json().catch(() => null)) as {
+        ok?: unknown;
+        governanceState?: unknown;
+        canStartGeneration?: unknown;
+      } | null;
+      // A 2xx only says the transport succeeded. Recovery is acknowledged as ready only when the
+      // server's additive governance read positively proves it; unknown is deliberately not ready.
+      if (body?.ok !== true) {
+        setNote(t.failed);
+        return;
+      }
+      setNote(body.governanceState === "ready" && body.canStartGeneration === true ? t.done : t.recorded);
       setPending(null);
       // Re-read once: the recovered item disappears because the server no longer lists it.
       await load();
@@ -164,7 +177,7 @@ export function TeamsPracticeRecoveryOperations({ locale }: { locale: "en" | "ko
     } finally {
       setBusy(false);
     }
-  }, [pending, busy, load, t.done, t.failed]);
+  }, [pending, busy, load, t.done, t.recorded, t.failed]);
 
   // Nothing to operate on, or not an operator: the section does not exist.
   if (!items || items.length === 0) {
