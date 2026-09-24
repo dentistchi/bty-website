@@ -72,6 +72,11 @@ export type GroupShapeCode = (typeof GROUP_SHAPE_CODES)[number]
 export interface CanonicalGroupAlternative {
   alternativeId: string
   stateId: string
+  /** The governed-action status this canonical state fixes. */
+  governedActionStatus: string
+  governedActionCandidateRequirement: TruthStateRule["governedActionCandidate"]
+  /** Surface-local governed-action ids, plus the sentinel when not required. */
+  governedActionCandidateDomain: string[]
   /** The one prerequisite status this alternative fixes. */
   prerequisiteStatus: string
   /** Every temporal relation the state permits. A domain, not a single value. */
@@ -88,7 +93,7 @@ export interface CanonicalGroupAlternative {
 export interface GroupAlternativeInput {
   boundaryId: string
   surfaceRef: string
-  /** FROZEN. The governed-action axis is outside the prerequisite closure. */
+  /** Frozen only while the group does not repair the governed-action axis. */
   governedActionStatus: string
   groupFields: string[]
   ruleKind: string
@@ -125,7 +130,7 @@ function domainFor(requirement: TruthStateRule["satisfactionCandidate"], pool: s
  * Generate every alternative this surface can actually support.
  *
  * A state is offered only when ALL of these hold:
- *   - it shares the frozen governed-action status;
+ *   - it shares the frozen governed-action status unless that axis is in this group;
  *   - the (status, temporal) pair round-trips through `classifyTruthState`
  *     under this boundary's rule kind, so a prohibition-only state is never
  *     offered for a prerequisite rule;
@@ -135,17 +140,20 @@ function domainFor(requirement: TruthStateRule["satisfactionCandidate"], pool: s
 export function deriveGroupAlternatives(input: GroupAlternativeInput): CanonicalGroupAlternative[] {
   const { boundaryId, surfaceRef, governedActionStatus, groupFields, ruleKind, candidates } = input
   const reasonInGroup = groupFields.includes("reason")
+  const governedActionInGroup = groupFields.includes("governedActionStatus")
+  const governedPool = poolFor(candidates, boundaryId, surfaceRef, "governed_action")
   const satPool = poolFor(candidates, boundaryId, surfaceRef, "prerequisite_satisfaction")
   const failPool = poolFor(candidates, boundaryId, surfaceRef, "prerequisite_failure")
 
   const out: CanonicalGroupAlternative[] = []
 
   for (const state of TRUTH_STATES) {
-    if (state.governedActionStatus !== governedActionStatus) continue
+    if (!governedActionInGroup && state.governedActionStatus !== governedActionStatus) continue
 
     // A state that REQUIRES evidence the server never offered cannot be
     // answered here. This is R2.48's empty-pool authority, applied before the
     // model is asked rather than after it answers.
+    if (state.governedActionCandidate === "required" && governedPool.length === 0) continue
     if (state.satisfactionCandidate === "required" && satPool.length === 0) continue
     if (state.failureCandidate === "required" && failPool.length === 0) continue
 
@@ -159,7 +167,7 @@ export function deriveGroupAlternatives(input: GroupAlternativeInput): Canonical
       // classify back to THIS state under THIS rule kind.
       const temporalDomain = state.temporalRelation.filter((temporalRelation) => {
         const resolved = classifyTruthState(
-          { governedActionStatus, prerequisiteStatus, temporalRelation } as never,
+          { governedActionStatus: state.governedActionStatus, prerequisiteStatus, temporalRelation } as never,
           ruleKind,
         )
         return resolved !== null && resolved.id === state.id
@@ -169,6 +177,9 @@ export function deriveGroupAlternatives(input: GroupAlternativeInput): Canonical
       out.push({
         alternativeId: digest([GROUP_ALTERNATIVES_VERSION, surfaceRef, state.id, prerequisiteStatus]).slice(0, 16),
         stateId: state.id,
+        governedActionStatus: state.governedActionStatus,
+        governedActionCandidateRequirement: state.governedActionCandidate,
+        governedActionCandidateDomain: domainFor(state.governedActionCandidate, governedPool),
         prerequisiteStatus,
         temporalDomain,
         satisfactionCandidateRequirement: state.satisfactionCandidate,
@@ -188,6 +199,9 @@ export const groupAlternativesSha256 = (alternatives: readonly CanonicalGroupAlt
 
 /** What the model supplied for one complete group. */
 export interface GroupSelection {
+  /** Internal validation may bind these when the group repairs the governed-action axis. */
+  governedActionStatus?: string
+  governedActionCandidateId?: string
   prerequisiteStatus: string
   temporalRelation: string
   prerequisiteSatisfactionCandidateId: string
@@ -236,6 +250,8 @@ export function matchGroupAlternative(
   // Candidate and temporal compatibility first: those identify the alternative.
   const shapeMatches = alternatives.filter(
     (alt) =>
+      (selection.governedActionStatus === undefined || alt.governedActionStatus === selection.governedActionStatus) &&
+      (selection.governedActionCandidateId === undefined || alt.governedActionCandidateDomain.includes(selection.governedActionCandidateId)) &&
       alt.prerequisiteStatus === selection.prerequisiteStatus &&
       alt.temporalDomain.includes(selection.temporalRelation) &&
       alt.satisfactionCandidateDomain.includes(selection.prerequisiteSatisfactionCandidateId) &&

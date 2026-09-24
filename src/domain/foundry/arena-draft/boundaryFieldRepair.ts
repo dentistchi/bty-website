@@ -567,6 +567,13 @@ export function expandGroupAlternative(
   const out: Record<string, string> = {};
   for (const field of fields) {
     switch (field) {
+      case "governedActionStatus":
+        out[field] = alt.governedActionStatus;
+        break;
+      case "governedActionCandidateId":
+        // This axis is owned by the alternative's governed-action domain, never the prerequisite-failure domain.
+        out[field] = alt.governedActionCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.governedActionCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE);
+        break;
       case "prerequisiteStatus":
         out[field] = alt.prerequisiteStatus;
         break;
@@ -586,11 +593,15 @@ export function expandGroupAlternative(
         out[field] = reason;
         break;
       default:
-        // A grouped field the canonical alternative does not describe. Fail closed.
-        return null;
+        // Compile-time vocabulary guard: adding a repairable field must add its expansion here.
+        return assertNeverRepairableField(field);
     }
   }
   return out;
+}
+
+function assertNeverRepairableField(field: never): never {
+  throw new Error(`unsupported repairable boundary field: ${String(field)}`);
 }
 
 /**
@@ -736,6 +747,8 @@ export function validateFieldRepairResponse(
 
     // The EXISTING reason contract, unchanged, applied to the alternative the provider named.
     const match = matchGroupAlternative([alt], {
+      governedActionStatus: alt.governedActionStatus,
+      governedActionCandidateId: alt.governedActionCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.governedActionCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE),
       prerequisiteStatus: alt.prerequisiteStatus,
       temporalRelation: alt.temporalDomain[0] ?? "",
       prerequisiteSatisfactionCandidateId: alt.satisfactionCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.satisfactionCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE),
