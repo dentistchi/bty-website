@@ -103,7 +103,7 @@ function mockFetch(over: { oneDraft?: unknown[]; boundary?: () => Response; rege
       return over.boundary ? over.boundary() : jsonRes({ draft: confirmed(["x"], 1), invalidated: false, governance: READY_GOVERNANCE });
     if (u.endsWith("/regenerate")) return over.regenerate ? over.regenerate() : jsonRes({ draft: { ...SHELL, revision: 2, scenario_draft: SCENARIO }, warnings: [] });
     if (u.endsWith("/publish")) return jsonRes({ practice: null });
-    if (u.match(/\/arena-drafts\/[^/?]+$/))
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/))
       // R5C-4B-R1 — the GET now carries the server's governance, and the Create action fails closed
       // without it. A fresh shell has no refusals, so these fixtures are `ready`.
       return jsonRes({ draft: drafts.length > 1 ? drafts.shift() : drafts[0], governance: READY_GOVERNANCE });
@@ -225,7 +225,8 @@ describe("[R5B2] the server is the authority on the saved boundary", () => {
     expect(screen.getByRole("button", { name: t.boundaryConfirmCta })).toBeTruthy();
     // Exactly one write was attempted; the refusal did not become a retry loop.
     expect(boundaryCalls()).toHaveLength(1);
-    // The re-read armed the next attempt with the revision the server now holds.
+    // The re-read keeps the active locale, then arms the next attempt with the canonical revision.
+    expect(calls.some((call) => call.url === "/api/bty/foundry/arena-drafts/shell-1?locale=en")).toBe(true);
     await waitFor(() => {
       fireEvent.click(screen.getByRole("button", { name: t.boundaryConfirmCta }));
       expect(boundaryCalls()[1]?.body.expectedRevision).toBe(7);

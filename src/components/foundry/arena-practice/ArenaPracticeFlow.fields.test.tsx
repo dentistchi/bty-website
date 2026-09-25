@@ -87,7 +87,7 @@ function mockFetch() {
     if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
     if (u.endsWith("/publish")) return jsonRes({ practice: null });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes({ draft: DRAFT });
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes({ draft: DRAFT });
     throw new Error(`unmocked fetch: ${u}`);
   });
 }
