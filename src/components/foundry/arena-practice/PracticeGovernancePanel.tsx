@@ -76,11 +76,10 @@ export function PracticeGovernancePanel({
         <span aria-hidden="true" className="mt-0.5 shrink-0 text-[0.95rem] leading-6 text-[#C9A66B]">
           {blocked ? "■" : "▲"}
         </span>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <h3 className="text-[0.98rem] font-medium leading-6 text-white/90">{title}</h3>
-          <p className="whitespace-pre-line break-words text-[0.9rem] leading-6 text-white/65">{body}</p>
-        </div>
+        <h3 className="min-w-0 text-[0.98rem] font-medium leading-6 text-white/90">{title}</h3>
       </div>
+
+      <p className="whitespace-pre-line break-words text-[0.9rem] leading-6 text-white/65">{body}</p>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         {view.primary === "review_setup" ? (

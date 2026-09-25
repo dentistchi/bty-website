@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
-import { regenerateArenaDraft, toClientArenaDraft } from "@/lib/bty/foundry/arena/foundryArenaDraftService";
+import { readGenerationGovernance, regenerateArenaDraft, toClientArenaDraft } from "@/lib/bty/foundry/arena/foundryArenaDraftService";
 import { PRACTICE_SAMPLING } from "@/lib/bty/foundry/arena/arenaScenarioGenerationService";
 import { isUpstreamFailure, retriabilityOf, type GenerationProductCode } from "@/domain/foundry/arena-draft/generationOutcome";
 
@@ -108,6 +108,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
   if (!result.ok) {
     const code = (result.outcome ?? result.reason) as GenerationProductCode;
+    // Admission refusals already carry the atomic governance decision. A terminal attempt, though,
+    // can change the refusal count during finalization; re-read the database authority before the
+    // response crosses the boundary so the next screen cannot render the pre-attempt state.
+    const governance = result.governance ?? (result.attemptRef ? await readGenerationGovernance(admin, user.id, id, locale) : null);
     return managerJson(
       base,
       req,
@@ -118,7 +122,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         // Present only when an attempt row exists to look up. Derived — never the row id.
         ...(result.attemptRef ? { supportRef: result.attemptRef } : {}),
         // R5C-4A2 — bounded governance metadata only. No attempt id, no provider data, no prose.
-        ...(result.governance ? { governance: result.governance } : {}),
+        ...(governance ? { governance } : {}),
         // What the Host was waiting against, so the screen can be honest about the wait.
         deadlineMs: PRACTICE_SAMPLING.generation.timeoutMs,
       },
