@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
   BUILD_ARTIFACT,
   REFUSALS,
@@ -12,7 +13,10 @@ import {
   checkLiveIdentity,
   checkPostBuild,
   checkPreconditions,
+  checkOpenNextArtifact,
+  inspectOpenNextArtifact,
   isFullSha,
+  nodeModulesPreflight,
   readPackageName,
 } from "../../../../../scripts/deploy-bty-arena-staging-with-source.mjs";
 
@@ -136,6 +140,82 @@ describe("[R5C-3V2] the post-build re-check is what makes the SHA a fact", () =>
   it("refuses a missing build artifact", () => {
     expect(checkPostBuild({ ...built, artifactExists: false })).toEqual({ ok: false, reason: REFUSALS.artifact });
     expect(BUILD_ARTIFACT).toBe(".open-next/worker.js");
+  });
+});
+
+describe("[OpenNext artifact safety] the shipped artifact is the authority", () => {
+  let root = "";
+  const artifact = (relative, source) => {
+    const path = join(root, ".open-next", relative);
+    mkdirSync(join(path, ".."), { recursive: true });
+    writeFileSync(path, source);
+  };
+  const scan = () => checkOpenNextArtifact(inspectOpenNextArtifact(root));
+
+  beforeEach(() => { root = mkdtempSync(join(tmpdir(), "opennext-artifact-gate-")); });
+  afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+
+  it("accepts a patched middleware implementation", () => {
+    artifact("server-functions/default/handler.mjs", "class NextNodeServer { getMiddlewareManifest(){return null} }");
+    const result = inspectOpenNextArtifact(root);
+    expect(result.unsafeCount).toBe(0);
+    expect(result.safeImplementationCount).toBe(1);
+    expect(checkOpenNextArtifact(result)).toEqual({ ok: true });
+  });
+
+  it("refuses the raw dynamic require", () => {
+    artifact("server-functions/default/handler.mjs", "getMiddlewareManifest(){return require(this.middlewareManifestPath)}");
+    const result = inspectOpenNextArtifact(root);
+    expect(result.unsafeCount).toBe(1);
+    expect(checkOpenNextArtifact(result)).toEqual({ ok: false, reason: REFUSALS.artifactUnsafe });
+  });
+
+  it("refuses a mixed artifact", () => {
+    artifact("server-functions/default/handler.mjs", "getMiddlewareManifest(){return null}");
+    artifact("server-functions/extra/handler.mjs", "getMiddlewareManifest(){return require(this.middlewareManifestPath)}");
+    expect(scan()).toEqual({ ok: false, reason: REFUSALS.artifactUnsafe });
+  });
+
+  it("refuses an unsafe non-default server function", () => {
+    artifact("server-functions/worker-b/handler.mjs", "getMiddlewareManifest(){return require(this.middlewareManifestPath)}");
+    expect(scan()).toEqual({ ok: false, reason: REFUSALS.artifactUnsafe });
+  });
+
+  it("fails closed when no middleware implementation is emitted", () => {
+    artifact("server-functions/default/handler.mjs", "export default {};");
+    expect(scan()).toEqual({ ok: false, reason: REFUSALS.artifactMiddlewareMissing });
+  });
+});
+
+describe("[OpenNext artifact safety] node_modules resolution is measured", () => {
+  let root = "";
+  beforeEach(() => { root = mkdtempSync(join(tmpdir(), "opennext-node-modules-")); });
+  afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+
+  it("reports a normal dependency directory", () => {
+    mkdirSync(join(root, "node_modules/next/dist/server"), { recursive: true });
+    writeFileSync(join(root, "node_modules/next/dist/server/next-server.js"), "");
+    expect(nodeModulesPreflight(root).nodeModulesIsSymlink).toBe(false);
+  });
+
+  it("reports a symlinked root node_modules without treating it as artifact proof", () => {
+    const target = join(root, "shared-modules");
+    mkdirSync(join(target, "next/dist/server"), { recursive: true });
+    writeFileSync(join(target, "next/dist/server/next-server.js"), "");
+    symlinkSync(target, join(root, "node_modules"));
+    const result = nodeModulesPreflight(root);
+    expect(result.nodeModulesIsSymlink).toBe(true);
+    expect(result.nextServerRealpath).toContain("shared-modules");
+  });
+});
+
+describe("[OpenNext artifact safety] deploy is unreachable after a gate refusal", () => {
+  it("runs the artifact check before the sole Cloudflare deploy invocation", () => {
+    const src = readFileSync(join(process.cwd(), "scripts/deploy-bty-arena-staging-with-source.mjs"), "utf8");
+    const gate = src.indexOf("const artifact = checkOpenNextArtifact(artifactScan)");
+    const deploy = src.indexOf('execFileSync("npx", ["opennextjs-cloudflare", "deploy"');
+    expect(gate).toBeGreaterThanOrEqual(0);
+    expect(deploy).toBeGreaterThan(gate);
   });
 });
 
