@@ -138,6 +138,68 @@ describe("[R5A] one honest line per measured outcome", () => {
 });
 
 describe("[R5A] a second attempt is offered only when it is reasonable", () => {
+  it("refreshes from ready to the server's explicit-confirmation governance after a quality refusal", async () => {
+    const calls: Array<{ url: string; body: Record<string, unknown> | null }> = [];
+    const confirmGovernance = {
+      generationInputRevision: 1,
+      generationLocale: "en",
+      refusalCount: 1,
+      state: "confirm_second_attempt",
+      canStartGeneration: false,
+      requiresExplicitConfirmation: true,
+      reviewSetupRecommended: true,
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) as Record<string, unknown> : null;
+      calls.push({ url: u, body });
+      if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
+      if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
+      if (u.match(/\/arena-drafts\/[^/?]+$/)) {
+        return jsonRes({
+          draft: READY_DRAFT,
+          governance: {
+            generationInputRevision: 1,
+            generationLocale: "en",
+            refusalCount: 0,
+            state: "ready",
+            canStartGeneration: true,
+            requiresExplicitConfirmation: false,
+            reviewSetupRecommended: false,
+          },
+        });
+      }
+      if (u.endsWith("/regenerate")) {
+        if (body?.confirmSameInputRetry === true) {
+          // The assertion is the acknowledged POST, not editor rendering. Keep the synthetic
+          // response on the setup surface so this focused test needs no unrelated scenario fixture.
+          return jsonRes({ code: "scenario_quality_rejected", retriable: "false", governance: confirmGovernance }, false, 422);
+        }
+        return jsonRes({
+          error: "scenario_quality_rejected",
+          code: "scenario_quality_rejected",
+          retriable: "false",
+          governance: confirmGovernance,
+        }, false, 422);
+      }
+      throw new Error(`unmocked fetch: ${u}`);
+    }));
+
+    render(<ArenaPracticeFlow eventId="evt-1" locale="en" onBack={() => {}} />);
+    await atSetup();
+    generate();
+    await waitFor(() => expect(screen.getByTestId("setup-gen-failure").textContent).toContain(t.genFailQuality));
+    expect(screen.queryByRole("button", { name: t.setupGenerateCta })).toBeNull();
+    expect(screen.getByTestId("practice-governance-panel").dataset.governanceState).toBe("confirm_second_attempt");
+    expect(screen.getByTestId("governance-review-setup")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("governance-try-once-more"));
+    expect(screen.getByTestId("retry-confirmation")).toBeTruthy();
+    expect(calls.filter((call) => call.url.endsWith("/regenerate"))).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("retry-confirm-submit"));
+    await waitFor(() => expect(calls.filter((call) => call.url.endsWith("/regenerate"))).toHaveLength(2));
+    expect(calls.filter((call) => call.url.endsWith("/regenerate"))[1].body?.confirmSameInputRetry).toBe(true);
+  });
+
   it("a retriable failure offers to create it again", async () => {
     vi.stubGlobal("fetch", mockFetch(() => jsonRes({ code: "provider_transport_error", retriable: "true" }, false, 502)));
     render(<ArenaPracticeFlow eventId="evt-1" locale="en" onBack={() => {}} />);
