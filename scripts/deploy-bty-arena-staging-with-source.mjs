@@ -26,7 +26,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,6 +37,7 @@ export const REQUIRED_BRANCH = "inner-main";
 export const REQUIRED_PACKAGE_NAME = "bty-website";
 export const BUILD_ARTIFACT = ".open-next/worker.js";
 export const SHA_PATTERN = /^[0-9a-f]{40}$/;
+export const OPENNEXT_ARTIFACT_ROOT = ".open-next";
 
 // ==========================================================================
 // PURE GUARDS — exported so the refusal rules are testable without deploying
@@ -54,6 +55,8 @@ export const REFUSALS = {
   headMoved: "refused: HEAD changed during the build",
   treeDirtied: "refused: tracked tree changed during the build",
   artifact: "refused: build produced no worker artifact",
+  artifactUnsafe: "refused: OpenNext artifact contains unpatched middleware-manifest dynamic require",
+  artifactMiddlewareMissing: "refused: OpenNext artifact has no verified safe getMiddlewareManifest implementation",
   liveMismatch: "refused: live version does not equal the deployed source commit",
 };
 
@@ -89,6 +92,87 @@ export function checkPostBuild(state) {
   if (stagedCount > 0 || unstagedCount > 0) return { ok: false, reason: REFUSALS.treeDirtied };
   if (!artifactExists) return { ok: false, reason: REFUSALS.artifact };
   return { ok: true };
+}
+
+/**
+ * Inspect the SHIPPED OpenNext JavaScript, never just Next source or node_modules.
+ *
+ * A clean build patches NextNodeServer#getMiddlewareManifest to `return null`. If an unpatched
+ * copy reaches any server function, Cloudflare cannot evaluate its Node dynamic require at boot.
+ * We scan every emitted JS/MJS file below `.open-next`, including every future server-function
+ * directory, rather than relying on today's `default` directory layout.
+ */
+const JS_FILE = /\.(?:[cm]?js)$/;
+const MIDDLEWARE_IMPLEMENTATION = /getMiddlewareManifest\s*\([^)]*\)\s*\{([\s\S]{0,500}?)\}/g;
+const RAW_DYNAMIC_REQUIRE = /require\s*\(\s*this\.middlewareManifestPath\s*\)/g;
+const MANIFEST_DYNAMIC_REQUIRE = /(?:__require|dynamicRequire|require)\s*\([^)]*middleware-manifest\.json[^)]*\)/g;
+
+function emittedJavaScript(root) {
+  if (!existsSync(root)) return [];
+  const files = [];
+  const visit = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (entry.isFile() && JS_FILE.test(entry.name)) files.push(path);
+    }
+  };
+  visit(root);
+  return files.sort();
+}
+
+const countMatches = (text, pattern) => [...text.matchAll(pattern)].length;
+
+export function inspectOpenNextArtifact(root = process.cwd()) {
+  const artifactRoot = join(root, OPENNEXT_ARTIFACT_ROOT);
+  const files = emittedJavaScript(artifactRoot);
+  const unsafe = [];
+  const implementations = [];
+  for (const path of files) {
+    const source = readFileSync(path, "utf8");
+    const rawRequireCount = countMatches(source, RAW_DYNAMIC_REQUIRE);
+    const shimRequireCount = countMatches(source, MANIFEST_DYNAMIC_REQUIRE);
+    if (rawRequireCount + shimRequireCount > 0) {
+      unsafe.push({ path, count: rawRequireCount + shimRequireCount });
+    }
+    for (const match of source.matchAll(MIDDLEWARE_IMPLEMENTATION)) {
+      const body = match[1];
+      // Next's server implementation either carries the manifest-path member (the broken form)
+      // or is patched to return null. Other libraries can expose an unrelated method with the
+      // same name, such as Turbopack's manifest cache accessor; that is not executable NextNodeServer
+      // middleware code and must not turn a known-safe artifact into a false refusal.
+      if (/middlewareManifestPath|^\s*return\s+null\s*;?\s*$/.test(body)) {
+        implementations.push({ path, safe: /^\s*return\s+null\s*;?\s*$/.test(body) });
+      }
+    }
+  }
+  return {
+    artifactRoot,
+    files,
+    unsafe,
+    unsafeCount: unsafe.reduce((total, item) => total + item.count, 0),
+    implementationCount: implementations.length,
+    safeImplementationCount: implementations.filter((item) => item.safe).length,
+  };
+}
+
+export function checkOpenNextArtifact(scan) {
+  if (scan.unsafeCount > 0) return { ok: false, reason: REFUSALS.artifactUnsafe };
+  if (scan.implementationCount === 0 || scan.safeImplementationCount !== scan.implementationCount) {
+    return { ok: false, reason: REFUSALS.artifactMiddlewareMissing };
+  }
+  return { ok: true };
+}
+
+/** Diagnostic only: the generated artifact remains the deployment authority. */
+export function nodeModulesPreflight(root = process.cwd()) {
+  const modules = join(root, "node_modules");
+  const nextServer = join(modules, "next/dist/server/next-server.js");
+  return {
+    nodeModulesIsSymlink: existsSync(modules) && lstatSync(modules).isSymbolicLink(),
+    nodeModulesRealpath: existsSync(modules) ? realpathSync(modules) : null,
+    nextServerRealpath: existsSync(nextServer) ? realpathSync(nextServer) : null,
+  };
 }
 
 /** The live endpoint must echo the exact SHA, or the deployment is not identity-valid. */
@@ -177,6 +261,17 @@ async function main() {
     artifactExists: existsSync(join(ROOT, BUILD_ARTIFACT)),
   });
   if (!post.ok) die(post.reason);
+
+  const preflight = nodeModulesPreflight(ROOT);
+  console.log(`node_modules    ${preflight.nodeModulesIsSymlink ? "symlink" : "directory"}`);
+  const artifactScan = inspectOpenNextArtifact(ROOT);
+  const artifact = checkOpenNextArtifact(artifactScan);
+  if (!artifact.ok) {
+    for (const item of artifactScan.unsafe) console.error(`  unsafe artifact ${item.path} (${item.count})`);
+    console.error(`  unsafe matches  ${artifactScan.unsafeCount}`);
+    die(artifact.reason);
+  }
+  console.log(`artifact gate   safe (${artifactScan.safeImplementationCount} middleware implementation${artifactScan.safeImplementationCount === 1 ? "" : "s"})`);
 
   // ---- deploy, injecting the same identity into the Worker runtime --------
   console.log("\n· deploying …");
