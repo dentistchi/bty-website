@@ -145,7 +145,7 @@ describe("[R5C-3V2] the post-build re-check is what makes the SHA a fact", () =>
 
 describe("[OpenNext artifact safety] the shipped artifact is the authority", () => {
   let root = "";
-  const artifact = (relative, source) => {
+  const artifact = (relative: string, source: string) => {
     const path = join(root, ".open-next", relative);
     mkdirSync(join(path, ".."), { recursive: true });
     writeFileSync(path, source);

@@ -445,7 +445,13 @@ export function ArenaPracticeFlow({
         code?: string;
         retriable?: string;
         supportRef?: string;
+        /** The server's post-attempt admission reading; never inferred from a client retry count. */
+        governance?: Governance;
       };
+      // A definitive response can advance governance even when no scenario was persisted. Apply
+      // that authoritative reading before returning to setup, so this screen cannot keep showing
+      // the pre-attempt Create action after the server has moved to confirmation or revision.
+      if (body.governance) setGovernance(body.governance);
       const data = res.ok ? body : null;
       if (!data?.draft?.scenario_draft) {
         // Honest and recoverable: back to setup with the boundary intact, never a raw code.
