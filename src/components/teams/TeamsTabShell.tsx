@@ -182,6 +182,9 @@ export default function TeamsTabShell() {
   */
   const appRef = useRef<typeof import("@microsoft/teams-js").app | null>(null);
 
+  /** At most ONE host-ready notification per mount, claimed before any await can yield. */
+  const hostReadyNotificationAttemptedRef = useRef(false);
+
   const bootRef = useRef<{ id: string; t0: number; events: BootEvent[] }>({
     id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
@@ -393,33 +396,13 @@ export default function TeamsTabShell() {
     }
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
-    mark("react_ready");
-    setPhase({ k: "ready", locale });
-
     /*
-      THE HOST HANDSHAKE, AND WHY IT IS HERE AND NOWHERE EARLIER.
-
-      Teams shows its own "we can't open this app" when a tab never reports that it initialized, and
-      this shell never reported it — `notifySuccess` appeared only in the auth POPUP components,
-      which is `authentication.notifySuccess`, a different API for a different lifecycle.
-
-      It is called AFTER the session exists and the shell has been told to render, so it can never
-      mean "React mounted". It cannot run before initialize either: `appRef` is null until initialize
-      has succeeded, so there is nothing to call.
-
-      In 2.55.0 `notifySuccess()` returns a Promise. It is bounded and swallowed: a host that does
-      not answer the handshake must not create the very pending state this slice exists to remove.
+      READY IS REQUESTED HERE, NOT REACHED HERE. `setPhase` schedules a render; it does not commit
+      one. The host handshake therefore lives in an effect that observes the COMMITTED state — see
+      `hostReadyNotificationAttemptedRef` below — because telling Teams "ready for user interaction"
+      before the ready UI has actually rendered would claim something not yet true.
     */
-    const sdkApp = appRef.current;
-    if (sdkApp) {
-      try {
-        await withTimeout(Promise.resolve(sdkApp.notifySuccess()), APP_INITIALIZE_TIMEOUT_MS, "notify_success_failure");
-        mark("notify_success_sent");
-      } catch (e) {
-        // Recorded, never escalated: the learner already has a working shell.
-        mark("notify_success_failure", redactErrorClass(e));
-      }
-    }
+    setPhase({ k: "ready", locale });
   }, [mark, withTimeout]);
 
   const run = useCallback(async () => {
@@ -486,6 +469,58 @@ export default function TeamsTabShell() {
     startedRef.current = true;
     void run();
   }, [run]);
+
+  /*
+    THE HOST HANDSHAKE — ON THE COMMITTED READY STATE.
+
+    Teams shows its own "we can't open this app" when a tab never reports that it initialized, and
+    this shell never reported it: `notifySuccess` existed only in the auth POPUP components, which is
+    `authentication.notifySuccess` — a different API for a different lifecycle.
+
+    ★ WHY AN EFFECT AND NOT THE BOOTSTRAP CALLBACK. It was called there first, right after
+    `setPhase({ k: "ready" })`. Every readiness FACT was established by then — initialize, token,
+    bootstrap, session — but `setPhase` only schedules a render, so the host was being told "ready
+    for user interaction" before the ready UI had committed. If the shell had thrown on its first
+    render, Teams would already have been told success and the learner would have had a broken BTY
+    inside a tab the host considered healthy. Running here means "ready" means RENDERED.
+
+    ★ THE GUARD IS SET BEFORE THE AWAIT, and that ordering is the whole protection. Strict Mode
+    replays effects, `phase.k` re-evaluates, and a rerender while still ready re-runs this — so the
+    ref is claimed synchronously, before anything can yield. Setting it after the await would let two
+    replays both pass the check and both notify.
+
+    ★ A FAILED HANDSHAKE CHANGES NOTHING THE LEARNER SEES. The shell has already rendered. The
+    failure is recorded and dropped: no rethrow, no phase change, no retry loop, and the bounded wait
+    means a silent host cannot reintroduce the pending state this slice exists to remove.
+  */
+  useEffect(() => {
+    if (phase.k !== "ready") return;
+    const sdkApp = appRef.current;
+    if (!sdkApp) return;
+    if (hostReadyNotificationAttemptedRef.current) return;
+    // Claimed synchronously — see the note above.
+    hostReadyNotificationAttemptedRef.current = true;
+
+    // The commit has happened: this is the first moment `react_ready` is true.
+    mark("react_ready");
+
+    void (async () => {
+      try {
+        await withTimeout(Promise.resolve(sdkApp.notifySuccess()), APP_INITIALIZE_TIMEOUT_MS, "notify_success_failure");
+        mark("notify_success_sent");
+      } catch (e) {
+        mark("notify_success_failure", redactErrorClass(e));
+        /*
+          SENT, not merely recorded. `mark` only appends to the in-memory timeline; the timeline
+          reaches the durable sink through `reportPreBootstrapFailure`, which until now fired only on
+          a terminal BOOTSTRAP failure. A handshake that fails AFTER ready is exactly the case that
+          explains a host error over a working app, so it would have been the one stage recorded and
+          never sent — the same blind spot, one step further along.
+        */
+        await reportPreBootstrapFailure("notify_success_failure");
+      }
+    })();
+  }, [phase.k, mark, withTimeout, reportPreBootstrapFailure]);
 
   /*
     ★ RE-READ THE HOST CONTEXT WHEN THE TAB COMES BACK (Slice Teams iOS Deep-Link Resume).
