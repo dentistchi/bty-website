@@ -57,7 +57,7 @@ function mockFetch(regen: () => Response) {
     if (u.endsWith("/publish")) return jsonRes({ practice: null });
     // R5C-4B-R1 — Create fails closed without the server's governance, so this fixture supplies the
     // `ready` state a draft with no prior refusals actually has.
-    if (u.match(/\/arena-drafts\/[^/?]+$/))
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/))
       return jsonRes({
         draft: READY_DRAFT,
         governance: {
@@ -155,7 +155,7 @@ describe("[R5A] a second attempt is offered only when it is reasonable", () => {
       calls.push({ url: u, body });
       if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
       if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
-      if (u.match(/\/arena-drafts\/[^/?]+$/)) {
+      if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) {
         return jsonRes({
           draft: READY_DRAFT,
           governance: {

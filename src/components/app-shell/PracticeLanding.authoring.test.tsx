@@ -57,7 +57,7 @@ function mockFetch(over: { events?: () => Response } = {}) {
     if (u.includes("/api/bty/foundry/events")) return over.events ? over.events() : jsonRes({ events: [{ id: "evt-1", title: "Handoff under pressure" }] });
     if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "shell-1" }] });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes({ draft: SHELL });
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes({ draft: SHELL });
     if (u === "/api/arena/practice") return jsonRes({ practices: COMPLETED }); // the learner list
     // Anything else is unexpected: fail loudly rather than let a stray call look answered.
     throw new Error(`unmocked fetch: ${u}`);

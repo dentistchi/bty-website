@@ -225,7 +225,7 @@ export function ArenaPracticeFlow({
           const listData = (await listRes.json()) as { drafts?: { id: string }[] };
           const latest = listData.drafts?.[0];
           if (latest) {
-            const one = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(latest.id)}`, {
+            const one = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(latest.id)}?locale=${encodeURIComponent(loc)}`, {
               credentials: "include",
               cache: "no-store",
             });
@@ -268,7 +268,7 @@ export function ArenaPracticeFlow({
     return () => {
       cancelled = true;
     };
-  }, [eventId]);
+  }, [eventId, loc]);
 
   const startNew = useCallback(() => {
     setDraftId(null);
@@ -364,7 +364,7 @@ export function ArenaPracticeFlow({
           if (res.status === 409 || body?.error === "stale_revision") {
             setBoundaryConflict(true);
             // Re-read the canonical row so the retry carries the revision the server now holds.
-            const fresh = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}`, {
+            const fresh = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}?locale=${encodeURIComponent(loc)}`, {
               credentials: "include",
               cache: "no-store",
             }).catch(() => null);
@@ -398,7 +398,7 @@ export function ArenaPracticeFlow({
         setBoundarySaving(false);
       }
     },
-    [draftId, revision, boundarySaving, boundaryErrorCopy, t],
+    [draftId, revision, boundarySaving, boundaryErrorCopy, t, loc],
   );
 
   /**

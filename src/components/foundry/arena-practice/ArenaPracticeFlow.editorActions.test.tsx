@@ -76,8 +76,8 @@ function mockFetch(over: { live?: string | null } = {}) {
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
     if (u.endsWith("/publish") && method === "GET") return jsonRes({ practice: over.live ? { id: over.live } : null });
     if (u.endsWith("/publish")) return jsonRes({ practice: { id: "prac-1" } });
-    if (u.match(/\/arena-drafts\/[^/?]+$/) && method === "PATCH") return jsonRes({ draft: { ...DRAFT, revision: 4 } });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes({ draft: DRAFT });
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/) && method === "PATCH") return jsonRes({ draft: { ...DRAFT, revision: 4 } });
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes({ draft: DRAFT });
     throw new Error(`unmocked fetch: ${u}`);
   });
 }

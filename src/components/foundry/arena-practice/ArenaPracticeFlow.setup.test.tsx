@@ -44,7 +44,7 @@ function mockFetch(over: { draftsList?: unknown; oneDraft?: unknown } = {}) {
     const u = String(url);
     if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
     if (u.includes("/arena-drafts?")) return jsonRes(over.draftsList ?? { drafts: [{ id: "shell-1" }] });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes(over.oneDraft ?? { draft: SHELL_DRAFT });
+    if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes(over.oneDraft ?? { draft: SHELL_DRAFT });
     return jsonRes({});
   });
 }
