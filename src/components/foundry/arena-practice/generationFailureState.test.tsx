@@ -200,6 +200,54 @@ describe("[R5A] a second attempt is offered only when it is reasonable", () => {
     expect(calls.filter((call) => call.url.endsWith("/regenerate"))[1].body?.confirmSameInputRetry).toBe(true);
   });
 
+  it("renders Korean revision_required after the acknowledged second quality refusal, with no third-attempt action", async () => {
+    const calls: Array<{ url: string; body: Record<string, unknown> | null }> = [];
+    const confirmGovernance = {
+      generationInputRevision: 3,
+      generationLocale: "ko" as const,
+      refusalCount: 1,
+      state: "confirm_second_attempt" as const,
+      canStartGeneration: false,
+      requiresExplicitConfirmation: true,
+      reviewSetupRecommended: true,
+    };
+    const revisionGovernance = {
+      ...confirmGovernance,
+      refusalCount: 2,
+      state: "revision_required" as const,
+      requiresExplicitConfirmation: false,
+    };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) as Record<string, unknown> : null;
+      calls.push({ url: u, body });
+      if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
+      if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
+      if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes({ draft: { ...READY_DRAFT, generation_input_revision: 3 }, governance: confirmGovernance });
+      if (u.endsWith("/regenerate")) return jsonRes({
+        error: "scenario_quality_rejected",
+        code: "scenario_quality_rejected",
+        retriable: "false",
+        governance: revisionGovernance,
+      }, false, 422);
+      throw new Error(`unmocked fetch: ${u}`);
+    }));
+
+    render(<ArenaPracticeFlow eventId="evt-1" locale="ko" onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("practice-governance-panel").dataset.governanceState).toBe("confirm_second_attempt"));
+    fireEvent.click(screen.getByTestId("governance-try-once-more"));
+    fireEvent.click(screen.getByTestId("retry-confirm-submit"));
+
+    await waitFor(() => expect(screen.getByTestId("practice-governance-panel").dataset.governanceState).toBe("revision_required"));
+    expect(screen.getByText(ko.genFailQuality)).toBeTruthy();
+    expect(screen.getByText(ko.governance.revisionRequiredTitle)).toBeTruthy();
+    expect(screen.getByTestId("governance-review-setup")).toBeTruthy();
+    expect(screen.queryByTestId("governance-try-once-more")).toBeNull();
+    expect(screen.queryByRole("button", { name: ko.setupGenerateCta })).toBeNull();
+    expect(calls.filter((call) => call.url.endsWith("/regenerate"))).toHaveLength(1);
+    expect(calls.filter((call) => call.url.endsWith("/regenerate"))[0].body?.confirmSameInputRetry).toBe(true);
+  });
+
   it("a retriable failure offers to create it again", async () => {
     vi.stubGlobal("fetch", mockFetch(() => jsonRes({ code: "provider_transport_error", retriable: "true" }, false, 502)));
     render(<ArenaPracticeFlow eventId="evt-1" locale="en" onBack={() => {}} />);

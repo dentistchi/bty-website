@@ -64,6 +64,18 @@ describe("[R5C-4B-R1] the panel renders the SERVER's state", () => {
     expect(screen.getByText(en.governance.revisionRequiredTitle)).toBeTruthy();
   });
 
+  it("keeps the icon with the title while the body spans the normal card width and mobile actions stay full-width", () => {
+    panel(g({ state: "confirm_second_attempt", refusalCount: 1, canStartGeneration: false, requiresExplicitConfirmation: true }));
+    const title = screen.getByRole("heading", { level: 3 });
+    const titleRow = title.parentElement!;
+    const body = screen.getByText(en.governance.confirmBody);
+    expect(titleRow.querySelector('[aria-hidden="true"]')).toBeTruthy();
+    expect(titleRow.contains(body)).toBe(false);
+    expect(body.parentElement).toBe(screen.getByTestId("practice-governance-panel"));
+    expect(screen.getByTestId("governance-review-setup").className).toContain("w-full");
+    expect(screen.getByTestId("governance-try-once-more").className).toContain("w-full");
+  });
+
   it("IN_PROGRESS offers nothing to press and does not claim leaving cancels it", () => {
     panel(g({ state: "in_progress", canStartGeneration: false }));
     expect(screen.queryByTestId("governance-try-once-more")).toBeNull();
