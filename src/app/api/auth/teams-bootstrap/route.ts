@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readBootTimeline } from "@/domain/teams/bootDiagnostics";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyTeamsTabSsoToken } from "@/lib/bty/teams/tabSsoTokenVerifier.server";
 import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge.server";
@@ -56,12 +57,74 @@ function json(body: unknown, status: number) {
  */
 const CLIENT_ERROR_HEADER = "x-bty-teams-client-error";
 
+/**
+ * Record one failed boot attempt where an operator can actually read it.
+ *
+ * ★ WHY `mvp_debug_reports` AND NOT A NEW TABLE. It is the product's existing durable operator
+ * surface for "something went wrong", it already has an admin read UI, and one row per FAILED boot
+ * is exactly the shape it was built for: a reported problem plus context, with a triage lifecycle
+ * (`status`, `resolved_at`, `resolution_note`) already attached. A new telemetry table would
+ * duplicate that and arrive with no reader.
+ *
+ * ★ WHY ONLY FAILURES, AND ONLY ONE ROW. A stream of twenty rows per tab open would flood a human
+ * triage surface and leave every one of them `status: 'open'`. The successful stages are not lost:
+ * a failure row's timeline shows exactly how far the attempt got, which is the question — "did it
+ * reach ready" — and a boot that fully succeeds needs no row at all.
+ *
+ * ★ FAIL-OPEN, ALWAYS. Boot must never depend on diagnostics. Every failure here is swallowed, and
+ * the caller's response is unchanged whether this wrote a row or not.
+ *
+ * ★ NO CREDENTIAL REACHES IT. `readBootTimeline` admits only known stage names, finite elapsed
+ * numbers, a uuid-shaped correlation id, a 40-hex build sha and a short platform class. There is no
+ * field for a token, an email or user text, and the body is read only when it is valid JSON.
+ */
+async function persistBootFailure(req: NextRequest, clientError: string): Promise<void> {
+  try {
+    const admin = getSupabaseAdmin();
+    if (!admin) return;
+
+    const body = await req.json().catch(() => null);
+    const timeline = readBootTimeline(body);
+    // Without a valid timeline there is nothing worth a triage row; the log line above still stands.
+    if (!timeline) return;
+
+    const last = timeline.events[timeline.events.length - 1];
+    await admin.from("mvp_debug_reports").insert({
+      title: `teams_boot_failed: ${timeline.terminalStage}`,
+      description:
+        `Teams tab boot stopped at ${timeline.terminalStage}` +
+        (last?.errorClass ? ` (${last.errorClass})` : "") +
+        `. Reported step: ${clientError.replace(/[^a-zA-Z0-9._:-]/g, "")}.`,
+      route: "/teams",
+      context: {
+        kind: "teams_boot_failure",
+        bootAttemptId: timeline.bootAttemptId,
+        terminalStage: timeline.terminalStage,
+        buildSha: timeline.buildSha,
+        platform: timeline.platform,
+        // Stage + elapsed only. This is the whole diagnostic value and the whole payload.
+        events: timeline.events,
+      },
+      // Pre-session by definition: the attempt failed before an identity existed.
+      created_by: null,
+    });
+  } catch {
+    /* diagnostics must never become a second failure */
+  }
+}
+
 export async function POST(req: NextRequest) {
   const clientError = (req.headers.get(CLIENT_ERROR_HEADER) ?? "").trim().slice(0, 64);
   if (clientError) {
     console.error("[teams-bootstrap] client reported a pre-bootstrap failure", {
       step: clientError.replace(/[^a-zA-Z0-9._:-]/g, ""),
     });
+    /*
+      AND NOW IT SURVIVES THE REQUEST. The line above goes to a Worker log with no retention
+      configured, which is why the last host failure could not be attributed to a stage afterwards.
+      This persists ONE durable row per failed boot attempt, and then returns exactly as before.
+    */
+    await persistBootFailure(req, clientError);
   }
 
   // 1. AUTHENTICATE FIRST.

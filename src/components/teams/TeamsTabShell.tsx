@@ -2,6 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BTY_SHELL_DESTINATION_EVENT, decodeShellSubEntityId } from "@/domain/teams/btyDestination";
+import {
+  APP_INITIALIZE_TIMEOUT_MS,
+  GET_AUTH_TOKEN_TIMEOUT_MS,
+  MAX_BOOT_EVENTS,
+  platformClass,
+  redactErrorClass,
+  type BootEvent,
+  type BootStage,
+} from "@/domain/teams/bootDiagnostics";
 import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
@@ -159,19 +168,83 @@ export default function TeamsTabShell() {
     }
   }, []);
 
+  /*
+    ONE BOOT ATTEMPT, ONE TIMELINE (Slice B).
+
+    Held in a ref rather than state: recording a stage must never re-render the shell, and the
+    timeline has to survive the render that shows a failure. `t0` is captured once so every elapsed
+    figure is measured from the same origin — a wall clock would make two attempts incomparable.
+  */
+  /*
+    The SDK's `app` namespace, captured once initialize has succeeded. Held so the ready and failure
+    handshakes can reach the host without a second dynamic import — and so a handshake is IMPOSSIBLE
+    before initialize, because until then there is nothing here to call.
+  */
+  const appRef = useRef<typeof import("@microsoft/teams-js").app | null>(null);
+
+  /** At most ONE host-ready notification per mount, claimed before any await can yield. */
+  const hostReadyNotificationAttemptedRef = useRef(false);
+
+  const bootRef = useRef<{ id: string; t0: number; events: BootEvent[] }>({
+    id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : "00000000-0000-4000-8000-000000000000",
+    t0: Date.now(),
+    events: [],
+  });
+
+  /** Record a transition. Bounded, so a pathological loop cannot grow the payload. */
+  const mark = useCallback((stage: BootStage, errorClass?: string) => {
+    const b = bootRef.current;
+    if (b.events.length >= MAX_BOOT_EVENTS) return;
+    b.events.push(errorClass ? { stage, elapsedMs: Date.now() - b.t0, errorClass } : { stage, elapsedMs: Date.now() - b.t0 });
+  }, []);
+
   /**
-   * Tell the server WHICH pre-bootstrap step failed (Slice A0-RUNTIME).
+   * Await a promise, or give up.
    *
-   * A failure before the token exists sends no request, so a live tail sees nothing — which is
-   * indistinguishable from nobody having tapped. This carries a short step name and NO token, and
-   * the 401 it receives is expected and ignored.
+   * ★ THIS IS THE WHOLE POINT OF THE SLICE. `app.initialize()` and `getAuthToken()` carry no
+   * documented timeout, and a promise that never settles produces no throw, no catch and no phase
+   * change — the shell simply waits while the HOST's window expires and the learner gets a dead end
+   * whose retry cannot help. A rejection we can catch is strictly better than a wait we cannot see.
+   *
+   * The original promise is NOT cancelled — there is no way to cancel it. It is abandoned, and its
+   * later settlement is ignored, which is safe because the attempt has already failed.
+   */
+  const withTimeout = useCallback(<T,>(work: Promise<T>, ms: number, onTimeout: BootStage): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        mark(onTimeout);
+        reject(Object.assign(new Error(onTimeout), { name: "BootTimeout", retryable: true }));
+      }, ms);
+      work.then(
+        (v) => { window.clearTimeout(timer); resolve(v); },
+        (e) => { window.clearTimeout(timer); reject(e); },
+      );
+    }), [mark]);
+
+  /**
+   * Tell the server WHICH pre-bootstrap step failed (Slice A0-RUNTIME), and now ALSO how far the
+   * attempt got (Slice B).
+   *
+   * The step header is unchanged. The body carries the stage timeline so the failure survives the
+   * request — the header alone reached a Worker log with no retention, which is why the last host
+   * failure could not be attributed afterwards. No token travels here; the 401 is expected.
    */
   const reportPreBootstrapFailure = useCallback(async (step: string): Promise<void> => {
     try {
+      const b = bootRef.current;
       await fetch("/api/auth/teams-bootstrap", {
         method: "POST",
-        headers: { "X-BTY-Teams-Client-Error": step },
+        headers: { "X-BTY-Teams-Client-Error": step, "Content-Type": "application/json" },
         cache: "no-store",
+        body: JSON.stringify({
+          bootAttemptId: b.id,
+          terminalStage: b.events[b.events.length - 1]?.stage ?? "shell_start",
+          events: b.events,
+          buildSha: typeof process !== "undefined" ? (process.env.NEXT_PUBLIC_BTY_SOURCE_SHA ?? null) : null,
+          platform: platformClass(typeof navigator !== "undefined" ? navigator.userAgent : null),
+        }),
       });
     } catch {
       /* diagnostics must never become a second failure */
@@ -187,27 +260,61 @@ export default function TeamsTabShell() {
     let step = "import_teams_js";
     let app: typeof import("@microsoft/teams-js").app;
     let entraToken: string;
+    mark("shell_start");
     try {
+      mark("teams_sdk_import_start");
       const sdk = await import("@microsoft/teams-js");
       app = sdk.app;
+      mark("teams_sdk_import_success");
+
       step = "app_initialize";
-      await app.initialize();
+      mark("app_initialize_start");
+      // BOUNDED. An unanswered in-frame handshake used to wait forever; now it fails in 5s.
+      await withTimeout(app.initialize(), APP_INITIALIZE_TIMEOUT_MS, "app_initialize_timeout");
+      mark("app_initialize_success");
+      /*
+        The host channel exists from HERE, not from the token. Captured now so a later failure —
+        a refused Entra token, a 5xx bootstrap, a rejected session — can still tell the host, instead
+        of leaving it to time out with a retry that cannot help.
+      */
+      appRef.current = app;
+
       step = "get_auth_token";
       // Silent for anyone already signed into Teams. Teams caches and returns the token itself.
-      entraToken = await sdk.authentication.getAuthToken();
+      mark("get_auth_token_start");
+      entraToken = await withTimeout(sdk.authentication.getAuthToken(), GET_AUTH_TOKEN_TIMEOUT_MS, "get_auth_token_timeout");
+      mark("get_auth_token_success");
     } catch (e) {
+      /*
+        A timeout has already marked its own stage; anything else is marked here as the failure of
+        whichever step was in flight. The error CLASS travels, never its message — a message is where
+        a url or an identifier appears.
+      */
+      const cls = redactErrorClass(e);
+      if (cls !== "BootTimeout") {
+        mark(step === "import_teams_js" ? "teams_sdk_import_failure" : step === "app_initialize" ? "app_initialize_failure" : "get_auth_token_failure", cls);
+      }
       await reportPreBootstrapFailure(step);
       throw e;
     }
 
+    mark("bootstrap_http_start");
     const res = await fetch("/api/auth/teams-bootstrap", {
       method: "POST",
       headers: { Authorization: `Bearer ${entraToken}` },
       cache: "no-store",
     });
+    mark("bootstrap_http_response");
 
-    if (res.status === 429) throw Object.assign(new Error("rate_limited"), { retryable: true });
-    if (!res.ok) throw Object.assign(new Error(`bootstrap_${res.status}`), { retryable: res.status >= 500 });
+    if (res.status === 429) {
+      mark("bootstrap_http_failure", "RateLimited");
+      throw Object.assign(new Error("rate_limited"), { retryable: true });
+    }
+    if (!res.ok) {
+      // The STATUS CLASS, not the body: a bootstrap error body is not ours to keep.
+      mark("bootstrap_http_failure", `Http${res.status}`);
+      throw Object.assign(new Error(`bootstrap_${res.status}`), { retryable: res.status >= 500 });
+    }
 
     const body = (await res.json()) as
       | { needsFirstSignIn: true }
@@ -221,11 +328,16 @@ export default function TeamsTabShell() {
     // A genuine Supabase session. From here the browser Supabase client, RLS, `auth.uid()` and
     // every existing component behave exactly as they do on the web.
     const supabase = getSupabase();
+    mark("set_session_start");
     const { error } = await supabase.auth.setSession({
       access_token: body.session.access_token,
       refresh_token: body.session.refresh_token,
     });
-    if (error) throw Object.assign(new Error("set_session_failed"), { retryable: false });
+    if (error) {
+      mark("set_session_failure", "SetSessionFailed");
+      throw Object.assign(new Error("set_session_failed"), { retryable: false });
+    }
+    mark("set_session_success");
 
     accessTokenRef.current = body.session.access_token;
     // Keep the transport's token current across Supabase's own refreshes.
@@ -284,8 +396,14 @@ export default function TeamsTabShell() {
     }
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
+    /*
+      READY IS REQUESTED HERE, NOT REACHED HERE. `setPhase` schedules a render; it does not commit
+      one. The host handshake therefore lives in an effect that observes the COMMITTED state — see
+      `hostReadyNotificationAttemptedRef` below — because telling Teams "ready for user interaction"
+      before the ready UI has actually rendered would claim something not yet true.
+    */
     setPhase({ k: "ready", locale });
-  }, []);
+  }, [mark, withTimeout]);
 
   const run = useCallback(async () => {
     try {
@@ -302,14 +420,107 @@ export default function TeamsTabShell() {
       // Fail closed. No fabricated session, no cached identity, no silent email fallback.
       accessTokenRef.current = null;
       setPhase({ k: "failed", message: COPY.failed });
+
+      /*
+        REPORT EVERY TERMINAL FAILURE, not only the pre-bootstrap ones.
+
+        The pre-bootstrap catch reports its own stage and rethrows, which covered the SDK import,
+        initialize and the token — and left `bootstrap_http_failure` and `set_session_failure`
+        recorded in the timeline but never sent. That is the original blind spot moved three steps
+        later, so the report is issued here, where every terminal path arrives.
+
+        `reportPreBootstrapFailure` is idempotent in effect: a pre-bootstrap failure sends its
+        timeline twice at most, which a triage reader can tell apart by `bootAttemptId`, and two rows
+        is a far smaller problem than a silent stage.
+      */
+      const terminal = bootRef.current.events[bootRef.current.events.length - 1]?.stage ?? "shell_start";
+      if (terminal === "bootstrap_http_failure" || terminal === "set_session_failure") {
+        await reportPreBootstrapFailure(terminal);
+      }
+
+      /*
+        TELL THE HOST IT FAILED, rather than leaving it to time out.
+        `app.notifyFailure` is valid for a tab lifecycle in 2.55.0 and takes a FailedReason —
+        `Timeout` when we gave up waiting, `AuthFailed` when Entra or the session refused, `Other`
+        otherwise. It returns void and cannot introduce a pending state. Guarded by `appRef`, so a
+        failure BEFORE initialize simply shows BTY's own screen, which is the honest outcome when
+        the host handshake was never established.
+      */
+      const sdkApp = appRef.current;
+      if (sdkApp) {
+        try {
+          const last = bootRef.current.events[bootRef.current.events.length - 1]?.stage;
+          const reason =
+            last === "app_initialize_timeout" || last === "get_auth_token_timeout"
+              ? "Timeout"
+              : last === "get_auth_token_failure" || last === "set_session_failure"
+                ? "AuthFailed"
+                : "Other";
+          sdkApp.notifyFailure({ reason: reason as never });
+        } catch {
+          /* the host refusing a failure notice changes nothing the learner can act on */
+        }
+      }
     }
-  }, [bootstrap]);
+  }, [bootstrap, reportPreBootstrapFailure]);
 
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
     void run();
   }, [run]);
+
+  /*
+    THE HOST HANDSHAKE — ON THE COMMITTED READY STATE.
+
+    Teams shows its own "we can't open this app" when a tab never reports that it initialized, and
+    this shell never reported it: `notifySuccess` existed only in the auth POPUP components, which is
+    `authentication.notifySuccess` — a different API for a different lifecycle.
+
+    ★ WHY AN EFFECT AND NOT THE BOOTSTRAP CALLBACK. It was called there first, right after
+    `setPhase({ k: "ready" })`. Every readiness FACT was established by then — initialize, token,
+    bootstrap, session — but `setPhase` only schedules a render, so the host was being told "ready
+    for user interaction" before the ready UI had committed. If the shell had thrown on its first
+    render, Teams would already have been told success and the learner would have had a broken BTY
+    inside a tab the host considered healthy. Running here means "ready" means RENDERED.
+
+    ★ THE GUARD IS SET BEFORE THE AWAIT, and that ordering is the whole protection. Strict Mode
+    replays effects, `phase.k` re-evaluates, and a rerender while still ready re-runs this — so the
+    ref is claimed synchronously, before anything can yield. Setting it after the await would let two
+    replays both pass the check and both notify.
+
+    ★ A FAILED HANDSHAKE CHANGES NOTHING THE LEARNER SEES. The shell has already rendered. The
+    failure is recorded and dropped: no rethrow, no phase change, no retry loop, and the bounded wait
+    means a silent host cannot reintroduce the pending state this slice exists to remove.
+  */
+  useEffect(() => {
+    if (phase.k !== "ready") return;
+    const sdkApp = appRef.current;
+    if (!sdkApp) return;
+    if (hostReadyNotificationAttemptedRef.current) return;
+    // Claimed synchronously — see the note above.
+    hostReadyNotificationAttemptedRef.current = true;
+
+    // The commit has happened: this is the first moment `react_ready` is true.
+    mark("react_ready");
+
+    void (async () => {
+      try {
+        await withTimeout(Promise.resolve(sdkApp.notifySuccess()), APP_INITIALIZE_TIMEOUT_MS, "notify_success_failure");
+        mark("notify_success_sent");
+      } catch (e) {
+        mark("notify_success_failure", redactErrorClass(e));
+        /*
+          SENT, not merely recorded. `mark` only appends to the in-memory timeline; the timeline
+          reaches the durable sink through `reportPreBootstrapFailure`, which until now fired only on
+          a terminal BOOTSTRAP failure. A handshake that fails AFTER ready is exactly the case that
+          explains a host error over a working app, so it would have been the one stage recorded and
+          never sent — the same blind spot, one step further along.
+        */
+        await reportPreBootstrapFailure("notify_success_failure");
+      }
+    })();
+  }, [phase.k, mark, withTimeout, reportPreBootstrapFailure]);
 
   /*
     ★ RE-READ THE HOST CONTEXT WHEN THE TAB COMES BACK (Slice Teams iOS Deep-Link Resume).

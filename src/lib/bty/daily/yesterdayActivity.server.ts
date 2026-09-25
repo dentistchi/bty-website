@@ -20,7 +20,8 @@ import { countFirstPublishedRunsInWindow } from "@/domain/daily/yesterdayCreatio
  *     V2/V3 Run, or an idempotent publish retry, adds nothing.
  *   - centerReflections  = dear_me_letters (BROAD: every Center write — keeps,
  *     day reflections, letters). No narrower "check-in" subtype is claimed.
- *   - presence           = a user_day row exists for yesterday (canonical presence).
+ *   - presence           = a user_day row exists for yesterday, by `opened_at` (canonical
+ *     presence stamp; `user_day` carries no `created_at`).
  * Writes nothing (tz resolution reuses the shared helper's existing behavior).
  */
 
@@ -82,8 +83,18 @@ export async function loadYesterdayActivity(
     safeCount(
       admin.from("dear_me_letters").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", startIso).lt("created_at", endIso),
     ),
+    /*
+      PRESENCE IS STAMPED BY `opened_at`, AND `user_day` HAS NO `created_at` AT ALL.
+
+      This read asked for `created_at` and PostgREST answered 42703 every time — so presence has
+      reported FALSE for every learner since 2026-07-26, silently. `safeCount` turns the refusal
+      into `undefined`, which is exactly the shape of "this source is unavailable", so the surface
+      degraded honestly and nothing ever surfaced the cause.
+      `weeklyActivity.server.ts` already states the rule this now follows: `opened_at` is the
+      canonical presence stamp, and it is what every other `user_day` reader uses.
+    */
     safeCount(
-      admin.from("user_day").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", startIso).lt("created_at", endIso),
+      admin.from("user_day").select("*", { count: "exact", head: true }).eq("user_id", userId).gte("opened_at", startIso).lt("opened_at", endIso),
     ),
   ]);
 

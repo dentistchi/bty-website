@@ -29,7 +29,9 @@ const H = vi.hoisted(() => ({
 }));
 
 vi.mock("@microsoft/teams-js", () => ({
-  app: { initialize: H.initialize, getContext: H.getContext, openLink: H.openLink },
+  // The real `app` carries the host lifecycle pair; a fixture without them mocks an SDK that
+  // does not exist, and the shell's ready handshake then fails against a fiction.
+  app: { initialize: H.initialize, getContext: H.getContext, openLink: H.openLink, notifySuccess: vi.fn(async () => ({})), notifyFailure: vi.fn() },
   authentication: { getAuthToken: H.getAuthToken, authenticate: vi.fn(), notifySuccess: vi.fn(), notifyFailure: vi.fn() },
   pages: { currentApp: { isSupported: H.isSupported, navigateTo: H.navigateTo, navigateToDefaultPage: H.navigateToDefaultPage } },
 }));

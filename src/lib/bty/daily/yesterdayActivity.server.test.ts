@@ -8,6 +8,12 @@ type Row = Record<string, unknown>;
  * B3A.2B-R1 — canonical source corrections. Fake admin over the exact query shapes:
  * arena_profiles (tz), foundry_event_training_progress (completion via completed_at),
  * foundry_events (first-run creation), dear_me_letters, user_day.
+ *
+ * ★ THE user_day FIXTURE STAMPS `opened_at`, BECAUSE THAT IS THE ONLY COLUMN THERE IS. It carried
+ * `created_at` until 2026-09-25 — a column `user_day` has never had — so this test passed against a
+ * schema that does not exist while production answered 42703 on every call. A fixture that invents
+ * a column cannot fail when the query naming it is wrong, which is precisely how the defect
+ * survived two months of green tests.
  */
 function makeAdmin(seed: Record<string, Row[]>) {
   function from(table: string) {
@@ -84,7 +90,7 @@ describe("loadYesterdayActivity — R1 canonical sources", () => {
 
   it("Center (broad dear_me_letters) counted; presence only when a user_day row exists", async () => {
     const withPresence = await loadYesterdayActivity(
-      makeAdmin({ ...profileLA, dear_me_letters: [{ user_id: U, created_at: "2026-07-26T14:00:00Z" }], user_day: [{ user_id: U, created_at: "2026-07-26T14:00:00Z" }] }),
+      makeAdmin({ ...profileLA, dear_me_letters: [{ user_id: U, created_at: "2026-07-26T14:00:00Z" }], user_day: [{ user_id: U, opened_at: "2026-07-26T14:00:00Z" }] }),
       U, NOW, null,
     );
     expect(withPresence.centerReflections).toBe(1);
