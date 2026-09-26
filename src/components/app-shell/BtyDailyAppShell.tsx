@@ -18,6 +18,7 @@ import PastTracks from "@/components/app-shell/PastTracks";
 import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayHome from "@/components/app-shell/TodayHome";
+import { useTodayRemainingReminder } from "@/components/app-shell/useTodayRemainingReminder";
 import type { GreetingAddress } from "@/domain/daily/greetingAddress";
 import LearnHeader from "@/components/app-shell/LearnHeader";
 import PracticeLanding from "@/components/app-shell/PracticeLanding";
@@ -1476,6 +1477,8 @@ export default function BtyDailyAppShell({
    * costs one request; polling would cost many and answer the same question.
    */
   const [todayRefreshKey, setTodayRefreshKey] = useState(0);
+  // TODAY REMAINING REMINDER: the BTY iPhone app only — never the Teams runtime (inert in a browser).
+  useTodayRemainingReminder(locale, runtime === "web");
   // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -2161,6 +2164,7 @@ export default function BtyDailyAppShell({
                   locale={locale}
                   refreshKey={todayRefreshKey}
                   onOpenSaved={() => setSavedOpen(true)}
+                  nativeReminder={runtime === "web"}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
                   onOpenLeadershipFollowUp={(target) => {

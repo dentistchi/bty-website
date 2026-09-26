@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import NeedsYourResponse from "@/components/app-shell/NeedsYourResponse";
 import TrackingSent from "@/components/app-shell/TrackingSent";
 import { buildYesterdaySummary, type YesterdayCounts } from "@/domain/daily/yesterdaySummary";
-import { normalizeTodayItems, todayVisible } from "@/domain/daily/todayList";
+import { todayVisible } from "@/domain/daily/todayList";
+import { selectTodayOpenWork } from "@/domain/daily/todayOpenWork";
+import { deviceTz, fetchTodayBrief } from "@/lib/bty/daily/todayBriefClient";
+import { syncTodayRemainingReminder } from "@/lib/native/todayRemainingReminder";
 import {
   selectPrimaryAction,
   type PrimaryActionCandidate,
@@ -174,14 +177,6 @@ function followUpTagTone(c: FollowUpCategory): string {
   return c === "FOLLOW_UP_OVERDUE" ? "text-red-300/80 border-red-400/30" : "text-[#E5B769] border-[#C9A66B]/35";
 }
 
-function deviceTz(): string | null {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
-  } catch {
-    return null;
-  }
-}
-
 export default function TodayHome({
   locale,
   refreshKey,
@@ -189,6 +184,7 @@ export default function TodayHome({
   onOpenItem,
   onOpenLeadershipFollowUp,
   onOpenSaved,
+  nativeReminder = false,
 }: {
   locale: string;
   /**
@@ -224,6 +220,11 @@ export default function TodayHome({
    * reach a reminder, an actionStatus item, or any Today count.
    */
   onOpenSaved?: () => void;
+  /**
+   * TODAY REMAINING REMINDER — true only from the web shell (never Teams). Even then the adapter
+   * does nothing unless the BTY iPhone app's LocalNotifications bridge is present.
+   */
+  nativeReminder?: boolean;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -258,21 +259,12 @@ export default function TodayHome({
 
   useEffect(() => {
     let cancelled = false;
-    const tz = deviceTz();
     void (async () => {
-      const qs = new URLSearchParams({ locale: loc });
-      if (tz) qs.set("tz", tz);
-      try {
-        const res = await fetch(`/api/me/today/brief?${qs.toString()}`, { credentials: "include", cache: "no-store" });
-        if (res.ok) {
-          const d = (await res.json()) as { ok?: boolean; reminders?: Reminder[]; hostAttention?: HostAttention[] };
-          if (!cancelled && d?.ok) {
-            setReminders(Array.isArray(d.reminders) ? d.reminders : []);
-            setHostAttention(Array.isArray(d.hostAttention) ? d.hostAttention : []);
-          }
-        }
-      } catch {
-        /* fail-soft */
+      // fail-soft: null (not known) leaves `reminders` null, never an asserted empty Today
+      const brief = await fetchTodayBrief<Reminder, HostAttention>(loc);
+      if (!cancelled && brief) {
+        setReminders(brief.reminders);
+        setHostAttention(brief.hostAttention);
       }
       try {
         const tz = deviceTz();
@@ -359,25 +351,24 @@ export default function TodayHome({
     which training it came from — and with two apply items, no way to tell them apart. The same
     fetched-but-narrowed shape that lost the FOLLOW_UP rows in 3.2G.
   */
-  const todayItems = normalizeTodayItems(
-    (reminders ?? []).map((r) => ({
-      stableId: r.stableId,
-      category: r.category,
-      state: r.state,
-      title: r.title,
-      deepLink: r.canonicalDeepLink,
-      context: r.category === "APPLY_DUE" ? r.note ?? null : null,
-    })),
-  );
+  // The list, the follow-ups and the brief's share of the reviews row come from ONE pure selector —
+  // the same one the native reminder decides from, so the two can never disagree about what is open.
+  const openWork = useMemo(() => selectTodayOpenWork(reminders ?? [], hostAttention), [reminders, hostAttention]);
+  const todayItems = openWork.items;
   const { visible: todayVisibleItems, hasMore: todayHasMore } = todayVisible(todayItems, expanded);
-  const reviews =
-    hostActionReviews.length + hostAttention.filter((h) => h.category === "SHARED_REVIEW_DUE").length;
+  const reviews = hostActionReviews.length + openWork.sharedReviewsDue;
   // 3.2G — the leader's overdue/needed follow-ups. `hostAttention` is already sorted by the domain
   // priority rule server-side (sortHostAttention); filtering PRESERVES that order (no UI re-ranking).
-  const followUpItems = hostAttention.filter(
-    (h): h is HostAttention & { category: FollowUpCategory } =>
-      h.category === "FOLLOW_UP_OVERDUE" || h.category === "FOLLOW_UP_NEEDED",
-  );
+  const followUpItems = openWork.followUps;
+
+  // TODAY REMAINING REMINDER — reconcile only after a brief read SUCCEEDED (`reminders !== null`):
+  // an unknown Today neither schedules nor cancels. Re-runs whenever the brief answer changes.
+  const briefResolved = reminders !== null;
+  const openCount = openWork.openCount;
+  useEffect(() => {
+    if (!nativeReminder || !briefResolved) return;
+    void syncTodayRemainingReminder({ openCount, locale: loc });
+  }, [nativeReminder, briefResolved, openCount, loc]);
   const followUpVisible = showAllHost ? followUpItems : followUpItems.slice(0, HOST_PREVIEW);
 
   /*
