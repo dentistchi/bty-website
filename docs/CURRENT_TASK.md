@@ -1,3 +1,12 @@
+**[FOUNDER-ACCOUNT-CONSOLIDATION]**: [x] **완료 · PRODUCTION CERTIFIED / CLOSED (2026-09-26). 앱 코드 0 · 배포 0 · 마이그레이션 파일 0 — 운영 SQL(T1/T2) + Admin API 로 실행.**
+- **원인:** Founder 가 같은 테넌트에서 Entra 계정 2개 사용 → resolver 가 정확히 BTY 사용자 2명으로 매핑. Teams Save 는 Teams 에 로그인된 계정으로, Today 는 BTY 세션 계정으로 → 계정이 다르면 안 보임. resolver 결함 아님.
+- **정규 Founder = `18b1ee80-2200-4bc6-91d7-039ba43f6a50` (hc@bty-dso.com).** `81f08aa1-44a2-40b1-9190-7866151461a7` 은 banned shell(`retired+81f08aa1@bty-dso.invalid`, 2126 까지), 삭제 안 함.
+- **T1 PASS** (marker `2026-09-25 18:38:50.43538-07`): A 의 Azure(`644ff2ac`) + Google identity → 18b1ee80, A 세션/refresh 토큰 폐기. resolver 가 두 oid 모두 18b1ee80 반환(실측).
+- **Admin ban/email PASS** (2026-09-26T01:42Z). ★ **GoTrue 가 retired 주소용 `email` identity 를 자동 생성** → T2 게이트를 "non-email identity 0 + email identity 는 retired 주소만"으로 영구 수정.
+- **T2 PASS (Founder 보고): 56행 rehome**, A 권한 제거, 18b1ee80 권한 보존, XP/contract/Arena/evidence 불변. JWT TTL = 3600s.
+- **수락:** hc@ Microsoft → 18b1ee80 ✓ · ddshanbit Microsoft → 18b1ee80 ✓ · email = hc@bty-dso.com ✓ · **Teams Save → Today 실기기 PASS** ✓. Google 웹 로그인은 수락 경로 아님(identity 는 유지).
+- **남은 것:** `bty_ops.founder_merge_ledger` 유지 중 — rollback window 후 `LEDGER_CLEANUP.sql` 별도 실행. 기록: `docs/ops/founder-merge-2026-09-25/README.md`.
+
 **[PRACTICE-FIRST-CONTENT-P4B]**: [~] **Training 완주 + 수료까지 완료, Practice 는 draft-level 시스템 차단으로 정지. 코드 0 · SQL 0 · 빌드 0 · 배포 0.**
 - 1–8 은 직전 턴에 이미 완료(그래서 draft `7118a34a` 는 지금 `published`). 이번 턴은 9–18 을 라이브로 실행.
 - **§11 누락 단계 발견·수행:** boundary **scope**(활성 규칙 선택)를 하지 않았었음 → `PUT /boundary-scope` 로 **2개 제약 모두 활성** 확정. revision 1→2, **generation_input_revision 2→3**(새 epoch). 제약은 하나도 약화하지 않음.

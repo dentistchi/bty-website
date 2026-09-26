@@ -1,3 +1,9 @@
+**FOUNDER ACCOUNT CONSOLIDATION — TWO BTY USERS MERGED INTO ONE FOUNDER — OPS SQL + ADMIN API · NO APP CODE · NO DEPLOY (2026-09-26)**
+
+- **A) Auth / cookies / session:** CHANGED BY DATA, NOT CODE. `auth.identities` rows `71defecd` (Azure oid `644ff2ac`) and `336defc0` (Google) moved from `81f08aa1` to canonical Founder `18b1ee80`; all `81f08aa1` sessions and refresh tokens revoked; `81f08aa1` banned until 2126 with email `retired+81f08aa1@bty-dso.invalid`. GoTrue auto-created an `email` identity for that retired address (measured) — it cannot sign anyone in. Founder email invariant `hc@bty-dso.com` held.
+- **B) Forced reset / weekly reset:** UNCHANGED. **C) Leaderboard / XP / Season:** UNCHANGED — T2 asserted Core XP, weekly XP, contracts, Arena and evidence row counts identical before/after. **D) Migration:** NO migration file; two one-off ops transactions (T1, T2) with a private ledger `bty_ops.founder_merge_ledger` (not API-exposed, still in place until the rollback window ends). **E) API contract:** UNCHANGED.
+- **F) Verify.** T1 PASS; Admin step PASS; T2 PASS (56 rows); acceptance: hc@ and ddshanbit Microsoft → Founder, Teams Save → Today on a real device (Founder-reported). Record: `docs/ops/founder-merge-2026-09-25/README.md`.
+
 **SOURCE-AWARE DEPLOY RECOVERY — THE WORKER CAN NAME ITS OWN BUILD AGAIN — DEPLOYED · NO MIGRATION · NO DATA WRITE (2026-09-24)**
 
 - **Release identity.** DEPLOYED via `scripts/deploy-bty-arena-staging-with-source.mjs`. Source commit **`d2a18a081c45b0a084c202308d43da6d224615b3`**, Worker `bty-arena-staging` version **`a04e161d-8545-43cc-803d-9ccf26995c7e`**, active 100% at 2026-09-24T13:03:40Z. **No migration, no SQL, no production data written, no product logic changed** (zero source diff — the deploy carries commit `d2a18a08`, which was already live as code).
