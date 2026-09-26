@@ -18,6 +18,8 @@ import PastTracks from "@/components/app-shell/PastTracks";
 import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayHome from "@/components/app-shell/TodayHome";
+import { useTodayRemainingReminder } from "@/components/app-shell/useTodayRemainingReminder";
+import type { GreetingAddress } from "@/domain/daily/greetingAddress";
 import LearnHeader from "@/components/app-shell/LearnHeader";
 import PracticeLanding from "@/components/app-shell/PracticeLanding";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
@@ -75,6 +77,13 @@ type Copy = {
     title: string;
     /** Time-aware greeting bands (Today Arrival Warmth STEP 1) — client-local hour → band. */
     greetings: { morning: string; afternoon: string; evening: string; lateNight: string };
+    /** TODAY PERSONAL GREETING: the SAME bands, addressed to the person. `{name}` is the
+     *  addressee resolved server-side by /api/me/greeting — never a job title. `doctor` is
+     *  chosen only when the user's canonical ROLE says clinician; otherwise `personal`. */
+    greetingsNamed: {
+      personal: { morning: string; afternoon: string; evening: string; lateNight: string };
+      doctor: { morning: string; afternoon: string; evening: string; lateNight: string };
+    };
     sub: string;
     /** Each door: `noun` = the BTY ontology label (quiet eyebrow) · `action` = the lived daily
      *  choice (primary, visually strongest). `focus` (self/others/world) is the unchanged internal
@@ -115,6 +124,20 @@ export const COPY: Record<Locale, Copy> = {
         evening: "Good evening.",
         lateNight: "Still awake?",
       },
+      greetingsNamed: {
+        personal: {
+          morning: "Good morning, {name}.",
+          afternoon: "Good afternoon, {name}.",
+          evening: "Good evening, {name}.",
+          lateNight: "Still awake, {name}?",
+        },
+        doctor: {
+          morning: "Good morning, Dr. {name}.",
+          afternoon: "Good afternoon, Dr. {name}.",
+          evening: "Good evening, Dr. {name}.",
+          lateNight: "Still awake, Dr. {name}?",
+        },
+      },
       sub: "Where will you show up today?",
       cards: [
         { noun: "SELF", action: "Return to myself", tab: "center", focus: "Self", select: "Self — Return to yourself with honesty." },
@@ -148,6 +171,20 @@ export const COPY: Record<Locale, Copy> = {
         afternoon: "좋은 오후입니다.",
         evening: "좋은 저녁입니다.",
         lateNight: "아직 깨어 계시군요.",
+      },
+      greetingsNamed: {
+        personal: {
+          morning: "{name}님, 좋은 아침입니다.",
+          afternoon: "{name}님, 좋은 오후입니다.",
+          evening: "{name}님, 좋은 저녁입니다.",
+          lateNight: "{name}님, 아직 깨어 계시군요.",
+        },
+        doctor: {
+          morning: "Dr. {name}, 좋은 아침입니다.",
+          afternoon: "Dr. {name}, 좋은 오후입니다.",
+          evening: "Dr. {name}, 좋은 저녁입니다.",
+          lateNight: "Dr. {name}, 아직 깨어 계시군요.",
+        },
       },
       sub: "오늘, 어디에 마음을 둘까요?",
       cards: [
@@ -560,6 +597,55 @@ export function greetingBand(hour: number): GreetingBand {
 /** Resolve the time-aware greeting from a locale's greeting record + a local hour. Pure. */
 export function pickGreeting(greetings: TodayCopy["greetings"], hour: number): string {
   return greetings[greetingBand(hour)];
+}
+
+/**
+ * TODAY PERSONAL GREETING — compose the SAME daypart band, addressed to the person. Pure.
+ *
+ * Only the addressee is personalized: the band, its wording and its punctuation are the existing
+ * copy. A generic/absent address renders exactly what {@link pickGreeting} renders today, which
+ * is also what an unauthenticated arrival, a failed fetch and a nameless account render.
+ *
+ * `address.addressee` is a NAME resolved server-side (`/api/me/greeting`). The canonical
+ * position that chose `kind` never reaches the client, so no job title can appear here.
+ */
+export function composeGreeting(
+  copy: TodayCopy,
+  hour: number,
+  address: GreetingAddress | null,
+): string {
+  const band = greetingBand(hour);
+  if (!address || address.kind === "generic" || !address.addressee) return copy.greetings[band];
+  const template = copy.greetingsNamed[address.kind][band];
+  return template.replace("{name}", address.addressee);
+}
+
+/**
+ * Read the signed-in person's form of address. RAW fetch (same trap as the other /api/me reads in
+ * this shell). Narrow-typed: only `address.kind` + `address.addressee` are read, and an unknown
+ * `kind` is treated as generic — an unrecognised value is not an absent one, and Today must not
+ * render a form of address this build does not have copy for. Any failure → null → the existing
+ * unnamed greeting. Never invents a name.
+ */
+export async function fetchGreetingAddress(): Promise<GreetingAddress | null> {
+  try {
+    const res = await fetch("/api/me/greeting", { credentials: "include", cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { ok?: boolean; address?: { kind?: unknown; addressee?: unknown } };
+    if (data?.ok !== true) return null;
+    const kind = data.address?.kind;
+    const addressee = data.address?.addressee;
+    if ((kind !== "doctor" && kind !== "personal") || typeof addressee !== "string" || !addressee.trim()) {
+      return null;
+    }
+    return { kind, addressee: addressee.trim() };
+  } catch (e) {
+    console.warn(
+      "[app-shell/today] /api/me/greeting fell back to the unnamed greeting:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
 }
 
 /**
@@ -1236,11 +1322,25 @@ export function TodaySurface({
  * morning default (copy.title) so hydration matches; the real local-time band resolves after mount
  * from the device clock (no API, no timezone service, no storage). No sub-line, no door framing.
  */
-function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greetings"]; ssrDefault: string }) {
+export function TodayGreeting({ copy, ssrDefault }: { copy: TodayCopy; ssrDefault: string }) {
   const [greeting, setGreeting] = useState(ssrDefault);
+  // TODAY PERSONAL GREETING: the band resolves immediately from the device clock (unchanged), and
+  // the addressee arrives from the owner-scoped route a moment later. Until it does — and forever,
+  // if it never does — the greeting is the existing unnamed one, so nothing regresses on failure.
+  const [address, setAddress] = useState<GreetingAddress | null>(null);
   useEffect(() => {
-    setGreeting(pickGreeting(greetings, new Date().getHours()));
-  }, [greetings]);
+    let cancelled = false;
+    void (async () => {
+      const a = await fetchGreetingAddress();
+      if (!cancelled) setAddress(a);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    setGreeting(composeGreeting(copy, new Date().getHours(), address));
+  }, [copy, address]);
   return (
     <header data-today-greeting data-bty-app-header="" className="btyRise mb-6" style={{ animationDelay: "40ms" }}>
       <h1 data-bty-main-heading="" className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{greeting}</h1>
@@ -1377,6 +1477,8 @@ export default function BtyDailyAppShell({
    * costs one request; polling would cost many and answer the same question.
    */
   const [todayRefreshKey, setTodayRefreshKey] = useState(0);
+  // TODAY REMAINING REMINDER: the BTY iPhone app only — never the Teams runtime (inert in a browser).
+  useTodayRemainingReminder(locale, runtime === "web");
   // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -2057,11 +2159,12 @@ export default function BtyDailyAppShell({
                     and "Show everything", under which the FULL, unchanged detailed projections render
                     (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
                     AI brief). No detailed list renders in the first viewport by default. */}
-                <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
+                <TodayGreeting copy={t.today} ssrDefault={t.today.title} />
                 <TodayHome
                   locale={locale}
                   refreshKey={todayRefreshKey}
                   onOpenSaved={() => setSavedOpen(true)}
+                  nativeReminder={runtime === "web"}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
                   onOpenLeadershipFollowUp={(target) => {
