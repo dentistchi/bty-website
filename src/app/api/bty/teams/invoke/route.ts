@@ -388,6 +388,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (!tracked.ok) {
+      if (tracked.reason === "zero_recipients") {
+        return dialog(trackDialogCard(locale, {
+          trackingMode: submission.trackingMode,
+          hostFraming: submission.hostFraming,
+        }), parsed.invokeName);
+      }
       if (tracked.reason === "invalid_recipients") return trackSay(
         "선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다. 같은 조직의 활성 BTY 사용자를 선택하세요.",
         "Some selected people could not be verified in BTY. Choose active BTY users in the same organization.",
@@ -396,12 +402,8 @@ export async function POST(req: NextRequest) {
       const copy =
         tracked.reason === "invalid_framing"
           ? MSG.trackNoFraming
-          : tracked.reason === "zero_recipients"
-            ? MSG.trackNoPeople
-            : MSG.trackFailed;
-      return trackSay(tracked.reason === "zero_recipients"
-        ? "추적할 다른 사람을 한 명 이상 선택하세요." : "공지 추적을 시작하지 못했습니다. 다시 시도하세요.",
-        tracked.reason === "zero_recipients" ? "Select at least one other person to track." : copy);
+          : MSG.trackFailed;
+      return trackSay("공지 추적을 시작하지 못했습니다. 다시 시도하세요.", copy);
     }
 
     return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted), TEAMS_INVOKE_FETCH_TASK);

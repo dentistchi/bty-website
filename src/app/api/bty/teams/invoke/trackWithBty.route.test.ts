@@ -106,6 +106,29 @@ describe("the dialog", () => {
 });
 
 describe("the track submit", () => {
+  it.each(["en", "ko"] as const)("self-only keeps the setup editable with visible %s validation", async locale => {
+    rpc.mockResolvedValue({ data: null, error: { message: "zero_recipients" } });
+    const res = await POST(req(activity({ locale }, { data: {
+      trackingMode: "response", hostFraming: "Please respond", recipients: OID,
+    } })));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.task.type).toBe("continue");
+    const card = body.task.value.card.content;
+    expect(card.body).toContainEqual(expect.objectContaining({
+      type: "TextBlock", text: locale === "ko" ? "Track할 다른 사람을 선택하세요." : "Choose someone else to track.",
+    }));
+    expect(card.body).toContainEqual(expect.objectContaining({ id: "hostFraming", value: "Please respond" }));
+    expect(card.body).toContainEqual(expect.objectContaining({ id: "trackingMode", value: "response" }));
+    const picker = card.body.find((x: {id?: string}) => x.id === "recipients");
+    expect(picker["choices.data"].dataset).toContain("scope=currentContext");
+    expect(picker.value ?? "").toBe("");
+    expect(card.actions).toContainEqual(expect.objectContaining({type: "Action.Submit"}));
+    expect(JSON.stringify(body)).not.toMatch(/Tracking started|공지 추적을 시작했습니다/);
+    expect(ensureActionCapture).not.toHaveBeenCalled();
+    expect(rememberTenantRoute).not.toHaveBeenCalled();
+  });
+
   it("ensures the capture and creates the run from SERVER-derived identity", async () => {
     const res = await POST(
       req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Please confirm", recipients: `${A},${B}` } })),
@@ -346,7 +369,7 @@ describe("announcement tracking V1 mobile-visible feedback", () => {
     expect(res.status).toBe(200);
     expect(body.task.type).toBe("continue");
     expect(body.task.value.card.contentType).toBe("application/vnd.microsoft.card.adaptive");
-    expect(JSON.stringify(body)).toContain(locale === "ko" ? "추적할 다른 사람을 한 명 이상 선택하세요." : "Select at least one other person to track.");
+    expect(JSON.stringify(body)).toContain(locale === "ko" ? "Track할 다른 사람을 선택하세요." : "Choose someone else to track.");
   });
   it("zero selection is visible and never creates a capture or announcement", async () => {
     const body = await (await POST(req(activity({locale:"ko"}, { data: { trackingMode:"response",hostFraming:"Notice",recipients:"" } })))).json();
