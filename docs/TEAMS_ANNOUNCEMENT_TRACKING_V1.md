@@ -8,7 +8,7 @@ Work is isolated on `feat/teams-announcement-tracking-v1`. Production is not cha
 - Manifest 1.0.13's `trackWithBty` used `context: ["message"]`, `fetchTask: true` and title `Track`.
 - The verified invoke route authenticates first, parses source/identity, then opens the dialog on fetchTask. Submit calls `trackAnnouncement` after server-resolved identity and collaboration-participant checks.
 - The previous dialog submitted framing and selected Entra object IDs without a mode. Successful submissions already returned `task.continue`; several refusal paths returned a compose-extension message, invisible in the reported iPhone experiment.
-- `trackAnnouncement` ensures a capture with `intent: "track_source"`, then calls the atomic `bty_track_announcement`. Track never stamps `saved_at`; a previously saved capture is reused without clearing it. Save remains private to the caller's Today.
+- Before the release fixes, `trackAnnouncement` ensured a capture with `intent: "track_source"`, then called the atomic `bty_track_announcement`. This left a capture behind on a rejected audience; V1 now uses one transaction for all three records. Track never stamps `saved_at`; a previously saved capture is reused without clearing it. Save remains private to the caller's Today.
 - The database excludes every Microsoft identity belonging to the host. Self-only selection raises `zero_recipients`. The frozen recipient set, unique owner/source and announcement/tenant/object constraints already exist.
 - Legacy `response` is `ACKNOWLEDGED`, `QUESTION` or `HELP_NEEDED`. **All three stamp the old `responded_at`.** It does not mean a required answer was submitted. Thread messages and per-message read receipts concern private BTY conversations, not Teams channel reads or announcement completion.
 - Thread/recipient RPCs resolve authority from the actor and bound recipient. Existing table RLS, RPC grants, host-deletion retention and private thread isolation remain intact.
@@ -21,7 +21,7 @@ The existing rows therefore remain **NULL mode (legacy conversation)**. Neither 
 
 The menu is `Track announcement` / `공지 추적` in package 1.0.14. The dialog requires an explicit `acknowledgment` or `response` choice; no preselected fallback. Both languages are supported by the card and packaged manifest localization. Stale open dialogs without a mode get a visible refusal and must be reopened.
 
-- Targeted means a frozen audience row exists. Unbound people still count in the denominator and appear as numbered recipients if no trusted display name exists.
+- Targeted means a frozen audience row exists. New V1 recipients must resolve to canonical users in the invoke tenant with an active membership in the actor’s active primary BTY organization. The whole selection is refused if any non-self recipient is malformed, unresolved, inactive or outside that organization. Legacy unbound rows remain in their original denominator.
 - `opened_at` is written by the explicit **Open announcement** action in BTY. Fetching Today, opening a Teams source or reading a private thread cannot stamp it.
 - `acknowledged_at` is written only by the acknowledgment action in acknowledgment mode.
 - Required written-answer evidence uses **`response_submitted_at` + `response_text`**. It is exposed as `responseSubmittedAt` and the dashboard's response-completed count. The separate name preserves legacy `responded_at` rather than silently changing its meaning.
@@ -48,19 +48,19 @@ After SQL/application review and explicit operational approval:
 3. Deploy reviewed code, then distribute/reinstall package 1.0.14. Do not distribute the new dialog before database support exists.
 4. Run the device acceptance below, then review aggregate counts only.
 
-Rollback before any V1 rows: restore prior application/package, then in an approved maintenance transaction drop the two **new** RPC signatures and five **new** columns/constraints. Never drop old tables/functions.
-Rollback after any V1 row/evidence exists: retain additive schema and evidence; stop distribution of the new package and prefer a forward fix. Do not drop evidence or blindly restore an old app that interprets V1 rows as legacy. An application rollback needs a reviewed compatibility patch that preserves the V1 reader/completion rules. No destructive rollback or production action is included here.
 
 ## Verification
 
-Final local gates (Node 25.9.0, `NODE_OPTIONS=--no-experimental-webstorage` for Vitest):
+Release-fix gates use Node 25.9.0 and `NODE_OPTIONS=--no-experimental-webstorage` for Vitest.
 
-- Focused: 794 passed, 0 failed, 71 environment-gated tests skipped (865 total). The seven new PostgreSQL tests were run separately with a localhost-only database and all passed.
-- Full unit comparison against `b20e715a`: base 14,337 passed / 129 failed / 336 skipped (14,802 total); branch 14,370 passed / 129 failed / 343 skipped (14,842 total). Exact failing assertion sets and failing file sets match: **0 new failures, 0 new failing files**. Both commands exit 1 because the pre-existing failures remain. Examples include absent historical `.eval-artifacts`, existing authorization fixtures, and stale repository-wide migration guards. Both runs used `env -i` with Node 25.9.0 and `vitest run --maxWorkers=4 --minWorkers=1`; production credentials were absent.
-- Local migration applied twice; RPC concurrency/authorization and existing table RLS/client privilege checks passed.
-- `npx tsc --noEmit`: exit 0. `npm run build`: exit 0 using build-only placeholder Supabase configuration, without production credentials.
-- `node teams/package.mjs`: exit 0. Packaged manifest and Korean localization validated against Microsoft's v1.25 schemas. ZIP contains the manifest, both original icons, and `ko.json`.
-- Shared checkout: status and content hashes match the pre-work snapshot; its HEAD and local main are unchanged. No other existing worktree was edited or removed.
+- Focused including Save: 841 passed, 0 failed; 87 environment-gated tests skipped. PostgreSQL: 23/23 passed separately on a disposable localhost-only database.
+- Rejection tests compare all seven related table counts before/after: captures, announcements, recipients, thread messages, thread reads, personal dismissals and tenant routes. Self-only, empty, malformed, unresolved, inactive, revoked, cross-tenant, cross-org, invalid mode, missing source and nine-valid/one-invalid selections have zero delta. An injected recipient insert failure also rolls the capture and announcement back.
+- The synthetic eleven-row legacy fixture is byte-identical before/after migration replay. New completion dual-writes the old disposition/timestamp and the recipient dismissal version; the unchanged previous Worker Today selector hides completed cards. Opening alone remains pending in both versions. A later host conversation message can resurface a card under the old conversation contract.
+- All six mutations were killed: opened-as-complete (8 failing tests), legacy responded_at fallback (3), self exclusion removed at both validation layers (4), idempotency guard removed (2), silent zero-audience response (2), reversed reminder rule (6). Every mutation was restored in an isolated scratch copy.
+- TypeScript, production build, `cf:build`, Teams ZIP and official v1.25 manifest/localization schemas pass. Builds use placeholder configuration without production credentials.
+- Supabase production advisors retain their baseline category/counts; the migration is NOT applied there. Local catalog/RPC tests verify client-deny tables and service-only function execution. This is not a claim that post-migration production advisors have run.
+- Full unit against fresh `origin/inner-main` b20e715a: base 14,337 passed / 129 failed / 336 skipped; branch 14,378 passed / 129 failed / 359 skipped. Exact failing assertion sets and failed-file sets match: zero new failures. Both commands exit 1 for the existing baseline failures.
+- Shared dirty checkout status/content hashes and local main are unchanged.
 
 Automated coverage includes:
 
@@ -70,14 +70,24 @@ Automated coverage includes:
 - mode completion removes Today open work and cancels the native 08:00 reminder; Teams/browser/native regression suites;
 - TypeScript, optimized production build (placeholder build-only configuration; no production credentials), manifest/ZIP checks and full unit comparison against the untouched base.
 
+## Authorization and transaction boundary
+
+The Bot Framework verifier runs before the body is parsed. The existing invoke identity resolver establishes the actor; the creation RPC repeats that actor check and calls the same `bty_resolve_user_from_microsoft_identity(tenant, oid)` for each selected recipient. Its authority is Azure `auth.identities.identity_data.custom_claims.tid/oid`, never user metadata, email, UPN or display name. Active `bty_org_memberships` and the actor’s active primary organization form the organization boundary; membership/organization share locks span validation and creation. Canonical users are bound at creation, and self is excluded by resolved user identity.
+
+The service-only SECURITY DEFINER creation RPC has a fixed search_path and revokes PUBLIC/anon/authenticated execution. The existing filename is retained, and the legacy RPC is not changed. Source capture, announcement, mode and all bound recipients commit or roll back together. Track requests never pre-save tenant routing; the validated routing coordinate is stored with the new announcement. Save retains its original writer and semantics.
+
 ## iPhone acceptance after approved deployment
 
 1. Install package 1.0.14. Verify the English/Korean menu and fetchTask dialog. Save a source independently and confirm it still belongs only to your Today.
-2. Submit empty/self-only audience. Confirm the visible card says `추적할 다른 사람을 한 명 이상 선택하세요.`; no announcement/recipient is created. The idempotent source capture may already exist; it is not a Track or a saved item.
-3. Choose ten **other** recipients and acknowledgment mode. Verify denominator ten, ten audience rows, no host. Repeat submission; verify the same run/audience and existing-run confirmation.
+2. Submit empty/self-only audience. Confirm the visible card says `추적할 다른 사람을 한 명 이상 선택하세요.`; no announcement/recipient is created. Capture, announcement, recipient, thread/read, dismissal and routing row counts must be unchanged.
+3. Choose ten **other active BTY users in the same organization** and acknowledgment mode. Verify denominator ten, ten audience rows, no host. Repeat submission; verify the same run/audience and existing-run confirmation.
 4. A recipient opens in BTY: opened increases, remaining does not decrease. Tap acknowledgment: acknowledged increases, remaining decreases, their Today card disappears.
 5. Use another source for response mode. Opening must not complete it; no acknowledgment shortcut is offered. Submit a written answer: responded increases, answer is visible only to the host, card leaves Today.
 6. Verify original Teams source links in Teams, browser and native shell. With no other work pending, completed items must not keep the 08:00 local reminder scheduled; pending items must.
 7. Inspect the legacy 11 runs, old private conversations and Save behavior. Do not reinterpret their old response timestamps as new evidence.
 
 Real iPhone rendering is a deployment-time gate, not claimed by unit tests or the production build.
+
+Rollback: keep the additive schema and every recorded evidence row. Deploy a reviewed compatibility Worker or a previous Worker validated against completion shadows. Production column drops are prohibited, even before the first V1 row. Migration first, Worker second.
+
+The creation RPC validates tenant+OID using the canonical Microsoft resolver, and active BTY organization membership before writing. Capture, announcement and bound recipients commit together. No partial audience is accepted. Actual acknowledgment/response dual-write legacy responded_at and a legacy disposition plus recipient Today dismissal; these are rollback shadows, never new response completion evidence. The persisted V1 mode `response` means response required; `acknowledgment` means acknowledgment required.

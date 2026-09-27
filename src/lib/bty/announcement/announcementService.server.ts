@@ -471,7 +471,9 @@ export async function listHostAnnouncements(
         acknowledged: bound.filter((r) => r.response === "ACKNOWLEDGED").map(toResponder),
         question: bound.filter((r) => r.response === "QUESTION").map(toResponder),
         needHelp: bound.filter((r) => r.response === "HELP_NEEDED").map(toResponder),
-        noResponse: bound.filter((r) => !isAnnouncementResponse(r.response)).map(toResponder),
+        noResponse: bound.filter((r) => isTrackingMode(run.tracking_mode)
+          ? !trackingComplete(evidenceOf(r, run.tracking_mode))
+          : !isAnnouncementResponse(r.response)).map(toResponder),
       },
     };
   });

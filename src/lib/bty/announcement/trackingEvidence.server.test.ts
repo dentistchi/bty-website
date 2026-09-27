@@ -1,3 +1,4 @@
+import { selectTodayOpenWork } from "@/domain/daily/todayOpenWork";
 import { describe,it,expect,vi } from "vitest";
 import { listMyAnnouncements,listHostAnnouncements } from "./announcementService.server";
 vi.mock("./recipientDisplayName.server",()=>({resolveDisplayNames:async()=>new Map()}));
@@ -34,4 +35,16 @@ describe("V1 projections and Today membership",()=> {
   const [host]=await listHostAnnouncements(client,"owner");expect(host.tracking).toEqual({targeted:10,opened:4,acknowledged:2,responded:0,remaining:8});expect(host.audience).toHaveLength(10);
   expect(filters).toContainEqual(["bty_tracked_announcements","owner_user_id","owner"]);
  });
+});
+
+it.each([[null,null],["opened",null],["opened","ack"]])("legacy responded_at is never required-response evidence (%s,%s)",async(opened,ack)=> {
+ const responseAnn={...ann,tracking_mode:"response",resolved_count:1};
+ const shadow={...row,user_id:"person",response:"ACKNOWLEDGED",responded_at:"legacy-shadow",opened_at:opened,acknowledged_at:ack,response_submitted_at:null,bty_tracked_announcements:responseAnn};
+ const {client}=db({bty_tracked_announcements:[responseAnn],bty_tracked_announcement_recipients:[shadow]});
+ const pending=await listMyAnnouncements(client,"person");expect(pending).toHaveLength(1);
+ expect(pending[0].responseSubmittedAt).toBeNull();
+ const [host]=await listHostAnnouncements(client,"owner");
+ expect(host.tracking?.responded).toBe(0);expect(host.tracking?.remaining).toBe(1);expect(host.responders.noResponse).toHaveLength(1);
+ // Both Today and the 08:00 native reminder consume this production selector.
+ expect(selectTodayOpenWork([],[],pending).openCount).toBe(1);
 });

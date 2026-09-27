@@ -9,6 +9,8 @@ import { NextRequest } from "next/server";
  * user id, tenant or email must be incapable of reaching the write.
  */
 
+const rememberTenantRoute = vi.fn();
+vi.mock("@/lib/bty/teams/tenantRoute.server", () => ({ rememberTenantRoute }));
 const verifyBotFrameworkToken = vi.fn();
 const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const ensureActionCapture = vi.fn();
@@ -108,14 +110,14 @@ describe("the track submit", () => {
       req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Please confirm", recipients: `${A},${B}` } })),
     );
     expect(res.status).toBe(200);
-    expect(ensureActionCapture).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ userId: HOST }));
+    expect(ensureActionCapture).not.toHaveBeenCalled();
     expect(rpc).toHaveBeenCalledWith(
       "bty_track_announcement_v1",
       expect.objectContaining({
         p_owner_user_id: HOST,
-        p_source_capture_id: "cap-1",
+        p_actor_oid: OID,
         p_host_framing: "Please confirm",
-        p_tenant_id: TID,
+        p_source: expect.objectContaining({ tenant_id: TID, message_id: "m1" }),
         p_recipient_oids: [A, B],
       }),
     );
@@ -144,7 +146,7 @@ describe("the track submit", () => {
     );
     const args = rpc.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(args.p_owner_user_id).toBe(HOST);
-    expect(args.p_tenant_id).toBe(TID);
+    expect(args.p_source).toEqual(expect.objectContaining({tenant_id:TID}));
     const dump = JSON.stringify(args);
     expect(dump).not.toContain("attacker");
     expect(dump).not.toContain("evil.test");
@@ -166,7 +168,7 @@ describe("the track submit", () => {
   it("refuses zero usable recipients, and writes nothing", async () => {
     const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: "not-a-guid" } })));
     expect(rpc).not.toHaveBeenCalled();
-    expect(JSON.stringify(await res.json())).toContain("at least one other person");
+    expect(JSON.stringify(await res.json())).toContain("active BTY users in the same organization");
   });
 
   it("a repeat Track returns the SAME run rather than splitting the audience", async () => {
@@ -259,7 +261,7 @@ describe("★ Track is a COLLABORATION action", () => {
     isActiveFoundryHost.mockResolvedValue(false);
     const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Please confirm", recipients: A } })));
     expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1", expect.anything());
-    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(ensureActionCapture).not.toHaveBeenCalled();
     expect(JSON.stringify(await res.json())).not.toContain("Tracking isn't available");
   });
 
@@ -354,10 +356,25 @@ describe("announcement tracking V1 mobile-visible feedback", () => {
     const body=await (await POST(req(activity({}, {data:{trackingMode,hostFraming:"Notice",recipients:A}})))).json();
     expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1",expect.objectContaining({p_tracking_mode:trackingMode}));
     expect(body.task.type).toBe("continue");expect(body.task.value.card).toBeTruthy();
-    expect(ensureActionCapture).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({intent:"track_source"}));
+    expect(ensureActionCapture).not.toHaveBeenCalled();
   });
   it("no mode is a visible refusal, never an implicit legacy mode",async()=> {
     const body=await (await POST(req(activity({}, {data:{hostFraming:"Notice",recipients:A}})))).json();
     expect(body.task.type).toBe("continue");expect(JSON.stringify(body)).toContain("Choose acknowledgment");expect(rpc).not.toHaveBeenCalled();
   });
+});
+
+describe("no routing writes before Track validation",()=> {
+ it.each(["en","ko"])("%s audience authorization refusal is visible, private and writes no route",async locale=> {
+  rpc.mockResolvedValue({data:null,error:{message:"invalid_recipients",code:"42501"}});
+  const body=await (await POST(req(activity({locale,serviceUrl:"https://smba.trafficmanager.net/amer/"},{data:{trackingMode:"response",hostFraming:"Notice",recipients:A}})))).json();
+  expect(body.task.type).toBe("continue");
+  expect(JSON.stringify(body)).toContain(locale==="ko"?"같은 조직의 활성 BTY 사용자를 선택하세요.":"Choose active BTY users in the same organization.");
+  expect(JSON.stringify(body)).not.toContain(A);
+  expect(rememberTenantRoute).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
+ });
+ it.each([{}, {data:{trackingMode:"invalid",hostFraming:"Notice",recipients:A}}, {data:{trackingMode:"response",hostFraming:"Notice",recipients:""}}])("parser refusal never records routing",async value=> {
+  await POST(req(activity({serviceUrl:"https://smba.trafficmanager.net/amer/"},value)));
+  expect(rememberTenantRoute).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
+ });
 });

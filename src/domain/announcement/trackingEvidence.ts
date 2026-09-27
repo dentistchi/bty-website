@@ -10,6 +10,7 @@ export type TrackingEvidence = {
   acknowledgedAt: string | null;
   responseSubmittedAt: string | null;
 };
+// Legacy responded_at is a rollback shadow. Never use it as required-response evidence.
 export function trackingComplete(e: TrackingEvidence): boolean {
   return e.trackingMode === "acknowledgment" ? !!e.acknowledgedAt
     : e.trackingMode === "response" ? !!e.responseSubmittedAt : false;

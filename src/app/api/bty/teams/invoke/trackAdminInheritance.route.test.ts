@@ -138,7 +138,7 @@ describe("★ an active platform admin with NO Host grant", () => {
     expect(res.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith(
       "bty_track_announcement_v1",
-      expect.objectContaining({ p_owner_user_id: ADMIN, p_source_capture_id: "cap-1" }),
+      expect.objectContaining({ p_owner_user_id: ADMIN, p_source: expect.objectContaining({ message_id: "m-file-1" }) }),
     );
     expect(await text(res)).not.toContain(REFUSAL);
   });
@@ -166,12 +166,12 @@ describe("★ the file-containing message the Founder actually tracked", () => {
   it("★ 6. exactly ONE tracking record is created for one submit", async () => {
     await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Read this", recipients: A } })));
     expect(rpc.mock.calls.filter((c) => c[0] === "bty_track_announcement_v1")).toHaveLength(1);
-    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(ensureActionCapture).not.toHaveBeenCalled();
   });
 
   it("★ 7. the Teams source link is preserved on the capture", async () => {
     await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Read this", recipients: A } })));
-    const arg = ensureActionCapture.mock.calls[0][1] as Record<string, unknown>;
+    const arg = rpc.mock.calls[0][1].p_source as Record<string, unknown>;
     expect(JSON.stringify(arg)).toContain("teams.microsoft.com/l/message");
   });
 
@@ -184,12 +184,12 @@ describe("★ the file-containing message the Founder actually tracked", () => {
     expect(b.status).toBe(200);
     const ids = rpc.mock.calls.filter((c) => c[0] === "bty_track_announcement_v1");
     expect(ids).toHaveLength(2); // two calls...
-    expect(ids[0][1].p_source_capture_id).toBe(ids[1][1].p_source_capture_id); // ...one capture
+    expect(ids[0][1].p_source).toEqual(ids[1][1].p_source); // ...one capture
   });
 
   it("★ 9. NO BINARY, AND NO ATTACHMENT METADATA — the MESSAGE is what is tracked", async () => {
     await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Read this", recipients: A } })));
-    const arg = JSON.stringify(ensureActionCapture.mock.calls[0][1]);
+    const arg = JSON.stringify(rpc.mock.calls[0][1].p_source);
 
     // Measured, so the product contract is stated rather than assumed: the invoke parser reads
     // exactly `preview_text` (from the HTML body) and `source_url` (linkToMessage). It never
@@ -236,7 +236,7 @@ describe("★ Track is COLLABORATION — organizational authority is no longer c
     adminGrantRow.mockResolvedValue({ data: null, error: null });
     isActiveFoundryHost.mockResolvedValue(false);
     await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "please read", recipients: A } })));
-    expect(ensureActionCapture).toHaveBeenCalledTimes(1);
+    expect(ensureActionCapture).not.toHaveBeenCalled();
     expect(rpc.mock.calls.map((c) => c[0])).toEqual(["bty_track_announcement_v1"]);
   });
 
