@@ -256,7 +256,7 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
 // Track service and all database RPCs below are real. The positive control proves writes work.
 const routingToken = vi.hoisted(() => ({ claim: undefined as string | undefined }));
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({
- verifyBotFrameworkToken: async () => ({ ok: true, payload: { serviceUrl: routingToken.claim } }),
+ verifyBotFrameworkToken: async () => ({ ok: true, payload: { serviceurl: routingToken.claim } }),
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => process.env.BTY_ROLLBACK_SOURCE_ROOT ? rollbackDb() : serviceDb() }));
 import { NextRequest } from "next/server";

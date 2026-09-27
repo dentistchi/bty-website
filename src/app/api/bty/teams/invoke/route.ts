@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
     ((activity as { locale: string }).locale.toLowerCase().startsWith("ko")) ? "ko" : "en";
   const trackSay = (ko: string, en: string) => dialog(confirmationCard(locale === "ko" ? ko : en), TEAMS_INVOKE_FETCH_TASK);
   const identity = readActivityIdentity(activity);
-  const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
+  const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
   if (readCommandId(activity) !== TEAMS_COMMAND_TRACK && identity && routing.url) {
     const adminForRoute = getSupabaseAdmin();
     if (adminForRoute) {
@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
 
     // All non-ok routing results (absent, invalid, mismatch) fail closed before creation.
     // Track never pre-saves a tenant route. Log only the fixed reason enum, never coordinates.
-    const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
+    const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
     if (routing.reason !== "ok" || !routing.url) {
       console.error("[teams-invoke] track routing refused", { reason: routing.reason });
       return trackSay(

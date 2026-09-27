@@ -138,14 +138,14 @@ describe("E — the coordinate cannot come from anywhere a client controls", () 
   it("a token whose serviceUrl claim disagrees with the body yields NOTHING", async () => {
     // Either a replayed token or a body edited in flight. Neither is a value worth keeping —
     // Track refuses before its creation RPC.
-    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceUrl: "https://smba.trafficmanager.net/amer/" } });
+    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceurl: "https://smba.trafficmanager.net/amer/" } });
     const res = await POST(req(activity({ serviceUrl: REAL })));
     expect(res.status).toBe(200);
     expect(rpc).not.toHaveBeenCalled();
   });
 
   it("a token whose claim AGREES (bar a trailing slash) still stores the body's exact value", async () => {
-    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceUrl: "https://smba.trafficmanager.net/emea" } });
+    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceurl: "https://smba.trafficmanager.net/emea" } });
     await POST(req(activity({ serviceUrl: REAL })));
     expect(sentServiceUrl()).toBe(REAL);
   });

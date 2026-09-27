@@ -170,9 +170,13 @@ After an authorized rollback:
 
 `ServiceUrlReason` is `ok | absent | invalid | mismatch`. Every non-ok Track submit is refused before `trackAnnouncement`; missing/non-string/blank activity routing is `absent`, malformed coordinates are `invalid`, and a disagreeing verified-token claim is `mismatch`. A claim or form field is never a fallback URL. Track never pre-saves tenant routing.
 
+**Claim name.** The verified Bot Framework JWT carries the routing claim as lowercase **`serviceurl`** (`AuthenticationConstants.ServiceUrlClaim` in Microsoft's botbuilder-js; its channel validation compares that claim). JWT claim names are case-sensitive. The route reads `verified.payload.serviceurl` only. It never falls back to a camelCase `serviceUrl` claim. The request body's `serviceUrl` is a separate input. Until this fix the route read `payload.serviceUrl`, which Bot Framework never sends, so `mismatch` could not fire in production. The fixtures had minted the same non-existent camelCase claim, so the tests passed anyway. The fixtures now use the real claim name.
+
+**Missing claim: not yet enforced.** A verified token with no `serviceurl` claim is still accepted when the body's routing is valid. No measurement yet shows that production Teams tokens carry the claim, and refusing on its absence could disable Track for every user. Follow-up, separate change: record only a boolean `serviceurl` claim presence in the structured log for real Track submits, with no URL, hostname, token, tenant or user identifiers. Decide on fail-closed enforcement only after that measurement.
+
 The response is HTTP 200 with `task.type=continue` and an Adaptive Card:
 
 - EN: “BTY couldn’t verify where this message came from. Nothing was tracked.”
 - KO: “이 메시지의 출처를 확인할 수 없어 추적하지 않았습니다.”
 
-Only the fixed routing reason enum is logged; no URL, token, message, user/tenant/recipient ID is logged or persisted. The real route/PostgreSQL tests compare all seven table counts for all three failures in both locales, assert the Track service was never called, and use a successful creation control. Removing the early return must fail these tests.
+Only the fixed routing reason enum is logged; no URL, token, message, user/tenant/recipient ID is logged or persisted. The real route/PostgreSQL tests compare all seven table counts for all three failures in both locales, assert the Track service was never called, and use a successful creation control. The `mismatch` case uses the real claim name: JWT `serviceurl` = A, body `serviceUrl` = B, A ≠ B. Each of these mutations must make the tests fail: removing the early return, reading the claim as camelCase `payload.serviceUrl`, or removing the claim comparison.

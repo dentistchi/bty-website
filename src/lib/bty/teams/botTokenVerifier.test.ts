@@ -24,7 +24,7 @@ async function sign(over: {
   exp?: string | number;
   key?: KeyLike;
 } = {}) {
-  return new SignJWT({ serviceUrl: "https://smba.trafficmanager.net/teams/" })
+  return new SignJWT({ serviceurl: "https://smba.trafficmanager.net/teams/" })
     .setProtectedHeader({ alg: "RS256", kid })
     .setIssuer(over.iss ?? ISSUER)
     .setAudience(over.aud ?? BOT_APP_ID)
