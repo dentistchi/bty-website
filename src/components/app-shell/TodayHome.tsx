@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { TrackingEvidence } from "@/domain/announcement/trackingEvidence";
 import NeedsYourResponse from "@/components/app-shell/NeedsYourResponse";
 import TrackingSent from "@/components/app-shell/TrackingSent";
 import { buildYesterdaySummary, type YesterdayCounts } from "@/domain/daily/yesterdaySummary";
@@ -248,6 +249,7 @@ export default function TodayHome({
     measured. Fetch and error semantics are otherwise unchanged; no new error surface, no spinner.
   */
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
+  const [announcementItems, setAnnouncementItems] = useState<TrackingEvidence[] | null>(null);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
   const [yesterdayReturned, setYesterdayReturned] = useState<boolean | null>(null);
@@ -353,7 +355,7 @@ export default function TodayHome({
   */
   // The list, the follow-ups and the brief's share of the reviews row come from ONE pure selector —
   // the same one the native reminder decides from, so the two can never disagree about what is open.
-  const openWork = useMemo(() => selectTodayOpenWork(reminders ?? [], hostAttention), [reminders, hostAttention]);
+  const openWork = useMemo(() => selectTodayOpenWork(reminders ?? [], hostAttention, announcementItems ?? []), [reminders, hostAttention, announcementItems]);
   const todayItems = openWork.items;
   const { visible: todayVisibleItems, hasMore: todayHasMore } = todayVisible(todayItems, expanded);
   const reviews = hostActionReviews.length + openWork.sharedReviewsDue;
@@ -366,9 +368,12 @@ export default function TodayHome({
   const briefResolved = reminders !== null;
   const openCount = openWork.openCount;
   useEffect(() => {
-    if (!nativeReminder || !briefResolved) return;
+    if (!nativeReminder || announcementItems === null) return;
+    // Known pending announcements can schedule even when learner consent hides the brief.
+    // An unknown brief cannot justify cancelling other pending work.
+    if (!briefResolved && openCount === 0) return;
     void syncTodayRemainingReminder({ openCount, locale: loc });
-  }, [nativeReminder, briefResolved, openCount, loc]);
+  }, [nativeReminder, briefResolved, openCount, loc, announcementItems]);
   const followUpVisible = showAllHost ? followUpItems : followUpItems.slice(0, HOST_PREVIEW);
 
   /*
@@ -429,7 +434,7 @@ export default function TodayHome({
       {remindersResolved ? (
       <div className="flex flex-col gap-2" data-testid="today-list">
         <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.todayHeader}</span>
-        {todayItems.length === 0 ? (
+        {todayItems.length === 0 && (announcementItems?.length ?? 0) === 0 ? (
           <button
             type="button"
             data-testid="today-empty"
@@ -612,7 +617,7 @@ export default function TodayHome({
 
         It carries no count and no badge. The obligation is to the person who asked, not to a number.
       */}
-      <NeedsYourResponse locale={loc} refreshKey={refreshKey} />
+      <NeedsYourResponse locale={loc} refreshKey={refreshKey} onOpenItems={setAnnouncementItems} />
 
       {/*
         WHAT THIS PERSON ASKED OF OTHERS — placed directly after what others asked of them.

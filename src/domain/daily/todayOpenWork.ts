@@ -1,3 +1,4 @@
+import { trackingComplete, isTrackingMode, type TrackingEvidence } from "@/domain/announcement/trackingEvidence";
 /**
  * TODAY OPEN WORK — what Today shows as still waiting, from the `/api/me/today/brief` answer. PURE.
  *
@@ -48,6 +49,7 @@ function isFollowUp<H extends { category: string }>(h: H): h is H & { category: 
 export function selectTodayOpenWork<H extends { category: string }>(
   reminders: readonly BriefReminder[],
   hostAttention: readonly H[],
+  announcements: readonly TrackingEvidence[] = [],
 ): TodayOpenWork<H> {
   /*
     `note` MUST be carried (Slice 3.2R-R2.6): the server sends the source training title for
@@ -65,5 +67,5 @@ export function selectTodayOpenWork<H extends { category: string }>(
   );
   const followUps = hostAttention.filter(isFollowUp);
   const sharedReviewsDue = hostAttention.filter((h) => h.category === "SHARED_REVIEW_DUE").length;
-  return { items, followUps, sharedReviewsDue, openCount: items.length + followUps.length + sharedReviewsDue };
+  return { items, followUps, sharedReviewsDue, openCount: items.length + followUps.length + sharedReviewsDue + announcements.filter(a => isTrackingMode(a.trackingMode) && !trackingComplete(a)).length };
 }

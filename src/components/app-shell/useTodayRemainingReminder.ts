@@ -1,5 +1,6 @@
 "use client";
 
+import type { TrackingEvidence } from "@/domain/announcement/trackingEvidence";
 import { useEffect } from "react";
 import { selectTodayOpenWork, type BriefReminder } from "@/domain/daily/todayOpenWork";
 import { fetchTodayBrief } from "@/lib/bty/daily/todayBriefClient";
@@ -24,8 +25,16 @@ export function useTodayRemainingReminder(locale: "en" | "ko", enabled: boolean)
       onResume: () => {
         void (async () => {
           const brief = await fetchTodayBrief<BriefReminder, { category: string }>(locale);
-          if (!brief) return;
-          const { openCount } = selectTodayOpenWork(brief.reminders, brief.hostAttention);
+          let announcements: TrackingEvidence[];
+          try {
+            const res = await fetch("/api/bty/announcements/mine", { credentials: "include", cache: "no-store" });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data.ok || !Array.isArray(data.items)) return;
+            announcements = data.items;
+          } catch { return; }
+          const { openCount } = selectTodayOpenWork(brief?.reminders ?? [], brief?.hostAttention ?? [], announcements);
+          if (!brief && openCount === 0) return;
           await syncTodayRemainingReminder({ openCount, locale });
         })();
       },

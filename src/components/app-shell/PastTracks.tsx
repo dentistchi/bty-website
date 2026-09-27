@@ -1,5 +1,8 @@
 "use client";
 
+import { TRACKING_COPY, isTrackingMode, type TrackingEvidence } from "@/domain/announcement/trackingEvidence";
+import type { HostAnnouncement } from "@/lib/bty/announcement/announcementService.server";
+import AnnouncementTrackingSummary from "./AnnouncementTrackingSummary";
 import { useCallback, useEffect, useState } from "react";
 import TrackConversation from "@/components/app-shell/TrackConversation";
 
@@ -48,7 +51,7 @@ import TrackConversation from "@/components/app-shell/TrackConversation";
 
 type Locale = "en" | "ko";
 
-type PastRecipient = {
+type PastRecipient = Partial<TrackingEvidence> & {
   announcementId: string;
   recipientId: string;
   hostFraming: string;
@@ -62,7 +65,7 @@ type PastRecipient = {
   status?: "active" | "closed";
 };
 
-type PastHost = {
+type PastHost = Pick<HostAnnouncement, "trackingMode" | "tracking" | "audience"> & {
   id: string;
   hostFraming: string;
   createdAt: string;
@@ -246,7 +249,9 @@ export default function PastTracks({ locale, onBack }: { locale: Locale; onBack:
                 ) : null}
 
                 <p className="text-[0.8rem] text-white/55" data-testid="past-track-answer">
-                  {it.response === "ACKNOWLEDGED"
+                  {isTrackingMode(it.trackingMode)
+                    ? (it.responseSubmittedAt ? TRACKING_COPY[locale].responded : it.acknowledgedAt ? TRACKING_COPY[locale].acknowledged : TRACKING_COPY[locale].noEvidence)
+                    : it.response === "ACKNOWLEDGED"
                     ? t.answeredGotIt
                     : it.response === "QUESTION"
                       ? t.answeredQuestion
@@ -303,7 +308,8 @@ export default function PastTracks({ locale, onBack }: { locale: Locale; onBack:
                   {t.sent(run.funnel.announcedTo)}
                   {run.status === "closed" ? ` · ${t.closed}` : ""}
                 </p>
-                {everyone.length > 0 ? (
+                {run.tracking && run.audience ? <AnnouncementTrackingSummary counts={run.tracking} audience={run.audience} locale={locale} /> : null}
+                {!run.trackingMode && everyone.length > 0 ? (
                   <ul className="flex flex-col gap-1">
                     {everyone.map((p) => {
                       const open = openId === p.recipientId;

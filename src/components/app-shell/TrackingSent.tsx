@@ -1,5 +1,7 @@
 "use client";
 
+import AnnouncementTrackingSummary from "./AnnouncementTrackingSummary";
+import type { HostAnnouncement } from "@/lib/bty/announcement/announcementService.server";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnouncement";
@@ -27,7 +29,7 @@ import { hostTodayAction } from "@/domain/daily/todayDismissal";
  * score. Five counts that add up, and a plain sentence for the one state people misread.
  */
 
-type HostItem = {
+type HostItem = Pick<HostAnnouncement, "trackingMode" | "tracking" | "audience"> & {
   id: string;
   hostFraming: string;
   createdAt: string;
@@ -65,17 +67,17 @@ type Locale = "en" | "ko";
 
 const COPY = {
   en: {
-    title: "Tracking",
+    title: "Track announcement",
     sentTo: (n: number) => (n === 1 ? "Sent to 1 person" : `Sent to ${n} people`),
     gotIt: "Acknowledged",
     question: "Question",
     needHelp: "Help needed",
     noResponse: "No response yet",
     /* The one state a Host will otherwise read as being ignored. Say what is actually true. */
-    waiting: "Waiting for them to open BTY",
+    waiting: "BTY account not linked",
     /* Count wording, because the People Picker gives BTY an id and no name to show. */
     notOpened: (n: number) =>
-      n === 1 ? "1 person hasn't opened BTY yet" : `${n} people haven't opened BTY yet`,
+      n === 1 ? "1 person has no acknowledgment evidence (account not linked)" : `${n} people have no acknowledgment evidence (accounts not linked)`,
     viewResponses: "View responses",
     hideResponses: "Hide",
     someone: "Someone",
@@ -97,14 +99,14 @@ const COPY = {
     retry: "Retry",
   },
   ko: {
-    title: "추적 중",
+    title: "공지 추적",
     sentTo: (n: number) => `${n}명에게 보냄`,
     gotIt: "확인함",
     question: "질문",
     needHelp: "도움 필요",
     noResponse: "아직 응답 없음",
-    waiting: "BTY를 열기를 기다리는 중",
-    notOpened: (n: number) => `${n}명이 아직 BTY를 열지 않았습니다`,
+    waiting: "BTY 계정 미연결",
+    notOpened: (n: number) => `${n}명: 확인 증거 없음 (BTY 계정 미연결)`,
     viewResponses: "응답 보기",
     hideResponses: "접기",
     someone: "이름 없음",
@@ -592,7 +594,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-white/55">
               <span data-testid="tracking-when">{whenLabel(it.createdAt, loc)}</span>
               <span aria-hidden>·</span>
-              <span data-testid="tracking-sent-to">{t.sentTo(f.announcedTo)}</span>
+              <span data-testid="tracking-sent-to">{it.trackingMode ? (loc === "ko" ? `대상자 ${f.announcedTo}명` : `${f.announcedTo} targeted`) : t.sentTo(f.announcedTo)}</span>
               {it.status === "closed" ? (
                 <>
                   <span aria-hidden>·</span>
@@ -601,8 +603,9 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
               ) : null}
             </div>
 
-            {/* Only the buckets that have someone in them. They always add up to announcedTo. */}
-            <div className="flex flex-wrap gap-1.5" data-testid="tracking-funnel">
+            {it.tracking && it.audience ? <AnnouncementTrackingSummary counts={it.tracking} audience={it.audience} locale={loc} /> : null}
+            {/* Legacy conversation outcomes retain their original semantics. */}
+            <div hidden={!!it.trackingMode} className="flex flex-wrap gap-1.5" data-testid="tracking-funnel">
               <Count n={f.gotIt} label={t.gotIt} tone="gold" />
               <Count n={f.question} label={t.question} tone="gold" />
               <Count n={f.needHelp} label={t.needHelp} tone="gold" />
@@ -615,7 +618,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
               object ids only, so BTY has no name for these people and invents none — the count is
               the honest thing to say.
             */}
-            {f.notYetActivated > 0 ? (
+            {!it.trackingMode && f.notYetActivated > 0 ? (
               <p className="text-[0.8rem] leading-5 text-white/60" data-testid="tracking-waiting">
                 {t.notOpened(f.notYetActivated)}
               </p>
@@ -629,7 +632,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
               status into the resting card would turn a glance into an admin table, on a phone.
               The control is only rendered when there is somebody to name.
             */}
-            {namedCount > 0 ? (
+            {!it.trackingMode && namedCount > 0 ? (
               <button
                 type="button"
                 data-testid="tracking-toggle"

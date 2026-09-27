@@ -23,7 +23,7 @@ const MANIFEST_PATH = `${MANIFEST_DIR}/manifest.json`;
 const PACKAGE_PATH = "teams/dist/bty-arena-teams-t1.zip";
 
 /** The files the packager copies into the zip — nothing else may live in the manifest directory. */
-const PACKAGE_FILES = ["color.png", "manifest.json", "outline-s1-v112.png"] as const;
+const PACKAGE_FILES = ["color.png", "ko.json", "manifest.json", "outline-s1-v112.png"] as const;
 
 type Manifest = {
   $schema?: string;
@@ -58,7 +58,7 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.13, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.14, and points $schema at the same version", () => {
     /*
       1.0.12 (Slice TQ-4.9) is a SIZE change and nothing else. 1.0.11 proved the hypothesis it was
       built to test — renaming the asset path made the approved S1 finally appear on both clients,
@@ -84,7 +84,7 @@ describe("Teams app manifest — identity", () => {
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.13");
+    expect(manifest.version).toBe("1.0.14");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -126,7 +126,7 @@ describe("Teams app manifest — capability", () => {
     expect(commands).toHaveLength(2);
     expect(commands.map((c) => c?.id)).toEqual(["saveToBty", "trackWithBty"]);
     expect(commands[1]?.type).toBe("action");
-    expect(commands[1]?.title).toBe("Track");
+    expect(commands[1]?.title).toBe("Track announcement");
     expect(commands[1]?.context).toEqual(["message"]);
     expect(commands[1]?.fetchTask).toBe(true);
   });
@@ -258,5 +258,17 @@ describe("Teams app package contents", () => {
     if (!existsSync(PACKAGE_PATH)) return;
     const zipped = execFileSync("unzip", ["-p", PACKAGE_PATH, "manifest.json"]);
     expect(zipped.toString("utf8")).toBe(readFileSync(MANIFEST_PATH, "utf8"));
+  });
+});
+
+
+describe("announcement tracking localized package", () => {
+  it("declares Korean localization and preserves the command id/fetchTask/context", () => {
+    const raw = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    expect(raw.localizationInfo).toEqual({ defaultLanguageTag:"en",additionalLanguages:[{languageTag:"ko",file:"ko.json"}] });
+    const ko = JSON.parse(readFileSync(`${MANIFEST_DIR}/ko.json`, "utf8"));
+    expect(ko["name.short"]).toBe("BTY");
+    expect(ko["composeExtensions[0].commands[1].title"]).toBe("공지 추적");
+    expect(raw.composeExtensions[0].commands[1]).toMatchObject({id:"trackWithBty",title:"Track announcement",fetchTask:true,context:["message"]});
   });
 });

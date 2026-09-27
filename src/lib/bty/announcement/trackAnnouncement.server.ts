@@ -1,133 +1,61 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ensureActionCapture } from "@/lib/bty/action-capture/ensureActionCapture.server";
-import type { TeamsCaptureInput } from "@/domain/action-capture/captureSource";
-import {
-  normalizeHostFraming,
-  parsePickedRecipients,
-} from "@/domain/announcement/trackedAnnouncement";
-
-/**
- * Track with BTY — the atomic write. Slice A1. SERVER ONLY.
- *
- * THE ORDER IS THE AUTHORITY, and every input is server-derived:
- *
- *   verified Teams identity → Host user id      (never from the body)
- *   the invoke's own messagePayload → capture    (never re-uploaded by a client)
- *   the dialog's two fields → framing + oids     (the ONLY client-supplied values)
- *
- * The client cannot supply a user id, an owner, an organization, an email, a tenant or a
- * conversation. Those come from the token and the invoke.
- *
- * SOURCE EVIDENCE IS REUSED, NOT COPIED. `ensureActionCapture` is called exactly as Save to BTY
- * calls it, so a message that was already saved yields the SAME capture row by its existing
- * `UNIQUE(user_id, source_type, external_key)` key. Tracking does not change the capture's status,
- * does not promote it, and does not create an Action Contract — the capture stays what it is, and
- * the announcement merely points at it.
- *
- * ALL-OR-NOTHING. The announcement and every recipient row are written by ONE SECURITY DEFINER
- * function transaction. A run with a partial audience would publish a denominator that was never
- * true, so if any part fails, nothing exists.
- */
+import { type TrackingMode } from "@/domain/announcement/trackingEvidence";
+import { resolveTeamsCaptureSource, type TeamsCaptureInput } from "@/domain/action-capture/captureSource";
+import { normalizeHostFraming } from "@/domain/announcement/trackedAnnouncement";
 
 export type TrackResult =
   | { ok: true; announcementId: string; count: number; alreadyExisted: boolean }
-  | {
-      ok: false;
-      reason:
-        | "invalid_framing"
-        | "zero_recipients"
-        | "capture_failed"
-        | "track_failed";
-    };
+  | { ok: false; reason: "invalid_framing" | "invalid_tracking_mode" | "invalid_recipients" | "zero_recipients" | "capture_failed" | "track_failed" };
 
-const TRACK_RPC = "bty_track_announcement";
-
-export async function trackAnnouncement(
-  admin: SupabaseClient,
-  params: {
-    /** Server-derived from the verified Teams token. */
-    ownerUserId: string;
-    /** The invoke's own message payload — the same input Save to BTY uses. */
-    capture: TeamsCaptureInput;
-    /** The Host's own words, from the dialog. */
-    hostFramingRaw: unknown;
-    /** The People Picker's submitted value, still raw. */
-    pickedRaw: unknown;
-    /**
-     * Bot Framework routing base for this invoke, or null when it was not
-     * observed. Slice A0.1. ALREADY RESOLVED by the caller from the VERIFIED
-     * activity — this layer does not re-read the body, so there is no second
-     * place where an unverified value could enter.
-     *
-     * Null is ordinary, not an error: a Track whose coordinate was never
-     * observed is still a completely valid Track, and refusing it would trade a
-     * working product loop for one that does not exist yet.
-     */
-    serviceUrl?: string | null;
-  },
-): Promise<TrackResult> {
+/** Server only. Actor/tenant come from the authenticated Teams invoke.
+ * The RPC reuses the canonical Microsoft resolver and active organization membership,
+ * rejects the entire audience before any write, then captures and freezes it atomically.
+ * Save remains on its existing independent writer; track_source never stamps saved_at.
+ */
+export async function trackAnnouncement(admin: SupabaseClient, params: {
+  ownerUserId: string;
+  actorAadObjectId?: string;
+  capture: TeamsCaptureInput;
+  hostFramingRaw: unknown;
+  pickedRaw: unknown;
+  serviceUrl?: string | null;
+  trackingMode?: TrackingMode;
+}): Promise<TrackResult> {
   const hostFraming = normalizeHostFraming(params.hostFramingRaw);
   if (!hostFraming) return { ok: false, reason: "invalid_framing" };
-
-  // Canonicalized ONCE, in the domain: lowercased, de-duplicated, GUIDs only.
-  const oids = parsePickedRecipients(params.pickedRaw);
-  if (oids.length < 1) return { ok: false, reason: "zero_recipients" };
-
-  /*
-    The capture is ensured BEFORE the announcement, because the announcement FKs to it. Idempotent
-    by construction — a message already saved returns its existing row untouched.
-
-    ★ `intent: "track_source"` is what stops Track from meaning "and save it too". The row is
-    source evidence; it carries no `saved_at`, so the Saved for later lane does not list it. A
-    message the person ALREADY saved keeps the `saved_at` it has — this never clears one — and if
-    they save it later, that Save stamps this same row rather than creating a second.
-  */
-  const captured = await ensureActionCapture(admin, {
-    userId: params.ownerUserId,
-    input: params.capture,
-    intent: "track_source",
-  });
-  if (!captured.ok) {
-    console.error("[track-announcement] capture failed", { code: captured.code });
-    return { ok: false, reason: "capture_failed" };
-  }
-
-  const { data, error } = await admin.rpc(TRACK_RPC, {
+  if (params.trackingMode !== "acknowledgment" && params.trackingMode !== "response")
+    return { ok: false, reason: "invalid_tracking_mode" };
+  const source = resolveTeamsCaptureSource(params.capture);
+  if (!source.ok) return { ok: false, reason: "capture_failed" };
+  const raw = typeof params.pickedRaw === "string" ? params.pickedRaw.split(",") : params.pickedRaw;
+  if (!Array.isArray(raw)) return { ok: false, reason: "invalid_recipients" };
+  if (!raw.length || (raw.length === 1 && raw[0] === "")) return { ok: false, reason: "zero_recipients" };
+  // Never silently drop an invalid member of an otherwise valid audience.
+  const guid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (raw.some(v => typeof v !== "string" || !guid.test(v.trim())))
+    return { ok: false, reason: "invalid_recipients" };
+  const oids = [...new Set(raw.map((v: string) => v.trim().toLowerCase()))];
+  const { sender_display: _senderDisplay, ...metadata } = source.sourceMetadata;
+  const { data, error } = await admin.rpc("bty_track_announcement_v1", {
     p_owner_user_id: params.ownerUserId,
-    p_source_capture_id: captured.capture.id,
+    p_actor_oid: params.actorAadObjectId ?? null,
+    p_source: { ...metadata, capture_reason: "track_source", preview_text: source.previewText, source_url: source.sourceUrl },
     p_host_framing: hostFraming,
-    p_tenant_id: params.capture.tenant_id,
-    p_conversation_id: params.capture.conversation_id,
     p_recipient_oids: oids,
-    // Stored on creation only. The function deliberately does NOT re-point an
-    // existing run, so a repeat Track cannot move a coordinate that may already
-    // have been used.
+    p_tracking_mode: params.trackingMode,
     p_service_url: params.serviceUrl ?? null,
   });
-
   if (error) {
-    // The function's own refusals are stable strings; anything else is ours.
     const msg = error.message ?? "";
     if (/zero_recipients/.test(msg)) return { ok: false, reason: "zero_recipients" };
-    if (/invalid_framing/.test(msg)) return { ok: false, reason: "invalid_framing" };
+    if (/invalid_recipients|invalid_actor/.test(msg)) return { ok: false, reason: "invalid_recipients" };
     console.error("[track-announcement] rpc failed", { code: error.code ?? "unknown" });
     return { ok: false, reason: "track_failed" };
   }
-
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { announcement_id?: string; resolved_count?: number; already_existed?: boolean }
-    | null;
-  if (!row?.announcement_id || typeof row.resolved_count !== "number") {
-    console.error("[track-announcement] rpc returned no run");
-    return { ok: false, reason: "track_failed" };
-  }
-
-  return {
-    ok: true,
-    announcementId: row.announcement_id,
-    count: row.resolved_count,
-    alreadyExisted: row.already_existed === true,
-  };
+    { announcement_id?: string; resolved_count?: number; already_existed?: boolean } | null;
+  if (!row?.announcement_id || typeof row.resolved_count !== "number") return { ok: false, reason: "track_failed" };
+  return { ok: true, announcementId: row.announcement_id, count: row.resolved_count, alreadyExisted: row.already_existed === true };
 }
 
 /**

@@ -1,3 +1,4 @@
+import { isTrackingMode, type TrackingEvidence } from "./trackingEvidence";
 /**
  * Tracked Announcement — PURE domain. Slice A1.
  *
@@ -154,7 +155,7 @@ export function funnelIsComplete(f: AnnouncementFunnel): boolean {
  * Internal Microsoft identifiers never cross this line either — tenant, conversation, channel and
  * chat ids, and the capture's external key, are provenance for BTY, not content for a person.
  */
-export type RecipientProjection = {
+export type RecipientProjection = TrackingEvidence & {
   readonly announcementId: string;
   /**
    * THE CALLER'S OWN recipient row id, and the address of THEIR OWN private conversation.
@@ -207,6 +208,10 @@ export function safeSourceUrl(raw: unknown): string | null {
 
 export function projectForRecipient(row: {
   announcementId: string;
+  trackingMode?: unknown;
+  openedAt?: unknown;
+  acknowledgedAt?: unknown;
+  responseSubmittedAt?: unknown;
   recipientId?: unknown;
   hostFraming: string;
   hostDisplay?: unknown;
@@ -220,6 +225,10 @@ export function projectForRecipient(row: {
 }): RecipientProjection {
   return {
     announcementId: row.announcementId,
+    trackingMode: isTrackingMode(row.trackingMode) ? row.trackingMode : null,
+    openedAt: typeof row.openedAt === "string" ? row.openedAt : null,
+    acknowledgedAt: typeof row.acknowledgedAt === "string" ? row.acknowledgedAt : null,
+    responseSubmittedAt: typeof row.responseSubmittedAt === "string" ? row.responseSubmittedAt : null,
     recipientId: typeof row.recipientId === "string" ? row.recipientId : "",
     hostFraming: row.hostFraming,
     hostDisplay: typeof row.hostDisplay === "string" && row.hostDisplay.trim() ? row.hostDisplay.trim() : null,

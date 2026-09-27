@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.25/MicrosoftTeams.Localization.schema.json",
+  "description.short": "메시지를 개인적으로 저장하거나 공지의 확인과 응답을 추적합니다.",
+  "description.full": "Save는 개인 Today에 저장합니다. 공지 추적은 선택한 수신자의 BTY 확인 또는 답변 제출을 기록합니다. Teams 채널 읽음 여부를 측정하지 않습니다.",
+  "composeExtensions[0].commands[0].title": "저장",
+  "composeExtensions[0].commands[0].description": "나중에 다시 볼 메시지를 개인 Today에 저장합니다.",
+  "composeExtensions[0].commands[1].title": "공지 추적",
+  "composeExtensions[0].commands[1].description": "선택한 수신자의 명시적 확인 또는 답변 제출을 추적합니다.",
+  "name.short": "BTY",
+  "name.full": "BTY Training Center"
+}

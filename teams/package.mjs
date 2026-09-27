@@ -203,6 +203,15 @@ for (const ce of parsed.composeExtensions ?? []) {
     process.exit(1);
   }
 }
+const languageFiles = (parsed.localizationInfo?.additionalLanguages ?? []).map(l => l.file);
+for (const file of languageFiles) {
+  if (!/^[a-z]{2}(-[A-Z]{2})?\.json$/.test(file)) throw new Error("Invalid localization filename");
+  const translation = JSON.parse(readFileSync(join(SRC, file), "utf8"));
+  for (const key of ["name.short", "description.short", "description.full"]) {
+    if (typeof translation[key] !== "string" || !translation[key].trim()) throw new Error(`Missing localization field: ${key}`);
+  }
+  cpSync(join(SRC, file), join(STAGE, file));
+}
 writeFileSync(join(STAGE, "manifest.json"), manifest);
 
 rmSync(OUT, { force: true });
@@ -213,7 +222,7 @@ rmSync(OUT, { force: true });
   it was not given, so the package looked built and shipped without an outline icon at all. One list,
   derived once, used for both staging and zipping.
 */
-execFileSync("zip", ["-j", "-q", OUT, join(STAGE, "manifest.json"), ...iconFiles.map((f) => join(STAGE, f))]);
+execFileSync("zip", ["-j", "-q", OUT, join(STAGE, "manifest.json"), ...[...iconFiles, ...languageFiles].map((f) => join(STAGE, f))]);
 rmSync(STAGE, { recursive: true, force: true });
 
 const listing = execFileSync("unzip", ["-Z1", OUT]).toString().trim().split("\n");

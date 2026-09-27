@@ -223,9 +223,12 @@ export async function POST(req: NextRequest) {
 
     Fail-soft and fire-and-forget: bookkeeping must never turn a working command into an error.
   */
+  const locale = typeof (activity as { locale?: unknown })?.locale === "string" &&
+    ((activity as { locale: string }).locale.toLowerCase().startsWith("ko")) ? "ko" : "en";
+  const trackSay = (ko: string, en: string) => dialog(confirmationCard(locale === "ko" ? ko : en), TEAMS_INVOKE_FETCH_TASK);
   const identity = readActivityIdentity(activity);
-  const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
-  if (identity && routing.url) {
+  const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
+  if (readCommandId(activity) !== TEAMS_COMMAND_TRACK && identity && routing.url) {
     const adminForRoute = getSupabaseAdmin();
     if (adminForRoute) {
       await rememberTenantRoute(adminForRoute, { tenantId: identity.tenantId, serviceUrl: routing.url });
@@ -270,7 +273,9 @@ export async function POST(req: NextRequest) {
     */
     const cmd = readCommandId(activity);
     console.error("[teams-invoke] activity refused", { code: parsed.code, command: cmd ?? "unknown" });
-    return say(cmd === TEAMS_COMMAND_TRACK ? MSG.trackNoSource : MSG.cannotSave);
+    return cmd === TEAMS_COMMAND_TRACK
+      ? trackSay("원본 메시지를 확인할 수 없습니다. Teams 메시지에서 공지 추적을 다시 열어 주세요.", MSG.trackNoSource)
+      : say(MSG.cannotSave);
   }
 
   const admin = getSupabaseAdmin();
@@ -349,46 +354,44 @@ export async function POST(req: NextRequest) {
     */
     // The dialog itself. Nothing is written for merely opening it.
     if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
-      return dialog(trackDialogCard(), parsed.invokeName);
+      return dialog(trackDialogCard(locale), parsed.invokeName);
     }
 
     const submission = parseTeamsTrackSubmission(activity);
     if (!submission.ok) {
-      return say(submission.code === "missing_framing" ? MSG.trackNoFraming : MSG.trackNoPeople, parsed.invokeName);
+      return submission.code === "missing_mode"
+        ? trackSay("확인 필요 또는 응답 필요를 선택하세요.", "Choose acknowledgment required or response required.")
+        : submission.code === "missing_framing"
+          ? trackSay("공지에 대한 안내를 작성하세요.", MSG.trackNoFraming)
+          : trackSay("추적할 다른 사람을 한 명 이상 선택하세요.", "Select at least one other person to track.");
     }
 
-    /*
-      3d. THE ROUTING COORDINATE (Slice A0.1). Read here and nowhere else,
-      because here is the one place that holds BOTH the verified token and the
-      body it authenticated — and it is reached only after `verified.ok`, so an
-      unverified request never gets this far.
-
-      Nothing is sent. This records where a message to a recipient WOULD have to
-      go, which BTY has never kept: a recipient who has not opened BTY is
-      currently never told anything was sent to them, and that cannot be fixed
-      without this value.
-
-      A refusal is logged with its REASON and no URL. The distinction matters:
-      `absent` is the open question — whether Teams sends `serviceUrl` on this
-      invoke was never measurable before, because nothing ever looked — while
-      `mismatch` would mean the token and the body disagree, which is a security
-      event. Either way Track proceeds: routing metadata must never be able to
-      stop a Host from tracking a message.
-    */
-    const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
-    if (routing.reason !== "ok") {
-      console.error("[teams-invoke] no routing coordinate stored", { reason: routing.reason });
+    // All non-ok routing results (absent, invalid, mismatch) fail closed before creation.
+    // Track never pre-saves a tenant route. Log only the fixed reason enum, never coordinates.
+    const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
+    if (routing.reason !== "ok" || !routing.url) {
+      console.error("[teams-invoke] track routing refused", { reason: routing.reason });
+      return trackSay(
+        "이 메시지의 출처를 확인할 수 없어 추적하지 않았습니다.",
+        "BTY couldn’t verify where this message came from. Nothing was tracked.",
+      );
     }
 
     const tracked = await trackAnnouncement(admin, {
       ownerUserId: resolution.userId,
+      actorAadObjectId: parsed.aadObjectId,
       capture: parsed.capture,
       hostFramingRaw: submission.hostFraming,
       pickedRaw: submission.pickedRaw,
+      trackingMode: submission.trackingMode,
       serviceUrl: routing.url,
     });
 
     if (!tracked.ok) {
+      if (tracked.reason === "invalid_recipients") return trackSay(
+        "선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다. 같은 조직의 활성 BTY 사용자를 선택하세요.",
+        "Some selected people could not be verified in BTY. Choose active BTY users in the same organization.",
+      );
       console.error("[teams-invoke] track refused", { reason: tracked.reason });
       const copy =
         tracked.reason === "invalid_framing"
@@ -396,10 +399,12 @@ export async function POST(req: NextRequest) {
           : tracked.reason === "zero_recipients"
             ? MSG.trackNoPeople
             : MSG.trackFailed;
-      return say(copy, parsed.invokeName);
+      return trackSay(tracked.reason === "zero_recipients"
+        ? "추적할 다른 사람을 한 명 이상 선택하세요." : "공지 추적을 시작하지 못했습니다. 다시 시도하세요.",
+        tracked.reason === "zero_recipients" ? "Select at least one other person to track." : copy);
     }
 
-    return dialog(trackConfirmationCard(tracked.count), TEAMS_INVOKE_FETCH_TASK);
+    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted), TEAMS_INVOKE_FETCH_TASK);
   }
 
   // 4. CAPTURE. Idempotent by `UNIQUE(user_id, source_type, external_key)`; a repeat save returns

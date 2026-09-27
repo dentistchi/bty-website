@@ -1,3 +1,4 @@
+import { isTrackingMode, type TrackingMode } from "@/domain/announcement/trackingEvidence";
 /**
  * Teams message action → BTY capture input (PURE). Slice T1.
  *
@@ -231,14 +232,14 @@ export function readCommandId(activity: unknown): TeamsCommandId | null {
 }
 
 export type TeamsTrackSubmission =
-  | { ok: true; hostFraming: string; pickedRaw: string }
-  | { ok: false; code: "missing_framing" | "missing_recipients" };
+  | { ok: true; hostFraming: string; pickedRaw: string; trackingMode: TrackingMode }
+  | { ok: false; code: "missing_framing" | "missing_recipients" | "missing_mode" };
 
 /**
  * Read the Track dialog's submitted fields, and ONLY those.
  *
  * A dialog submit arrives as `composeExtension/submitAction` with the form values under
- * `value.data`. Exactly two keys are read; anything else the client sends is ignored rather than
+ * `value.data`. Only framing, recipients and explicit tracking mode are read; other fields are ignored rather than
  * merged, so a crafted payload cannot introduce a field this product does not have.
  *
  * The recipient string is returned RAW and canonicalised elsewhere
@@ -251,7 +252,8 @@ export function parseTeamsTrackSubmission(activity: unknown): TeamsTrackSubmissi
   if (!hostFraming) return { ok: false, code: "missing_framing" };
   const pickedRaw = str(data.recipients);
   if (!pickedRaw) return { ok: false, code: "missing_recipients" };
-  return { ok: true, hostFraming, pickedRaw };
+  if (!isTrackingMode(data.trackingMode)) return { ok: false, code: "missing_mode" };
+  return { ok: true, hostFraming, pickedRaw, trackingMode: data.trackingMode };
 }
 
 // ===========================================================================
@@ -304,8 +306,12 @@ export type ServiceUrlResolution = { url: string | null; reason: ServiceUrlReaso
  * verifies the Bot Framework JWT BEFORE it reads the body at all, so a browser,
  * a curl, or the Track dialog's own form data can never reach this function.
  *
- * A Bot Framework token may also carry a `serviceUrl` claim. Where it does, the
- * two must agree, and a disagreement yields NOTHING: that combination means
+ * A Bot Framework token may also carry a routing claim, named `serviceurl` --
+ * lowercase, as Bot Framework's own AuthenticationConstants.ServiceUrlClaim
+ * spells it. JWT claim names are case-sensitive, so the caller passes exactly
+ * that claim and never falls back to a camelCase spelling Bot Framework does
+ * not send. Where the claim is present, the two must agree, and a
+ * disagreement yields NOTHING: that combination means
  * either a replayed token or a body edited in flight, and neither is a value
  * worth keeping. The claim is used ONLY to refuse -- never as a substitute
  * source -- because whether our production tokens carry it is not yet measured,
@@ -316,8 +322,12 @@ export type ServiceUrlResolution = { url: string | null; reason: ServiceUrlReaso
  * "we refused the one it sent" happened. Those need different responses from a
  * human, and one of them is the open question this slice was built to answer.
  *
- * NEVER THROWS AND NEVER BLOCKS. Every refusal is a null, because routing
- * metadata must not be able to stop a Host from tracking a message.
+ * NEVER THROWS. Every refusal is a null with its reason. The CALLER decides what
+ * a refusal means: Track creates nothing unless the reason is `ok` (absent,
+ * invalid and mismatch all fail closed before any write). A token that carries
+ * no `serviceurl` claim at all is NOT refused here -- whether production Teams
+ * tokens carry it has not been measured, and refusing on its absence could
+ * silently disable Track for everyone.
  */
 export function resolveServiceUrl(activity: unknown, tokenClaim?: unknown): ServiceUrlResolution {
   const raw = str(obj(activity).serviceUrl);

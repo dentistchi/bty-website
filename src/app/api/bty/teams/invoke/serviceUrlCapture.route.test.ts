@@ -7,8 +7,7 @@ import { resolveServiceUrl } from "@/domain/teams/invokeActivity";
  *
  * The product claim: a recipient who has never opened BTY is never told anything was sent to
  * them, and reaching them later needs a Bot Framework routing base that BTY has always thrown
- * away. This slice keeps it. It must not send anything, must not invent a URL, and must not be
- * able to break the Track that already works.
+ * away. This slice keeps it. It must not send anything, must not invent a URL, and must fail closed before Track writes when it cannot be verified.
  *
  * So the tests below are mostly about what does NOT happen.
  */
@@ -57,7 +56,7 @@ function activity(over: Record<string, unknown> = {}, value: Record<string, unkn
     value: {
       commandId: "trackWithBty",
       messagePayload: { id: "m1", body: { content: "body" } },
-      data: { hostFraming: "Please read this today.", recipients: A },
+      data: { trackingMode: "acknowledgment", hostFraming: "Please read this today.", recipients: A },
       ...value,
     },
     ...over,
@@ -78,7 +77,7 @@ async function POST(r: NextRequest) {
 }
 
 /** The argument the write actually received, or undefined if the RPC never ran. */
-const sentServiceUrl = () => rpc.mock.calls.find((c) => c[0] === "bty_track_announcement")?.[1]?.p_service_url;
+const sentServiceUrl = () => rpc.mock.calls.find((c) => c[0] === "bty_track_announcement_v1")?.[1]?.p_service_url;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -97,21 +96,20 @@ describe("G1 — a verified Track stores the coordinate it observed", () => {
     expect(sentServiceUrl()).toBe(REAL);
   });
 
-  it("still tracks, and stores NULL, when Teams sends no serviceUrl at all", async () => {
-    // THE OPEN QUESTION. Whether our production invokes carry `serviceUrl` has never been
-    // measurable, because nothing ever read the field. Until a real Track answers it, absence
-    // must be an ordinary Track that records "not observed" — never a refusal, and never a
-    // fabricated endpoint.
+  it("refuses an absent routing coordinate before any write", async () => {
     const res = await POST(req(activity()));
     expect(res.status).toBe(200);
-    expect(sentServiceUrl()).toBeNull();
-    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.objectContaining({ p_recipient_oids: [A] }));
+    const body = await res.json();
+    expect(body.task.type).toBe("continue");
+    expect(JSON.stringify(body)).toContain("Nothing was tracked.");
+    expect(rpc).not.toHaveBeenCalled();
+    expect(ensureActionCapture).not.toHaveBeenCalled();
   });
 
   it("logs WHICH refusal happened, and never the URL", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     await POST(req(activity({ serviceUrl: "http://plaintext.example.com/" })));
-    const logged = spy.mock.calls.filter((c) => String(c[0]).includes("routing coordinate"));
+    const logged = spy.mock.calls.filter((c) => String(c[0]).includes("track routing refused"));
     expect(logged).toHaveLength(1);
     expect(logged[0][1]).toEqual({ reason: "invalid" });
     expect(JSON.stringify(spy.mock.calls)).not.toContain("plaintext.example.com");
@@ -131,23 +129,23 @@ describe("E — the coordinate cannot come from anywhere a client controls", () 
     // `value.data` is the ONLY client-authored part of this activity. A serviceUrl smuggled into
     // it must be ignored — the field is read from the activity root, which Teams owns.
     const res = await POST(
-      req(activity({}, { data: { hostFraming: "Read this.", recipients: A, serviceUrl: "https://attacker.example.com/" } })),
+      req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Read this.", recipients: A, serviceUrl: "https://attacker.example.com/" } })),
     );
     expect(res.status).toBe(200);
-    expect(sentServiceUrl()).toBeNull();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("a token whose serviceUrl claim disagrees with the body yields NOTHING", async () => {
     // Either a replayed token or a body edited in flight. Neither is a value worth keeping —
-    // but Track still succeeds, because routing metadata must not gate the product loop.
-    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceUrl: "https://smba.trafficmanager.net/amer/" } });
+    // Track refuses before its creation RPC.
+    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceurl: "https://smba.trafficmanager.net/amer/" } });
     const res = await POST(req(activity({ serviceUrl: REAL })));
     expect(res.status).toBe(200);
-    expect(sentServiceUrl()).toBeNull();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("a token whose claim AGREES (bar a trailing slash) still stores the body's exact value", async () => {
-    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceUrl: "https://smba.trafficmanager.net/emea" } });
+    verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: { serviceurl: "https://smba.trafficmanager.net/emea" } });
     await POST(req(activity({ serviceUrl: REAL })));
     expect(sentServiceUrl()).toBe(REAL);
   });
@@ -221,7 +219,7 @@ describe("F/12 — this slice sends nothing", () => {
   it("the write is still the ONLY announcement RPC the Track path calls", async () => {
     await POST(req(activity({ serviceUrl: REAL })));
     const names = rpc.mock.calls.map((c) => c[0]);
-    expect(names).toEqual(["bty_track_announcement"]);
+    expect(names).toEqual(["bty_track_announcement_v1"]);
     expect(names.join()).not.toMatch(/notif|conversation|send/i);
   });
 });

@@ -161,16 +161,20 @@ describe("what a recipient may see — the privacy whitelist", () => {
       Like hostAvailable it carries no id, no name, and nothing about any other recipient.
     */
     expect(Object.keys(p).sort()).toEqual([
+      "acknowledgedAt",
       "announcementId",
       "hostAvailable",
       "hostDisplay",
       "hostFraming",
       "messageCount",
+      "openedAt",
       "recipientId",
       "respondedAt",
       "response",
+      "responseSubmittedAt",
       "sourceUrl",
       "status",
+      "trackingMode",
       "unreadCount",
     ]);
     const dump = JSON.stringify(p);

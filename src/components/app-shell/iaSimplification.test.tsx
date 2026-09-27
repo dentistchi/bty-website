@@ -186,7 +186,7 @@ describe("★ 22-27 — TEAMS: the packaged manifest", () => {
   const cmds = pkg.composeExtensions[0].commands;
 
   it("★ 22-23. the titles are now Save and Track", () => {
-    expect(cmds.map((c: { title: string }) => c.title)).toEqual(["Save", "Track"]);
+    expect(cmds.map((c: { title: string }) => c.title)).toEqual(["Save", "Track announcement"]);
   });
 
   it("★ 24. command IDs are UNCHANGED — backend routing keys off these", () => {
@@ -219,8 +219,8 @@ describe("★ 22-27 — TEAMS: the packaged manifest", () => {
     expect(existsSync("teams/manifest/outline-s1-v112.png")).toBe(true);
   });
 
-  it("★ version bumped to 1.0.13", () => {
-    expect(pkg.version).toBe("1.0.13");
+  it("★ version bumped to 1.0.14", () => {
+    expect(pkg.version).toBe("1.0.14");
     expect(pkg.manifestVersion).toBe("1.25");
   });
 

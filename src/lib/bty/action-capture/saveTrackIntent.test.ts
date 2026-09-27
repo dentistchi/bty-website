@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
+import { trackAnnouncement } from "../announcement/trackAnnouncement.server";
 import { ensureActionCapture, listMyActionCaptures } from "./ensureActionCapture.server";
 
 /**
  * Save intent, separated from source evidence (Slice A1-INTENT).
  *
  * ★ THE DEFECT. "Track with BTY" put the source message into the person's "Saved for later" list,
- * which they never asked for. `trackAnnouncement` calls `ensureActionCapture` — the same function
+ * which they never asked for. The old Track path called `ensureActionCapture` — the same function
  * Save calls — because the announcement has a foreign key to a capture row. Reuse is CORRECT (a
  * message already saved must not produce a second capture, and the UNIQUE tuple guarantees it
  * does not); what was missing is that a capture then meant two different things and the Saved lane
@@ -31,8 +32,10 @@ const USER = "18b1ee80-0000-0000-0000-000000000001";
 /** A Supabase double that behaves like the real UNIQUE(user_id, source_type, external_key). */
 function db() {
   const rows: Record<string, unknown>[] = [];
+  const tables: string[] = [];
   const filtersOf = (f: [string, unknown][]) => Object.fromEntries(f);
   const make = (table: string) => {
+    tables.push(table);
     const f: [string, unknown][] = [];
     let mode: "select" | "insert" | "update" = "select";
     let payload: Record<string, unknown> = {};
@@ -88,7 +91,7 @@ function db() {
     void table;
     return chain;
   };
-  return { client: { from: (t: string) => make(t) } as never, rows };
+  return { client: { from: (t: string) => make(t) } as never, rows, tables };
 }
 
 beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => {}));
@@ -109,13 +112,12 @@ describe("★ 1+2. Track does not save; Save does not track", () => {
   });
 
   it("★ 2. a SAVE-only capture appears, and creates no announcement", async () => {
-    const { client, rows } = db();
+    const { client, rows, tables } = db();
     await ensureActionCapture(client, { userId: USER, input: CAPTURE, intent: "save" });
     expect(rows[0].saved_at).toBeTruthy();
     expect(await savedLane(client, rows)).toHaveLength(1);
     // Nothing in this path writes an announcement; that is a separate command entirely.
-    const TRACK = readFileSync("src/lib/bty/announcement/trackAnnouncement.server.ts", "utf8");
-    expect(TRACK).toContain('intent: "track_source"');
+    expect(new Set(tables)).toEqual(new Set(["bty_action_captures"]));
   });
 });
 
@@ -179,12 +181,15 @@ describe("★ 4+5+6. nothing else moves", () => {
     expect(SRC).toContain("compareForSavedLane");
   });
 
-  it("★ 4. an announcement's source is never deleted or detached by any of this", () => {
+  it("★ 4. an announcement's source is never deleted or detached by any of this", async () => {
     const SRC = readFileSync("src/lib/bty/action-capture/ensureActionCapture.server.ts", "utf8");
     expect(SRC).not.toMatch(/\.delete\(/);
-    // Track still ensures the row it needs; it just does not claim it as a save.
-    const TRACK = readFileSync("src/lib/bty/announcement/trackAnnouncement.server.ts", "utf8");
-    expect(TRACK).toContain("ensureActionCapture");
+    // Source creation now shares the announcement transaction; no pre-capture write.
+    const rpc=vi.fn().mockResolvedValue({data:[{announcement_id:"ann",resolved_count:1}],error:null});
+    const result=await trackAnnouncement({rpc} as never,{ownerUserId:USER,actorAadObjectId:"22222222-2222-2222-2222-222222222222",capture:CAPTURE,hostFramingRaw:"Notice",pickedRaw:"33333333-3333-3333-3333-333333333333",trackingMode:"response"});
+    expect(result.ok).toBe(true);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1",expect.objectContaining({p_source:expect.objectContaining({capture_reason:"track_source",message_id:"m1",source_url:expect.stringContaining("teams.microsoft.com")})}));
   });
 
   it("saved_at never reaches a client — the projection is an explicit literal", () => {
