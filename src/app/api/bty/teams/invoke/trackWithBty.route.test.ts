@@ -48,6 +48,7 @@ const B = "44444444-4444-4444-4444-444444444444";
 
 function activity(over: Record<string, unknown> = {}, value: Record<string, unknown> = {}) {
   return {
+    serviceUrl: "https://smba.trafficmanager.net/emea/",
     name: "composeExtension/submitAction",
     channelData: { tenant: { id: TID } },
     from: { id: "29:addr", aadObjectId: OID },

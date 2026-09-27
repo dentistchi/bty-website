@@ -84,6 +84,7 @@ function fileMessagePayload() {
 
 function activity(over: Record<string, unknown> = {}, value: Record<string, unknown> = {}) {
   return {
+    serviceUrl: "https://smba.trafficmanager.net/emea/",
     name: "composeExtension/submitAction",
     channelData: { tenant: { id: TID } },
     from: { id: "29:addr", aadObjectId: OID },

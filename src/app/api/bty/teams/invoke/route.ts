@@ -366,27 +366,15 @@ export async function POST(req: NextRequest) {
           : trackSay("추적할 다른 사람을 한 명 이상 선택하세요.", "Select at least one other person to track.");
     }
 
-    /*
-      3d. THE ROUTING COORDINATE (Slice A0.1). Read here and nowhere else,
-      because here is the one place that holds BOTH the verified token and the
-      body it authenticated — and it is reached only after `verified.ok`, so an
-      unverified request never gets this far.
-
-      Nothing is sent. This records where a message to a recipient WOULD have to
-      go, which BTY has never kept: a recipient who has not opened BTY is
-      currently never told anything was sent to them, and that cannot be fixed
-      without this value.
-
-      A refusal is logged with its REASON and no URL. The distinction matters:
-      `absent` is the open question — whether Teams sends `serviceUrl` on this
-      invoke was never measurable before, because nothing ever looked — while
-      `mismatch` would mean the token and the body disagree, which is a security
-      event. Either way Track proceeds: routing metadata must never be able to
-      stop a Host from tracking a message.
-    */
+    // All non-ok routing results (absent, invalid, mismatch) fail closed before creation.
+    // Track never pre-saves a tenant route. Log only the fixed reason enum, never coordinates.
     const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
-    if (routing.reason !== "ok") {
-      console.error("[teams-invoke] no routing coordinate stored", { reason: routing.reason });
+    if (routing.reason !== "ok" || !routing.url) {
+      console.error("[teams-invoke] track routing refused", { reason: routing.reason });
+      return trackSay(
+        "이 메시지의 출처를 확인할 수 없어 추적하지 않았습니다.",
+        "BTY couldn’t verify where this message came from. Nothing was tracked.",
+      );
     }
 
     const tracked = await trackAnnouncement(admin, {

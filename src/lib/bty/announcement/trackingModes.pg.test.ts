@@ -1,6 +1,6 @@
 import { trackAnnouncement } from "./trackAnnouncement.server";
 import { isTrackInScope } from "@/domain/daily/todayDismissal";
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { Pool } from "pg";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -249,5 +249,99 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
   if(mode==="acknowledgment") expect(done.response_submitted_at).toBeNull();
   const dismissal=(await db.query("select dismissed_activity_version from public.bty_today_dismissals where user_id=$1 and item_id=$2",[user,done.id])).rows[0];
   expect(isTrackInScope("today",{historical:false,dismissedActivityVersion:Number(dismissal.dismissed_activity_version),currentActivityVersion:0})).toBe(false);
+ });
+});
+
+// Signed-transport boundary is stubbed; route parsing, canonical identity resolution,
+// Track service and all database RPCs below are real. The positive control proves writes work.
+const routingToken = vi.hoisted(() => ({ claim: undefined as string | undefined }));
+vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({
+ verifyBotFrameworkToken: async () => ({ ok: true, payload: { serviceUrl: routingToken.claim } }),
+}));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => process.env.BTY_ROLLBACK_SOURCE_ROOT ? rollbackDb() : serviceDb() }));
+import { NextRequest } from "next/server";
+import * as trackService from "./trackAnnouncement.server";
+async function invokeTrack(s: Awaited<ReturnType<typeof seed>>, serviceUrl: unknown, locale="en") {
+ const { POST } = await import("@/app/api/bty/teams/invoke/route");
+ return POST(new NextRequest("https://arena.btydaily.com/api/bty/teams/invoke", {
+  method:"POST",headers:{"content-type":"application/json",authorization:"Bearer synthetic"},
+  body:JSON.stringify({name:"composeExtension/submitAction",locale,serviceUrl,
+   channelData:{tenant:{id:s.host}},from:{aadObjectId:s.host},conversation:{id:"conversation"},
+   value:{commandId:"trackWithBty",messagePayload:{id:s.cap,body:{content:"Synthetic fixture"}},
+    data:{trackingMode:"response",hostFraming:"Synthetic notice",recipients:oid(1)}}}),
+ }));
+}
+describe.runIf(!!URL)("Track invoke routing: real route and PostgreSQL",()=>{
+ it.each(["absent","invalid","mismatch"] as const)("%s returns visible EN/KO errors with zero writes to all seven tables",async reason=>{
+  const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);
+  const spy=vi.spyOn(trackService,"trackAnnouncement");
+  const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+  routingToken.claim=reason==="mismatch"?"https://smba.trafficmanager.net/amer/":undefined;
+  const url=reason==="absent"?undefined:reason==="invalid"?"http://invalid.example/":"https://smba.trafficmanager.net/emea/";
+  try {for(const locale of ["en","ko"]) {
+   const before=await counts(),res=await invokeTrack(s,url,locale),body=await res.json();
+   expect(await counts()).toEqual(before);
+   expect(res.status).toBe(200);expect(body.task?.type).toBe("continue");
+   expect(body.task.value.card.content.type).toBe("AdaptiveCard");
+   expect(JSON.stringify(body)).toContain(locale==="ko"?"이 메시지의 출처를 확인할 수 없어 추적하지 않았습니다.":"BTY couldn’t verify where this message came from. Nothing was tracked.");
+   expect(spy).not.toHaveBeenCalled();expect(await counts()).toEqual(before);
+  }
+  expect(log.mock.calls).toEqual(Array.from({length:2},()=>["[teams-invoke] track routing refused",{reason}]));
+  } finally {spy.mockRestore();log.mockRestore();vi.unstubAllEnvs();routingToken.claim=undefined;}
+ });
+ it("valid routing reaches the actual transaction and creates exactly one capture/run/recipient",async()=>{
+  const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);routingToken.claim=undefined;
+  try {const before=await counts(),res=await invokeTrack(s,"https://smba.trafficmanager.net/emea/"),body=await res.json(),after=await counts();
+   expect(body.task?.type).toBe("continue");
+   for(const t of Object.keys(before)) expect(after[t]-before[t]).toBe(["bty_action_captures","bty_tracked_announcements","bty_tracked_announcement_recipients"].includes(t)?1:0);
+  } finally {vi.unstubAllEnvs();}
+ });
+});
+
+// Optional exact-old-source gate. Run this file using a temporary Vitest config whose
+// @ alias points entirely at the clean rollback checkout (commands in the rollout doc).
+import { execFileSync } from "node:child_process";
+function rollbackDb() {
+ return { ...(serviceDb() as object),auth:{admin:{getUserById:async(id:string)=>({data:{user:{identities:(await db.query("select provider,identity_data from auth.identities where user_id=$1",[id])).rows}},error:null})}},from:(table:string)=>{
+ let selection="",filters:any[]=[],ordering="";
+ const q: any={maybeSingle:async()=>{const result=await q.returns();return {...result,data:result.data[0]??null}},upsert:async(value:Record<string,unknown>)=>{await db.query("insert into public.bty_teams_tenant_routes(tenant_id,service_url) values($1,$2) on conflict(tenant_id) do update set service_url=excluded.service_url",[value.tenant_id,value.service_url]);return {error:null}},select:(s:string)=>{selection=s;return q},eq:(k:string,v:unknown)=>{filters.push([k,"=",v]);return q},in:(k:string,v:unknown)=>{filters.push([k,"= any",v]);return q},order:(k:string)=>{ordering=k;return q},returns:async()=>{
+ let joins="",cols="t.*";
+ if(table==="bty_tracked_announcement_recipients"&&selection.includes("bty_tracked_announcements")) {joins=" join public.bty_tracked_announcements a on a.id=t.announcement_id left join public.bty_action_captures c on c.id=a.source_capture_id";cols+=",to_jsonb(a)||jsonb_build_object('bty_action_captures',jsonb_build_object('source_url',c.source_url)) as bty_tracked_announcements";}
+ if(table==="bty_tracked_announcements") {joins=" join public.bty_action_captures c on c.id=t.source_capture_id";cols+=",jsonb_build_object('preview_text',c.preview_text,'source_url',c.source_url) as bty_action_captures";}
+ const where=filters.map(([k,op],i)=>`t.${k} ${op} ${op==="= any"?"(":""}$${i+1}${op==="= any"?")":""}`).join(" and ");
+ const sql=`select ${cols} from public.${table} t${joins}${where?" where "+where:""}${ordering?" order by t."+ordering:""}`;
+ const result=await db.query(sql,filters.map(f=>f[2]));return {data:JSON.parse(JSON.stringify(result.rows)),error:null};
+ }};return q;
+ }} as never;
+}
+
+describe.runIf(!!URL && !!process.env.BTY_ROLLBACK_SOURCE_ROOT)("exact production rollback Worker source",()=>{
+ it("pins the clean source checkout",()=>{
+  const root=process.env.BTY_ROLLBACK_SOURCE_ROOT!;
+  expect(execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim()).toBe("b20e715a1650c911ed97fe5d9269dfa52cfeeba8");
+  expect(execFileSync("git",["-C",root,"status","--porcelain"],{encoding:"utf8"}).trim()).toBe("");
+ });
+ it.each(["acknowledgment","response","opened-only"])("%s on migrated schema has correct old Today visibility",async kind=>{
+  const s=await seed(),mode=kind==="response"?"response":"acknowledgment";
+  const {announcement_id:ann}=await track(s,[oid(1),oid(2)],mode),user=s.users[oid(1)];
+  await evidence(ann,user,kind==="opened-only"?"open":kind==="response"?"respond":"acknowledge","Synthetic response");
+  const {listMyAnnouncements}=await import("@/lib/bty/announcement/announcementService.server");
+  expect(await listMyAnnouncements(rollbackDb(),user)).toHaveLength(kind==="opened-only"?1:0);
+  expect(await listMyAnnouncements(rollbackDb(),s.users[oid(2)])).toHaveLength(1);
+ });
+ it.each(["acknowledgment","response"])("package 1.0.14 %s submit is accepted by the exact old handler",async mode=>{
+  const manifest=JSON.parse(readFileSync(join(process.cwd(),"teams/manifest/manifest.json"),"utf8"));
+  expect(manifest.version).toBe("1.0.14");const command=manifest.composeExtensions[0].commands.find((c:{id:string})=>c.id==="trackWithBty");
+  expect(command.fetchTask).toBe(true);expect(command.context).toEqual(["message"]);
+  const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);routingToken.claim=undefined;
+  await db.query("update public.bty_action_captures set source_type='teams_message',external_key=$2,source_metadata='{}',status='captured' where id=$1",[s.cap,`teams:${s.host}:conversation:${s.cap}`]);
+  const {POST}=await import("@/app/api/bty/teams/invoke/route");
+  const payload={name:"composeExtension/fetchTask",serviceUrl:"https://smba.trafficmanager.net/emea/",channelData:{tenant:{id:s.host}},from:{aadObjectId:s.host},conversation:{id:"conversation"},value:{commandId:command.id,messagePayload:{id:s.cap},data:{trackingMode:mode,hostFraming:"Synthetic notice",recipients:oid(1)}}};
+  const send=()=>POST(new NextRequest("https://arena.btydaily.com/api/bty/teams/invoke",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}));
+  try {expect((await (await send()).json()).task.type).toBe("continue");payload.name="composeExtension/submitAction";
+   const res=await send();expect(res.status).toBe(200);expect((await res.json()).task.type).toBe("continue");
+   expect(Number((await db.query("select count(*) n from public.bty_tracked_announcements where owner_user_id=$1",[s.host])).rows[0].n)).toBe(1);
+   expect((await db.query("select tracking_mode from public.bty_tracked_announcements where owner_user_id=$1",[s.host])).rows[0].tracking_mode).toBeNull();
+  } finally {vi.unstubAllEnvs();}
  });
 });
