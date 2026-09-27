@@ -223,6 +223,9 @@ export async function POST(req: NextRequest) {
 
     Fail-soft and fire-and-forget: bookkeeping must never turn a working command into an error.
   */
+  const locale = typeof (activity as { locale?: unknown })?.locale === "string" &&
+    ((activity as { locale: string }).locale.toLowerCase().startsWith("ko")) ? "ko" : "en";
+  const trackSay = (ko: string, en: string) => dialog(confirmationCard(locale === "ko" ? ko : en), TEAMS_INVOKE_FETCH_TASK);
   const identity = readActivityIdentity(activity);
   const routing = resolveServiceUrl(activity, verified.payload.serviceUrl);
   if (identity && routing.url) {
@@ -270,7 +273,9 @@ export async function POST(req: NextRequest) {
     */
     const cmd = readCommandId(activity);
     console.error("[teams-invoke] activity refused", { code: parsed.code, command: cmd ?? "unknown" });
-    return say(cmd === TEAMS_COMMAND_TRACK ? MSG.trackNoSource : MSG.cannotSave);
+    return cmd === TEAMS_COMMAND_TRACK
+      ? trackSay("원본 메시지를 확인할 수 없습니다. Teams 메시지에서 공지 추적을 다시 열어 주세요.", MSG.trackNoSource)
+      : say(MSG.cannotSave);
   }
 
   const admin = getSupabaseAdmin();
@@ -349,12 +354,16 @@ export async function POST(req: NextRequest) {
     */
     // The dialog itself. Nothing is written for merely opening it.
     if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
-      return dialog(trackDialogCard(), parsed.invokeName);
+      return dialog(trackDialogCard(locale), parsed.invokeName);
     }
 
     const submission = parseTeamsTrackSubmission(activity);
     if (!submission.ok) {
-      return say(submission.code === "missing_framing" ? MSG.trackNoFraming : MSG.trackNoPeople, parsed.invokeName);
+      return submission.code === "missing_mode"
+        ? trackSay("확인 필요 또는 응답 필요를 선택하세요.", "Choose acknowledgment required or response required.")
+        : submission.code === "missing_framing"
+          ? trackSay("공지에 대한 안내를 작성하세요.", MSG.trackNoFraming)
+          : trackSay("추적할 다른 사람을 한 명 이상 선택하세요.", "Select at least one other person to track.");
     }
 
     /*
@@ -385,6 +394,7 @@ export async function POST(req: NextRequest) {
       capture: parsed.capture,
       hostFramingRaw: submission.hostFraming,
       pickedRaw: submission.pickedRaw,
+      trackingMode: submission.trackingMode,
       serviceUrl: routing.url,
     });
 
@@ -396,10 +406,12 @@ export async function POST(req: NextRequest) {
           : tracked.reason === "zero_recipients"
             ? MSG.trackNoPeople
             : MSG.trackFailed;
-      return say(copy, parsed.invokeName);
+      return trackSay(tracked.reason === "zero_recipients"
+        ? "추적할 다른 사람을 한 명 이상 선택하세요." : "공지 추적을 시작하지 못했습니다. 다시 시도하세요.",
+        tracked.reason === "zero_recipients" ? "Select at least one other person to track." : copy);
     }
 
-    return dialog(trackConfirmationCard(tracked.count), TEAMS_INVOKE_FETCH_TASK);
+    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted), TEAMS_INVOKE_FETCH_TASK);
   }
 
   // 4. CAPTURE. Idempotent by `UNIQUE(user_id, source_type, external_key)`; a repeat save returns

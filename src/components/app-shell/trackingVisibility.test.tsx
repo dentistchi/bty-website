@@ -119,7 +119,7 @@ describe("★ 4. the unbound recipient is shown as waiting, never as silence", (
   it("★ the real 1-recipient/0-bound run reads 'Waiting for them to open BTY'", async () => {
     await renderSent([REAL]);
     const waiting = await screen.findByTestId("tracking-waiting");
-    expect(waiting.textContent).toBe("1 person hasn't opened BTY yet");
+    expect(waiting.textContent).toBe("1 person has no acknowledgment evidence (account not linked)");
   });
 
   it("★ that person is NOT counted as 'No response yet'", async () => {
@@ -307,7 +307,7 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
   it("★ 6. the unactivated recipient is NEVER named — only counted", async () => {
     await renderSent([run]);
     fireEvent.click(await screen.findByTestId("tracking-toggle"));
-    expect(screen.getByTestId("tracking-waiting").textContent).toBe("1 person hasn't opened BTY yet");
+    expect(screen.getByTestId("tracking-waiting").textContent).toBe("1 person has no acknowledgment evidence (account not linked)");
     // Four named people, never five: the unbound one has no row anywhere.
     expect(screen.getAllByTestId("tracking-person")).toHaveLength(4);
   });
@@ -370,7 +370,7 @@ describe("★ 1,3,4. the Host can tell WHO — behind one tap", () => {
     expect(screen.getByTestId("tracking-framing").textContent).toBe("Pay");
     expect(screen.getByTestId("tracking-preview").textContent).toBe("Please pay");
     expect(screen.getByTestId("tracking-sent-to").textContent).toBe("Sent to 1 person");
-    expect(screen.getByTestId("tracking-waiting").textContent).toBe("1 person hasn't opened BTY yet");
+    expect(screen.getByTestId("tracking-waiting").textContent).toBe("1 person has no acknowledgment evidence (account not linked)");
     expect(screen.getByTestId("tracking-source-link")).toBeTruthy();
     // No "0 responses" noise, no blank identity row.
     expect(screen.queryAllByTestId("tracking-count")).toHaveLength(0);

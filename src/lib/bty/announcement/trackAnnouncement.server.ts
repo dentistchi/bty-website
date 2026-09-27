@@ -1,3 +1,4 @@
+import { type TrackingMode } from "@/domain/announcement/trackingEvidence";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureActionCapture } from "@/lib/bty/action-capture/ensureActionCapture.server";
 import type { TeamsCaptureInput } from "@/domain/action-capture/captureSource";
@@ -64,6 +65,7 @@ export async function trackAnnouncement(
      * working product loop for one that does not exist yet.
      */
     serviceUrl?: string | null;
+    trackingMode?: TrackingMode;
   },
 ): Promise<TrackResult> {
   const hostFraming = normalizeHostFraming(params.hostFramingRaw);
@@ -92,7 +94,8 @@ export async function trackAnnouncement(
     return { ok: false, reason: "capture_failed" };
   }
 
-  const { data, error } = await admin.rpc(TRACK_RPC, {
+  const { data, error } = await admin.rpc(params.trackingMode ? "bty_track_announcement_v1" : TRACK_RPC, {
+    ...(params.trackingMode ? { p_tracking_mode: params.trackingMode } : {}),
     p_owner_user_id: params.ownerUserId,
     p_source_capture_id: captured.capture.id,
     p_host_framing: hostFraming,

@@ -1,3 +1,4 @@
+import { TRACKING_COPY } from "@/domain/announcement/trackingEvidence";
 /**
  * The "Track with BTY" dialog — a pure card builder. Slice A1.
  *
@@ -31,11 +32,7 @@ export const TRACK_FIELD_FRAMING = "hostFraming" as const;
 export const TRACK_FIELD_RECIPIENTS = "recipients" as const;
 
 const COPY = {
-  title: "Track with BTY",
-  framingLabel: "What should they know or do?",
   framingPlaceholder: "In your own words",
-  audienceLabel: "Who should respond?",
-  submit: "Track",
 } as const;
 
 /**
@@ -45,9 +42,10 @@ const COPY = {
  * response rendered NOTHING on the Founder's iPhone on invokes that were otherwise completely
  * successful, so this integration returns cards.
  */
-export function trackDialogCard() {
+export function trackDialogCard(locale: "en" | "ko" = "en") {
+  const t = TRACKING_COPY[locale];
   return {
-    title: COPY.title,
+    title: t.title,
     height: "medium",
     width: "medium",
     card: {
@@ -55,18 +53,22 @@ export function trackDialogCard() {
       content: {
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
         type: "AdaptiveCard",
-        // 1.2 is the version the People Picker extension is specified against.
-        version: "1.2",
+        // 1.4 supports required inputs; the server validates independently.
+        version: "1.4",
         body: [
-          { type: "TextBlock", text: COPY.framingLabel, wrap: true, weight: "Bolder" },
+          { type: "TextBlock", text: locale === "ko" ? "추적 방식 (필수)" : "Tracking mode (required)", wrap: true },
+          { type: "Input.ChoiceSet", id: "trackingMode", style: "expanded", isMultiSelect: false, isRequired: true,
+            errorMessage: locale === "ko" ? "추적 방식을 선택하세요." : "Choose a tracking mode.",
+            choices: [{ title: t.acknowledgment, value: "acknowledgment" }, { title: t.response, value: "response" }] },
+          { type: "TextBlock", text: locale === "ko" ? "공지에 대한 안내" : "What should recipients know?", wrap: true, weight: "Bolder" },
           {
             type: "Input.Text",
             id: TRACK_FIELD_FRAMING,
             isMultiline: true,
             maxLength: 1000,
-            placeholder: COPY.framingPlaceholder,
+            placeholder: locale === "ko" ? "직접 작성해 주세요" : COPY.framingPlaceholder,
           },
-          { type: "TextBlock", text: COPY.audienceLabel, wrap: true, weight: "Bolder" },
+          { type: "TextBlock", text: locale === "ko" ? "추적할 다른 사람" : "Who should be included?", wrap: true, weight: "Bolder" },
           {
             type: "Input.ChoiceSet",
             id: TRACK_FIELD_RECIPIENTS,
@@ -76,7 +78,7 @@ export function trackDialogCard() {
             isMultiSelect: true,
           },
         ],
-        actions: [{ type: "Action.Submit", title: COPY.submit }],
+        actions: [{ type: "Action.Submit", title: t.title }],
       },
     },
   };
@@ -86,7 +88,7 @@ export function trackDialogCard() {
 export const TRACK_CONFIRM_HEIGHT = 170;
 
 /** The one-line confirmation after a successful Track. Calm, and it states the denominator. */
-export function trackConfirmationCard(count: number) {
+export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en", alreadyExisted = false) {
   const people = count === 1 ? "1 person" : `${count} people`;
   return {
     // No `title` — see the note on the Save confirmation. Teams already attributes this to BTY.
@@ -108,7 +110,7 @@ export function trackConfirmationCard(count: number) {
         type: "AdaptiveCard",
         version: "1.4",
         body: [
-          { type: "TextBlock", text: "\u2713 Tracking started", wrap: true },
+          { type: "TextBlock", text: locale === "ko" ? (alreadyExisted ? "✓ 기존 공지 추적을 유지했습니다" : "✓ 공지 추적을 시작했습니다") : (alreadyExisted ? "✓ Already tracking this announcement" : "\u2713 Tracking started"), wrap: true },
           /*
             ★ SAY WHERE IT WENT, STILL. A confirmation that only says "done" leaves the person to
             guess whether BTY kept anything and where to look -- measured: a real Track succeeded
@@ -118,7 +120,7 @@ export function trackConfirmationCard(count: number) {
           */
           {
             type: "TextBlock",
-            text: `${people} \u00b7 See it in Today \u2192 Tracking.`,
+            text: locale === "ko" ? `${count}명 · Today → 공지 추적에서 확인하세요.` : `${people} · See it in Today → Track announcement.`,
             wrap: true,
             isSubtle: true,
             spacing: "Small",

@@ -105,12 +105,12 @@ describe("the dialog", () => {
 describe("the track submit", () => {
   it("ensures the capture and creates the run from SERVER-derived identity", async () => {
     const res = await POST(
-      req(activity({}, { data: { hostFraming: "Please confirm", recipients: `${A},${B}` } })),
+      req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Please confirm", recipients: `${A},${B}` } })),
     );
     expect(res.status).toBe(200);
     expect(ensureActionCapture).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ userId: HOST }));
     expect(rpc).toHaveBeenCalledWith(
-      "bty_track_announcement",
+      "bty_track_announcement_v1",
       expect.objectContaining({
         p_owner_user_id: HOST,
         p_source_capture_id: "cap-1",
@@ -129,6 +129,7 @@ describe("the track submit", () => {
           { user_id: "attacker", owner_user_id: "attacker" },
           {
             data: {
+              trackingMode: "acknowledgment",
               hostFraming: "x",
               recipients: A,
               user_id: "attacker",
@@ -151,21 +152,21 @@ describe("the track submit", () => {
   });
 
   it("de-duplicates the picked set before it becomes a denominator", async () => {
-    await POST(req(activity({}, { data: { hostFraming: "x", recipients: `${A},${A.toUpperCase()},${B}` } })));
+    await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: `${A},${A.toUpperCase()},${B}` } })));
     expect((rpc.mock.calls[0]?.[1] as { p_recipient_oids: string[] }).p_recipient_oids).toEqual([A, B]);
   });
 
   it("refuses empty framing, and writes nothing", async () => {
-    const res = await POST(req(activity({}, { data: { hostFraming: "   ", recipients: A } })));
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "   ", recipients: A } })));
     expect(rpc).not.toHaveBeenCalled();
     expect(ensureActionCapture).not.toHaveBeenCalled();
     expect(JSON.stringify(await res.json())).toContain("what they should know");
   });
 
   it("refuses zero usable recipients, and writes nothing", async () => {
-    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: "not-a-guid" } })));
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: "not-a-guid" } })));
     expect(rpc).not.toHaveBeenCalled();
-    expect(JSON.stringify(await res.json())).toContain("at least one person");
+    expect(JSON.stringify(await res.json())).toContain("at least one other person");
   });
 
   it("a repeat Track returns the SAME run rather than splitting the audience", async () => {
@@ -173,15 +174,15 @@ describe("the track submit", () => {
       data: [{ announcement_id: "ann-1", resolved_count: 2, already_existed: true }],
       error: null,
     });
-    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: `${A},${B}` } })));
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: `${A},${B}` } })));
     expect(res.status).toBe(200);
     expect(JSON.stringify(await res.json())).toContain("2 people");
   });
 
   it("never creates an Action Contract, Arena run, XP or Foundry row", async () => {
-    await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
+    await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A } })));
     const called = rpc.mock.calls.map((c) => String(c[0]));
-    expect(called).toEqual(["bty_track_announcement"]);
+    expect(called).toEqual(["bty_track_announcement_v1"]);
     for (const forbidden of ["contract", "arena", "xp", "foundry", "activation", "verification"]) {
       expect(called.some((n) => n.toLowerCase().includes(forbidden)), `must not call ${forbidden}`).toBe(false);
     }
@@ -210,7 +211,7 @@ describe("Save to BTY is untouched", () => {
 describe("auth ordering is unchanged", () => {
   it("an unverified token reaches nothing, track included", async () => {
     verifyBotFrameworkToken.mockResolvedValue({ ok: false, reason: "invalid_token" });
-    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A } })));
     expect(res.status).toBe(401);
     expect(resolveBtyUserFromMicrosoftIdentity).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
@@ -218,7 +219,7 @@ describe("auth ordering is unchanged", () => {
 
   it("an unresolvable Host never tracks and never creates a user", async () => {
     resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "NOT_LINKED" });
-    await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
+    await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A } })));
     expect(rpc).not.toHaveBeenCalled();
     expect(ensureActionCapture).not.toHaveBeenCalled();
   });
@@ -256,8 +257,8 @@ describe("★ Track is a COLLABORATION action", () => {
 
   it("★ an ordinary participant's SUBMIT creates the tracked announcement", async () => {
     isActiveFoundryHost.mockResolvedValue(false);
-    const res = await POST(req(activity({}, { data: { hostFraming: "Please confirm", recipients: A } })));
-    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.anything());
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Please confirm", recipients: A } })));
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1", expect.anything());
     expect(ensureActionCapture).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(await res.json())).not.toContain("Tracking isn't available");
   });
@@ -268,15 +269,15 @@ describe("★ Track is a COLLABORATION action", () => {
       from the resolver, and the tenant from the activity the Bot Framework token authenticated.
     */
     await POST(
-      req(activity({ user_id: "attacker" }, { data: { hostFraming: "x", recipients: A, userId: "attacker", isHost: true } })),
+      req(activity({ user_id: "attacker" }, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A, userId: "attacker", isHost: true } })),
     );
-    const trackCall = rpc.mock.calls.find((c) => c[0] === "bty_track_announcement");
+    const trackCall = rpc.mock.calls.find((c) => c[0] === "bty_track_announcement_v1");
     expect(trackCall?.[1].p_owner_user_id).toBe(HOST);
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("attacker");
   });
 
   it("★ a FOREIGN-TENANT identity is refused, and writes nothing", async () => {
-    const foreign = { ...activity({}, { data: { hostFraming: "x", recipients: A } }) } as Record<string, unknown>;
+    const foreign = { ...activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A } }) } as Record<string, unknown>;
     foreign.channelData = { tenant: { id: "99999999-9999-9999-9999-999999999999" } };
     await POST(req(foreign));
     expect(rpc).not.toHaveBeenCalled();
@@ -285,9 +286,9 @@ describe("★ Track is a COLLABORATION action", () => {
 
   it("a Host tracks exactly as anyone else does — no special case", async () => {
     isActiveFoundryHost.mockResolvedValue(true);
-    const res = await POST(req(activity({}, { data: { hostFraming: "x", recipients: `${A},${B}` } })));
+    const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: `${A},${B}` } })));
     expect(res.status).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1", expect.anything());
     expect(JSON.stringify(await res.json())).toContain("2 people");
   });
 
@@ -304,7 +305,7 @@ describe("★ Track is a COLLABORATION action", () => {
 
   it("an unauthenticated caller never even reaches the Host gate", async () => {
     verifyBotFrameworkToken.mockResolvedValue({ ok: false, reason: "invalid_token" });
-    await POST(req(activity({}, { data: { hostFraming: "x", recipients: A } })));
+    await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: A } })));
     expect(isActiveFoundryHost).not.toHaveBeenCalled();
   });
 });
@@ -322,7 +323,7 @@ describe("★ Track terminal confirmation — explicit pixel height (device-gate
     expect(v.title, "no redundant BTY header").toBeUndefined();
     expect(v.card.content.body[0].text).toBe("✓ Tracking started");
     // Navigation, not decoration: a real Track succeeded once and the Host could not find it.
-    expect(v.card.content.body[1].text).toBe("3 people · See it in Today → Tracking.");
+    expect(v.card.content.body[1].text).toBe("3 people · See it in Today → Track announcement.");
   });
 
   it("★ THE SETUP DIALOG IS UNTOUCHED — it holds a picker and an input", async () => {
@@ -330,5 +331,33 @@ describe("★ Track terminal confirmation — explicit pixel height (device-gate
     const v = trackDialogCard() as { height: string; width: string };
     expect(v.height).toBe("medium");
     expect(v.width).toBe("medium");
+  });
+});
+
+
+describe("announcement tracking V1 mobile-visible feedback", () => {
+  it.each(["en", "ko"])("%s self-only database refusal stays a task.continue card", async locale => {
+    rpc.mockResolvedValue({ data: null, error: { message: "zero_recipients", code: "P0001" } });
+    const res = await POST(req(activity({ locale }, { data: { trackingMode: "acknowledgment", hostFraming: "Notice", recipients: OID } })));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.task.type).toBe("continue");
+    expect(body.task.value.card.contentType).toBe("application/vnd.microsoft.card.adaptive");
+    expect(JSON.stringify(body)).toContain(locale === "ko" ? "추적할 다른 사람을 한 명 이상 선택하세요." : "Select at least one other person to track.");
+  });
+  it("zero selection is visible and never creates a capture or announcement", async () => {
+    const body = await (await POST(req(activity({locale:"ko"}, { data: { trackingMode:"response",hostFraming:"Notice",recipients:"" } })))).json();
+    expect(body.task.type).toBe("continue");expect(JSON.stringify(body)).toContain("추적할 다른 사람을 한 명 이상 선택하세요.");
+    expect(ensureActionCapture).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();
+  });
+  it.each(["acknowledgment","response"])("passes %s to the atomic RPC and keeps success visible",async trackingMode=> {
+    const body=await (await POST(req(activity({}, {data:{trackingMode,hostFraming:"Notice",recipients:A}})))).json();
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1",expect.objectContaining({p_tracking_mode:trackingMode}));
+    expect(body.task.type).toBe("continue");expect(body.task.value.card).toBeTruthy();
+    expect(ensureActionCapture).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({intent:"track_source"}));
+  });
+  it("no mode is a visible refusal, never an implicit legacy mode",async()=> {
+    const body=await (await POST(req(activity({}, {data:{hostFraming:"Notice",recipients:A}})))).json();
+    expect(body.task.type).toBe("continue");expect(JSON.stringify(body)).toContain("Choose acknowledgment");expect(rpc).not.toHaveBeenCalled();
   });
 });

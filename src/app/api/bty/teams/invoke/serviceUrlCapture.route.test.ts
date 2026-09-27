@@ -57,7 +57,7 @@ function activity(over: Record<string, unknown> = {}, value: Record<string, unkn
     value: {
       commandId: "trackWithBty",
       messagePayload: { id: "m1", body: { content: "body" } },
-      data: { hostFraming: "Please read this today.", recipients: A },
+      data: { trackingMode: "acknowledgment", hostFraming: "Please read this today.", recipients: A },
       ...value,
     },
     ...over,
@@ -78,7 +78,7 @@ async function POST(r: NextRequest) {
 }
 
 /** The argument the write actually received, or undefined if the RPC never ran. */
-const sentServiceUrl = () => rpc.mock.calls.find((c) => c[0] === "bty_track_announcement")?.[1]?.p_service_url;
+const sentServiceUrl = () => rpc.mock.calls.find((c) => c[0] === "bty_track_announcement_v1")?.[1]?.p_service_url;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -105,7 +105,7 @@ describe("G1 — a verified Track stores the coordinate it observed", () => {
     const res = await POST(req(activity()));
     expect(res.status).toBe(200);
     expect(sentServiceUrl()).toBeNull();
-    expect(rpc).toHaveBeenCalledWith("bty_track_announcement", expect.objectContaining({ p_recipient_oids: [A] }));
+    expect(rpc).toHaveBeenCalledWith("bty_track_announcement_v1", expect.objectContaining({ p_recipient_oids: [A] }));
   });
 
   it("logs WHICH refusal happened, and never the URL", async () => {
@@ -131,7 +131,7 @@ describe("E — the coordinate cannot come from anywhere a client controls", () 
     // `value.data` is the ONLY client-authored part of this activity. A serviceUrl smuggled into
     // it must be ignored — the field is read from the activity root, which Teams owns.
     const res = await POST(
-      req(activity({}, { data: { hostFraming: "Read this.", recipients: A, serviceUrl: "https://attacker.example.com/" } })),
+      req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "Read this.", recipients: A, serviceUrl: "https://attacker.example.com/" } })),
     );
     expect(res.status).toBe(200);
     expect(sentServiceUrl()).toBeNull();
@@ -221,7 +221,7 @@ describe("F/12 — this slice sends nothing", () => {
   it("the write is still the ONLY announcement RPC the Track path calls", async () => {
     await POST(req(activity({ serviceUrl: REAL })));
     const names = rpc.mock.calls.map((c) => c[0]);
-    expect(names).toEqual(["bty_track_announcement"]);
+    expect(names).toEqual(["bty_track_announcement_v1"]);
     expect(names.join()).not.toMatch(/notif|conversation|send/i);
   });
 });

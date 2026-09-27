@@ -76,7 +76,7 @@ describe("★ the Host projection never selects a directory identity", () => {
       the unread count is computed from a join the Host projection never has to widen for.
     */
     expect(cols).toEqual([
-      "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at",
+      "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at", "opened_at", "acknowledged_at", "response_submitted_at", "response_text",
     ]);
     for (const forbidden of ["tenant_id", "aad_object_id", "email", "preferred_username"]) {
       expect(cols, forbidden).not.toContain(forbidden);
@@ -244,7 +244,7 @@ describe("★ 15. the Teams confirmation says where it went", () => {
       possible and losing the destination does not.
     */
     expect(CARD).toContain("See it in Today");
-    expect(CARD).toContain("Tracking.");
+    expect(CARD).toContain("Track announcement.");
     expect(CARD, "and the headline confirms it started").toContain("Tracking started");
   });
 });

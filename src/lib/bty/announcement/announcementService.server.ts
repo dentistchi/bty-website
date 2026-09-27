@@ -1,3 +1,4 @@
+import { isTrackingMode, trackingComplete, summariseTracking, type TrackingEvidence, type TrackingMode } from "@/domain/announcement/trackingEvidence";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isAnnouncementResponse,
@@ -38,10 +39,14 @@ type RecipientRow = {
   announcement_id: string;
   response: string | null;
   responded_at: string | null;
+  opened_at?: string | null;
+  acknowledged_at?: string | null;
+  response_submitted_at?: string | null;
   bty_tracked_announcements: {
     id: string;
     host_framing: string;
     status: string;
+    tracking_mode?: TrackingMode | null;
     // NULLABLE since 20260915: the Host's account may have been deleted while the Track survives.
     owner_user_id: string | null;
     bty_action_captures: { source_url: string | null } | null;
@@ -76,7 +81,7 @@ export async function listMyAnnouncements(
         No source link is a smaller loss than the entire Track. `sourceUrl` becomes null and the
         card renders without a link; nothing is fabricated to fill the gap.
       */
-      "id, announcement_id, response, responded_at, bty_tracked_announcements!inner(id, host_framing, status, owner_user_id, bty_action_captures(source_url))",
+      "id, announcement_id, response, responded_at, opened_at, acknowledged_at, response_submitted_at, bty_tracked_announcements!inner(id, host_framing, status, tracking_mode, owner_user_id, bty_action_captures(source_url))",
     )
     .eq("user_id", userId)
     /*
@@ -144,7 +149,12 @@ export async function listMyAnnouncements(
   const dismissed = await loadTodayDismissals(admin, userId, "track_recipient");
 
   return rows
-    .filter((r) =>
+    .filter((r) => {
+      const mode = r.bty_tracked_announcements?.tracking_mode;
+      if (isTrackingMode(mode)) {
+        const pending = r.bty_tracked_announcements?.status !== "closed" && r.bty_tracked_announcements?.owner_user_id != null && !trackingComplete(evidenceOf(r, mode));
+        return scope === "today" ? pending : !pending;
+      }
       /*
         ★ ONE PREDICATE, TWO SCOPES. `past` is its negation, so a Track is in exactly one of the two
         surfaces and neither can drift from the other.
@@ -157,7 +167,7 @@ export async function listMyAnnouncements(
         for anything, so it belongs in retrieval — but it must still be RETRIEVABLE, which is why
         it is fetched and partitioned rather than filtered away in SQL.
       */
-      isTrackInScope(scope, {
+      return isTrackInScope(scope, {
         /*
           ★ `=== "closed"`, NOT `!== "active"`. An ABSENT or unrecognised status is not the same
           fact as a CLOSED one. The database constrains this to exactly two values, so in practice
@@ -168,10 +178,11 @@ export async function listMyAnnouncements(
         historical: r.bty_tracked_announcements?.status === "closed",
         dismissedActivityVersion: dismissed.get(r.id) ?? null,
         currentActivityVersion: recipientActivityVersion(meta.get(r.id) ?? []),
-      }),
-    )
+      });
+    })
     .map((r) =>
     projectForRecipient({
+      ...evidenceOf(r, r.bty_tracked_announcements?.tracking_mode),
       announcementId: r.announcement_id,
       recipientId: r.id,
       hostFraming: r.bty_tracked_announcements?.host_framing ?? "",
@@ -236,6 +247,9 @@ export async function respondToAnnouncement(
 }
 
 export type HostAnnouncement = {
+  trackingMode?: TrackingMode | null;
+  tracking?: ReturnType<typeof summariseTracking>;
+  audience?: (TrackingEvidence & { recipientId: string; display: string | null; responseText: string | null })[];
   id: string;
   hostFraming: string;
   createdAt: string;
@@ -315,7 +329,7 @@ export async function listHostAnnouncements(
     // Note what is still absent even for the owner: tenant_id and conversation_id. A Host does not
     // need the wire identifiers to read their own run, and not selecting them is why no future
     // change can leak an unbound recipient's directory identity through this surface.
-    .select("id, host_framing, resolved_count, created_at, status, bty_action_captures!inner(preview_text, source_url)")
+    .select("id, host_framing, resolved_count, created_at, status, tracking_mode, bty_action_captures!inner(preview_text, source_url)")
     .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false })
     .returns<
@@ -325,6 +339,7 @@ export async function listHostAnnouncements(
         resolved_count: number;
         created_at: string;
         status: string;
+        tracking_mode?: TrackingMode | null;
         bty_action_captures: { preview_text: string | null; source_url: string | null } | null;
       }[]
     >();
@@ -336,7 +351,7 @@ export async function listHostAnnouncements(
 
   const { data: recips } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at")
+    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at, opened_at, acknowledged_at, response_submitted_at, response_text")
     .in("announcement_id", runs.map((r) => r.id))
     .returns<
       {
@@ -345,6 +360,10 @@ export async function listHostAnnouncements(
         user_id: string | null;
         response: string | null;
         responded_at: string | null;
+        opened_at?: string | null;
+        acknowledged_at?: string | null;
+        response_submitted_at?: string | null;
+        response_text?: string | null;
         question_text: string | null;
         handled_at: string | null;
       }[]
@@ -436,6 +455,11 @@ export async function listHostAnnouncements(
     // Every named bucket is filtered on `user_id` FIRST: an unbound row can never reach one.
     const bound = rows.filter((r) => typeof r.user_id === "string" && r.user_id.length > 0);
     return {
+      trackingMode: isTrackingMode(run.tracking_mode) ? run.tracking_mode : null,
+      ...(isTrackingMode(run.tracking_mode) ? {
+        tracking: summariseTracking(run.resolved_count, rows.map(r => evidenceOf(r, run.tracking_mode))),
+        audience: rows.map(r => ({ ...evidenceOf(r, run.tracking_mode), recipientId: r.id, display: nameOf(r.user_id), responseText: r.response_text ?? null })),
+      } : {}),
       id: run.id,
       hostFraming: run.host_framing,
       createdAt: run.created_at,
@@ -487,4 +511,9 @@ export async function handleRecipientFollowUp(
   if (row?.result === "reopened") return { ok: true, handled: false };
   if (row?.result === "not_handleable") return { ok: false, reason: "not_handleable" };
   return { ok: false, reason: "not_found" };
+}
+
+function evidenceOf(row: { opened_at?: string | null; acknowledged_at?: string | null; response_submitted_at?: string | null }, mode: unknown): TrackingEvidence {
+  return { trackingMode: isTrackingMode(mode) ? mode : null, openedAt: row.opened_at ?? null,
+    acknowledgedAt: row.acknowledged_at ?? null, responseSubmittedAt: row.response_submitted_at ?? null };
 }

@@ -1,3 +1,4 @@
+import { isTrackingMode, type TrackingMode } from "@/domain/announcement/trackingEvidence";
 /**
  * Teams message action → BTY capture input (PURE). Slice T1.
  *
@@ -231,14 +232,14 @@ export function readCommandId(activity: unknown): TeamsCommandId | null {
 }
 
 export type TeamsTrackSubmission =
-  | { ok: true; hostFraming: string; pickedRaw: string }
-  | { ok: false; code: "missing_framing" | "missing_recipients" };
+  | { ok: true; hostFraming: string; pickedRaw: string; trackingMode: TrackingMode }
+  | { ok: false; code: "missing_framing" | "missing_recipients" | "missing_mode" };
 
 /**
  * Read the Track dialog's submitted fields, and ONLY those.
  *
  * A dialog submit arrives as `composeExtension/submitAction` with the form values under
- * `value.data`. Exactly two keys are read; anything else the client sends is ignored rather than
+ * `value.data`. Only framing, recipients and explicit tracking mode are read; other fields are ignored rather than
  * merged, so a crafted payload cannot introduce a field this product does not have.
  *
  * The recipient string is returned RAW and canonicalised elsewhere
@@ -251,7 +252,8 @@ export function parseTeamsTrackSubmission(activity: unknown): TeamsTrackSubmissi
   if (!hostFraming) return { ok: false, code: "missing_framing" };
   const pickedRaw = str(data.recipients);
   if (!pickedRaw) return { ok: false, code: "missing_recipients" };
-  return { ok: true, hostFraming, pickedRaw };
+  if (!isTrackingMode(data.trackingMode)) return { ok: false, code: "missing_mode" };
+  return { ok: true, hostFraming, pickedRaw, trackingMode: data.trackingMode };
 }
 
 // ===========================================================================

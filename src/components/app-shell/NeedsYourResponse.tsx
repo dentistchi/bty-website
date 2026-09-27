@@ -1,5 +1,7 @@
 "use client";
 
+import { AnnouncementEvidenceCard } from "./AnnouncementEvidenceCard";
+import { isTrackingMode, type TrackingEvidence } from "@/domain/announcement/trackingEvidence";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnouncement";
@@ -26,7 +28,7 @@ import { recipientTodayAction } from "@/domain/daily/todayDismissal";
  * surface must not imply one.
  */
 
-type Item = {
+type Item = Partial<TrackingEvidence> & {
   announcementId: string;
   /** THIS person's own row — the address of their own private conversation, and nobody else's. */
   recipientId: string;
@@ -97,7 +99,7 @@ const COPY = {
   },
 } as const;
 
-export default function NeedsYourResponse({ locale, refreshKey }: { locale: Locale; refreshKey?: number }) {
+export default function NeedsYourResponse({ locale, refreshKey, onOpenItems }: { locale: Locale; refreshKey?: number; onOpenItems?: (items: TrackingEvidence[] | null) => void }) {
   const t = COPY[locale];
   const [items, setItems] = useState<Item[] | null>(null);
   /**
@@ -149,14 +151,16 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
     }
 
     if (!res || !res.ok) {
+      onOpenItems?.(null);
       setLoadState("error");
       return;
     }
 
     const d = (await res.json().catch(() => null)) as { items?: Item[] } | null;
     setItems(Array.isArray(d?.items) ? d!.items! : []);
+    onOpenItems?.((d?.items ?? []).filter(it => isTrackingMode(it.trackingMode)).map(it => ({ trackingMode: it.trackingMode!, openedAt: it.openedAt ?? null, acknowledgedAt: it.acknowledgedAt ?? null, responseSubmittedAt: it.responseSubmittedAt ?? null })));
     setLoadState("ready");
-  }, []);
+  }, [onOpenItems]);
 
   /*
     Re-read on mount AND whenever Today is re-entered. `refreshKey` changes only on a real tab
@@ -250,9 +254,11 @@ export default function NeedsYourResponse({ locale, refreshKey }: { locale: Loca
 
   return (
     <section className="flex flex-col gap-3" data-testid="needs-your-response">
-      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{t.title}</h2>
+      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">{items.some(it => isTrackingMode(it.trackingMode)) ? (locale === "ko" ? "공지" : "Announcements") : t.title}</h2>
 
       {items.map((it) => {
+        if (isTrackingMode(it.trackingMode)) return <AnnouncementEvidenceCard key={it.announcementId}
+          item={{ ...it, trackingMode: it.trackingMode, openedAt: it.openedAt ?? null, acknowledgedAt: it.acknowledgedAt ?? null, responseSubmittedAt: it.responseSubmittedAt ?? null }} locale={locale} onChanged={load} />;
         const answered = it.response !== null;
         /*
           ★ NO HOST, NO NEW WORDS — AND THE SURFACE SAYS SO BEFORE ANYBODY TRIES.

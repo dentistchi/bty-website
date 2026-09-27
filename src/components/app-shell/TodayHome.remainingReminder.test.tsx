@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import TodayHome from "./TodayHome";
 import { TODAY_REMAINING_REMINDER_ID } from "@/domain/daily/todayRemainingReminder";
 
@@ -109,5 +109,41 @@ describe("shell wiring", () => {
     expect(src).toContain('nativeReminder={runtime === "web"}');
     expect(src).toContain('useTodayRemainingReminder(locale, runtime === "web")');
     expect(readFileSync("src/components/teams/TeamsTabShell.tsx", "utf8")).toContain('runtime="teams"');
+  });
+});
+
+
+describe("announcement completion → Today and 08:00 reminder", () => {
+  it.each(["acknowledgment", "response"])("%s remains after opening and leaves after the explicit required action", async trackingMode => {
+    const b = nativeBridge();
+    let completed = false;
+    let opened = false;
+    const item = { announcementId:"a",recipientId:"r",hostFraming:"Notice",sourceUrl:"https://teams.microsoft.com/x",trackingMode,
+      openedAt:null,acknowledgedAt:null,responseSubmittedAt:null,response:null,respondedAt:null,unreadCount:0,messageCount:0 };
+    vi.stubGlobal("fetch",vi.fn(async(url: string, init?: RequestInit) => {
+      if (String(url).startsWith("/api/me/today/brief")) return new Response(JSON.stringify({ok:true,reminders:[],hostAttention:[]}));
+      if (url === "/api/bty/announcements/mine") return new Response(JSON.stringify({ok:true,items:completed?[]:[{...item,openedAt:opened?"now":null}]}));
+      if (String(url).endsWith("/evidence")) {
+        const body = JSON.parse(init?.body as string);
+        if (body.action === "open") opened = true;
+        else completed = true;
+        return new Response('{"ok":true}');
+      }
+      return new Response('{}');
+    }));
+    render(<TodayHome locale="en" nativeReminder />);
+    await screen.findByTestId("announcement-evidence");
+    await waitFor(()=>expect(b.LocalNotifications.schedule).toHaveBeenCalled());
+    expect(screen.queryByTestId("today-empty")).toBeNull();
+    fireEvent.click(screen.getByText("Open announcement"));
+    await screen.findByText("Notice");
+    expect(completed).toBe(false);
+    if (trackingMode === "response") {
+      fireEvent.change(screen.getByLabelText("Your response"),{target:{value:"Answer"}});
+      fireEvent.click(screen.getByText("Submit response"));
+    } else fireEvent.click(screen.getByText("I acknowledge"));
+    await waitFor(()=>expect(screen.queryByTestId("announcement-evidence")).toBeNull());
+    await screen.findByTestId("today-empty");
+    await waitFor(()=>expect(b.LocalNotifications.cancel.mock.invocationCallOrder.at(-1)).toBeGreaterThan(b.LocalNotifications.schedule.mock.invocationCallOrder.at(-1)!));
   });
 });
