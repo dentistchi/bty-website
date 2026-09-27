@@ -1,4 +1,4 @@
-import { TRACKING_COPY } from "@/domain/announcement/trackingEvidence";
+import { TRACKING_COPY, type TrackingMode } from "@/domain/announcement/trackingEvidence";
 /**
  * The "Track with BTY" dialog — a pure card builder. Slice A1.
  *
@@ -42,7 +42,10 @@ const COPY = {
  * response rendered NOTHING on the Founder's iPhone on invokes that were otherwise completely
  * successful, so this integration returns cards.
  */
-export function trackDialogCard(locale: "en" | "ko" = "en") {
+export function trackDialogCard(locale: "en" | "ko" = "en", retry?: {
+  trackingMode: TrackingMode;
+  hostFraming: string;
+}) {
   const t = TRACKING_COPY[locale];
   return {
     title: t.title,
@@ -58,17 +61,24 @@ export function trackDialogCard(locale: "en" | "ko" = "en") {
         body: [
           { type: "TextBlock", text: locale === "ko" ? "추적 방식 (필수)" : "Tracking mode (required)", wrap: true },
           { type: "Input.ChoiceSet", id: "trackingMode", style: "expanded", isMultiSelect: false, isRequired: true,
+            ...(retry ? { value: retry.trackingMode } : {}),
             errorMessage: locale === "ko" ? "추적 방식을 선택하세요." : "Choose a tracking mode.",
             choices: [{ title: t.acknowledgment, value: "acknowledgment" }, { title: t.response, value: "response" }] },
           { type: "TextBlock", text: locale === "ko" ? "공지에 대한 안내" : "What should recipients know?", wrap: true, weight: "Bolder" },
           {
             type: "Input.Text",
             id: TRACK_FIELD_FRAMING,
+            ...(retry ? { value: retry.hostFraming } : {}),
             isMultiline: true,
             maxLength: 1000,
             placeholder: locale === "ko" ? "직접 작성해 주세요" : COPY.framingPlaceholder,
           },
           { type: "TextBlock", text: locale === "ko" ? "추적할 다른 사람" : "Who should be included?", wrap: true, weight: "Bolder" },
+          // Keep validation in the editable setup card, not a terminal receipt.
+          // Preserve mode/framing but clear the rejected audience for a new selection.
+          ...(retry ? [{ type: "TextBlock", color: "Attention", wrap: true,
+            text: locale === "ko" ? "Track할 다른 사람을 선택하세요." : "Choose someone else to track.",
+          }] : []),
           {
             type: "Input.ChoiceSet",
             id: TRACK_FIELD_RECIPIENTS,

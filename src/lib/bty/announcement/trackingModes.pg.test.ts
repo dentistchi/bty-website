@@ -208,12 +208,12 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
   const result=await trackAnnouncement(serviceDb(),{ownerUserId:s.host,actorAadObjectId:s.host,capture:{provider:"teams",tenant_id:s.host,conversation_id:"conversation",message_id:message},hostFramingRaw:"Notice",pickedRaw:picked,trackingMode:mode as "response"});
   expect(result.ok).toBe(false);expect(await counts()).toEqual(before);
  });
- it("a recipient insert failure rolls back the capture and announcement too",async()=> {
+ it.each(["bty_action_captures", "bty_tracked_announcements", "bty_tracked_announcement_recipients"])("%s insert failure rolls back all partial Track state",async table=> {
   const s=await seed();const before=await counts();
   await db.query(`create function public.test_refuse_recipient() returns trigger language plpgsql as $$ begin raise exception 'test failure'; end $$;
-   create trigger test_refuse before insert on public.bty_tracked_announcement_recipients for each row execute function public.test_refuse_recipient()`);
+   create trigger test_refuse before insert on public.${table} for each row execute function public.test_refuse_recipient()`);
   try {await expect(track(s,[oid(1)])).rejects.toThrow("test failure");expect(await counts()).toEqual(before);}
-  finally {await db.query("drop trigger test_refuse on public.bty_tracked_announcement_recipients; drop function public.test_refuse_recipient()");}
+  finally {await db.query(`drop trigger test_refuse on public.${table}; drop function public.test_refuse_recipient()`);}
  });
  it("atomic Track preserves an existing Saved source byte-for-byte and creates new source evidence with no saved_at",async()=> {
   const s=await seed();
@@ -261,17 +261,49 @@ vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => process.env.BTY_ROLLBACK_SOURCE_ROOT ? rollbackDb() : serviceDb() }));
 import { NextRequest } from "next/server";
 import * as trackService from "./trackAnnouncement.server";
-async function invokeTrack(s: Awaited<ReturnType<typeof seed>>, serviceUrl: unknown, locale="en") {
+async function invokeTrack(s: Awaited<ReturnType<typeof seed>>, serviceUrl: unknown, locale="en", recipients=oid(1)) {
  const { POST } = await import("@/app/api/bty/teams/invoke/route");
  return POST(new NextRequest("https://arena.btydaily.com/api/bty/teams/invoke", {
   method:"POST",headers:{"content-type":"application/json",authorization:"Bearer synthetic"},
   body:JSON.stringify({name:"composeExtension/submitAction",locale,serviceUrl,
    channelData:{tenant:{id:s.host}},from:{aadObjectId:s.host},conversation:{id:"conversation"},
    value:{commandId:"trackWithBty",messagePayload:{id:s.cap,body:{content:"Synthetic fixture"}},
-    data:{trackingMode:"response",hostFraming:"Synthetic notice",recipients:oid(1)}}}),
+    data:{trackingMode:"response",hostFraming:"Synthetic notice",recipients}}}),
  }));
 }
 describe.runIf(!!URL)("Track invoke routing: real route and PostgreSQL",()=>{
+ it.each(["en","ko"])("self-only %s returns editable validation and zero writes/notifications",async locale=>{
+  const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);routingToken.claim=undefined;
+  const send=vi.spyOn(globalThis,"fetch").mockRejectedValue(new Error("Unexpected notification"));
+  try {
+   const before=await counts();
+   const res=await invokeTrack(s,"https://smba.trafficmanager.net/emea/",locale,`${s.host},${s.host.toUpperCase()}`);
+   const body=await res.json();expect(res.status).toBe(200);expect(body.task.type).toBe("continue");
+   expect(body.task.value.card.content.body).toContainEqual(expect.objectContaining({type:"TextBlock",text:locale==="ko"?"Track할 다른 사람을 선택하세요.":"Choose someone else to track."}));
+   expect(body.task.value.card.content.body).toContainEqual(expect.objectContaining({id:"hostFraming",value:"Synthetic notice"}));
+   expect(await counts()).toEqual(before);expect(send).not.toHaveBeenCalled();
+   expect(Number((await db.query("select count(*) n from public.bty_tracked_announcement_recipients where user_id=$1",[s.host])).rows[0].n)).toBe(0);
+   const corrected=await invokeTrack(s,"https://smba.trafficmanager.net/emea/",locale,oid(1));
+   expect(JSON.stringify(await corrected.json())).toContain(locale==="ko"?"1명":"1 person");
+   const after=await counts();
+   for(const t of Object.keys(before)) expect(after[t]-before[t]).toBe(["bty_action_captures","bty_tracked_announcements","bty_tracked_announcement_recipients"].includes(t)?1:0);
+   expect(send).not.toHaveBeenCalled();
+  } finally {send.mockRestore();vi.unstubAllEnvs();}
+ });
+ it.each([1,10])("host plus %i others freezes only actual recipients and confirms their count",async n=>{
+  const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);routingToken.claim=undefined;
+  const send=vi.spyOn(globalThis,"fetch").mockRejectedValue(new Error("Unexpected notification"));
+  try {
+   const before=await counts();
+   const res=await invokeTrack(s,"https://smba.trafficmanager.net/emea/","en",[s.host,...Array.from({length:n},(_,i)=>oid(i+1))].join(","));
+   const body=await res.json();expect(body.task.type).toBe("continue");expect(JSON.stringify(body)).toContain(n===1?"1 person":"10 people");
+   const after=await counts();
+   for(const t of Object.keys(before)) expect(after[t]-before[t]).toBe(t==="bty_tracked_announcement_recipients"?n:["bty_action_captures","bty_tracked_announcements"].includes(t)?1:0);
+   const rows=(await db.query("select r.user_id from public.bty_tracked_announcement_recipients r join public.bty_tracked_announcements a on a.id=r.announcement_id where a.owner_user_id=$1",[s.host])).rows;
+   expect(rows).toHaveLength(n);expect(rows.some(r=>r.user_id===s.host)).toBe(false);expect(send).not.toHaveBeenCalled();
+  } finally {send.mockRestore();vi.unstubAllEnvs();}
+ });
+
  it.each(["absent","invalid","mismatch"] as const)("%s returns visible EN/KO errors with zero writes to all seven tables",async reason=>{
   const s=await seed();vi.stubEnv("TEAMS_BOT_TENANT_ID",s.host);
   const spy=vi.spyOn(trackService,"trackAnnouncement");
