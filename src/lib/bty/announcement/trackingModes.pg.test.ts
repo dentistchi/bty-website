@@ -63,7 +63,7 @@ const APPLIED = [
 ];
 
 const MIGRATION = "20260927051100_announcement_tracking_modes_v1.sql";
-const ALIGNMENT = "20260928000000_bty_track_recipient_authority_alignment_v1.sql";
+const ALIGNMENT = "20260928000000_bty_track_collaboration_authority_alignment_v1.sql";
 let root: Pool; let db: Pool;
 const name = `tracking_v1_${process.pid}`;
 beforeAll(async () => {
@@ -189,7 +189,7 @@ function serviceDb() {
   } catch(e) {return {data:null,error:{message:(e as Error).message,code:"TEST_REFUSAL"}};}
  }} as never;
 }
-describe.runIf(!!URL)("recipient authority alignment: tenant+OID resolution, not organization membership",()=>{
+describe.runIf(!!URL)("collaboration authority alignment: actor and recipient share one tenant+OID participant rule",()=>{
  const BTY_TENANT="10110d5c-bd30-467e-9912-e44e67777647";
  const call=(host:string,picked:unknown,tenant=host)=>trackAnnouncement(serviceDb(),{ownerUserId:host,actorAadObjectId:host,
   capture:{provider:"teams",tenant_id:tenant,conversation_id:"conversation",message_id:`m-${Math.random()}`},hostFramingRaw:"Notice",pickedRaw:picked,trackingMode:"acknowledgment"});
@@ -246,32 +246,108 @@ describe.runIf(!!URL)("recipient authority alignment: tenant+OID resolution, not
   const after=await counts();
   expect(after.bty_tracked_announcements).toBe(before.bty_tracked_announcements);expect(after.bty_tracked_announcement_recipients).toBe(before.bty_tracked_announcement_recipients);
  });
- it("ACTOR authority is unchanged: a Host without an active primary organization is refused as the ACTOR, not as the audience",async()=>{
+ const trackAs=(hostUser:string,actorOid:string,tenant:string,picked:unknown)=>trackAnnouncement(serviceDb(),{ownerUserId:hostUser,actorAadObjectId:actorOid,
+  capture:{provider:"teams",tenant_id:tenant,conversation_id:"conversation",message_id:`m-${Math.random()}`},hostFramingRaw:"Notice",pickedRaw:picked,trackingMode:"acknowledgment"});
+ it("a sender with NO bty_org_memberships row can track (Track is not organization authority)",async()=>{
   const s=await seed();await db.query("delete from public.bty_org_memberships where user_id=$1",[s.host]);
-  const before=await counts();const result=await call(s.host,[oid(1)]);
+  const result=await call(s.host,[oid(1)]);
+  expect(result).toMatchObject({ok:true,count:1});
+ });
+ it.each(["wrong tenant","unresolved","ambiguous","banned","deleted","resolves to someone else"])("ACTOR %s → invalid_actor, zero writes",async shape=>{
+  const s=await seed();let actorOid=s.host;let tenant=s.host;
+  if(shape==="wrong tenant") { const other=await seed(); tenant=other.host; }
+  if(shape==="unresolved") actorOid=oid(777);
+  if(shape==="ambiguous") {
+   const twin=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+   await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[twin,JSON.stringify({custom_claims:{tid:s.host,oid:s.host}})]);
+  }
+  if(shape==="banned") await db.query("update auth.users set banned_until=now()+interval '100 years' where id=$1",[s.host]);
+  if(shape==="deleted") await db.query("update auth.users set deleted_at=now() where id=$1",[s.host]);
+  if(shape==="resolves to someone else") actorOid=oid(3);
+  const before=await counts();
+  const result=await trackAs(s.host,actorOid,tenant,[oid(1)]);
   expect(result).toMatchObject({ok:false,reason:"invalid_actor"});expect(await counts()).toEqual(before);
  });
- it("an actor OID that resolves to someone else is refused as the ACTOR",async()=>{
-  const s=await seed();const before=await counts();
-  const result=await trackAnnouncement(serviceDb(),{ownerUserId:s.host,actorAadObjectId:oid(3),
-   capture:{provider:"teams",tenant_id:s.host,conversation_id:"conversation",message_id:"wrong-actor"},hostFramingRaw:"Notice",pickedRaw:[oid(1)],trackingMode:"acknowledgment"});
-  expect(result).toMatchObject({ok:false,reason:"invalid_actor"});expect(await counts()).toEqual(before);
+ it.each(["wrong tenant","unresolved","ambiguous","banned","deleted"])("RECIPIENT %s → invalid_recipients, zero writes",async shape=>{
+  const s=await seed();let picked=[oid(1)];
+  if(shape==="wrong tenant") {
+   const foreign=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+   await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[foreign,JSON.stringify({custom_claims:{tid:oid(901),oid:oid(901)}})]);
+   picked=[oid(901)];
+  }
+  if(shape==="unresolved") picked=[oid(778)];
+  if(shape==="ambiguous") {
+   const twin=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+   await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[twin,JSON.stringify({custom_claims:{tid:s.host,oid:oid(1)}})]);
+  }
+  if(shape==="banned") await db.query("update auth.users set banned_until=now()+interval '100 years' where id=$1",[s.users[oid(1)]]);
+  if(shape==="deleted") await db.query("update auth.users set deleted_at=now() where id=$1",[s.users[oid(1)]]);
+  const before=await counts();
+  const result=await call(s.host,picked);
+  expect(result).toMatchObject({ok:false,reason:"invalid_recipients"});expect(await counts()).toEqual(before);
  });
- it("organization membership still governs everything else: the migration re-declares exactly one function, and only its recipient gate differs",()=>{
+ it("a ban that has already EXPIRED no longer blocks either party",async()=>{
+  const s=await seed();
+  await db.query("update auth.users set banned_until=now()-interval '1 day' where id=any($1::uuid[])",[[s.host,s.users[oid(1)]]]);
+  expect(await call(s.host,[oid(1)])).toMatchObject({ok:true,count:1});
+ });
+ it("NON-FOUNDER SENDER: a Michael-shaped user with no organization membership tracks another valid same-tenant user",async()=>{
+  const TENANT="10110d5c-bd30-467e-9912-e44e67777647";
+  const michael=(await db.query("insert into auth.users(id) values('dc5bcdbb-0000-4000-8000-000000000002') returning id")).rows[0].id;
+  const michaelOid="71ca0b0a-0000-4000-8000-000000000002";
+  await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[michael,JSON.stringify({custom_claims:{tid:TENANT,oid:michaelOid}})]);
+  const colleague=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+  const colleagueOid="c011ea90-0000-4000-8000-000000000002";
+  await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[colleague,JSON.stringify({custom_claims:{tid:TENANT,oid:colleagueOid}})]);
+  expect(Number((await db.query("select count(*) n from public.bty_org_memberships where user_id=any($1::uuid[])",[[michael,colleague]])).rows[0].n)).toBe(0);
+  const before=await counts();
+  const result=await trackAs(michael,michaelOid,TENANT,`${michaelOid},${colleagueOid}`);
+  expect(result).toMatchObject({ok:true,count:1});if(!result.ok) return;
+  expect(await frozen(result.announcementId)).toEqual([{user_id:colleague,aad_object_id:colleagueOid}]);
+  expect((await db.query("select owner_user_id from public.bty_tracked_announcements where id=$1",[result.announcementId])).rows[0].owner_user_id).toBe(michael);
+  const after=await counts();
+  for(const t of Object.keys(before)) expect(after[t]-before[t]).toBe(["bty_action_captures","bty_tracked_announcements","bty_tracked_announcement_recipients"].includes(t)?1:0);
+ });
+ it("the migration changes ONLY the authority gates, through one shared predicate, and nothing that reads bty_org_memberships",()=>{
   const fn=(sql:string)=>{const a=sql.indexOf("create or replace function public.bty_track_announcement_v1(");const z=sql.indexOf("to service_role;",a);return sql.slice(a,z);};
-  const before=fn(read(MIGRATION)),after=fn(read(ALIGNMENT));
-  const oldGate=`   perform 1 from public.bty_org_memberships m
-     where m.user_id=v_user and m.organization_id=v_org and m.status='active' for share;
+  const actorOld=` select * into v_resolution from public.bty_resolve_user_from_microsoft_identity(v_tenant,p_actor_oid);
+ if v_resolution.status is distinct from 'RESOLVED' or v_resolution.user_id is distinct from p_owner_user_id then`;
+  const actorNew=` v_user := public.bty_track_participant_user_v1(v_tenant,p_actor_oid);
+ if v_user is null or v_user is distinct from p_owner_user_id then`;
+  const orgOld=` -- Same active primary organization as the actor. Share locks keep membership
+ -- revocation/organization deactivation from racing validation and the first write.
+ select m.organization_id into v_org from public.bty_org_memberships m
+ join public.bty_organizations o on o.id=m.organization_id
+ where m.user_id=p_owner_user_id and m.status='active' and m.is_primary and o.status='active'
+ for share of m,o;
+ if v_org is null then raise exception 'invalid_actor' using errcode='42501'; end if;
 `;
-  expect(before).toContain(oldGate);
-  const newGate=after.slice(after.indexOf("   -- Recipient authority"),after.indexOf("   if not found then raise exception 'invalid_recipients'",after.indexOf("   -- Recipient authority")));
-  expect(before.replace(oldGate,newGate)).toBe(after);
-  expect(newGate).toMatch(/from auth\.users u\s+where u\.id=v_user and u\.deleted_at is null/);
-  expect(newGate).not.toMatch(/bty_org_memberships|email|display|upn/i);
-  // Outside the function body and the signature precondition, the file is transaction control only.
-  const rest=read(ALIGNMENT).replace(/--[^\n]*/g,"").replace(/as \$\$[\s\S]*?end \$\$;/,"").replace(/do \$\$[\s\S]*?end \$\$;/,"");
+  const recOld=`   select * into v_resolution from public.bty_resolve_user_from_microsoft_identity(v_tenant,v_oid);
+   if v_resolution.status is distinct from 'RESOLVED' then
+     raise exception 'invalid_recipients' using errcode='42501';
+   end if;
+   v_user := v_resolution.user_id;
+   if v_user=p_owner_user_id then continue; end if;
+   perform 1 from public.bty_org_memberships m
+     where m.user_id=v_user and m.organization_id=v_org and m.status='active' for share;
+   if not found then raise exception 'invalid_recipients' using errcode='42501'; end if;
+`;
+  const recNew=`   v_user := public.bty_track_participant_user_v1(v_tenant,v_oid);
+   if v_user is null then raise exception 'invalid_recipients' using errcode='42501'; end if;
+   if v_user=p_owner_user_id then continue; end if;
+`;
+  const before=fn(read(MIGRATION)),after=fn(read(ALIGNMENT));
+  for(const x of [actorOld,orgOld,recOld]) expect(before).toContain(x);
+  expect(before.replace(actorOld,actorNew).replace(orgOld,"").replace(recOld,recNew)).toBe(after);
+  expect(after).not.toMatch(/bty_org_memberships|bty_organizations/);
+  const sql=read(ALIGNMENT).replace(/--[^\n]*/g,"");
+  const helper=sql.slice(sql.indexOf("create or replace function public.bty_track_participant_user_v1"),sql.indexOf("revoke all on function public.bty_track_participant_user_v1"));
+  expect(helper).toContain("public.bty_resolve_user_from_microsoft_identity(p_tenant_id,p_aad_object_id)");
+  expect(helper).toMatch(/u\.deleted_at is null\s+and \(u\.banned_until is null or u\.banned_until<=now\(\)\)/);
+  expect(helper).not.toMatch(/bty_org_memberships|email|upn|display|from_id/i);
+  const rest=sql.replace(/as \$\$[\s\S]*?end \$\$;/g,"").replace(/do \$\$[\s\S]*?end \$\$;/,"");
   expect(rest).not.toMatch(/\b(alter|drop|truncate|insert|update|delete)\b/i);
-  expect(rest.match(/create or replace function\s+public\.[a-z_0-9]+/gi)).toEqual(["create or replace function public.bty_track_announcement_v1"]);
+  expect(rest.match(/create or replace function\s+public\.[a-z_0-9]+/gi)).toEqual(["create or replace function public.bty_track_participant_user_v1","create or replace function public.bty_track_announcement_v1"]);
  });
  it("grants after apply: only service_role may execute, and the signature did not grow an overload",async()=>{
   const r=(await db.query(`select count(*)::int n,
@@ -279,11 +355,17 @@ describe.runIf(!!URL)("recipient authority alignment: tenant+OID resolution, not
     bool_and(has_function_privilege('service_role',p.oid,'execute')) svc, bool_and(p.prosecdef) definer
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='bty_track_announcement_v1'`)).rows[0];
   expect(r).toEqual({n:1,anon:false,auth:false,svc:true,definer:true});
+  const h=(await db.query(`select count(*)::int n,
+    bool_or(has_function_privilege('anon',p.oid,'execute')) anon, bool_or(has_function_privilege('authenticated',p.oid,'execute')) auth,
+    bool_or(has_function_privilege('service_role',p.oid,'execute')) svc, bool_or(has_function_privilege('public',p.oid,'execute')) pub
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='bty_track_participant_user_v1'`)).rows[0];
+  // The predicate is internal: only its owner (the Track RPC) can call it.
+  expect(h).toEqual({n:1,anon:false,auth:false,svc:false,pub:false});
  });
 });
 
 describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transaction",()=> {
- it.each(["self-only","empty","malformed","email","display-name","unresolved","ambiguous","banned","deleted","cross-tenant","invalid-mode","missing-source","nine-valid-one-invalid"])("%s has exactly zero writes in every related table",async failure=> {
+ it.each(["self-only","empty","malformed","email","upn","teams-from-id","display-name","unresolved","ambiguous","banned","deleted","cross-tenant","invalid-mode","missing-source","nine-valid-one-invalid"])("%s has exactly zero writes in every related table",async failure=> {
   const s=await seed();let picked=[oid(1)];let mode="response";let message=s.cap;
   if(failure==="self-only") picked=[s.host];
   if(failure==="empty") picked=[];
@@ -293,6 +375,8 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
   // No email, UPN or display-name fallback: only a tenant+OID GUID can name a recipient.
   if(failure==="email") picked=["michael.song@example.com"];
   if(failure==="display-name") picked=["Michael Song"];
+  if(failure==="upn") picked=["michael.song@contoso.onmicrosoft.com"];
+  if(failure==="teams-from-id") picked=["29:1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"];
   if(failure==="ambiguous") {
    const twin=(await db.query("insert into auth.users default values returning id")).rows[0].id;
    await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[twin,JSON.stringify({custom_claims:{tid:s.host,oid:oid(1)}})]);
