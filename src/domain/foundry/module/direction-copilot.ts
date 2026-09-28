@@ -19,6 +19,9 @@
 // Contract
 // ---------------------------------------------------------------------------
 
+import { isObservableStandardShape } from "./observableStandardShape";
+import { momentIsConfidentlyOneOff } from "./program-coherence";
+
 export const DIRECTION_COUNT = 3;
 export const DIRECTION_GENERATION_VERSION = "direction_copilot_v1";
 
@@ -307,4 +310,85 @@ export function validateDirectionSuggestions(raw: unknown): DirectionValidation 
   }
 
   return { ok: true, suggestions: out };
+}
+
+// ===========================================================================
+// SIMPLE MODE — ONE suggestion (Foundry Simple Mode, Slice 1).
+//
+// The manager writes one sentence ("what do you want people to do better?"). BTY answers with ONE
+// plain-language behaviour and WHEN it happens — readable in seconds, nothing to choose between.
+// Same provider pipeline and the same safety gates as the three-direction copilot above; only the
+// shape and the vocabulary floor differ. Advanced keeps `validateDirectionSuggestions` untouched.
+// ===========================================================================
+
+export const SIMPLE_SUGGESTION_VERSION = "simple_suggestion_v1";
+
+/** Short on purpose: a manager should read the whole thing at a glance. */
+export const SIMPLE_SUGGESTION_LIMITS = { behavior: 160, when: 90 } as const;
+
+export type SimpleSuggestion = { readonly behavior: string; readonly when: string };
+
+export type SimpleSuggestionRejectCode =
+  | "not_object"
+  | "multiple_suggestions"
+  | "missing_field"
+  | "field_not_string"
+  | "empty_field"
+  | "too_long"
+  | "unsafe_markup"
+  | "vague_behavior"
+  | "behavior_is_a_question"
+  | "when_is_one_off"
+  | "internal_terminology";
+
+export type SimpleSuggestionValidation =
+  | { ok: true; suggestion: SimpleSuggestion }
+  | { ok: false; code: SimpleSuggestionRejectCode };
+
+/**
+ * Words a manager should never have to read. BTY's internal ontology and instructional-design
+ * vocabulary: if the model reaches for them, the suggestion is refused (and retried once), never
+ * shown. Word-boundary matched, case-insensitive; Korean terms matched as substrings.
+ */
+const INTERNAL_TERMS_EN = [
+  "bty", "foundry", "arena", "module", "journey", "evidence", "verification", "verified",
+  "observable", "capability", "competency", "rubric", "learning objective", "learning goal",
+  "learner", "instructional", "curriculum", "scaffold", "taxonomy", "assessment", "kpi",
+];
+const INTERNAL_TERMS_KO = ["역량", "학습 목표", "학습목표", "증거", "검증", "루브릭", "커리큘럼", "모듈", "학습자", "관찰 가능"];
+const INTERNAL_TERM_RE = new RegExp(`\\b(${INTERNAL_TERMS_EN.map((t) => t.replace(/ /g, "\\s+")).join("|")})\\b`, "i");
+
+export function containsInternalTerminology(text: string): boolean {
+  return INTERNAL_TERM_RE.test(text) || INTERNAL_TERMS_KO.some((t) => text.includes(t));
+}
+
+/**
+ * Validate the provider's ONE suggestion. Fail-closed: anything that is not exactly one short,
+ * plain, observable behaviour plus a repeatable moment is refused with a stable code.
+ * A list — even a one-element list — is refused: Simple Mode has no "pick one" contract.
+ */
+export function validateSimpleSuggestion(raw: unknown): SimpleSuggestionValidation {
+  if (Array.isArray(raw)) return { ok: false, code: "multiple_suggestions" };
+  if (!isPlainObject(raw)) return { ok: false, code: "not_object" };
+  if ("suggestions" in raw || Array.isArray((raw as Record<string, unknown>).behaviors)) {
+    return { ok: false, code: "multiple_suggestions" };
+  }
+  const out: Record<"behavior" | "when", string> = { behavior: "", when: "" };
+  for (const key of ["behavior", "when"] as const) {
+    const v = raw[key];
+    if (v === undefined || v === null) return { ok: false, code: "missing_field" };
+    if (typeof v !== "string") return { ok: false, code: "field_not_string" };
+    const norm = normalizeWhitespace(v);
+    if (norm.length === 0) return { ok: false, code: "empty_field" };
+    if (hasUnsafeMarkup(v) || hasUnsafeMarkup(norm)) return { ok: false, code: "unsafe_markup" };
+    if (norm.length > SIMPLE_SUGGESTION_LIMITS[key]) return { ok: false, code: "too_long" };
+    if (containsInternalTerminology(norm)) return { ok: false, code: "internal_terminology" };
+    out[key] = norm;
+  }
+  // The same floors the Builder applies to a Host's own sentence: an act, not a question or a goal.
+  if (!isObservableStandardShape(out.behavior)) return { ok: false, code: "behavior_is_a_question" };
+  if (isVagueBehavior(distinctKey(out.behavior))) return { ok: false, code: "vague_behavior" };
+  // The program renders "the next time this happens" — a date or a one-time event cannot be trained.
+  if (momentIsConfidentlyOneOff(out.when)) return { ok: false, code: "when_is_one_off" };
+  return { ok: true, suggestion: { behavior: out.behavior, when: out.when } };
 }
