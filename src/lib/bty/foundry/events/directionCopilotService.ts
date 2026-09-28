@@ -9,7 +9,11 @@ import {
   SIMPLE_SUGGESTION_LIMITS,
   SIMPLE_SUGGESTION_VERSION,
   type SimpleSuggestion,
+  validateSimpleGuidance,
+  fallbackSimpleGuidance,
+  SIMPLE_GUIDANCE_LIMITS,
 } from "@/domain/foundry/module/direction-copilot";
+import { evidencePolicyPromptLines } from "@/domain/foundry/module/evidence-policy";
 
 /**
  * Intent-to-Module Direction Copilot — generation service (server-only, Slice 2.4A).
@@ -187,15 +191,18 @@ function simpleSystemPrompt(locale: "en" | "ko"): string {
   const isKo = locale === "ko";
   return [
     "A manager tells you, in one sentence, what they want their team to do better at work.",
-    "Turn it into ONE concrete behaviour the team can practise, and WHEN it happens.",
-    "Rules:",
-    "- behavior: one plain sentence describing a specific action a colleague could see or hear someone do (for example: says, checks, writes down, asks, confirms, fixes). Not a goal, not a feeling, not a question.",
-    "- when: the repeatable moment it happens (for example: before the first patient of the day; at every morning huddle). Never a date or a one-time event.",
+    "Turn it into ONE concrete behaviour the team can practise, WHEN it happens, a short name, and what a colleague would see when it was done.",
+    "Fields:",
+    "- behavior: ONLY the action, as a verb phrase with NO subject and NO time. Say what is done, not who does it and not when (for example: \"checks one thing that could delay patient care and fixes it\", \"names an owner and a due date for each open item\"). Do not start with a person or role, and do not include words like before, after, at, during, when, every, each day, first thing. The actor and the moment are added separately.",
+    "- when: the repeatable moment it happens (for example: before the first patient of the day; at the end of every huddle). Never a date or a one-time event.",
+    "- title: a short, plain name for this practice (2 to 7 words).",
+    "- successEvidence: ONE modest thing a colleague could see or hear right after it was done once (for example: \"the fixed item is written on the morning checklist\"). It is a single instance, not a result, a habit, a guarantee or proof that something improved. Do NOT name any document, checklist, form, board, file, log or system unless the manager mentioned it — describe what is said or done instead (for example: \"the teammate hears who owns each item\").",
+    ...evidencePolicyPromptLines(),
     "- Everyday workplace words only. Do not use these words: training, module, evidence, observable, capability, competency, rubric, verification, learning objective, learner, curriculum, assessment, BTY, Arena, Foundry.",
     "- Invent NO names, roles, incidents, numbers, clinical, legal or patient facts that the manager did not state.",
-    `- Length: behavior at most ${SIMPLE_SUGGESTION_LIMITS.behavior} characters; when at most ${SIMPLE_SUGGESTION_LIMITS.when} characters.`,
-    isKo ? "- Write both fields in natural Korean." : "- Write both fields in natural English.",
-    'Return ONLY this JSON object and nothing else: {"behavior": string, "when": string}',
+    `- Length limits (characters): title ${SIMPLE_SUGGESTION_LIMITS.title}; behavior ${SIMPLE_SUGGESTION_LIMITS.behavior}; when ${SIMPLE_SUGGESTION_LIMITS.when}; successEvidence ${SIMPLE_SUGGESTION_LIMITS.successEvidence}.`,
+    isKo ? "- Write every field in natural Korean. In Korean, the behavior is an action phrase with no subject and no time expression." : "- Write every field in natural English.",
+    'Return ONLY this JSON object and nothing else: {"title": string, "behavior": string, "when": string, "successEvidence": string}',
   ].join("\n");
 }
 
@@ -210,7 +217,7 @@ async function simpleAttempt(
         model: getLlmModel(),
         messages,
         temperature: 0.4,
-        max_tokens: 220,
+        max_tokens: 360,
         response_format: { type: "json_object" },
       },
       { signal: controller.signal },
@@ -260,7 +267,7 @@ export async function generateSimpleSuggestion(
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages = i === 0 ? base : [...base, {
       role: "user" as const,
-      content: 'That was not valid. Return ONLY {"behavior": string, "when": string}: one short observable action in plain everyday words, and a repeatable moment (never a date).',
+      content: 'That was not valid. Return ONLY {"title": string, "behavior": string, "when": string, "successEvidence": string}. behavior = the action only, with no subject and no time words; when = a repeatable moment (never a date); successEvidence = one modest thing seen once, never a result or a guarantee.',
     }];
     const r = await simpleAttempt(messages);
     if (r.ok) {
@@ -278,4 +285,70 @@ export async function generateSimpleSuggestion(
 function logSimpleOutcome(outcome: string, timing: { totalMs: number; attempts: number }, code?: string): void {
   // Numbers and codes only — never the manager's sentence or the generated text.
   console.info(`[simpleSuggestion] ${outcome} ms=${timing.totalMs} attempts=${timing.attempts}${code ? ` code=${code}` : ""}`);
+}
+
+// ===========================================================================
+// SIMPLE MODE — default written guidance (Slice 2). Same client, model, timeout and bounded
+// retry. Runs at Create, in PARALLEL with program generation, so it adds no wait. It never
+// blocks a training: any failure returns the deterministic fallback built from what the manager
+// confirmed. Logs numbers and codes only.
+// ===========================================================================
+
+export type SimpleGuidanceResult = { text: string; source: "generated" | "fallback"; timing: { totalMs: number; attempts: number } };
+
+function guidanceSystemPrompt(locale: "en" | "ko"): string {
+  return [
+    "Write short, practical guidance a colleague reads before practising one workplace behaviour.",
+    "Structure, in plain short lines: one line on why it matters; two or three concrete steps for doing it well; one common slip to avoid.",
+    "Use only what the manager stated. Invent NO names, roles, incidents, numbers, clinical, legal or patient facts.",
+    ...evidencePolicyPromptLines(),
+    "Everyday workplace words only. Do not use: training, module, evidence, observable, capability, competency, rubric, verification, learner, curriculum, assessment, BTY, Arena, Foundry.",
+    `Length: ${SIMPLE_GUIDANCE_LIMITS.min} to ${SIMPLE_GUIDANCE_LIMITS.max} characters. No markdown, no headings, no bullets symbols other than a plain dash.`,
+    locale === "ko" ? "Write in natural Korean." : "Write in natural English.",
+    // json_object mode is refused (HTTP 400) unless the messages say "JSON" — measured in Slice 2.
+    'Return ONLY this JSON object and nothing else: {"guidance": string}',
+  ].join("\n");
+}
+
+export async function generateSimpleGuidance(
+  input: { goal: string; title: string; behavior: string; when: string; locale: "en" | "ko" },
+  clock: () => number = () => Date.now(),
+): Promise<SimpleGuidanceResult> {
+  const started = clock();
+  const done = (attempts: number) => ({ totalMs: Math.max(0, clock() - started), attempts });
+  const fallback = (attempts: number): SimpleGuidanceResult => ({
+    text: fallbackSimpleGuidance({ goal: input.goal, behavior: input.behavior, when: input.when }, input.locale),
+    source: "fallback",
+    timing: done(attempts),
+  });
+  if (!isLlmAvailable()) return fallback(0);
+  const base: LlmChatMessage[] = [
+    { role: "system", content: guidanceSystemPrompt(input.locale) },
+    { role: "user", content: `Goal: ${input.goal}\nName: ${input.title}\nWhat to do: ${input.behavior}\nWhen: ${input.when}` },
+  ];
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    try {
+      const completion = await getLlmClient().chat.completions.create(
+        { model: getLlmModel(), messages: base, temperature: 0.5, max_tokens: 700, response_format: { type: "json_object" } },
+        { signal: controller.signal },
+      );
+      const raw = completion.choices[0]?.message?.content;
+      const v = raw ? validateSimpleGuidance((() => { try { return JSON.parse(stripJsonFences(raw)); } catch { return null; } })()) : { ok: false as const, code: "empty_output" };
+      if (v.ok) {
+        const timing = done(i + 1);
+        console.info(`[simpleGuidance] generated ms=${timing.totalMs} attempts=${timing.attempts}`);
+        return { text: v.text, source: "generated", timing };
+      }
+      console.info(`[simpleGuidance] attempt_failed code=${v.code}`);
+    } catch {
+      console.info(`[simpleGuidance] attempt_failed code=${controller.signal.aborted ? "timeout" : "provider_error"}`);
+      clearTimeout(timer);
+      return fallback(i + 1); // infrastructure failure: no retry, never a blocked training
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return fallback(MAX_ATTEMPTS);
 }

@@ -534,6 +534,13 @@ export async function generateProgram(
      * caller so this service still owns no database reads of its own beyond the ledger.
      */
     reloadDraftState: () => Promise<DraftAuthorshipState | null>;
+    /**
+     * SIMPLE MODE REPAIR (Slice 2). The refusal code of the PREVIOUS attempt on this same context.
+     * Adds ONE fixed, closed-vocabulary instruction to the prompt; never model prose, never Host
+     * text. The caller (Simple Mode) spends at most one such attempt. The validator is unchanged:
+     * a repaired program is judged by exactly the same rules as any other.
+     */
+    repairAfterRefusal?: ProgramRejectCode;
   },
 ): Promise<ProgramGenerateResult> {
   const fingerprint = programContextFingerprint(args.ctx);
@@ -637,6 +644,8 @@ export async function generateProgram(
     { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers)), args.ctx.successEvidence, args.ctx.recurringMoment) },
     { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
+  const repairLine = args.repairAfterRefusal ? programRepairInstruction(args.repairAfterRefusal) : null;
+  if (repairLine) base.push({ role: "user", content: repairLine });
 
   let lastCode: ProgramGenerateErrorCode = "invalid_output";
   let lastRefusal: string | undefined;
@@ -956,4 +965,39 @@ export async function generateProgram(
   }
 
   return finish(lastCode, lastRefusal, lastRefusalKind);
+}
+
+/**
+ * SIMPLE MODE — the ONE repair instruction for a refusal (Slice 2). Fixed sentences keyed by the
+ * validator's own closed vocabulary. An unknown code yields null (no instruction), so this can only
+ * ever narrow the model toward what the validator already requires.
+ */
+export function programRepairInstruction(code: ProgramRejectCode): string | null {
+  const lead = "A previous draft of this program was refused. Write a new complete program that avoids this problem: ";
+  switch (code) {
+    case "non_observable_standard":
+      return lead + "the standard's action must be a single verb phrase someone could be seen or heard doing. Give it NO subject (not who does it) and NO time (not when) — the actor and the moment are supplied separately. It must not be a question, a goal or a description of the standard itself.";
+    case "evidence_overclaim":
+      return lead + "do not claim results, lasting habits, proof, readiness or guarantees anywhere. Describe only what happens in one instance of the behaviour.";
+    case "generic_completion":
+      return lead + "the completion check must refer to this exact behaviour and moment, not to training in general.";
+    case "trigger_not_recurring":
+    case "application_moment_unrelated":
+    case "scenario_independent_moment":
+    case "scenario_unrelated":
+      return lead + "every section must take place at the manager's stated moment, and that moment must be a repeatable occasion, never a date or a one-off event.";
+    case "scenario_without_pressure":
+      return lead + "the practice situation must show why this behaviour is hard to do at that moment.";
+    case "invented_specifics":
+    case "material_fabrication":
+    case "complaint_replay":
+      return lead + "use only what the manager stated; invent no names, numbers, incidents, materials or facts.";
+    case "internal_jargon":
+      return lead + "use everyday workplace words only.";
+    case "decision_is_only_reflection":
+    case "application_without_actor":
+      return lead + "the decision and the application must each name one concrete thing the person will do.";
+    default:
+      return null;
+  }
 }

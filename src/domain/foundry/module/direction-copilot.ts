@@ -20,7 +20,8 @@
 // ---------------------------------------------------------------------------
 
 import { isObservableStandardShape } from "./observableStandardShape";
-import { momentIsConfidentlyOneOff } from "./program-coherence";
+import { momentIsConfidentlyOneOff, actionNamesActor, actionNamesMoment, actionNamesActorKo, actionNamesMomentKo } from "./program-coherence";
+import { assertsOverclaimByPolicy } from "./evidence-policy";
 
 export const DIRECTION_COUNT = 3;
 export const DIRECTION_GENERATION_VERSION = "direction_copilot_v1";
@@ -321,12 +322,24 @@ export function validateDirectionSuggestions(raw: unknown): DirectionValidation 
 // shape and the vocabulary floor differ. Advanced keeps `validateDirectionSuggestions` untouched.
 // ===========================================================================
 
-export const SIMPLE_SUGGESTION_VERSION = "simple_suggestion_v1";
+export const SIMPLE_SUGGESTION_VERSION = "simple_suggestion_v2";
 
-/** Short on purpose: a manager should read the whole thing at a glance. */
-export const SIMPLE_SUGGESTION_LIMITS = { behavior: 160, when: 90 } as const;
+/**
+ * Short on purpose: a manager should read `behavior` and `when` at a glance. `title` and
+ * `successEvidence` are INTERNAL — they exist only to make the program generation succeed and are
+ * never shown on the two authoring steps.
+ */
+export const SIMPLE_SUGGESTION_LIMITS = { title: 80, behavior: 160, when: 90, successEvidence: 200 } as const;
 
-export type SimpleSuggestion = { readonly behavior: string; readonly when: string };
+/** What the manager SEES: the behaviour and when it happens. */
+export type SimpleSuggestionVisible = { readonly behavior: string; readonly when: string };
+/** What BTY keeps for generation: never rendered on the authoring steps. */
+export type SimpleSuggestion = SimpleSuggestionVisible & { readonly title: string; readonly successEvidence: string };
+
+/** The only projection the authoring UI may render. */
+export function visibleSuggestion(s: SimpleSuggestion): SimpleSuggestionVisible {
+  return { behavior: s.behavior, when: s.when };
+}
 
 export type SimpleSuggestionRejectCode =
   | "not_object"
@@ -339,6 +352,9 @@ export type SimpleSuggestionRejectCode =
   | "vague_behavior"
   | "behavior_is_a_question"
   | "when_is_one_off"
+  | "behavior_names_actor"
+  | "behavior_names_moment"
+  | "evidence_overclaim"
   | "internal_terminology";
 
 export type SimpleSuggestionValidation =
@@ -373,8 +389,8 @@ export function validateSimpleSuggestion(raw: unknown): SimpleSuggestionValidati
   if ("suggestions" in raw || Array.isArray((raw as Record<string, unknown>).behaviors)) {
     return { ok: false, code: "multiple_suggestions" };
   }
-  const out: Record<"behavior" | "when", string> = { behavior: "", when: "" };
-  for (const key of ["behavior", "when"] as const) {
+  const out: Record<"title" | "behavior" | "when" | "successEvidence", string> = { title: "", behavior: "", when: "", successEvidence: "" };
+  for (const key of ["title", "behavior", "when", "successEvidence"] as const) {
     const v = raw[key];
     if (v === undefined || v === null) return { ok: false, code: "missing_field" };
     if (typeof v !== "string") return { ok: false, code: "field_not_string" };
@@ -383,6 +399,8 @@ export function validateSimpleSuggestion(raw: unknown): SimpleSuggestionValidati
     if (hasUnsafeMarkup(v) || hasUnsafeMarkup(norm)) return { ok: false, code: "unsafe_markup" };
     if (norm.length > SIMPLE_SUGGESTION_LIMITS[key]) return { ok: false, code: "too_long" };
     if (containsInternalTerminology(norm)) return { ok: false, code: "internal_terminology" };
+    // The program validator's OWN overclaim policy, applied to every field before a program is spent.
+    if (assertsOverclaimByPolicy(norm)) return { ok: false, code: "evidence_overclaim" };
     out[key] = norm;
   }
   // The same floors the Builder applies to a Host's own sentence: an act, not a question or a goal.
@@ -390,5 +408,53 @@ export function validateSimpleSuggestion(raw: unknown): SimpleSuggestionValidati
   if (isVagueBehavior(distinctKey(out.behavior))) return { ok: false, code: "vague_behavior" };
   // The program renders "the next time this happens" — a date or a one-time event cannot be trained.
   if (momentIsConfidentlyOneOff(out.when)) return { ok: false, code: "when_is_one_off" };
-  return { ok: true, suggestion: { behavior: out.behavior, when: out.when } };
+  /*
+    THE ACTION STAYS PURE (Simple Mode Slice 2). The program's behaviour contract supplies the actor
+    and the moment itself, and refuses an action that names either (`action_reclaims_authority` →
+    `non_observable_standard`). Measured in Slice 1: suggestions like "…before starting" or
+    "첫 환자가 오기 전에 …" carried the moment into the action and were the main refusal source.
+    So the SAME detectors run here, where fixing it costs one short call instead of a program.
+  */
+  const isKo = /[가-힣]/.test(out.behavior);
+  if (actionNamesActor(out.behavior) || (isKo && actionNamesActorKo(out.behavior))) {
+    return { ok: false, code: "behavior_names_actor" };
+  }
+  if (actionNamesMoment(out.behavior) || (isKo && actionNamesMomentKo(out.behavior, out.when))) {
+    return { ok: false, code: "behavior_names_moment" };
+  }
+  if (!isObservableStandardShape(out.successEvidence)) return { ok: false, code: "behavior_is_a_question" };
+  return { ok: true, suggestion: { title: out.title, behavior: out.behavior, when: out.when, successEvidence: out.successEvidence } };
+}
+
+// ---------------------------------------------------------------------------
+// SIMPLE MODE — default written guidance (the learner-facing material)
+// ---------------------------------------------------------------------------
+
+export const SIMPLE_GUIDANCE_LIMITS = { min: 80, max: 900 } as const;
+
+export type SimpleGuidanceValidation = { ok: true; text: string } | { ok: false; code: string };
+
+/** BTY-written guidance is learner-facing text: plain, safe, no jargon, no overclaim. */
+export function validateSimpleGuidance(raw: unknown): SimpleGuidanceValidation {
+  if (!isPlainObject(raw)) return { ok: false, code: "not_object" };
+  const v = raw.guidance;
+  if (typeof v !== "string") return { ok: false, code: "missing_field" };
+  // Keep line breaks: guidance is written in short lines.
+  const text = v.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (text.length < SIMPLE_GUIDANCE_LIMITS.min) return { ok: false, code: "too_short" };
+  if (text.length > SIMPLE_GUIDANCE_LIMITS.max) return { ok: false, code: "too_long" };
+  if (hasUnsafeMarkup(v.replace(/\n/g, " "))) return { ok: false, code: "unsafe_markup" };
+  if (containsInternalTerminology(text)) return { ok: false, code: "internal_terminology" };
+  if (assertsOverclaimByPolicy(text)) return { ok: false, code: "evidence_overclaim" };
+  return { ok: true, text };
+}
+
+/**
+ * The guidance used when the guidance call fails: honest, deterministic, and made only of what the
+ * manager confirmed. A training is never blocked on optional prose.
+ */
+export function fallbackSimpleGuidance(s: SimpleSuggestionVisible & { goal: string }, locale: "en" | "ko"): string {
+  return locale === "ko"
+    ? `이번 훈련의 목표: ${s.goal}\n\n무엇을 하나요: ${s.behavior}\n언제: ${s.when}\n\n다음에 그 순간이 오면, 이 행동 하나를 실제로 해 보세요.`
+    : `What this is about: ${s.goal}\n\nWhat to do: ${s.behavior}\nWhen: ${s.when}\n\nThe next time that moment comes, do this one thing for real.`;
 }

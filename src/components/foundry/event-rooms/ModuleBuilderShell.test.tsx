@@ -82,7 +82,6 @@ function mockDraftServer(
     id: "d-1",
     status: "draft",
     current_step: 1,
-    answers: {},
     module_version: 1,
     parent_module_id: null,
     document_asset_ref_present: false,
@@ -91,6 +90,8 @@ function mockDraftServer(
     created_at: "t",
     updated_at: "t",
     ...initial,
+    // Simple Mode (Slice 2) is the default for EMPTY drafts; this file tests the detailed builder.
+    answers: { builderMode: "advanced", ...(initial.answers ?? {}) },
   };
   const patches: Array<{ answers?: Record<string, unknown>; current_step?: number }> = [];
   let counter = 0;

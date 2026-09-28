@@ -15,7 +15,7 @@ import { ModuleBuilderShell } from "./ModuleBuilderShell";
 /** Minimal stateful draft server, matching the shape the shell actually restores. */
 function stub(answers: Record<string, unknown> = {}) {
   const draft = {
-    id: "d-1", status: "draft", current_step: 1, answers: { ...answers }, module_version: 1,
+    id: "d-1", status: "draft", current_step: 1, answers: { builderMode: "advanced", ...answers }, module_version: 1,
     parent_module_id: null, document_asset_ref_present: false, attachment: null, assets: [],
     created_at: "t", updated_at: "t",
   };

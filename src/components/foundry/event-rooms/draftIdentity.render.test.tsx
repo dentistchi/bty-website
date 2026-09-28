@@ -59,7 +59,7 @@ function mockServer(drafts: Record<string, { current_step: number; answers: Reco
         seen.push(id);
         return new Response(
           JSON.stringify({
-            draft: { id, status: "draft", current_step: drafts[id].current_step, answers: drafts[id].answers, assets: [] },
+            draft: { id, status: "draft", current_step: drafts[id].current_step, answers: { builderMode: "advanced", ...drafts[id].answers }, assets: [] },
             program_generation_active: false,
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },

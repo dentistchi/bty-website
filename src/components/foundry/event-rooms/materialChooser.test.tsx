@@ -47,7 +47,6 @@ function mockDraftServer(initial: Partial<Draft>) {
     id: "d-1",
     status: "draft",
     current_step: 1,
-    answers: {},
     module_version: 1,
     parent_module_id: null,
     document_asset_ref_present: false,
@@ -56,6 +55,8 @@ function mockDraftServer(initial: Partial<Draft>) {
     created_at: "t",
     updated_at: "t",
     ...initial,
+    // Simple Mode (Slice 2) is the default for EMPTY drafts; this file tests the detailed builder.
+    answers: { builderMode: "advanced", ...(initial.answers ?? {}) },
   };
   const patches: Array<{ answers?: Record<string, unknown>; current_step?: number }> = [];
   const fn = vi.fn(async (url: string, o?: { method?: string; body?: string }) => {
