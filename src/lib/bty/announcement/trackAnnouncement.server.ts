@@ -5,7 +5,7 @@ import { normalizeHostFraming } from "@/domain/announcement/trackedAnnouncement"
 
 export type TrackResult =
   | { ok: true; announcementId: string; count: number; alreadyExisted: boolean }
-  | { ok: false; reason: "invalid_framing" | "invalid_tracking_mode" | "invalid_recipients" | "zero_recipients" | "capture_failed" | "track_failed" };
+  | { ok: false; reason: "invalid_framing" | "invalid_tracking_mode" | "invalid_actor" | "invalid_recipients" | "zero_recipients" | "capture_failed" | "track_failed" };
 
 /** Server only. Actor/tenant come from the authenticated Teams invoke.
  * The RPC reuses the canonical Microsoft resolver and active organization membership,
@@ -48,7 +48,9 @@ export async function trackAnnouncement(admin: SupabaseClient, params: {
   if (error) {
     const msg = error.message ?? "";
     if (/zero_recipients/.test(msg)) return { ok: false, reason: "zero_recipients" };
-    if (/invalid_recipients|invalid_actor/.test(msg)) return { ok: false, reason: "invalid_recipients" };
+    // The SENDER failing is not the audience failing: never blame the selected people for it.
+    if (/invalid_actor/.test(msg)) return { ok: false, reason: "invalid_actor" };
+    if (/invalid_recipients/.test(msg)) return { ok: false, reason: "invalid_recipients" };
     console.error("[track-announcement] rpc failed", { code: error.code ?? "unknown" });
     return { ok: false, reason: "track_failed" };
   }
