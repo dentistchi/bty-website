@@ -842,6 +842,8 @@ export async function completeTraining(
   deviceTz?: string | null,
   rawDecisionResponse?: unknown,
   rawReflectionResponse?: unknown,
+  /** APPLY ACTION DAY V1 — the learner's "when" token, stored only with a window created here. */
+  rawApplyAction?: unknown,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -1008,6 +1010,7 @@ export async function completeTraining(
       authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
+      actionChoice: rawApplyAction,
     });
 
     /*

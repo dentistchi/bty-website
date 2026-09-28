@@ -336,3 +336,61 @@ describe("DAY 7 — what is actually observable, by follow-up configuration", ()
     expect(r.some((x) => x.category === "FOLLOW_UP_DUE")).toBe(false);
   });
 });
+
+describe("APPLY ACTION DAY V1 — the learner's chosen day outranks the broad weekly window", () => {
+  // Completed 2026-08-14 (window 08-14 .. due 08-21). The learner chose TOMORROW → 08-15.
+  const TOMORROW = { ...WINDOW, action_bty_day: "2026-08-15" };
+  const applyAt = async (w: Row, iso: string, t: Tables = progressTables()) =>
+    (await build(t, [w], iso)).filter((x) => x.category === "APPLY_DUE");
+
+  it("8. shown on the completion day and on the chosen day; gone from the next BTY day", async () => {
+    expect(await applyAt(TOMORROW, "2026-08-14T20:00:00Z")).toHaveLength(1);
+    expect(await applyAt(TOMORROW, "2026-08-15T20:00:00Z")).toHaveLength(1);
+    expect(await applyAt(TOMORROW, "2026-08-16T20:00:00Z")).toHaveLength(0);
+    // …while the SAME window without a chosen day is still inside its week.
+    expect(await applyAt(WINDOW, "2026-08-16T20:00:00Z")).toHaveLength(1);
+  });
+
+  it("7. the boundary is the BTY day (05:00 local), never UTC midnight", async () => {
+    expect(await applyAt(TOMORROW, "2026-08-16T11:59:00Z")).toHaveLength(1); // 04:59 LA — still 08-15
+    expect(await applyAt(TOMORROW, "2026-08-16T12:00:00Z")).toHaveLength(0); // 05:00 LA — 08-16
+  });
+
+  it("chosen TODAY: shown that day only", async () => {
+    const today = { ...WINDOW, action_bty_day: "2026-08-14" };
+    expect(await applyAt(today, "2026-08-14T20:00:00Z")).toHaveLength(1);
+    expect(await applyAt(today, "2026-08-15T20:00:00Z")).toHaveLength(0);
+  });
+
+  it("4. NULL (Sometime this week / pre-V1) keeps the existing 7-day behaviour exactly", async () => {
+    const days = ["2026-08-14T20:00:00Z", "2026-08-17T20:00:00Z", "2026-08-20T20:00:00Z", "2026-08-21T20:00:00Z", "2026-08-22T20:00:00Z"];
+    for (const iso of days) {
+      const withNull = await build(progressTables(), [{ ...WINDOW, action_bty_day: null }], iso);
+      const legacy = await build(progressTables(), [WINDOW], iso);
+      expect(withNull).toEqual(legacy);
+    }
+  });
+
+  it("9/10. follow-up hiding still wins while the chosen day is live", async () => {
+    for (const status of ["PENDING", "RESPONDED"]) {
+      const t = progressTables();
+      t.foundry_participant_followups = [{ progress_id: "prog-1", user_id_snapshot: USER, status, due_at: "2026-08-14T12:00:00.000Z" }];
+      expect(await applyAt(TOMORROW, "2026-08-15T20:00:00Z", t)).toHaveLength(0);
+    }
+  });
+
+  it("11. an unreadable decision still hides the card on its chosen day", async () => {
+    expect(await applyAt(TOMORROW, "2026-08-15T20:00:00Z", progressTables({ decision_response_text: "   " }))).toHaveLength(0);
+  });
+
+  it("12. while shown, state and ordering are exactly the pre-V1 values", async () => {
+    const withDay = (await build(progressTables(), [TOMORROW], "2026-08-15T20:00:00Z")).find((x) => x.category === "APPLY_DUE")!;
+    const legacy = (await build(progressTables(), [WINDOW], "2026-08-15T20:00:00Z")).find((x) => x.category === "APPLY_DUE")!;
+    expect(withDay).toEqual(legacy);
+  });
+
+  it("25. prose is never parsed: 'Tomorrow morning' in the decision changes nothing without a chosen day", async () => {
+    const t = progressTables({ decision_response_text: "Tomorrow morning I am opening. I will check the emergency kit." });
+    expect(await applyAt(WINDOW, "2026-08-18T20:00:00Z", t)).toHaveLength(1);
+  });
+});

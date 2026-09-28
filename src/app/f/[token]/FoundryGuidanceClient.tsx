@@ -1,5 +1,6 @@
 "use client";
 
+import ApplyActionDayPicker from "@/components/foundry/event-rooms/ApplyActionDayPicker";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
 import type { SavedLocale } from "@/lib/localePreference";
@@ -468,6 +469,7 @@ export default function FoundryGuidanceClient({
   const [sharedResponse, setSharedResponse] = useState("");
   const [sharedError, setSharedError] = useState(false);
   const [decisionResponse, setDecisionResponse] = useState("");
+  const [applyAction, setApplyAction] = useState<string | null>(null);
   const [decisionError, setDecisionError] = useState(false);
   const [reflectResponse, setReflectResponse] = useState("");
 
@@ -697,6 +699,8 @@ export default function FoundryGuidanceClient({
         response_text: response.trim(),
         shared_response: sharedResponse.trim() || undefined,
         decision_response: decisionResponse.trim() || undefined,
+        // APPLY ACTION DAY V1 — only meaningful beside a written decision.
+        apply_action: decisionResponse.trim() && applyAction ? applyAction : undefined,
         reflection_response: reflectResponse.trim() || undefined,
         tz: deviceTz(),
       });
@@ -732,7 +736,7 @@ export default function FoundryGuidanceClient({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, decisionResponse, reflectResponse, post, applyResult, load]);
+  }, [response, sharedResponse, decisionResponse, applyAction, reflectResponse, post, applyResult, load]);
 
   const onClaim = useCallback(async () => {
     if (busyRef.current) return;
@@ -1162,6 +1166,7 @@ export default function FoundryGuidanceClient({
                   className="mt-3 w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
                 />
                 {decisionError && <p className="mt-2 text-xs text-red-300">{t.decisionError}</p>}
+                <ApplyActionDayPicker locale={locale} value={applyAction} onChange={setApplyAction} />
               </div>
             )}
 

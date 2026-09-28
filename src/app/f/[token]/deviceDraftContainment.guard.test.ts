@@ -29,6 +29,7 @@ describe("T14 — no server draft was built", () => {
       listed by name. Adding one means adding it here, deliberately, which is the signal.
     */
     const KNOWN_LATER = [
+      "20260929000000_foundry_apply_action_day_v1.sql",
       "20260827000000_foundry_deferred_completion_claim_v1.sql",
       "20260828000000_bty_action_capture_v1.sql",
       "20260829000000_bty_microsoft_identity_resolver_v1.sql",
@@ -96,7 +97,8 @@ describe("T14 — no server draft was built", () => {
       const body = m![1] ?? "";
       const keys = [...body.matchAll(/(?:^|[{\s])([a-z_]+):/g)].map((x) => x[1]);
       expect(new Set(keys), f).toEqual(
-        new Set(["response_text", "reflection_response", "shared_response", "decision_response", "tz"]),
+        // apply_action (Apply Action Day V1) is a completion-time CHOICE token, not draft-shaped text.
+        new Set(["response_text", "reflection_response", "shared_response", "decision_response", "apply_action", "tz"]),
       );
     }
   });

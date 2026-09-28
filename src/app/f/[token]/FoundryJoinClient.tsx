@@ -1,5 +1,6 @@
 "use client";
 
+import ApplyActionDayPicker from "@/components/foundry/event-rooms/ApplyActionDayPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
 import type { SavedLocale } from "@/lib/localePreference";
@@ -473,6 +474,7 @@ export default function FoundryJoinClient({
   // Shared Understanding answer (Slice 3.1B-3G) — SEPARATE from the private `response`.
   const [sharedResponse, setSharedResponse] = useState("");
   const [decisionResponse, setDecisionResponse] = useState("");
+  const [applyAction, setApplyAction] = useState<string | null>(null);
   // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
   const [reflectResponse, setReflectResponse] = useState("");
 
@@ -771,7 +773,7 @@ export default function FoundryJoinClient({
         response_text: response.trim(),
         ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
-        ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
+        ...(actionDecisionContext ? { decision_response: decisionResponse.trim(), ...(applyAction ? { apply_action: applyAction } : {}) } : {}),
         tz: deviceTz(),
       });
       /*
@@ -802,7 +804,7 @@ export default function FoundryJoinClient({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, decisionResponse, actionDecisionContext, reflectRequired, reflectResponse, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, decisionResponse, applyAction, actionDecisionContext, reflectRequired, reflectResponse, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -1449,6 +1451,7 @@ export default function FoundryJoinClient({
                 className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base leading-6 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
               />
               {decisionError ? <p className="mt-2 text-xs text-red-300" data-testid="decision-error">{t.decisionError}</p> : null}
+              <ApplyActionDayPicker locale={locale} value={applyAction} onChange={setApplyAction} />
             </div>
           ) : null}
 
