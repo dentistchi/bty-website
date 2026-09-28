@@ -351,3 +351,62 @@ describe("R2.6 — the title snapshot survives the read", () => {
     expect(created[0]!.p_source_training_title).toBe("Foundry training");
   });
 });
+
+describe("APPLY ACTION DAY V1 — stored atomically with the window, resolved server-side", () => {
+  const materializeArgs = (calls: Array<{ name: string; args: Row }>) =>
+    calls.filter((c) => c.name === "bty_foundry_materialize_apply_window").map((c) => c.args);
+
+  it("Tomorrow resolves against the COMPLETION BTY day in the CANONICAL timezone, not the device", async () => {
+    // completed 2026-08-14T20:00Z = 13:00 in Los Angeles (canonical). In Seoul it is already 08-15.
+    const { admin, calls } = makeFakeAdmin(seed());
+    expect(await call(admin, { actionChoice: "tomorrow", deviceTz: "Asia/Seoul" })).toBe("created");
+    const [a] = materializeArgs(calls);
+    expect(a!.p_completion_bty_day).toBe("2026-08-14");
+    expect(a!.p_action_bty_day).toBe("2026-08-15");
+  });
+
+  it("Today / pick:N resolve to exact days inside the window", async () => {
+    for (const [token, day] of [["today", "2026-08-14"], ["pick:2", "2026-08-16"], ["pick:6", "2026-08-20"]] as const) {
+      const { admin, calls } = makeFakeAdmin(seed());
+      await call(admin, { actionChoice: token });
+      expect(materializeArgs(calls)[0]!.p_action_bty_day).toBe(day);
+    }
+  });
+
+  it("Sometime this week, no choice, or ANY non-token (prose, a date) sends NO action day — the call is the pre-V1 call", async () => {
+    for (const choice of ["this_week", undefined, "Tomorrow morning", "2026-08-15", "pick:7"]) {
+      const { admin, calls } = makeFakeAdmin(seed());
+      await call(admin, { actionChoice: choice });
+      expect(materializeArgs(calls)[0]).not.toHaveProperty("p_action_bty_day");
+    }
+  });
+
+  it("the window matters more than the day: an RPC without p_action_bty_day (pre-migration) still creates the window", async () => {
+    const { admin, calls, created } = makeFakeAdmin(seed());
+    const legacy = {
+      ...admin,
+      rpc: async (name: string, args: Row) =>
+        name === "bty_foundry_materialize_apply_window" && "p_action_bty_day" in args
+          ? { data: null, error: { message: "Could not find the function", code: "PGRST202" } }
+          : (admin as unknown as { rpc: (n: string, a: Row) => Promise<unknown> }).rpc(name, args),
+    } as unknown as SupabaseClient;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await materializeApplyWindow(legacy, { eventId: EVENT, progressId: PROGRESS, authUserId: USER, actionChoice: "tomorrow" })).toBe("created");
+    expect(created).toHaveLength(1);
+    expect(materializeArgs(calls).every((a) => !("p_action_bty_day" in a))).toBe(true);
+  });
+
+  it("the list carries action_bty_day through, and null when the row has none", async () => {
+    const { admin } = makeFakeAdmin(seed());
+    const withDay = {
+      ...admin,
+      rpc: async (name: string, args: Row) => {
+        const r = await (admin as unknown as { rpc: (n: string, a: Row) => Promise<{ data: Row[] | null; error: unknown }> }).rpc(name, args);
+        return name === "bty_foundry_list_my_apply_windows" ? { ...r, data: (r.data ?? []).map((w) => ({ ...w, action_bty_day: "2026-08-15" })) } : r;
+      },
+    } as unknown as SupabaseClient;
+    await call(admin, { actionChoice: "tomorrow" });
+    expect((await listMyApplyWindows(withDay, USER, new Date("2026-08-14T20:00:00Z"), "America/Los_Angeles"))[0]!.actionBtyDay).toBe("2026-08-15");
+    expect((await listMyApplyWindows(admin, USER, new Date("2026-08-14T20:00:00Z"), "America/Los_Angeles"))[0]!.actionBtyDay).toBeNull();
+  });
+});

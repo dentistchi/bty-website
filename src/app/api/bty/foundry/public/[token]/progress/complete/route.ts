@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     Which of them are REQUIRED is decided by the service from the frozen event, never here and
     never by the client.
   */
-  const r = await completeTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response);
+  const r = await completeTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response, body?.apply_action);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
     // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
 /*

@@ -168,3 +168,60 @@ describe("suppressApplyWindow — the handoff, as a read rule", () => {
     expect(input).toEqual(copy);
   });
 });
+
+import {
+  APPLY_ACTION_PICK_OFFSETS,
+  applyActionDayPassed,
+  isValidApplyActionDay,
+  parseApplyActionChoice,
+  resolveApplyActionDay,
+} from "./applyWindow";
+
+describe("APPLY ACTION DAY V1 — pure rules", () => {
+  const C = "2026-09-24", D = "2026-10-01"; // completion day, due (follow-up) day
+
+  it("parses only the strict wire tokens", () => {
+    expect(parseApplyActionChoice("today")).toEqual({ kind: "today" });
+    expect(parseApplyActionChoice("tomorrow")).toEqual({ kind: "tomorrow" });
+    expect(parseApplyActionChoice("this_week")).toEqual({ kind: "this_week" });
+    for (const n of APPLY_ACTION_PICK_OFFSETS) expect(parseApplyActionChoice(`pick:${n}`)).toEqual({ kind: "pick", offsetDays: n });
+    for (const bad of ["Tomorrow", "tomorrow morning", "Friday", "next week", "2026-09-25", "pick:0", "pick:1", "pick:7", "pick:-1", "pick:2 ", 1, null, undefined, {}])
+      expect(parseApplyActionChoice(bad)).toBeNull();
+  });
+
+  it("1/2/3. resolves Today / Tomorrow / a picked day against the COMPLETION day", () => {
+    expect(resolveApplyActionDay({ kind: "today" }, C, D)).toBe("2026-09-24");
+    expect(resolveApplyActionDay({ kind: "tomorrow" }, C, D)).toBe("2026-09-25");
+    expect(resolveApplyActionDay({ kind: "pick", offsetDays: 2 }, C, D)).toBe("2026-09-26");
+    expect(resolveApplyActionDay({ kind: "pick", offsetDays: 6 }, C, D)).toBe("2026-09-30");
+  });
+
+  it("Sometime this week and no choice → null (the 7-day window governs)", () => {
+    expect(resolveApplyActionDay({ kind: "this_week" }, C, D)).toBeNull();
+    expect(resolveApplyActionDay(null, C, D)).toBeNull();
+  });
+
+  it("5/6. completion <= day < due: before completion, the due day and after are all invalid — never clamped", () => {
+    expect(isValidApplyActionDay("2026-09-23", C, D)).toBe(false);
+    expect(isValidApplyActionDay("2026-09-24", C, D)).toBe(true);
+    expect(isValidApplyActionDay("2026-09-30", C, D)).toBe(true);
+    expect(isValidApplyActionDay("2026-10-01", C, D)).toBe(false);
+    expect(isValidApplyActionDay("2026-10-02", C, D)).toBe(false);
+    expect(isValidApplyActionDay("Tomorrow", C, D)).toBe(false);
+    // An offset that would land on the due day resolves to null instead of a wrong day.
+    expect(resolveApplyActionDay({ kind: "pick", offsetDays: 7 }, C, D)).toBeNull();
+  });
+
+  it("month and year boundaries resolve on the calendar, not by string arithmetic", () => {
+    expect(resolveApplyActionDay({ kind: "tomorrow" }, "2026-09-30", "2026-10-07")).toBe("2026-10-01");
+    expect(resolveApplyActionDay({ kind: "pick", offsetDays: 3 }, "2026-12-30", "2027-01-06")).toBe("2027-01-02");
+  });
+
+  it("7. passed is judged on the reader's BTY day (05:00 boundary), and null never passes", () => {
+    const LA = "America/Los_Angeles";
+    expect(applyActionDayPassed("2026-09-25", new Date("2026-09-26T11:59:00Z"), LA)).toBe(false); // 04:59 LA
+    expect(applyActionDayPassed("2026-09-25", new Date("2026-09-26T12:00:00Z"), LA)).toBe(true);  // 05:00 LA
+    expect(applyActionDayPassed(null, new Date("2027-01-01T00:00:00Z"), LA)).toBe(false);
+    expect(applyActionDayPassed(undefined, new Date("2027-01-01T00:00:00Z"), LA)).toBe(false);
+  });
+});

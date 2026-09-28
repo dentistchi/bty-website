@@ -30,7 +30,7 @@ import {
   type FollowUpStatus,
 } from "@/domain/foundry/followup/followUpObligation";
 import { listMyLearningRecordIds } from "@/lib/bty/foundry/events/learnerEvidenceService";
-import { suppressApplyWindow } from "@/domain/foundry/apply-window/applyWindow";
+import { applyActionDayPassed, suppressApplyWindow } from "@/domain/foundry/apply-window/applyWindow";
 import { listMyApplyWindows } from "@/lib/bty/foundry/events/foundryApplyWindowService";
 import {
   classifyActionContract,
@@ -396,6 +396,13 @@ async function applyDue(
         follow-up is configured is a real product question, reported rather than invented here.
       */
       if (w.state === "overdue") continue;
+      /*
+        APPLY ACTION DAY V1 — the more specific "when" wins. The learner chose a day inside the
+        window; once that BTY day has gone by, Today stops asking, even though the week is still
+        open. Nothing is deleted: the window, the decision, the chosen day and the pending follow-up
+        all remain. A null day (Sometime this week, or pre-V1) keeps the 7-day rule unchanged.
+      */
+      if (applyActionDayPassed(w.actionBtyDay, now, tz)) continue;
       const pid = w.progressId;
       if (pid && suppressApplyWindow({ followUpIsAsking: asking.has(pid), followUpResponded: responded.has(pid) })) {
         continue;

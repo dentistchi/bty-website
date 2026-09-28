@@ -49,6 +49,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     body?.tz,
     body?.decision_response,
     body?.reflection_response,
+    body?.apply_action,
   );
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
     // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.

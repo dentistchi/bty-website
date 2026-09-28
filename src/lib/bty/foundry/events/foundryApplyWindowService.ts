@@ -4,6 +4,8 @@ import {
   computeApplyWindow,
   type ApplyWindowState,
   classifyApplyWindow,
+  parseApplyActionChoice,
+  resolveApplyActionDay,
 } from "@/domain/foundry/apply-window/applyWindow";
 import { journeyActionDecision, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
@@ -69,6 +71,12 @@ export async function materializeApplyWindow(
     authUserId: string | null;
     completedAtIso?: string | null;
     deviceTz?: string | null;
+    /**
+     * APPLY ACTION DAY V1 — the learner's raw "when" token from the SAME request that completed the
+     * training. Only the three completion paths pass it; claim / reload / retry do not, so a window
+     * created there has no action day and the 7-day window governs.
+     */
+    actionChoice?: unknown;
   },
 ): Promise<MaterializeApplyResult> {
   const { eventId, progressId, authUserId } = args;
@@ -132,8 +140,10 @@ export async function materializeApplyWindow(
     const completedAtIso = args.completedAtIso ?? prog.completed_at;
     const tz = await resolveUserTzContext(admin, authUserId, args.deviceTz ?? null);
     const win = computeApplyWindow(completedAtIso, tz.timezone);
+    // Anchored to the completion BTY day in the learner's canonical timezone — never the client clock.
+    const actionBtyDay = resolveApplyActionDay(parseApplyActionChoice(args.actionChoice), win.completionBtyDay, win.dueBtyDay);
 
-    const { data, error } = await admin.rpc("bty_foundry_materialize_apply_window", {
+    const baseParams = {
       p_event_id: eventId,
       p_progress_id: progressId,
       p_assignment_id: assignment?.id ?? null,
@@ -147,7 +157,17 @@ export async function materializeApplyWindow(
       p_completion_bty_day: win.completionBtyDay,
       p_due_bty_day: win.dueBtyDay,
       p_due_at: win.dueAtIso,
-    });
+    };
+    let { data, error } = await admin.rpc(
+      "bty_foundry_materialize_apply_window",
+      actionBtyDay ? { ...baseParams, p_action_bty_day: actionBtyDay } : baseParams,
+    );
+    if (error && actionBtyDay) {
+      // Before the V1 migration the RPC has no p_action_bty_day. The window matters more than the
+      // day: create it the pre-V1 way (7-day window governs) rather than lose it.
+      console.error("[apply-window] action day not stored; retrying without it", { code: error.code ?? "unknown" });
+      ({ data, error } = await admin.rpc("bty_foundry_materialize_apply_window", baseParams));
+    }
     if (error) return "error";
     const row = Array.isArray(data) ? data[0] : data;
     const result = (row as { result?: string } | null)?.result;
@@ -167,6 +187,8 @@ export type MyApplyWindow = {
   readonly completionBtyDay: string;
   readonly dueBtyDay: string;
   readonly dueAtIso: string;
+  /** APPLY ACTION DAY V1 — the learner's chosen BTY day, or null (the 7-day window governs). */
+  readonly actionBtyDay: string | null;
   /** Derived against the CURRENT reader timezone. Never stored. */
   readonly state: ApplyWindowState;
 };
@@ -198,6 +220,7 @@ export async function listMyApplyWindows(
       completion_bty_day: string;
       due_bty_day: string;
       due_at: string;
+      action_bty_day?: string | null;
     }>).map((r) => ({
       id: r.id,
       eventId: r.event_id,
@@ -206,6 +229,7 @@ export async function listMyApplyWindows(
       completionBtyDay: r.completion_bty_day,
       dueBtyDay: r.due_bty_day,
       dueAtIso: r.due_at,
+      actionBtyDay: r.action_bty_day ?? null,
       state: classifyApplyWindow(r.completion_bty_day, r.due_bty_day, now, tz),
     }));
   } catch {

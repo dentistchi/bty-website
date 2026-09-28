@@ -116,3 +116,69 @@ export function suppressApplyWindow(args: {
 }): boolean {
   return args.followUpIsAsking || args.followUpResponded;
 }
+
+/*
+  APPLY ACTION DAY V1 — the learner's own "when", as a structured DAY inside the window.
+
+  The decision sentence says WHAT. This says WHEN, and it is chosen, never inferred: nothing here
+  reads prose, so "Tomorrow morning" written in a decision stays prose and changes nothing.
+
+  WIRE TOKENS (strict; anything else is "no choice", which is the existing 7-day behaviour):
+    "today" | "tomorrow" | "pick:2" … "pick:6" | "this_week"
+  "pick:N" is an OFFSET from the completion day, not a calendar date, so the client never has to
+  know the learner's BTY day: the server anchors every choice to completionBtyDay, computed in the
+  learner's canonical timezone by computeApplyWindow.
+
+  BOUNDARY: completionBtyDay <= action < dueBtyDay. The due day belongs to the follow-up.
+*/
+export type ApplyActionChoice =
+  | { readonly kind: "today" }
+  | { readonly kind: "tomorrow" }
+  | { readonly kind: "pick"; readonly offsetDays: number }
+  | { readonly kind: "this_week" };
+
+/** Offsets "Pick a day" may offer: after Tomorrow, before the due (follow-up) day. */
+export const APPLY_ACTION_PICK_OFFSETS = [2, 3, 4, 5, 6] as const;
+
+export function parseApplyActionChoice(raw: unknown): ApplyActionChoice | null {
+  if (raw === "today") return { kind: "today" };
+  if (raw === "tomorrow") return { kind: "tomorrow" };
+  if (raw === "this_week") return { kind: "this_week" };
+  if (typeof raw === "string") {
+    const m = /^pick:([0-9])$/.exec(raw);
+    if (m) {
+      const offset = Number(m[1]);
+      if ((APPLY_ACTION_PICK_OFFSETS as readonly number[]).includes(offset)) return { kind: "pick", offsetDays: offset };
+    }
+  }
+  return null;
+}
+
+/** True only for a day inside the window: completion <= day < due. Day keys compare lexically. */
+export function isValidApplyActionDay(day: string, completionBtyDay: string, dueBtyDay: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) && day >= completionBtyDay && day < dueBtyDay;
+}
+
+/**
+ * The action day to store, or null. Null means "the 7-day window governs" — for "Sometime this
+ * week", for no choice, and for any choice that would fall outside the window (never clamped).
+ */
+export function resolveApplyActionDay(
+  choice: ApplyActionChoice | null,
+  completionBtyDay: string,
+  dueBtyDay: string,
+): string | null {
+  if (!choice || choice.kind === "this_week") return null;
+  const offset = choice.kind === "today" ? 0 : choice.kind === "tomorrow" ? 1 : choice.offsetDays;
+  const day = addDaysToDayKey(completionBtyDay, offset);
+  return isValidApplyActionDay(day, completionBtyDay, dueBtyDay) ? day : null;
+}
+
+/**
+ * Has the learner's chosen day already gone by, in the reader's BTY day? A null action day never
+ * passes: the window's own state keeps governing, exactly as before V1.
+ */
+export function applyActionDayPassed(actionBtyDay: string | null | undefined, now: Date, tz: string): boolean {
+  if (!actionBtyDay) return false;
+  return userDayKey(now, tz, 5) > actionBtyDay;
+}

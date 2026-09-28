@@ -565,6 +565,8 @@ export async function completeGuidanceTraining(
   deviceTz?: string | null,
   rawDecisionResponse?: unknown,
   rawReflectionResponse?: unknown,
+  /** APPLY ACTION DAY V1 — the learner's "when" token, stored only with a window created here. */
+  rawApplyAction?: unknown,
 ): Promise<GuidanceResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -695,6 +697,7 @@ export async function completeGuidanceTraining(
       authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
+      actionChoice: rawApplyAction,
     });
 
     /*

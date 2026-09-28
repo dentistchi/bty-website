@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     Which of them are REQUIRED is decided by the server from the frozen event, never here and
     never by the client. Every field is passed straight through unvalidated on purpose.
   */
-  const r = await completeDocumentTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response);
+  const r = await completeDocumentTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response, body?.apply_action);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
     // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
 /*

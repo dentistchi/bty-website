@@ -1,5 +1,6 @@
 "use client";
 
+import ApplyActionDayPicker from "@/components/foundry/event-rooms/ApplyActionDayPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
 import type { SavedLocale } from "@/lib/localePreference";
@@ -471,6 +472,7 @@ export default function FoundryDocumentClient({
   const [reflectResponse, setReflectResponse] = useState("");
   const [reflectError, setReflectError] = useState(false);
   const [decisionResponse, setDecisionResponse] = useState("");
+  const [applyAction, setApplyAction] = useState<string | null>(null);
 
   /*
     DEVICE-LOCAL DRAFT (Slice R4-R5C4A). The four answers above live only in this component until
@@ -816,7 +818,7 @@ export default function FoundryDocumentClient({
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
         ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
-        ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
+        ...(actionDecisionContext ? { decision_response: decisionResponse.trim(), ...(applyAction ? { apply_action: applyAction } : {}) } : {}),
         tz: deviceTz(),
       });
       /*
@@ -855,7 +857,7 @@ export default function FoundryDocumentClient({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, reflectRequired, reflectResponse, actionDecisionContext, decisionResponse, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, reflectRequired, reflectResponse, actionDecisionContext, decisionResponse, applyAction, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -1342,6 +1344,7 @@ export default function FoundryDocumentClient({
                   className="mt-3 w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
                 />
                 {decisionError && <p className="mt-2 text-xs text-red-300" data-testid="decision-error">{t.decisionError}</p>}
+                <ApplyActionDayPicker locale={locale} value={applyAction} onChange={setApplyAction} />
               </div>
             )}
 
