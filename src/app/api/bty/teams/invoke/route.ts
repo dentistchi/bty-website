@@ -394,9 +394,13 @@ export async function POST(req: NextRequest) {
           hostFraming: submission.hostFraming,
         }), parsed.invokeName);
       }
+      if (tracked.reason === "invalid_actor") return trackSay(
+        "BTY 계정을 확인할 수 없습니다.",
+        "Your BTY account could not be verified.",
+      );
       if (tracked.reason === "invalid_recipients") return trackSay(
-        "선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다. 같은 조직의 활성 BTY 사용자를 선택하세요.",
-        "Some selected people could not be verified in BTY. Choose active BTY users in the same organization.",
+        "선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다.",
+        "Some selected people could not be verified in BTY.",
       );
       console.error("[teams-invoke] track refused", { reason: tracked.reason });
       const copy =

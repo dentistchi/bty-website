@@ -15,7 +15,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role; end if;
 end $$;
 create schema if not exists auth;
-create table if not exists auth.users (id uuid primary key default gen_random_uuid());
+create table if not exists auth.users (id uuid primary key default gen_random_uuid(), banned_until timestamptz, deleted_at timestamptz);
 create table if not exists auth.identities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -63,6 +63,7 @@ const APPLIED = [
 ];
 
 const MIGRATION = "20260927051100_announcement_tracking_modes_v1.sql";
+const ALIGNMENT = "20260928000000_bty_track_recipient_authority_alignment_v1.sql";
 let root: Pool; let db: Pool;
 const name = `tracking_v1_${process.pid}`;
 beforeAll(async () => {
@@ -76,6 +77,8 @@ beforeAll(async () => {
  for (const sql of [...APPLIED, read("20260915000000_bty_host_track_history_retention_v1.sql")]) await db.query(sql);
  await db.query(read(MIGRATION));
  await db.query(read(MIGRATION));
+ await db.query(read(ALIGNMENT));
+ await db.query(read(ALIGNMENT));
 }, 60000);
 afterAll(async () => { await db?.end(); if (root) { await root.query(`drop database ${name}`); await root.end(); } });
 const oid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12,"0")}`;
@@ -186,22 +189,117 @@ function serviceDb() {
   } catch(e) {return {data:null,error:{message:(e as Error).message,code:"TEST_REFUSAL"}};}
  }} as never;
 }
+describe.runIf(!!URL)("recipient authority alignment: tenant+OID resolution, not organization membership",()=>{
+ const BTY_TENANT="10110d5c-bd30-467e-9912-e44e67777647";
+ const call=(host:string,picked:unknown,tenant=host)=>trackAnnouncement(serviceDb(),{ownerUserId:host,actorAadObjectId:host,
+  capture:{provider:"teams",tenant_id:tenant,conversation_id:"conversation",message_id:`m-${Math.random()}`},hostFramingRaw:"Notice",pickedRaw:picked,trackingMode:"acknowledgment"});
+ const frozen=async(ann:string)=>(await db.query("select user_id,aad_object_id from public.bty_tracked_announcement_recipients where announcement_id=$1",[ann])).rows;
+ it.each(["no membership row","inactive membership","membership in another organization","active membership in the Host's organization"])("a resolved same-tenant user with %s is eligible",async shape=>{
+  const s=await seed();const user=s.users[oid(1)];
+  if(shape==="no membership row") await db.query("delete from public.bty_org_memberships where user_id=$1",[user]);
+  if(shape==="inactive membership") await db.query("update public.bty_org_memberships set status='inactive' where user_id=$1",[user]);
+  if(shape==="membership in another organization") {
+   const org=(await db.query("insert into public.bty_organizations values(gen_random_uuid(),'active') returning id")).rows[0].id;
+   await db.query("update public.bty_org_memberships set organization_id=$2 where user_id=$1",[user,org]);
+  }
+  const before=await counts();const result=await call(s.host,[s.host,oid(1)]);
+  expect(result).toMatchObject({ok:true,count:1});if(!result.ok) return;
+  expect(await frozen(result.announcementId)).toEqual([{user_id:user,aad_object_id:oid(1)}]);
+  const after=await counts();
+  for(const t of Object.keys(before)) expect(after[t]-before[t]).toBe(["bty_action_captures","bty_tracked_announcements","bty_tracked_announcement_recipients"].includes(t)?1:0);
+ });
+ it("MEASURED SHAPE: Founder + a Michael-shaped user (BTY tenant, azure custom_claims tid/oid, NO membership) tracks exactly that one person",async()=>{
+  // Shape measured in production 2026-09-27: tid 10110d5c…, oid 71ca0b0a…, account dc5bcdbb…, zero
+  // bty_org_memberships rows, resolver RESOLVED. Suffixes are synthetic — no production identifier is copied.
+  const host=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+  const hostOid=host;
+  await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[host,JSON.stringify({custom_claims:{tid:BTY_TENANT,oid:hostOid}})]);
+  const org=(await db.query("insert into public.bty_organizations values(gen_random_uuid(),'active') returning id")).rows[0].id;
+  await db.query("insert into public.bty_org_memberships values($1,$2,'active',true)",[host,org]);
+  const michael=(await db.query("insert into auth.users(id) values('dc5bcdbb-0000-4000-8000-000000000001') returning id")).rows[0].id;
+  const michaelOid="71ca0b0a-0000-4000-8000-000000000001";
+  await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[michael,JSON.stringify({custom_claims:{tid:BTY_TENANT,oid:michaelOid}})]);
+  expect(Number((await db.query("select count(*) n from public.bty_org_memberships where user_id=$1",[michael])).rows[0].n)).toBe(0);
+  const before=await counts();
+  const result=await trackAnnouncement(serviceDb(),{ownerUserId:host,actorAadObjectId:hostOid,
+   capture:{provider:"teams",tenant_id:BTY_TENANT,conversation_id:"conversation",message_id:"michael-fixture"},hostFramingRaw:"Notice",pickedRaw:`${hostOid},${michaelOid}`,trackingMode:"acknowledgment"});
+  expect(result).toMatchObject({ok:true,count:1});if(!result.ok) return;
+  const rows=await frozen(result.announcementId);
+  expect(rows).toEqual([{user_id:michael,aad_object_id:michaelOid}]);
+  expect(rows.some(r=>r.user_id===host)).toBe(false);
+  expect((await counts()).bty_tracked_announcement_recipients-before.bty_tracked_announcement_recipients).toBe(1);
+ });
+ it("the same person picked twice (case variants) is one canonical recipient",async()=>{
+  const s=await seed();const result=await call(s.host,[oid(2),oid(2).toUpperCase(),` ${oid(2)} `]);
+  expect(result).toMatchObject({ok:true,count:1});if(!result.ok) return;
+  expect(await frozen(result.announcementId)).toEqual([{user_id:s.users[oid(2)],aad_object_id:oid(2)}]);
+ });
+ it("a user resolved only under ANOTHER tenant is rejected, with zero writes",async()=>{
+  const s=await seed();const other=await seed();
+  // oid(900) exists ONLY under tenant s.host; the Track runs in other.host's tenant.
+  const foreign=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+  await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[foreign,JSON.stringify({custom_claims:{tid:s.host,oid:oid(900)}})]);
+  const before=await counts();
+  const result=await trackAnnouncement(serviceDb(),{ownerUserId:other.host,actorAadObjectId:other.host,
+   capture:{provider:"teams",tenant_id:other.host,conversation_id:"conversation",message_id:"x-tenant"},hostFramingRaw:"Notice",pickedRaw:[oid(900)],trackingMode:"acknowledgment"});
+  expect(result).toMatchObject({ok:false,reason:"invalid_recipients"});
+  const after=await counts();
+  expect(after.bty_tracked_announcements).toBe(before.bty_tracked_announcements);expect(after.bty_tracked_announcement_recipients).toBe(before.bty_tracked_announcement_recipients);
+ });
+ it("ACTOR authority is unchanged: a Host without an active primary organization is refused as the ACTOR, not as the audience",async()=>{
+  const s=await seed();await db.query("delete from public.bty_org_memberships where user_id=$1",[s.host]);
+  const before=await counts();const result=await call(s.host,[oid(1)]);
+  expect(result).toMatchObject({ok:false,reason:"invalid_actor"});expect(await counts()).toEqual(before);
+ });
+ it("an actor OID that resolves to someone else is refused as the ACTOR",async()=>{
+  const s=await seed();const before=await counts();
+  const result=await trackAnnouncement(serviceDb(),{ownerUserId:s.host,actorAadObjectId:oid(3),
+   capture:{provider:"teams",tenant_id:s.host,conversation_id:"conversation",message_id:"wrong-actor"},hostFramingRaw:"Notice",pickedRaw:[oid(1)],trackingMode:"acknowledgment"});
+  expect(result).toMatchObject({ok:false,reason:"invalid_actor"});expect(await counts()).toEqual(before);
+ });
+ it("organization membership still governs everything else: the migration re-declares exactly one function, and only its recipient gate differs",()=>{
+  const fn=(sql:string)=>{const a=sql.indexOf("create or replace function public.bty_track_announcement_v1(");const z=sql.indexOf("to service_role;",a);return sql.slice(a,z);};
+  const before=fn(read(MIGRATION)),after=fn(read(ALIGNMENT));
+  const oldGate=`   perform 1 from public.bty_org_memberships m
+     where m.user_id=v_user and m.organization_id=v_org and m.status='active' for share;
+`;
+  expect(before).toContain(oldGate);
+  const newGate=after.slice(after.indexOf("   -- Recipient authority"),after.indexOf("   if not found then raise exception 'invalid_recipients'",after.indexOf("   -- Recipient authority")));
+  expect(before.replace(oldGate,newGate)).toBe(after);
+  expect(newGate).toMatch(/from auth\.users u\s+where u\.id=v_user and u\.deleted_at is null/);
+  expect(newGate).not.toMatch(/bty_org_memberships|email|display|upn/i);
+  // Outside the function body and the signature precondition, the file is transaction control only.
+  const rest=read(ALIGNMENT).replace(/--[^\n]*/g,"").replace(/as \$\$[\s\S]*?end \$\$;/,"").replace(/do \$\$[\s\S]*?end \$\$;/,"");
+  expect(rest).not.toMatch(/\b(alter|drop|truncate|insert|update|delete)\b/i);
+  expect(rest.match(/create or replace function\s+public\.[a-z_0-9]+/gi)).toEqual(["create or replace function public.bty_track_announcement_v1"]);
+ });
+ it("grants after apply: only service_role may execute, and the signature did not grow an overload",async()=>{
+  const r=(await db.query(`select count(*)::int n,
+    bool_or(has_function_privilege('anon',p.oid,'execute')) anon, bool_or(has_function_privilege('authenticated',p.oid,'execute')) auth,
+    bool_and(has_function_privilege('service_role',p.oid,'execute')) svc, bool_and(p.prosecdef) definer
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='bty_track_announcement_v1'`)).rows[0];
+  expect(r).toEqual({n:1,anon:false,auth:false,svc:true,definer:true});
+ });
+});
+
 describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transaction",()=> {
- it.each(["self-only","empty","malformed","unresolved","inactive","revoked","cross-tenant","cross-org","invalid-mode","missing-source","nine-valid-one-invalid"])("%s has exactly zero writes in every related table",async failure=> {
+ it.each(["self-only","empty","malformed","email","display-name","unresolved","ambiguous","banned","deleted","cross-tenant","invalid-mode","missing-source","nine-valid-one-invalid"])("%s has exactly zero writes in every related table",async failure=> {
   const s=await seed();let picked=[oid(1)];let mode="response";let message=s.cap;
   if(failure==="self-only") picked=[s.host];
   if(failure==="empty") picked=[];
   if(failure==="malformed") picked=[oid(1),"invalid"];
   if(failure==="unresolved") picked=[oid(500)];
   if(failure==="nine-valid-one-invalid") picked=[...Array.from({length:9},(_,i)=>oid(i+1)),oid(500)];
-  if(failure==="inactive") await db.query("update public.bty_org_memberships set status='inactive' where user_id=$1",[s.users[oid(1)]]);
-  // Canonical membership has active/inactive, not a fictional revoked enum value.
-  if(failure==="revoked") await db.query("delete from public.bty_org_memberships where user_id=$1",[s.users[oid(1)]]);
-  if(failure==="cross-tenant") await db.query("update auth.identities set identity_data=jsonb_set(identity_data,'{custom_claims,tid}',to_jsonb($2::text)) where user_id=$1",[s.users[oid(1)],oid(700)]);
-  if(failure==="cross-org") {
-   const org=(await db.query("insert into public.bty_organizations values(gen_random_uuid(),'active') returning id")).rows[0].id;
-   await db.query("update public.bty_org_memberships set organization_id=$2 where user_id=$1",[s.users[oid(1)],org]);
+  // No email, UPN or display-name fallback: only a tenant+OID GUID can name a recipient.
+  if(failure==="email") picked=["michael.song@example.com"];
+  if(failure==="display-name") picked=["Michael Song"];
+  if(failure==="ambiguous") {
+   const twin=(await db.query("insert into auth.users default values returning id")).rows[0].id;
+   await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[twin,JSON.stringify({custom_claims:{tid:s.host,oid:oid(1)}})]);
   }
+  if(failure==="banned") await db.query("update auth.users set banned_until=now()+interval '100 years' where id=$1",[s.users[oid(1)]]);
+  if(failure==="deleted") await db.query("update auth.users set deleted_at=now() where id=$1",[s.users[oid(1)]]);
+  if(failure==="cross-tenant") await db.query("update auth.identities set identity_data=jsonb_set(identity_data,'{custom_claims,tid}',to_jsonb($2::text)) where user_id=$1",[s.users[oid(1)],oid(700)]);
   if(failure==="invalid-mode") mode="invalid";
   if(failure==="missing-source") message="";
   const before=await counts();
@@ -235,6 +333,8 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
   const query="select to_jsonb(a) announcement,to_jsonb(r) recipient from public.bty_tracked_announcements a join public.bty_tracked_announcement_recipients r on r.announcement_id=a.id where a.id=any($1::uuid[]) order by a.id";
   const before=(await db.query(query,[ids])).rows;
   await db.query(read(MIGRATION));
+  await db.query(read(ALIGNMENT));
+  // The recipient-authority alignment replaces one function; it mutates no existing row.
   expect((await db.query(query,[ids])).rows).toEqual(before);
   expect(before).toHaveLength(11);expect(before.every(v=>v.announcement.tracking_mode===null&&v.recipient.response_submitted_at===null)).toBe(true);
  });

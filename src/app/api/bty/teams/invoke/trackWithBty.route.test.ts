@@ -192,7 +192,10 @@ describe("the track submit", () => {
   it("refuses zero usable recipients, and writes nothing", async () => {
     const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: "not-a-guid" } })));
     expect(rpc).not.toHaveBeenCalled();
-    expect(JSON.stringify(await res.json())).toContain("active BTY users in the same organization");
+    const text = JSON.stringify(await res.json());
+    expect(text).toContain("Some selected people could not be verified in BTY.");
+    // Organization membership is no longer a recipient requirement; the copy must not claim it is.
+    expect(text).not.toContain("same organization");
   });
 
   it("a repeat Track returns the SAME run rather than splitting the audience", async () => {
@@ -389,11 +392,22 @@ describe("announcement tracking V1 mobile-visible feedback", () => {
 });
 
 describe("no routing writes before Track validation",()=> {
+ it.each(["en","ko"])("%s SENDER failure is reported as the sender, never as the selected people",async locale=> {
+  rpc.mockResolvedValue({data:null,error:{message:"invalid_actor",code:"42501"}});
+  const body=await (await POST(req(activity({locale,serviceUrl:"https://smba.trafficmanager.net/amer/"},{data:{trackingMode:"response",hostFraming:"Notice",recipients:A}})))).json();
+  expect(body.task.type).toBe("continue");
+  const text=JSON.stringify(body);
+  expect(text).toContain(locale==="ko"?"BTY 계정을 확인할 수 없습니다.":"Your BTY account could not be verified.");
+  expect(text).not.toMatch(/selected people|선택한 사람/);
+  expect(text).not.toContain(A);
+  expect(rememberTenantRoute).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
+ });
  it.each(["en","ko"])("%s audience authorization refusal is visible, private and writes no route",async locale=> {
   rpc.mockResolvedValue({data:null,error:{message:"invalid_recipients",code:"42501"}});
   const body=await (await POST(req(activity({locale,serviceUrl:"https://smba.trafficmanager.net/amer/"},{data:{trackingMode:"response",hostFraming:"Notice",recipients:A}})))).json();
   expect(body.task.type).toBe("continue");
-  expect(JSON.stringify(body)).toContain(locale==="ko"?"같은 조직의 활성 BTY 사용자를 선택하세요.":"Choose active BTY users in the same organization.");
+  expect(JSON.stringify(body)).toContain(locale==="ko"?"선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다.":"Some selected people could not be verified in BTY.");
+  expect(JSON.stringify(body)).not.toMatch(/same organization|같은 조직/);
   expect(JSON.stringify(body)).not.toContain(A);
   expect(rememberTenantRoute).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
  });
