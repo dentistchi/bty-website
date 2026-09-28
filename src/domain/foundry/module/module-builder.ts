@@ -48,6 +48,27 @@ export const FOLLOW_UP_DAY_OPTIONS = [0, 7, 30] as const;
 export type FollowUpDays = (typeof FOLLOW_UP_DAY_OPTIONS)[number];
 
 export const BUILDER_STEP_MIN = 1;
+
+/** SIMPLE MODE (Slice 2). "simple" = the two-step default; "advanced" = today's detailed builder. */
+export type BuilderMode = "simple" | "advanced";
+export const BUILDER_MODES: readonly BuilderMode[] = ["simple", "advanced"];
+
+/**
+ * Which surface opens this draft. Only a draft with NOTHING authored opens in Simple Mode. A draft
+ * that carries ANY answer and no mode predates Simple Mode (or was started in the detailed builder),
+ * so it keeps the detailed builder — a legacy draft with a title but no problem must never flip.
+ */
+export function effectiveBuilderMode(answers: BuilderAnswers | undefined): BuilderMode {
+  const a = (answers ?? {}) as Record<string, unknown>;
+  if (a.builderMode === "simple" || a.builderMode === "advanced") return a.builderMode;
+  const authored = Object.entries(a).some(([k, v]) => {
+    if (k === "builderMode") return false;
+    if (typeof v === "string") return v.trim().length > 0;
+    if (Array.isArray(v)) return v.length > 0;
+    return v !== undefined && v !== null;
+  });
+  return authored ? "advanced" : "simple";
+}
 /**
  * NINE STEPS SINCE 3.2P-R3.6-R1. "When does this usually happen?" was inserted at position 3,
  * so every later step moved once and Review became 9. See `LEGACY_STEP_GRAPH_MAX`.
@@ -218,6 +239,12 @@ export type BuilderAnswers = ModuleDraftAnswers & {
    * problem-derived fallbacks below still run when this is absent.
    */
   title?: string;
+  /**
+   * SIMPLE MODE (Slice 2). Which authoring surface this draft uses. Absent on every draft written
+   * before Simple Mode — those stay in the detailed builder. "simple" drafts can move to
+   * "advanced" (Edit details); nothing moves them back automatically.
+   */
+  builderMode?: BuilderMode;
   problem?: string;
   audienceType?: AudienceType;
   audienceDetail?: string;
@@ -602,6 +629,10 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
 
       const title = checkText(a.title, TITLE_MAX, "title_too_long", "title_invalid", errors);
       if (title !== undefined) clean.title = title;
+      if (a.builderMode !== undefined) {
+        if ((BUILDER_MODES as readonly string[]).includes(a.builderMode as string)) clean.builderMode = a.builderMode as BuilderMode;
+        else errors.push("builder_mode_invalid");
+      }
 
       const problem = checkText(a.problem, PROBLEM_MAX, "problem_too_long", "problem_invalid", errors);
       if (problem !== undefined) clean.problem = problem;

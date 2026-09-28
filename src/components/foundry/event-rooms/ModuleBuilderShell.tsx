@@ -12,6 +12,7 @@ import {
   draftIdentityStatement,
   BUILDER_QUESTION_STEP,
   BUILDER_STEP_MAX,
+  effectiveBuilderMode,
   CAPABILITY_CANDIDATE_MAX,
   TITLE_MAX,
   type BuilderAnswers,
@@ -31,6 +32,7 @@ import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUp
 import { JourneyPreview } from "./JourneyPreview";
 import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import SimpleBuilder from "./SimpleBuilder";
 import { ProgramAuthorship, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
 import { copyLikeLearnerQuestions, type LearnerQuestionField } from "@/domain/foundry/module/learnerQuestionRole";
@@ -589,7 +591,7 @@ export function ModuleBuilderShell({
     [draftId],
   );
 
-  const generateProgram = useCallback(async (): Promise<ProgramGenerateOutcome> => {
+  const generateProgram = useCallback(async (repairRefusal?: string): Promise<ProgramGenerateOutcome> => {
     cancelDebounce();
     await flushIfDirty();
     const ctx = programContext(answersRef.current);
@@ -606,6 +608,8 @@ export function ModuleBuilderShell({
           // refuses a re-delivered request rather than spending twice.
           submission_intent_id: crypto.randomUUID(),
           context_fingerprint: programContextFingerprint(ctx),
+          // Simple Mode's ONE repair (Slice 2): the previous refusal code, closed vocabulary server-side.
+          ...(typeof repairRefusal === "string" ? { repair_refusal: repairRefusal } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -822,6 +826,96 @@ export function ModuleBuilderShell({
       t={t}
     />
   );
+
+  /*
+    SIMPLE MODE IS THE DEFAULT (Slice 2). A fresh draft opens in two steps; a draft written before
+    Simple Mode, a revision, or one the Host moved to "Edit details" opens the detailed builder
+    exactly as before. SimpleBuilder receives this shell's OWN save, generator, ProgramAuthorship
+    and publish controls, so there is no second path to a published training.
+  */
+  if (effectiveBuilderMode(answers) === "simple" && !isRevision && !publishedResult) {
+    const toAdvanced = (step?: number) => {
+      patchAnswers({ builderMode: "advanced" }, true);
+      jumpTo(step ?? BUILDER_STEP_MAX);
+    };
+    return (
+      <ManagerCanvas width="measure" className="btyFadeIn flex flex-col gap-6 pb-24" testId="module-builder">
+        <div className="flex items-center justify-end">
+          <SaveStatus state={saveState} t={t} onRetry={retry} />
+        </div>
+        <SimpleBuilder
+          draftId={draftId}
+          locale={locale}
+          answers={answers}
+          onSave={patchAnswers}
+          onGenerate={generateProgram}
+          onApply={applyProgram}
+          onEditDetails={toAdvanced}
+          publishPanel={
+            // The same participation choice and publish action Review renders; only onEdit leaves
+            // for the detailed builder first, because a jump inside Simple Mode would land nowhere.
+            <div className="grid gap-4">
+          <div className="lg:col-span-2">
+            <ParticipationModeChooser
+              mode={participationMode}
+              audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
+              intendedCount={intendedCount}
+              onIntendedCount={setIntendedCount}
+              onChange={setParticipationMode}
+              t={t}
+            />
+          </div>
+          <div className="lg:col-span-2">
+          <PublishAction
+            missing={reviewMissing}
+            publishing={publishing}
+            error={publishErr}
+            onEdit={(step: number) => toAdvanced(step)}
+            onPublish={doPublish}
+            /*
+              NOT gated on `journeyApprovable` (Slice 3.2P-R2.1). Approvability answers "is
+              every element the Host approved grounded?"; this list also carries "are all the
+              elements this Host's design requires present?", and a v2 that inherits its
+              parent's complete five-element journey answers TRUE to the first while missing
+              three of the seven kinds. Suppressing the list there hid the only blockers that
+              existed. The two title/confirmation entries are empty whenever the journey IS
+              approvable, so an approvable-and-complete draft still shows nothing.
+              The server refuses the same case independently — this only reflects that truth.
+            */
+            journeyBlockers={journeyEnabled ? journeyBlockers : []}
+            generationPending={generationPending}
+            programSectionsMissing={missingProgramKinds(answers, journey).length}
+            realityIntent={realityIntent}
+            onRepairReality={revealProgramAuthoring}
+            copyLikeQuestions={copyLikeQuestions}
+            t={t}
+          />
+          </div>
+            </div>
+          }
+          programAuthorshipProps={{
+            sectionRef: programAuthoringRef,
+            draftId,
+            locale,
+            answers,
+            journey: answers.realityGroundedJourneyV1,
+            auto: true,
+            ready: programSourceMissing(answers).length === 0,
+            notReadyReason: programSourceReason(programSourceMissing(answers)[0], t),
+            onCheckResume: checkProgramResume,
+            onCheckContextRefusal: checkContextRefusal,
+            onRepairSource: repairSource,
+            currentContextFingerprint: programFingerprint,
+            adoptionRefusal,
+            onDismissRefusal: () => setAdoptionRefusal(null),
+            onPendingChange: setGenerationPending,
+            onAdopted: () => setAdoptionHandoff((n) => n + 1),
+            onTitleAuthored: (title: string) => patchAnswers({ title }, true),
+          }}
+        />
+      </ManagerCanvas>
+    );
+  }
 
   return (
     /*

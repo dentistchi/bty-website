@@ -96,7 +96,8 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     fireEvent.click(btn);
     fireEvent.click(btn);
     await waitFor(() => expect(postCount(s.calls)).toBe(1));
-    expect(await screen.findByText("What keeps going wrong?")).toBeTruthy();
+    // Simple Mode (Slice 2): a NEW training opens on the one-sentence question, not the detailed builder.
+    expect(await screen.findByText("What do you want people to do better?")).toBeTruthy();
   });
 
   it("draft card shows a problem-derived title + step progress", async () => {

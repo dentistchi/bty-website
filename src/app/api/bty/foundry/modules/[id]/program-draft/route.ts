@@ -11,6 +11,8 @@ import {
   programSourceBlocker,
   programContextFingerprint,
   requiredProgramKinds,
+  PROGRAM_REJECT_CODES,
+  type ProgramRejectCode,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { isGenerationUuid } from "@/domain/foundry/module/program-generation-lease";
@@ -140,6 +142,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     locale?: unknown;
     submission_intent_id?: unknown;
     context_fingerprint?: unknown;
+    /** Simple Mode's one repair: the previous attempt's refusal code, closed vocabulary only. */
+    repair_refusal?: unknown;
   };
 
   const locale = body.locale === "ko" ? "ko" : "en";
@@ -228,6 +232,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     deployVersion: identity.sourceCommitSha,
     correlationId: crypto.randomUUID(),
     verifiedArtifacts,
+    ...(typeof body.repair_refusal === "string" && (PROGRAM_REJECT_CODES as readonly string[]).includes(body.repair_refusal)
+      ? { repairAfterRefusal: body.repair_refusal as ProgramRejectCode }
+      : {}),
     // Re-read AFTER the provider returns. The draft may have been published, deleted or
     // edited while the call was in flight — measured live during the first controlled
     // window — and a proposal for a draft that moved is not a success.
