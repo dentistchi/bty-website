@@ -225,3 +225,41 @@ describe("SLICE 2 — mode and Review helpers (no schema change)", () => {
     expect(approximateMinutes(undefined, undefined)).toBe(2);
   });
 });
+
+import { simpleHandoffHolds } from "@/domain/foundry/module/simple-mode";
+import { SIMPLE_HANDOFF_FINGERPRINT_MAX } from "@/domain/foundry/module/module-builder";
+
+describe("SIMPLE MODE REFUSAL HANDOFF — marker contract (answers payload, no migration)", () => {
+  const FP = "신념을 가지고 살면 좋겠어.¦everyone¦¦¦during team discussions or meetings¦shares personal beliefs and values openly";
+
+  it("the whitelist accepts {fingerprint, active} and nothing looser", () => {
+    const ok = validateDraftPatch({ answers: { simpleRefusalHandoffV1: { fingerprint: FP, active: true } } });
+    expect(ok.ok && ok.value.answers?.simpleRefusalHandoffV1).toEqual({ fingerprint: FP, active: true });
+    for (const bad of [{ fingerprint: "", active: true }, { fingerprint: FP }, { fingerprint: FP, active: "yes" }, "x", { fingerprint: "a".repeat(SIMPLE_HANDOFF_FINGERPRINT_MAX + 1), active: true }]) {
+      const r = validateDraftPatch({ answers: { simpleRefusalHandoffV1: bad } as never });
+      expect(r.ok, JSON.stringify(bad).slice(0, 40)).toBe(false);
+    }
+    // Extra keys (e.g. provider text) are never stored.
+    const extra = validateDraftPatch({ answers: { simpleRefusalHandoffV1: { fingerprint: FP, active: true, refusal: "non_observable_standard", prompt: "x" } } as never });
+    expect(extra.ok && extra.value.answers?.simpleRefusalHandoffV1).toEqual({ fingerprint: FP, active: true });
+  });
+
+  it("holds only while active AND the current canonical fingerprint is identical", () => {
+    const answers = { simpleRefusalHandoffV1: { fingerprint: FP, active: true } } as never;
+    expect(simpleHandoffHolds(answers, FP)).toBe(true);
+    expect(simpleHandoffHolds(answers, FP + "x"), "changed answers").toBe(false);
+    expect(simpleHandoffHolds(answers, ""), "incomplete answers").toBe(false);
+    expect(simpleHandoffHolds({ simpleRefusalHandoffV1: { fingerprint: FP, active: false } } as never, FP), "cleared").toBe(false);
+    expect(simpleHandoffHolds({} as never, FP), "no marker — every ordinary draft").toBe(false);
+  });
+
+  it("the marker never enters the refusal fingerprint (writing it cannot change what it protects)", async () => {
+    const { programContext, programContextFingerprint } = await import("@/domain/foundry/module/program-authorship");
+    const base = { problem: "신념을 가지고 살면 좋겠어.", title: "Practice Living with Belief", audienceType: "everyone", recurringMoment: "during team discussions or meetings",
+      observableBehavior: "shares personal beliefs and values openly", successEvidence: "a colleague hears a team member express their beliefs clearly",
+      materialIntent: "written", materialText: "Guidance written by BTY for this training, long enough to be real material." } as never;
+    expect(programContext(base)).not.toBeNull();
+    const withMarker = { ...(base as object), simpleRefusalHandoffV1: { fingerprint: "x", active: true } } as never;
+    expect(programContextFingerprint(programContext(withMarker)!)).toBe(programContextFingerprint(programContext(base)!));
+  });
+});

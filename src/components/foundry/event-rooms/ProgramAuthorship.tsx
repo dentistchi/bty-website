@@ -27,6 +27,7 @@ import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, resolveAdoptionRefusal, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
 import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
+import { sectionForBlockingCode } from "@/domain/foundry/module/module-publish";
 import { EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
 
 /**
@@ -125,6 +126,8 @@ export function ProgramAuthorship({
   onPendingChange,
   onAdopted,
   onTitleAuthored,
+  onAutoFailure,
+  holdForSimpleHandoff = false,
 }: {
   /**
    * R4-R7A-R2 — so Review's repair CTA can bring this surface into view on a phone. The
@@ -259,6 +262,20 @@ export function ProgramAuthorship({
    * Never raised for a refusal or a save failure: nothing was added, so there is nowhere to go.
    */
   onAdopted?: () => void;
+  /**
+   * SIMPLE MODE ONLY. The automatic flow reached a terminal failure it would otherwise render with
+   * its own recovery surface — a remembered or fresh refusal (`blocked`), a proposal its own review
+   * refused, or a transient failure. Simple Mode owns every visible state, so it takes the outcome
+   * here instead. Absent (the detailed builder), nothing about this component changes.
+   */
+  onAutoFailure?: (f: { content: boolean; recovery: { field: string; step: number } | null }) => void;
+  /**
+   * SIMPLE MODE REFUSAL HANDOFF. True only while a draft Simple Mode handed over after a refused
+   * repair still has the refused answers (`simpleHandoffHolds`). Nothing is generated and no
+   * regeneration is offered — navigating into the detailed builder is not new information. The
+   * surface says the training is saved and opens the behaviour. False (every other draft): unchanged.
+   */
+  holdForSimpleHandoff?: boolean;
 }) {
   // `confirm` sits between the button and the provider. Two controlled windows were
   // spent generating against the wrong training, so the PAID action gets its own target
@@ -808,6 +825,8 @@ export function ProgramAuthorship({
       a non-retryable answer, until the Host changes an input and the fingerprint moves.
     */
     if (!verdictSettled || blocked) return;
+    // Simple Mode's refused answers, unchanged: never spend on them again.
+    if (holdForSimpleHandoff) return;
     /*
       A TRAINING THAT ALREADY HAS ITS PROGRAM DOES NOT NEED ANOTHER ONE.
 
@@ -822,7 +841,7 @@ export function ProgramAuthorship({
     if (missing.length === 0) return;
     autoStartedRef.current = true;
     void generate();
-  }, [auto, phase, ready, resumeSettled, verdictSettled, blocked, failure, currentContextFingerprint, missing.length, generate]);
+  }, [auto, phase, ready, resumeSettled, verdictSettled, blocked, failure, currentContextFingerprint, missing.length, generate, holdForSimpleHandoff]);
 
   /**
    * AUTOMATIC ADOPTION (Slice R4-R8A).
@@ -900,6 +919,18 @@ export function ProgramAuthorship({
   }, []);
 
 
+  const autoFailureRef = useRef(onAutoFailure);
+  autoFailureRef.current = onAutoFailure;
+  useEffect(() => {
+    if (!auto || !autoFailureRef.current) return;
+    if (blocked) {
+      autoFailureRef.current({ content: true, recovery: blocked.recovery ?? null });
+    } else if (phase === "failed") {
+      // The only non-blocked failure that is about content is a proposal its own review refused.
+      autoFailureRef.current({ content: failureCode === "program_auto_review_blocked", recovery: null });
+    }
+  }, [auto, blocked, phase, failureCode]);
+
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
       <section ref={sectionRef} className="flex flex-col gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-4" data-testid="program-authorship-entry">
@@ -974,6 +1005,32 @@ export function ProgramAuthorship({
     honest wording and the recovery the Founder needed on a real Korean training.
   */
   if (auto) {
+    /*
+      SIMPLE MODE REFUSAL HANDOFF. Checked before `blocked`, because the ledger's remembered refusal
+      is exactly what would otherwise render here — with a paid "write it again" for answers BTY has
+      already refused twice. The only thing that can change the outcome is the behaviour, so that is
+      the one action offered.
+    */
+    if (holdForSimpleHandoff && missing.length > 0) {
+      const behaviorStep = sectionForBlockingCode("behavior_required")?.step ?? null;
+      return (
+        <section
+          ref={sectionRef}
+          className="flex flex-col gap-2 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-3.5"
+          data-testid="program-simple-handoff"
+        >
+          <p className="text-sm font-medium text-white/90" data-testid="program-simple-handoff-title">{t.paSimpleHandoffTitle}</p>
+          <button
+            type="button"
+            onClick={() => onRepairSource?.(behaviorStep)}
+            data-testid="program-simple-handoff-edit"
+            className="mt-0.5 min-h-[44px] self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {t.paSimpleHandoffCta}
+          </button>
+        </section>
+      );
+    }
 
     /*
       NON-RETRYABLE: ONE TRUTHFUL ACTION (Slice R4-R9A).

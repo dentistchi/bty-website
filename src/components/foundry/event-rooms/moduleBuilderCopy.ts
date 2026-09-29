@@ -460,6 +460,9 @@ export type ModuleBuilderCopy = {
   paRegenTitle: (section: string) => string;
   paRegenBody: string;
   paRegenCta: string;
+  /** Simple Mode refusal handoff — the answers BTY could not finish from are unchanged. */
+  paSimpleHandoffTitle: string;
+  paSimpleHandoffCta: string;
   paBlockedTitle: (section: string) => string;
   paBlockedBody: string;
   /** Slice R4-R9B — the reassurance beside an adoption refusal, in the Host's language. */
@@ -823,6 +826,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paRegenTitle: (section) => `BTY couldn’t draft ${section}.`,
     paRegenBody: "Your answers are fine. Ask BTY to write it again, or take another look at them first.",
     paRegenCta: "Have BTY write it again",
+    paSimpleHandoffTitle: "Training saved. Edit the behavior to help BTY finish it.",
+    paSimpleHandoffCta: "Edit the behavior",
     paBlockedTitle: (section) => `BTY couldn’t draft ${section}.`,
     paBlockedBody: "BTY can’t draft from this answer as it stands. Have a look at it, or put it a little differently, and carry on.",
     paApplyOtherChangesSaved: "Your other changes were saved.",
@@ -1254,6 +1259,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     paRegenTitle: (section) => `BTY가 ${section}${objectParticle(section)} 초안으로 만들지 못했습니다.`,
     paRegenBody: "적어 주신 내용에는 문제가 없습니다. BTY에게 다시 만들게 하거나, 내용을 먼저 확인해 보세요.",
     paRegenCta: "BTY 다시 만들기",
+    paSimpleHandoffTitle: "트레이닝은 저장되었습니다. 행동을 조금 수정하면 BTY가 완성할 수 있습니다.",
+    paSimpleHandoffCta: "행동 수정하기",
     paBlockedTitle: (section) => `BTY가 ${section}${objectParticle(section)} 초안으로 만들지 못했습니다.`,
     paBlockedBody: "지금 내용으로는 BTY가 초안을 만들 수 없습니다. 내용을 확인하거나 표현을 조금 바꾼 뒤 다시 진행하세요.",
     paApplyOtherChangesSaved: "고치신 다른 내용은 저장되었습니다.",
