@@ -33,6 +33,7 @@ import { JourneyPreview } from "./JourneyPreview";
 import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import SimpleBuilder from "./SimpleBuilder";
+import { simpleHandoffHolds } from "@/domain/foundry/module/simple-mode";
 import { ProgramAuthorship, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
 import { copyLikeLearnerQuestions, type LearnerQuestionField } from "@/domain/foundry/module/learnerQuestionRole";
@@ -591,6 +592,17 @@ export function ModuleBuilderShell({
     [draftId],
   );
 
+  /**
+   * SIMPLE MODE REFUSAL HANDOFF — cleared only by a produced or adopted program. Never by entering
+   * the detailed builder, a step change, a mode change or a reload: those are navigation, and the
+   * protection must survive them. A changed answer does not need clearing — the hold compares
+   * fingerprints, so it simply stops matching.
+   */
+  const clearSimpleHandoff = useCallback(() => {
+    const h = answersRef.current.simpleRefusalHandoffV1;
+    if (h?.active) patchAnswers({ simpleRefusalHandoffV1: { fingerprint: h.fingerprint, active: false } }, true);
+  }, [patchAnswers]);
+
   const generateProgram = useCallback(async (repairRefusal?: string): Promise<ProgramGenerateOutcome> => {
     cancelDebounce();
     await flushIfDirty();
@@ -617,6 +629,8 @@ export function ModuleBuilderShell({
         retryable?: unknown; recovery_mode?: unknown; recovery_target?: { field?: unknown; step?: unknown } | null;
       };
       if (res.ok && data.program) {
+        // A program was produced, so Simple Mode's refusal handoff has done its job (answers moved on).
+        clearSimpleHandoff();
         return {
           ok: true,
           proposal: data.program as ProgramGenerateOutcome extends { ok: true; proposal: infer P } ? P : never,
@@ -645,7 +659,7 @@ export function ModuleBuilderShell({
     } catch {
       return { ok: false, code: "provider_error" };
     }
-  }, [flushIfDirty, cancelDebounce, draftId, locale]);
+  }, [flushIfDirty, cancelDebounce, draftId, locale, clearSimpleHandoff]);
 
   // Apply is ATOMIC from the Host's point of view: the whole approved journey is written in
   // ONE patch, so a failed save can never leave a half-applied program.
@@ -1007,7 +1021,8 @@ export function ModuleBuilderShell({
             onDismissRefusal={() => setAdoptionRefusal(null)}
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
-            onAdopted={() => setAdoptionHandoff((n) => n + 1)}
+            onAdopted={() => { clearSimpleHandoff(); setAdoptionHandoff((n) => n + 1); }}
+            holdForSimpleHandoff={simpleHandoffHolds(answers, programFingerprint)}
             /* One training, one name — a rename in authorship review lands where publish reads. */
             onTitleAuthored={(title) => patchAnswers({ title }, true)}
           />

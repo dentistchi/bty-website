@@ -148,6 +148,22 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
   const [suggestionFailed, setSuggestionFailed] = useState(false);
   /** Program attempts spent in THIS Create. Hard ceiling: 2. */
   const attemptsRef = useRef(0);
+  /** The handoff marker is written once per refused context. */
+  const handoffWrittenRef = useRef("");
+
+  /*
+    REFUSED AFTER THE REPAIR → hand over, protected. The marker records the canonical fingerprint of
+    the answers BTY refused (the one the attempt ledger keys by), so the detailed builder can tell
+    "the same answers, reached by navigating" from "the manager changed something".
+  */
+  const needsDetail = useCallback(() => {
+    const fingerprint = programAuthorshipProps.currentContextFingerprint;
+    if (fingerprint && handoffWrittenRef.current !== fingerprint) {
+      handoffWrittenRef.current = fingerprint;
+      onSave({ simpleRefusalHandoffV1: { fingerprint, active: true } }, true);
+    }
+    setPhase("needs_detail");
+  }, [programAuthorshipProps.currentContextFingerprint, onSave]);
 
   const requestSuggestion = useCallback(async () => {
     if (!goal.trim()) return;
@@ -232,12 +248,12 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
     if (isContentRefusal(second)) {
       const target = (second as { recovery?: { step: number } | null }).recovery ?? (first as { recovery?: { step: number } | null }).recovery;
       setRecoveryStep(target?.step);
-      setPhase("needs_detail");
+      needsDetail();
     } else {
       setPhase("create_failed");
     }
     return second;
-  }, [onGenerate]);
+  }, [onGenerate, needsDetail]);
 
   const guardedApply = useCallback(
     async (...args: Parameters<ApplyFn>): Promise<ProgramApplyOutcome> => {
@@ -261,11 +277,11 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
   const onAutoFailure = useCallback((f: { content: boolean; recovery: { field: string; step: number } | null }) => {
     if (f.content) {
       setRecoveryStep((prev) => prev ?? f.recovery?.step);
-      setPhase("needs_detail");
+      needsDetail();
     } else {
       setPhase("create_failed");
     }
-  }, []);
+  }, [needsDetail]);
 
   // Guarantee usable written material even when the guidance call failed.
   const materialText = typeof answers.materialText === "string" ? answers.materialText : "";

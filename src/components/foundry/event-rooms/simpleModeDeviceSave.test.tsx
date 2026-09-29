@@ -21,6 +21,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
 
 const DRAFT = "d-simple-device";
 const GOAL = "신념을 가지고 살면 좋겠어.";
@@ -57,11 +58,13 @@ const LEGACY = [
 
 const jsonRes = (body: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
-type Opts = { answers?: BuilderAnswers; posts?: Array<{ status: number; body: unknown }>; contextRefusal?: unknown };
+type Opts = { answers?: BuilderAnswers; posts?: Array<{ status: number; body: unknown }>; contextRefusal?: unknown; ledger?: boolean; currentStep?: number };
 
 function server(opts: Opts = {}) {
   const log: Array<{ kind: "patch" | "generate" | "context" | "suggestion" | "guidance"; body?: Record<string, unknown> }> = [];
   const posts = [...(opts.posts ?? [{ status: 502, body: REFUSAL_1 }, { status: 502, body: REFUSAL_2 }])];
+  /** `ledger: true` — remember refusals per fingerprint exactly as the attempt ledger does. */
+  const refused = new Set<string>();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url);
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : undefined;
@@ -72,16 +75,24 @@ function server(opts: Opts = {}) {
       if (init?.method === "POST") {
         log.push({ kind: "generate", body });
         const r = posts.shift() ?? { status: 502, body: REFUSAL_1 };
+        if (r.status >= 400 && (r.body as { refusal?: unknown }).refusal && typeof body?.context_fingerprint === "string") refused.add(body.context_fingerprint);
         return jsonRes(r.body, r.status);
       }
-      if (u.includes("context=")) { log.push({ kind: "context" }); return jsonRes({ refusal: opts.contextRefusal ?? null }); }
+      if (u.includes("context=")) {
+        log.push({ kind: "context" });
+        if (opts.ledger) {
+          const wanted = new URL(u, "http://x").searchParams.get("context") ?? "";
+          return jsonRes({ refusal: refused.has(wanted) ? LEDGER_VERDICT : null });
+        }
+        return jsonRes({ refusal: opts.contextRefusal ?? null });
+      }
       return jsonRes({ eligible: true, attempt: null });
     }
     if (u.includes(`/modules/${DRAFT}`)) {
       if (init?.method === "PATCH") { log.push({ kind: "patch", body }); return jsonRes({ ok: true }); }
       return jsonRes({
         draft: {
-          id: DRAFT, status: "draft", current_step: 1, answers: opts.answers ?? {},
+          id: DRAFT, status: "draft", current_step: opts.currentStep ?? 1, answers: opts.answers ?? {},
           module_version: 1, parent_module_id: null, document_asset_ref_present: false, created_at: "t", updated_at: "t",
         },
       });
@@ -180,5 +191,92 @@ describe("SIMPLE MODE — the Founder's device case", () => {
     expect(screen.queryByTestId("simple-needs-detail")).toBeNull();
     expect(s.log.filter((e) => e.kind === "generate")).toHaveLength(1);
     expect(patchedAnswers(s.log).some((a) => a.builderMode === "simple" && a.observableBehavior === SUGGESTION.behavior)).toBe(true);
+  });
+});
+
+/* ============================================================================================
+   REFUSAL HANDOFF PROTECTION (Option A). The exact device sequence, end to end:
+   two refused attempts → calm screen → Edit details → behaviour step → Next with NO edit.
+   The ledger is fingerprint-aware here, so "unchanged" and "changed" mean what they mean live.
+   ============================================================================================ */
+
+const LEGACY_ADVANCED = ["couldn’t draft", "Have BTY write it again", "Check the standard", "BTY 다시 만들기", "행동 기준 확인하기"];
+const SUCCESS = { status: 200, body: { program: { displayTitle: "x", elements: [], assumptions: [], warnings: [] }, evidence_ceiling: "", attempt_id: "6f1d2c7e-8a41-4f0b-9c33-2b7d5e0a1f42", context_fingerprint: "" } };
+const handoffPatches = (log: ReturnType<typeof server>["log"]) =>
+  patchedAnswers(log).map((a) => a.simpleRefusalHandoffV1).filter(Boolean) as Array<{ fingerprint: string; active: boolean }>;
+
+async function founderPathToNext(s: ReturnType<typeof server>, locale: "en" | "ko" = "en") {
+  await createFromGoal();
+  fireEvent.click(await screen.findByTestId("simple-edit-details"));
+  expect(await screen.findByText(MODULE_BUILDER_COPY[locale].s3Q)).toBeTruthy();
+  expect(screen.getByDisplayValue(SUGGESTION.behavior), "behaviour step is pre-filled").toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: MODULE_BUILDER_COPY[locale].next }));
+  return s;
+}
+
+describe("SIMPLE MODE REFUSAL HANDOFF — the exact Founder path", () => {
+  it("1–10 — Next with NO edit: zero further spend, no legacy panel, the calm 'Edit the behavior' state", async () => {
+    const s = open({ ledger: true });
+    await founderPathToNext(s);
+    expect((await screen.findByTestId("program-simple-handoff-title")).textContent).toBe("Training saved. Edit the behavior to help BTY finish it.");
+    expect(screen.getByTestId("program-simple-handoff-edit").textContent).toBe("Edit the behavior");
+    await new Promise((r) => setTimeout(r, 300));
+    expect(s.log.filter((e) => e.kind === "generate"), "navigation is not new information").toHaveLength(2);
+    expect(screen.queryByTestId("program-auto-regen")).toBeNull();
+    expect(screen.queryByTestId("program-regen-retry")).toBeNull();
+    const text = document.body.textContent ?? "";
+    for (const phrase of LEGACY_ADVANCED) expect(text, phrase).not.toContain(phrase);
+    // The marker is the refused context's canonical fingerprint — the same key the ledger uses.
+    const refusedFp = s.log.filter((e) => e.kind === "generate")[1].body?.context_fingerprint;
+    expect(handoffPatches(s.log)[0]).toEqual({ fingerprint: refusedFp, active: true });
+    // Entering the detailed builder did NOT clear it.
+    expect(handoffPatches(s.log).some((h) => h.active === false)).toBe(false);
+  });
+
+  it("11–14 — after a REAL edit to the behaviour, generation is allowed again, and success clears the marker", async () => {
+    const s = open({ ledger: true, posts: [{ status: 502, body: REFUSAL_1 }, { status: 502, body: REFUSAL_2 }, SUCCESS] });
+    await founderPathToNext(s);
+    fireEvent.click(await screen.findByTestId("program-simple-handoff-edit"));
+    const input = await screen.findByDisplayValue(SUGGESTION.behavior);
+    fireEvent.change(input, { target: { value: "names one value that guided a decision and why, in the meeting" } });
+    fireEvent.click(screen.getByRole("button", { name: MODULE_BUILDER_COPY.en.next }));
+    await waitFor(() => expect(s.log.filter((e) => e.kind === "generate")).toHaveLength(3));
+    const gens = s.log.filter((e) => e.kind === "generate");
+    expect(gens[2].body?.context_fingerprint).not.toBe(gens[1].body?.context_fingerprint);
+    expect(gens[2].body?.repair_refusal, "the detailed builder never sends a Simple repair").toBeUndefined();
+    await waitFor(() => expect(handoffPatches(s.log).some((h) => h.active === false)).toBe(true));
+  });
+
+  it("15 — REOPEN the handed-over draft (detailed builder, Review, answers unchanged): zero spend, calm state", async () => {
+    const refusedFp = programContextFingerprint(programContext(SAVED)!);
+    const s = open({ answers: { ...SAVED, builderMode: "advanced", simpleRefusalHandoffV1: { fingerprint: refusedFp, active: true } } as BuilderAnswers, contextRefusal: LEDGER_VERDICT, currentStep: 7 });
+    expect(await screen.findByTestId("program-simple-handoff")).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 300));
+    expect(s.log.filter((e) => e.kind === "generate")).toHaveLength(0);
+    expect(screen.queryByTestId("program-auto-regen")).toBeNull();
+  });
+
+  it("16 — KO: the same protection, in Korean", async () => {
+    const s = open({ ledger: true }, "ko");
+    await founderPathToNext(s, "ko");
+    expect((await screen.findByTestId("program-simple-handoff-title")).textContent).toBe("트레이닝은 저장되었습니다. 행동을 조금 수정하면 BTY가 완성할 수 있습니다.");
+    await new Promise((r) => setTimeout(r, 300));
+    expect(s.log.filter((e) => e.kind === "generate")).toHaveLength(2);
+    for (const phrase of LEGACY_ADVANCED) expect(document.body.textContent ?? "", phrase).not.toContain(phrase);
+  });
+
+  it("17 — an ordinary Advanced-origin draft refused on the same answers keeps the Advanced panel (no marker, no hold)", async () => {
+    const { builderMode: _m, ...plain } = SAVED as Record<string, unknown>;
+    open({ answers: plain as BuilderAnswers, contextRefusal: LEDGER_VERDICT, currentStep: 7 });
+    expect(await screen.findByTestId("program-auto-regen")).toBeTruthy();
+    expect(screen.getByTestId("program-regen-retry").textContent).toBe("Have BTY write it again");
+    expect(screen.queryByTestId("program-simple-handoff")).toBeNull();
+  });
+
+  it("an INACTIVE marker (already cleared) does not hold", async () => {
+    const refusedFp = programContextFingerprint(programContext(SAVED)!);
+    open({ answers: { ...SAVED, builderMode: "advanced", simpleRefusalHandoffV1: { fingerprint: refusedFp, active: false } } as BuilderAnswers, contextRefusal: LEDGER_VERDICT, currentStep: 7 });
+    expect(await screen.findByTestId("program-auto-regen")).toBeTruthy();
+    expect(screen.queryByTestId("program-simple-handoff")).toBeNull();
   });
 });

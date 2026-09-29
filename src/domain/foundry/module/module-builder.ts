@@ -93,6 +93,8 @@ export function effectiveBuilderMode(answers: BuilderAnswers | undefined): Build
  * graph onto this one.
  */
 export const BUILDER_STEP_MAX = 7;
+/** Bound on the stored refusal fingerprint — every field it joins is itself bounded. */
+export const SIMPLE_HANDOFF_FINGERPRINT_MAX = 20000;
 /**
  * Where the two learner questions are authored — the material step (Slice R4-R5C12A).
  *
@@ -313,6 +315,17 @@ export type BuilderAnswers = ModuleDraftAnswers & {
    * participant content.
    */
   programAdoptionV1?: { attemptId: string };
+  /**
+   * SIMPLE MODE REFUSAL HANDOFF. Written when Simple Mode spent its one automatic repair and the
+   * program was still refused. `fingerprint` is the canonical `programContextFingerprint` of the
+   * answers that were refused — the same key the attempt ledger remembers refusals by. While it is
+   * `active` and the current answers still produce that fingerprint, the detailed builder neither
+   * generates nor offers a regeneration: navigating is not new information. It stops holding the
+   * moment the answers change, and is cleared when a program is generated or adopted.
+   *
+   * Not in the publish snapshot whitelist; it is authoring state, never participant content.
+   */
+  simpleRefusalHandoffV1?: { fingerprint: string; active: boolean };
   /**
    * THE HOST LOOKED AT THE MATERIAL (Slice 3.2R-R3).
    *
@@ -757,6 +770,14 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
         oversized value is dropped rather than stored, so a bad client can never make the
         server stamp something arbitrary.
       */
+      if (a.simpleRefusalHandoffV1 !== undefined) {
+        const v = a.simpleRefusalHandoffV1 as { fingerprint?: unknown; active?: unknown } | null;
+        const fp = isPlainObject(v) ? v.fingerprint : undefined;
+        const active = isPlainObject(v) ? v.active : undefined;
+        if (typeof fp === "string" && fp.length > 0 && fp.length <= SIMPLE_HANDOFF_FINGERPRINT_MAX && typeof active === "boolean") {
+          clean.simpleRefusalHandoffV1 = { fingerprint: fp, active };
+        } else errors.push("simple_refusal_handoff_invalid");
+      }
       if (a.programAdoptionV1 !== undefined) {
         const v = a.programAdoptionV1 as { attemptId?: unknown } | null;
         const id = isPlainObject(v) ? v.attemptId : undefined;

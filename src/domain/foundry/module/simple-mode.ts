@@ -7,6 +7,7 @@
  * can reach the manager through these functions.
  */
 import type { RealityGroundedJourneyV1 } from "./journey";
+import type { BuilderAnswers } from "./module-builder";
 
 /** First sentence of the adopted "why it matters" section — the plain answer to "what will they learn". */
 export function learnSummary(journey: RealityGroundedJourneyV1 | undefined): string | null {
@@ -38,4 +39,17 @@ export function approximateMinutes(journey: RealityGroundedJourneyV1 | undefined
   const reading = readingMinutes(materialText ?? "") + elements.reduce((n, e) => n + readingMinutes(e.content ?? ""), 0);
   const responding = elements.filter((e) => RESPONSE_KINDS.has(e.kind)).length;
   return Math.max(2, Math.ceil(reading + responding));
+}
+
+/**
+ * SIMPLE MODE REFUSAL HANDOFF — does the protection hold right now?
+ *
+ * Only for a draft Simple Mode handed over after its repair was refused, and only while the answers
+ * still produce the refused fingerprint. `currentFingerprint` must be the canonical
+ * `programContextFingerprint` — the same one the attempt ledger keys refusals by — so "unchanged"
+ * means exactly what the ledger means by it. An empty fingerprint (incomplete answers) never holds.
+ */
+export function simpleHandoffHolds(answers: BuilderAnswers | undefined, currentFingerprint: string): boolean {
+  const h = answers?.simpleRefusalHandoffV1;
+  return !!h && h.active === true && currentFingerprint.length > 0 && h.fingerprint === currentFingerprint;
 }
