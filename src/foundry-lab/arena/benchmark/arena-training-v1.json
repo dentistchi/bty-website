@@ -1,0 +1,333 @@
+{
+  "benchmark_id": "arena-training",
+  "benchmark_version": "1.0.0",
+  "description": "Foundry M0 frozen baseline for the Arena Training Builder (Program Authorship). Cases are workplace-training intents written as a manager would enter them. Clinical cases name a workflow step only; they deliberately define no clinical criteria, protocol or standard of care.",
+  "source_bounds": "Every fact a generated program may rely on is in the case's answers. Nothing else is known. Material text restates the intent; it is not a clinical or policy source.",
+  "cases": [
+    {
+      "case_id": "arena-training-001",
+      "category": "new_doctor_crown_preparation",
+      "locale": "en",
+      "answers": {
+        "title": "Senior review before the final impression",
+        "problem": "Newer doctors sometimes take the final impression for a crown without anyone else looking at the preparation first, and problems are found only when the crown comes back.",
+        "audienceType": "specific_role",
+        "audienceDetail": "Associate doctors in their first year",
+        "recurringMoment": "When a crown preparation is finished and the final impression is next",
+        "observableBehavior": "Ask a senior doctor to look at the preparation before taking the final impression.",
+        "successEvidence": "The senior doctor confirms they were asked to look before the impression was taken.",
+        "materialIntent": "written",
+        "materialText": "This training is about the review step only: asking a senior doctor to look before the final impression. It does not set out any clinical criteria for the preparation itself; those come from the clinic's own clinical leads.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-002",
+      "category": "patient_communication",
+      "locale": "en",
+      "answers": {
+        "title": "Explain what happens next",
+        "problem": "Patients leave the chair unsure what the next step of their care is, and call the front desk later to ask.",
+        "audienceType": "everyone",
+        "recurringMoment": "At the end of an appointment, before the patient leaves the chair",
+        "observableBehavior": "Tell the patient in one or two plain sentences what happens next and when.",
+        "successEvidence": "A colleague hears the patient told what happens next before they leave the chair.",
+        "materialIntent": "written",
+        "materialText": "Patients should not have to call back to find out their next step. Before they leave the chair, say what happens next and when, in plain words.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-003",
+      "category": "treatment_plan_presentation",
+      "locale": "en",
+      "answers": {
+        "title": "Share the cost before the plan is agreed",
+        "problem": "Treatment plans are sometimes agreed before the patient has heard what it will cost, and the cost conversation then happens at the front desk.",
+        "audienceType": "leaders",
+        "recurringMoment": "When presenting a treatment plan to a patient",
+        "observableBehavior": "State the estimated cost of the plan before asking the patient to agree to it.",
+        "successEvidence": "The patient hears the estimated cost before they are asked to agree to the plan.",
+        "materialIntent": "written",
+        "materialText": "The cost belongs in the plan conversation, not after it. Say the estimated cost before asking for agreement.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-004",
+      "category": "morning_huddle_accountability",
+      "locale": "en",
+      "answers": {
+        "title": "One owner for every open item",
+        "problem": "Morning huddles end with agreement, but nobody clearly owns the next action, so items carry over for days.",
+        "audienceType": "everyone",
+        "recurringMoment": "At the end of the morning huddle when there are open items",
+        "observableBehavior": "Name one owner and a time for each open item before the huddle ends.",
+        "successEvidence": "Each open item has a named owner and a time when the huddle ends.",
+        "materialIntent": "written",
+        "materialText": "An item without an owner is an item nobody will do. Before the huddle ends, each open item gets one name and one time.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-005",
+      "category": "assistant_handoff",
+      "locale": "en",
+      "answers": {
+        "title": "Clear handoff between assistants",
+        "problem": "When an assistant hands a room over mid-shift, the incoming assistant often does not know what is still pending for the patient.",
+        "audienceType": "job_group",
+        "audienceDetail": "Dental assistants",
+        "recurringMoment": "When handing a room over to another assistant during a shift",
+        "observableBehavior": "Tell the incoming assistant what is still pending for the patient before leaving the room.",
+        "successEvidence": "The incoming assistant can say what is still pending for the patient after the handoff.",
+        "materialIntent": "written",
+        "materialText": "A handoff is finished when the next person knows what is still pending, not when the first person leaves.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-006",
+      "category": "difficult_feedback",
+      "locale": "en",
+      "answers": {
+        "title": "Give feedback on the day it happens",
+        "problem": "Team leads wait days to mention a problem with someone's work, and by then the person does not remember the situation.",
+        "audienceType": "leaders",
+        "recurringMoment": "When a team lead notices a problem with a team member's work",
+        "observableBehavior": "Speak privately with the team member the same day and describe what you saw.",
+        "successEvidence": "The team member says they heard about it the same day it happened.",
+        "materialIntent": "written",
+        "materialText": "Feedback is easiest to use while the moment is still fresh. Describe what you saw, privately, the same day.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-007",
+      "category": "schedule_pressure_decision",
+      "locale": "en",
+      "answers": {
+        "title": "Say it when the schedule is slipping",
+        "problem": "When the schedule runs late, staff quietly rush and nobody tells the front desk, so waiting patients are not informed.",
+        "audienceType": "everyone",
+        "recurringMoment": "When an appointment is running more than fifteen minutes late",
+        "observableBehavior": "Tell the front desk how late the schedule is running so waiting patients can be informed.",
+        "successEvidence": "The front desk confirms they were told the schedule was running late.",
+        "materialIntent": "written",
+        "materialText": "Rushing silently does not help waiting patients. Tell the front desk how late things are running so they can tell patients.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-008",
+      "category": "documentation_consistency",
+      "locale": "en",
+      "answers": {
+        "title": "Note the next visit before closing the record",
+        "problem": "Visit notes are closed without recording what the next visit is for, so the next provider has to work it out again.",
+        "audienceType": "everyone",
+        "recurringMoment": "When closing a patient's visit notes",
+        "observableBehavior": "Write what the next visit is for before closing the visit notes.",
+        "successEvidence": "The next provider finds the purpose of the next visit written in the notes.",
+        "materialIntent": "written",
+        "materialText": "The next provider should not have to reconstruct the plan. Write what the next visit is for before you close the notes.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-009",
+      "category": "new_employee_onboarding",
+      "locale": "en",
+      "answers": {
+        "title": "Check in with a new hire at the end of their day",
+        "problem": "New employees finish their first weeks without anyone asking what confused them, and small questions become bigger mistakes.",
+        "audienceType": "leaders",
+        "recurringMoment": "At the end of a new employee's working day during their first two weeks",
+        "observableBehavior": "Ask the new employee what was unclear today and answer one of their questions.",
+        "successEvidence": "The new employee says someone asked them what was unclear that day.",
+        "materialIntent": "written",
+        "materialText": "A new person rarely asks unprompted. A short question at the end of the day catches confusion early.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-010",
+      "category": "leadership_escalation",
+      "locale": "en",
+      "answers": {
+        "title": "Raise it before the end of the shift",
+        "problem": "Staff notice problems that need a manager's decision but wait until the next day to mention them, and the problem grows overnight.",
+        "audienceType": "everyone",
+        "recurringMoment": "When you notice a problem that needs a manager's decision",
+        "observableBehavior": "Tell the manager on duty about the problem before your shift ends.",
+        "successEvidence": "The manager on duty says they heard about the problem before the shift ended.",
+        "materialIntent": "written",
+        "materialText": "A problem that needs a decision should reach someone who can decide it on the same shift.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-011",
+      "category": "follow_up_reliability",
+      "locale": "en",
+      "answers": {
+        "title": "Call back when you said you would",
+        "problem": "Staff promise patients a call back with an answer, then the call does not happen when it was promised.",
+        "audienceType": "everyone",
+        "recurringMoment": "When you promise a patient a call back",
+        "observableBehavior": "Tell the patient the time you will call back and call them by that time.",
+        "successEvidence": "The patient receives the call back by the time they were given.",
+        "materialIntent": "written",
+        "materialText": "A promised call is a commitment. Give a time you can keep, then keep it.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-012",
+      "category": "team_communication",
+      "locale": "en",
+      "answers": {
+        "title": "Ask a quiet teammate for their view",
+        "problem": "In team meetings the same few people speak, and quieter teammates' concerns come out later, after decisions are made.",
+        "audienceType": "leaders",
+        "recurringMoment": "During a team meeting before a decision is made",
+        "observableBehavior": "Ask a teammate who has not spoken yet for their view before the decision is made.",
+        "successEvidence": "A teammate who had not spoken is asked for their view before the decision.",
+        "materialIntent": "written",
+        "materialText": "Decisions are better when the quieter people have been heard. Ask them before deciding, not after.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-013",
+      "category": "patient_communication",
+      "locale": "en",
+      "answers": {
+        "title": "Tell the patient before anything touches them",
+        "problem": "Patients are startled when an instrument or water is used without warning.",
+        "audienceType": "job_group",
+        "audienceDetail": "Clinical team members who work chairside",
+        "recurringMoment": "Right before starting a step that the patient will feel",
+        "observableBehavior": "Tell the patient what they are about to feel before starting the step.",
+        "successEvidence": "A colleague hears the patient told what they will feel before the step starts.",
+        "materialIntent": "written",
+        "materialText": "A short warning makes a step easier for the patient. Say what they will feel before you start.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-014",
+      "category": "new_doctor_crown_preparation",
+      "locale": "en",
+      "answers": {
+        "title": "Ask for help early in a difficult preparation",
+        "problem": "A newer doctor keeps going alone when a crown preparation is not going as expected, and asks for help only when the appointment is already running over.",
+        "audienceType": "specific_role",
+        "audienceDetail": "Associate doctors in their first year",
+        "recurringMoment": "When a crown preparation is not going as expected partway through",
+        "observableBehavior": "Ask a senior doctor to come to the room as soon as the preparation is not going as expected.",
+        "successEvidence": "The senior doctor confirms they were asked to come while the preparation was still underway.",
+        "materialIntent": "written",
+        "materialText": "This training is only about asking for help early. It does not describe how the preparation should be done or judged; that is for the clinic's clinical leads.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-015",
+      "category": "treatment_plan_presentation",
+      "locale": "en",
+      "answers": {
+        "title": "Check what the patient understood",
+        "problem": "After a treatment plan is explained, patients agree but later show they did not understand the main steps.",
+        "audienceType": "leaders",
+        "recurringMoment": "After explaining a treatment plan to a patient",
+        "observableBehavior": "Ask the patient to say back the main steps of the plan in their own words.",
+        "successEvidence": "The patient says back the main steps of the plan in their own words.",
+        "materialIntent": "written",
+        "materialText": "Agreement is not the same as understanding. A short say-back shows whether the plan landed.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-016",
+      "category": "follow_up_reliability",
+      "locale": "en",
+      "answers": {
+        "title": "Close the loop on lab cases",
+        "problem": "Lab cases are sent out but nobody checks they are back before the patient's appointment, so appointments are wasted.",
+        "audienceType": "job_group",
+        "audienceDetail": "Front desk and scheduling team",
+        "recurringMoment": "Two days before an appointment that needs a lab case",
+        "observableBehavior": "Check that the lab case has arrived and tell the doctor if it has not.",
+        "successEvidence": "The doctor hears whether the lab case has arrived two days before the appointment.",
+        "materialIntent": "written",
+        "materialText": "A missing lab case found on the day costs the patient a visit. Check two days before and say so if it is not there.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-017",
+      "category": "morning_huddle_accountability",
+      "locale": "ko",
+      "answers": {
+        "title": "회의 끝에 담당자 정하기",
+        "problem": "아침 회의가 끝나도 누가 무엇을 할지 정해지지 않아 같은 일이 며칠씩 남아 있다.",
+        "audienceType": "everyone",
+        "recurringMoment": "아침 회의가 끝날 때 남은 일이 있을 때",
+        "observableBehavior": "회의가 끝나기 전에 남은 일마다 담당자 한 명과 완료 시간을 정한다.",
+        "successEvidence": "회의가 끝날 때 남은 일마다 담당자와 완료 시간이 정해져 있다.",
+        "materialIntent": "written",
+        "materialText": "담당자가 없는 일은 아무도 하지 않는다. 회의가 끝나기 전에 일마다 이름 하나와 시간 하나를 정한다.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-018",
+      "category": "assistant_handoff",
+      "locale": "ko",
+      "answers": {
+        "title": "업무 인계 확인하기",
+        "problem": "업무를 인계한 뒤 서로 확인하지 않아 중요한 일이 빠진다.",
+        "audienceType": "leaders",
+        "recurringMoment": "업무를 다른 사람에게 넘길 때",
+        "observableBehavior": "업무를 넘길 때 해야 할 일과 완료 시점을 말하고 상대가 이해한 내용을 한 번 확인한다.",
+        "successEvidence": "업무를 받은 사람이 해야 할 일과 완료 시점을 말할 수 있다.",
+        "materialIntent": "written",
+        "materialText": "인계는 다음 사람이 해야 할 일을 알 때 끝난다. 넘기기 전에 한 번 확인한다.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-019",
+      "category": "patient_communication",
+      "locale": "ko",
+      "answers": {
+        "title": "치료 전에 비용 먼저 설명하기",
+        "problem": "치료가 시작된 뒤에야 환자가 비용을 듣고 놀라는 일이 있다.",
+        "audienceType": "everyone",
+        "recurringMoment": "치료를 시작하기 전에 환자와 이야기할 때",
+        "observableBehavior": "치료를 시작하기 전에 환자에게 예상 비용을 먼저 말한다.",
+        "successEvidence": "환자가 치료 시작 전에 예상 비용을 들었다고 말한다.",
+        "materialIntent": "written",
+        "materialText": "비용은 치료 전에 듣는 것이 환자에게 공정하다. 시작하기 전에 예상 비용을 말한다.",
+        "followUpDays": 7
+      }
+    },
+    {
+      "case_id": "arena-training-020",
+      "category": "team_communication_values_founder_device_case",
+      "locale": "en",
+      "answers": {
+        "title": "Practice Living with Belief",
+        "problem": "신념을 가지고 살면 좋겠어.",
+        "audienceType": "everyone",
+        "recurringMoment": "during team discussions or meetings",
+        "observableBehavior": "shares personal beliefs and values openly",
+        "successEvidence": "a colleague hears a team member express their beliefs clearly",
+        "materialIntent": "written",
+        "materialText": "This training is about saying what you believe in a team discussion. It does not prescribe which beliefs are right.",
+        "followUpDays": 7
+      }
+    }
+  ]
+}
