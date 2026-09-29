@@ -51,6 +51,8 @@ export type RunReport = {
     service_retries: number;
   };
   harness_errors: number;
+  context_truncation_suspected: number;
+  local_runtime: RunManifest["local_runtime"];
   resumes: number;
   human_relay_count: number;
   founder_review: { pending: number; accept: number; reject: number };
@@ -135,6 +137,8 @@ export function computeReport(run: RunManifest, records: GenerationRecord[], eve
       service_retries: records.reduce((n, r) => n + r.model_calls.service_retries, 0),
     },
     harness_errors: events.filter((e) => e.type === "slot_error").length,
+    context_truncation_suspected: records.filter((r) => r.context_truncation_suspected).length,
+    local_runtime: run.local_runtime ?? null,
     resumes: events.filter((e) => e.type === "run_resumed").length,
     human_relay_count: humanRelayCount(events),
     founder_review: {
@@ -158,7 +162,7 @@ export function renderMarkdown(r: RunReport): string {
     "",
     `- Source SHA: \`${r.source_git_sha}\`${r.source_dirty ? " (**dirty tree**)" : ""}`,
     `- Benchmark: ${r.benchmark_id} v${r.benchmark_version} (\`${r.benchmark_hash.slice(0, 12)}\`)`,
-    `- Model: ${r.provider.model} — ${r.provider.provider_mode}, endpoint ${r.provider.base_url_class}`,
+    `- Model: ${r.provider.model} — ${r.provider.provider_mode}, endpoint ${r.provider.base_url_class}${r.local_runtime ? ` · ${r.local_runtime.kind} ${r.local_runtime.version ?? ""} num_ctx ${r.local_runtime.num_ctx ?? "unknown"}` : ""}`,
     `- Pipeline: ${r.pipeline} · harness ${r.harness_version} · evaluator ${r.evaluator_version}`,
     r.replay_of ? `- Replay of: ${r.replay_of}` : "",
     "",
@@ -189,7 +193,7 @@ export function renderMarkdown(r: RunReport): string {
     `- provider time: ${secs(r.model.provider_duration_ms)}`,
     `- elapsed per candidate: p50 ${secs(r.elapsed_ms.p50)} · p90 ${secs(r.elapsed_ms.p90)} · max ${secs(r.elapsed_ms.max)} · total ${secs(r.elapsed_ms.total)}`,
     "",
-    `Harness errors: ${r.harness_errors} · Resumes: ${r.resumes}`,
+    `Harness errors: ${r.harness_errors} · Resumes: ${r.resumes} · Context truncation suspected: ${r.context_truncation_suspected}`,
     `Human relay: ${r.human_relay_count}`,
     "",
     `Founder review: ${r.founder_review.pending} pending · ${r.founder_review.accept} accepted · ${r.founder_review.reject} rejected`,

@@ -28,6 +28,7 @@ import {
   type Slot,
 } from "./store";
 import type { CriticResult } from "./critic";
+import { promptLikelyTruncated, type LocalRuntime } from "./localRuntime";
 import path from "node:path";
 
 export const HARNESS_VERSION = "foundry_arena_harness_v1";
@@ -53,6 +54,8 @@ export type RunManifest = {
   source_git_sha: string;
   source_dirty: boolean;
   provider: ProviderIdentity;
+  /** What the local runtime said it would serve (context window). Null for mock/frontier. */
+  local_runtime: LocalRuntime | null;
   pipeline: Pipeline;
   generations_per_case: number;
   case_ids: string[];
@@ -96,6 +99,8 @@ export type GenerationRecord = {
   service_repair: { attempted: boolean; succeeded: boolean | null };
   product_repair: { attempted: boolean; succeeded: boolean | null };
   failure_codes: string[];
+  /** A provider call whose prompt filled the context window — the result may describe a clipped prompt. */
+  context_truncation_suspected: boolean;
   model_calls: ModelCallSummary;
   outcome: GenerationOutcome | null;
   evaluation: Evaluation | null;
@@ -155,6 +160,7 @@ export type RunOptions = {
   critic?: boolean;
   replayOf?: string | null;
   source: { sha: string; dirty: boolean };
+  localRuntime?: LocalRuntime | null;
   generate?: GenerateFn;
   criticFn?: (c: BenchmarkCase, o: GenerationOutcome) => Promise<CriticResult>;
   log?: (line: string) => void;
@@ -179,6 +185,7 @@ export function createRun(opts: RunOptions): RunManifest {
     source_git_sha: opts.source.sha,
     source_dirty: opts.source.dirty,
     provider: providerIdentity(opts.provider),
+    local_runtime: opts.localRuntime ?? null,
     pipeline: opts.pipeline,
     generations_per_case: opts.generations,
     case_ids: caseIds,
@@ -198,11 +205,12 @@ export function loadRun(runId: string): RunManifest {
 }
 
 /** Refuse to mix results from different code, cases or models into one run. */
-export function assertResumable(run: RunManifest, opts: Pick<RunOptions, "benchmarkHash" | "source" | "provider">): void {
+export function assertResumable(run: RunManifest, opts: Pick<RunOptions, "benchmarkHash" | "source" | "provider" | "localRuntime">): void {
   if (run.benchmark_hash !== opts.benchmarkHash) throw new Error("benchmark changed since the run started; start a new run");
   if (run.source_git_sha !== opts.source.sha) throw new Error(`source moved (${run.source_git_sha.slice(0, 8)} → ${opts.source.sha.slice(0, 8)}); start a new run`);
   if (run.source_dirty !== opts.source.dirty) throw new Error("source working-tree state changed since the run started; start a new run");
   if (run.provider.model !== opts.provider.model || run.provider.provider_mode !== opts.provider.mode) throw new Error("provider/model differs from the run; start a new run (or a replay)");
+  if ((run.local_runtime?.num_ctx ?? null) !== (opts.localRuntime?.num_ctx ?? null)) throw new Error("local runtime context window changed since the run started; start a new run");
 }
 
 export function pendingSlots(run: RunManifest): Slot[] {
@@ -258,6 +266,7 @@ export async function executeRun(run: RunManifest, opts: RunOptions): Promise<{ 
       })(),
       product_repair: attempts.length > 1 ? { attempted: true, succeeded: attempts[1].ok } : { attempted: false, succeeded: null },
       failure_codes: outcome && !outcome.ok ? [outcome.final_refusal_code ?? outcome.final_error_code ?? "unknown"] : harnessError ? ["harness_error"] : [],
+      context_truncation_suspected: attempts.some((a) => a.ledger_calls.some((c) => promptLikelyTruncated(c.prompt_tokens, run.local_runtime?.num_ctx ?? null))),
       model_calls: summarizeCalls(outcome),
       outcome,
       evaluation,

@@ -18,11 +18,23 @@ npm run foundry:arena -- baseline --provider mock --allow-dirty  # plumbing chec
 |---|---|
 | `--provider local\|mock\|frontier` | default `local`. `frontier` also needs `--allow-paid-provider`. |
 | `--base-url` | local endpoint, default `$FOUNDRY_LLM_BASE_URL` or `http://127.0.0.1:11434/v1` (must be loopback/private). |
-| `--model` | default `$FOUNDRY_LLM_MODEL` or `gemma4:31b`. Cases never name a model. |
+| `--model` | default `$FOUNDRY_LLM_MODEL` or `gemma4-31b-foundry-16k`. Cases never name a model. |
+| `--allow-small-context` | run even when the local context cannot hold the generator prompt (every candidate is then flagged). |
 | `--pipeline generator\|simple` | `generator` = one `generateProgram` (detailed builder). `simple` adds Simple Mode's one product repair. |
 | `--generations N`, `--cases a,b` | repetition and case filter. |
 | `--critic` | optional Layer C model critic (advisory, never overrides a deterministic result). |
 | `--allow-dirty` | record a run from a tree with tracked modifications (marked dirty in every artifact). |
+
+**Local context window.** The generator's prompt is ~4.8k tokens and it may emit 2,600. Ollama serves a
+model at the server default context (4096 was observed) unless the model sets `num_ctx`, and its
+OpenAI-compatible endpoint cannot change that per request — the first smoke was silently truncated at
+exactly 4096 prompt tokens. The harness therefore probes `/api/show` and refuses a context below 12,288.
+Create a derived model once per base model:
+
+```sh
+printf 'FROM gemma4:31b\nPARAMETER num_ctx 16384\n' > Modelfile && ollama create gemma4-31b-foundry-16k -f Modelfile
+printf 'FROM gpt-oss:120b\nPARAMETER num_ctx 16384\n' > Modelfile && ollama create gpt-oss-120b-foundry-16k -f Modelfile
+```
 
 **Safety.** The CLI never reads `.env` files and never prompts. In local mode it removes every provider
 API key from its own process, so nothing is sent to the local server and nothing can fall back to a paid

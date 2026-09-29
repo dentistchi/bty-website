@@ -11,7 +11,8 @@
  * Provider (runtime configuration — no case names a model):
  *   --provider local|mock|frontier   default local
  *   --base-url <url>                 default $FOUNDRY_LLM_BASE_URL or http://127.0.0.1:11434/v1
- *   --model <name>                   default $FOUNDRY_LLM_MODEL or gemma4:31b
+ *   --model <name>                   default $FOUNDRY_LLM_MODEL or gemma4-31b-foundry-16k
+ *   --allow-small-context            run even when the local context cannot hold the prompt (recorded)
  *   --allow-paid-provider            required for `frontier`; never implied
  *
  * The CLI never reads `.env` files and never prompts. It exits non-zero on any refusal.
@@ -25,9 +26,11 @@ import { applyProviderEnv, type ProviderConfig, type ProviderMode } from "./prov
 import { assertResumable, createRun, currentSource, executeRun, loadRun, type RunManifest, type RunOptions } from "./runner";
 import { appendEvent, listRuns, runDir } from "./store";
 import { writeReport } from "./report";
+import { contextProblem, probeLocalRuntime, type LocalRuntime } from "./localRuntime";
 
 export const DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:11434/v1";
-export const DEFAULT_LOCAL_MODEL = "gemma4:31b";
+/** A derived local model: `FROM gemma4:31b` + `PARAMETER num_ctx 16384` (see README). */
+export const DEFAULT_LOCAL_MODEL = "gemma4-31b-foundry-16k";
 
 type Flags = Record<string, string | boolean>;
 
@@ -86,6 +89,12 @@ async function main(argv: string[]): Promise<number> {
   if (source.dirty && flags["allow-dirty"] !== true && command !== "resume") {
     throw new Error("working tree has tracked modifications; a baseline must map to an exact commit (pass --allow-dirty to record a dirty run)");
   }
+  let localRuntime: LocalRuntime | null = null;
+  if (provider.mode === "local") {
+    localRuntime = await probeLocalRuntime(provider.baseUrl!, provider.model);
+    const problem = contextProblem(localRuntime);
+    if (problem && flags["allow-small-context"] !== true) throw new Error(`local context too small for the generator: ${problem}`);
+  }
   const pipeline = (str(flags, "pipeline") ?? prior?.pipeline ?? "generator") as Pipeline;
   if (!PIPELINES.includes(pipeline)) throw new Error(`unknown pipeline: ${pipeline}`);
 
@@ -100,6 +109,7 @@ async function main(argv: string[]): Promise<number> {
     critic: flags.critic === true || (command === "resume" && !!prior?.critic_enabled),
     replayOf: command === "replay" ? prior!.run_id : null,
     source,
+    localRuntime,
     generate: provider.mode === "mock" ? mockGenerate : undefined,
     criticFn: runCritic,
     maxSlots: str(flags, "max-slots") ? Number(str(flags, "max-slots")) : undefined,

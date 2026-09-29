@@ -21,6 +21,7 @@ import { assertResumable, createRun, executeRun, loadRun, pendingSlots, type Gen
 import { appendEvent, genFile, readEvents, readJson, runDir, writeJsonAtomic } from "./store";
 import { computeReport, humanRelayCount, loadRecords, percentile, renderMarkdown, writeReport } from "./report";
 import { parseArgs, providerFrom } from "./cli";
+import { contextProblem, MIN_CONTEXT_TOKENS, parseOllamaShow, probeLocalRuntime, promptLikelyTruncated } from "./localRuntime";
 
 const { manifest, hash } = loadManifest();
 const SHA = "64169c6c033b5cba0ad32435861088411071e992";
@@ -108,18 +109,18 @@ describe("provider identity, safety and redaction", () => {
   });
 
   it("local mode strips every provider key so none is sent to the local server, and refuses a public URL", () => {
-    const env: NodeJS.ProcessEnv = { OPENAI_API_KEY: "sk-test-abcdefghijklmnopqrstu", LLM_API_KEY: "x" };
+    const env = { OPENAI_API_KEY: "sk-test-abcdefghijklmnopqrstu", LLM_API_KEY: "x" } as unknown as NodeJS.ProcessEnv;
     applyProviderEnv({ mode: "local", baseUrl: "http://127.0.0.1:11434/v1", model: "gemma4:31b" }, {}, env);
     expect(env.OPENAI_API_KEY).toBeUndefined();
     expect(env.LLM_API_KEY).toBeUndefined();
     expect(env.LLM_BASE_URL).toBe("http://127.0.0.1:11434/v1");
     expect(env.LLM_MODEL).toBe("gemma4:31b");
-    expect(() => applyProviderEnv({ mode: "local", baseUrl: "https://api.openai.com/v1", model: "m" }, {}, {})).toThrow(/loopback or private/);
+    expect(() => applyProviderEnv({ mode: "local", baseUrl: "https://api.openai.com/v1", model: "m" }, {}, {} as NodeJS.ProcessEnv)).toThrow(/loopback or private/);
   });
 
   it("a paid provider is refused unless explicitly allowed", () => {
-    expect(() => applyProviderEnv({ mode: "frontier", baseUrl: null, model: "gpt-4o-mini" }, {}, {})).toThrow(PaidProviderNotAllowed);
-    const env: NodeJS.ProcessEnv = { LLM_BASE_URL: "http://127.0.0.1:1/v1" };
+    expect(() => applyProviderEnv({ mode: "frontier", baseUrl: null, model: "gpt-4o-mini" }, {}, {} as NodeJS.ProcessEnv)).toThrow(PaidProviderNotAllowed);
+    const env = { LLM_BASE_URL: "http://127.0.0.1:1/v1" } as unknown as NodeJS.ProcessEnv;
     applyProviderEnv({ mode: "frontier", baseUrl: null, model: "gpt-4o-mini" }, { allowPaid: true }, env);
     expect(env.LLM_BASE_URL).toBeUndefined();
   });
@@ -135,7 +136,7 @@ describe("provider identity, safety and redaction", () => {
   it("CLI defaults: local Ollama endpoint; the model is runtime config", () => {
     delete process.env.FOUNDRY_LLM_MODEL;
     delete process.env.FOUNDRY_LLM_BASE_URL;
-    expect(providerFrom({})).toEqual({ mode: "local", model: "gemma4:31b", baseUrl: "http://127.0.0.1:11434/v1" });
+    expect(providerFrom({})).toEqual({ mode: "local", model: "gemma4-31b-foundry-16k", baseUrl: "http://127.0.0.1:11434/v1" });
     expect(providerFrom({ model: "gpt-oss:120b" }).model).toBe("gpt-oss:120b");
     expect(parseArgs(["replay", "run-1", "--model", "x", "--critic"])).toEqual({ command: "replay", positional: ["run-1"], flags: { model: "x", critic: true } });
   });
@@ -297,5 +298,48 @@ describe("report", () => {
     expect(readEvents(run.run_id).some((e) => e.type === "human_input")).toBe(false);
     expect(humanRelayCount([{ at: "t", type: "human_input" }, { at: "t", type: "run_resumed" }])).toBe(1);
     expect(readFileSync(path.join(runDir(run.run_id), "report.md"), "utf8")).toContain("Human relay: 0");
+  });
+});
+
+describe("local runtime preflight (the measured 4096-token truncation)", () => {
+  const SHOW_DEFAULT = { parameters: "temperature                    1\ntop_k                          64", model_info: { "gemma4.context_length": 262144 } };
+  const SHOW_16K = { parameters: "num_ctx                        16384\ntemperature                    1", model_info: { "gemma4.context_length": 262144 } };
+
+  it("reads num_ctx and the model's maximum from Ollama's /api/show", () => {
+    expect(parseOllamaShow(SHOW_DEFAULT)).toEqual({ num_ctx: null, model_context_length: 262144 });
+    expect(parseOllamaShow(SHOW_16K)).toEqual({ num_ctx: 16384, model_context_length: 262144 });
+  });
+
+  it("refuses the server default and anything below the generator's need; accepts a deliberate 16k", () => {
+    expect(contextProblem({ kind: "ollama", version: "0.24.0", num_ctx: null, model_context_length: 262144 })).toMatch(/no explicit num_ctx/);
+    expect(contextProblem({ kind: "ollama", version: "0.24.0", num_ctx: 4096, model_context_length: 262144 })).toMatch(/4096 </);
+    expect(contextProblem({ kind: "ollama", version: "0.24.0", num_ctx: 16384, model_context_length: 262144 })).toBeNull();
+    expect(contextProblem({ kind: "unknown", version: null, num_ctx: null, model_context_length: null })).toBeNull();
+    expect(MIN_CONTEXT_TOKENS).toBeGreaterThan(4782 + 2600);
+  });
+
+  it("flags a call whose prompt exactly filled the window (the smoke's 4096 / 4096)", () => {
+    expect(promptLikelyTruncated(4096, null)).toBe(true);
+    expect(promptLikelyTruncated(4096, 4096)).toBe(true);
+    expect(promptLikelyTruncated(4782, 16384)).toBe(false);
+    expect(promptLikelyTruncated(undefined, 16384)).toBe(false);
+  });
+
+  it("probes the native endpoint beside /v1 and falls back to 'unknown' when it is not Ollama", async () => {
+    const urls: string[] = [];
+    const ok = (async (u: string) => { urls.push(u); return new Response(JSON.stringify(u.endsWith("/api/version") ? { version: "0.24.0" } : SHOW_16K), { status: 200 }); }) as unknown as typeof fetch;
+    expect(await probeLocalRuntime("http://127.0.0.1:11434/v1", "m", ok)).toEqual({ kind: "ollama", version: "0.24.0", num_ctx: 16384, model_context_length: 262144 });
+    expect(urls.sort()).toEqual(["http://127.0.0.1:11434/api/show", "http://127.0.0.1:11434/api/version"]);
+    const notOllama = (async () => new Response("no", { status: 404 })) as unknown as typeof fetch;
+    expect((await probeLocalRuntime("http://127.0.0.1:8000/v1", "m", notOllama)).kind).toBe("unknown");
+  });
+
+  it("a run records the runtime, and resume refuses a changed context window", async () => {
+    const rt = { kind: "ollama" as const, version: "0.24.0", num_ctx: 16384, model_context_length: 262144 };
+    const run = createRun(baseOpts({ localRuntime: rt }));
+    expect(loadRun(run.run_id).local_runtime).toEqual(rt);
+    const ok = { benchmarkHash: hash, source: { sha: SHA, dirty: false }, provider: { mode: "mock" as const, model: "mock", baseUrl: null } };
+    expect(() => assertResumable(run, { ...ok, localRuntime: rt })).not.toThrow();
+    expect(() => assertResumable(run, { ...ok, localRuntime: { ...rt, num_ctx: 4096 } })).toThrow(/context window/);
   });
 });
