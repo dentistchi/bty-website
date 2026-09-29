@@ -9,9 +9,9 @@
  *   journey_valid       `applyProgramProposal` with the automatic path's own choices, then
  *                       `validateJourney`
  *   journey_complete    `missingProgramKinds` — the predicate Publish uses
- *   journey_approvable  `isJourneyApprovable` — INFORMATIONAL: on the automatic path every section
- *                       still awaits Host confirmation, so this is expected to be false and is
- *                       never counted as a failure
+ *   journey_approvable  `isJourneyApprovable` — INFORMATIONAL only, never counted as a pass or a
+ *                       failure: approvability is the Host's decision on Review, not a property the
+ *                       generator alone establishes
  *
  * LAYER B — Foundry's product-quality vector. Where an existing gate already decides a dimension,
  * the dimension is MAPPED to it (source `existing:…`) rather than re-implemented. The few that are
@@ -149,7 +149,7 @@ export function evaluate(c: BenchmarkCase, outcome: GenerationOutcome): Evaluati
         : fail("existing:validateEditedReview", `${review.reason}:${review.kind}`),
     journey_valid: gate(journeyErrors.length === 0, "existing:applyProgramProposal+validateJourney", journeyErrors.join(",")),
     journey_complete: gate(missing.length === 0, "existing:missingProgramKinds", missing.join(",")),
-    journey_approvable: { ...gate(isJourneyApprovable(journey), "existing:isJourneyApprovable", "sections_await_host_confirmation"), informational: true },
+    journey_approvable: { ...gate(isJourneyApprovable(journey), "existing:isJourneyApprovable", "not_approvable_as_adopted"), informational: true },
   };
 
   // ---- Layer B -------------------------------------------------------------------------------
