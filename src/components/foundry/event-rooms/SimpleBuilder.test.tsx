@@ -178,7 +178,7 @@ describe("REFUSAL CONTAINMENT", () => {
     const { onGenerate, onEditDetails, container } = setup({ generate: [REFUSED("non_observable_standard"), REFUSED("evidence_overclaim", 5)] });
     await toCreate();
     await screen.findByTestId("simple-needs-detail");
-    expect(screen.getByText("This needs a little more detail.")).toBeTruthy();
+    expect(screen.getByText("Training saved. BTY needs a little more detail to finish it.")).toBeTruthy();
     expect(container.textContent).not.toMatch(/evidence_overclaim|non_observable|refus|invalid_output|Retry/i);
     expect(screen.queryByTestId("simple-create-retry")).toBeNull();
     expect(onGenerate).toHaveBeenCalledTimes(2);

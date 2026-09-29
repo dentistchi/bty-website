@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState, type ComponentProps, type React
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { fallbackSimpleGuidance, type SimpleSuggestion } from "@/domain/foundry/module/direction-copilot";
 import { approximateMinutes, learnSummary } from "@/domain/foundry/module/simple-mode";
+import { sectionForBlockingCode } from "@/domain/foundry/module/module-publish";
 import { ProgramAuthorship, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 
 /** Exactly the adoption write ProgramAuthorship calls — the shell's canonical `applyProgram`. */
@@ -22,10 +23,20 @@ export type ApplyFn = ComponentProps<typeof ProgramAuthorship>["onApply"];
  *     inputs, so no second adoption path exists;
  *   * publishing is the shell's own participation choice + publish action (`publishPanel`).
  *
+ * SAVE FIRST, THEN GENERATE. Create writes the manager's intent before any program is asked for
+ * (and the shell's generator flushes pending saves before it spends), so a refused program can
+ * never cost the manager their training.
+ *
  * REFUSAL CONTAINMENT. The generator wrapper spends AT MOST one repair: a content refusal on the
  * first program is answered by one regeneration carrying the refusal code; a second content
- * refusal ends in "This needs a little more detail" → Edit details (pre-filled). Infrastructure
- * failures are NOT converted into editing: they keep their truthful message and may be retried.
+ * refusal ends in "Training saved. BTY needs a little more detail to finish it." → Edit details
+ * (pre-filled). Infrastructure failures are NOT converted into editing: they keep their truthful
+ * message and may be retried.
+ *
+ * NO LEGACY SURFACE. ProgramAuthorship runs HIDDEN here and reports every terminal failure through
+ * `onAutoFailure` — including a refusal remembered from an earlier attempt on the same answers,
+ * which it would otherwise render as the detailed builder's "couldn't draft" panel with its own
+ * regenerate button. Simple Mode never shows validator language and never offers a paid re-roll.
  *
  * HIDDEN FIELDS. The suggestion's `title` and `successEvidence` exist to make generation succeed.
  * They are saved to the draft but never rendered on the two authoring steps.
@@ -50,8 +61,7 @@ const COPY = {
     back: "Back",
     create: "Create training",
     creating: "Creating your training…",
-    needsDetail: "This needs a little more detail.",
-    needsDetailSub: "Everything you wrote is kept. Add a little more in the details and create it from there.",
+    needsDetail: "Training saved. BTY needs a little more detail to finish it.",
     createFailed: "BTY couldn't reach the writing service. Nothing was lost — please retry in a moment.",
     editDetails: "Edit details",
     reviewEyebrow: "Review",
@@ -77,8 +87,7 @@ const COPY = {
     back: "뒤로",
     create: "훈련 만들기",
     creating: "훈련을 만드는 중…",
-    needsDetail: "조금만 더 다듬으면 됩니다.",
-    needsDetailSub: "작성한 내용은 모두 그대로 있습니다. 세부 내용에서 조금만 보완해 만들어 주세요.",
+    needsDetail: "트레이닝은 저장되었습니다. BTY가 완성하려면 조금만 더 구체화하면 됩니다.",
     createFailed: "지금은 작성 서비스에 연결하지 못했습니다. 잃은 내용은 없습니다. 잠시 후 다시 해 주세요.",
     editDetails: "세부 내용 수정",
     reviewEyebrow: "검토",
@@ -123,7 +132,14 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
   const t = COPY[locale];
   const f = props.fetchImpl ?? fetch;
   const adopted = answers.realityGroundedJourneyV1 !== undefined && answers.programAdoptionV1 !== undefined;
-  const [phase, setPhase] = useState<Phase>(adopted ? "review" : "goal");
+  /*
+    A REOPENED SAVED TRAINING RESUMES; IT DOES NOT START OVER. Create saved the intent, so a draft
+    that has it but no program yet goes back to finishing — where a refusal remembered for these
+    exact answers is reported by the hidden ProgramAuthorship (and spends nothing), and anything
+    else continues exactly as the detailed builder's Review would.
+  */
+  const savedIntent = answers.builderMode === "simple" && !!answers.problem && !!answers.observableBehavior && !!answers.recurringMoment;
+  const [phase, setPhase] = useState<Phase>(adopted ? "review" : savedIntent ? "creating" : "goal");
   const [goal, setGoal] = useState(typeof answers.problem === "string" ? answers.problem : "");
   const [suggestion, setSuggestion] = useState<SimpleSuggestion | null>(null);
   const [draftBehavior, setDraftBehavior] = useState("");
@@ -234,6 +250,23 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
     [onApply],
   );
 
+  /*
+    "More detail" means the behaviour — the answer every content refusal is ultimately about. Edit
+    details therefore opens a FIELD, never the detailed builder's Review: Review with unchanged
+    answers would only restore the same refusal.
+  */
+  const detailStep = recoveryStep ?? sectionForBlockingCode("behavior_required")?.step;
+
+  /** Every terminal failure of the hidden ProgramAuthorship lands on a Simple Mode surface. */
+  const onAutoFailure = useCallback((f: { content: boolean; recovery: { field: string; step: number } | null }) => {
+    if (f.content) {
+      setRecoveryStep((prev) => prev ?? f.recovery?.step);
+      setPhase("needs_detail");
+    } else {
+      setPhase("create_failed");
+    }
+  }, []);
+
   // Guarantee usable written material even when the guidance call failed.
   const materialText = typeof answers.materialText === "string" ? answers.materialText : "";
   const minutes = useMemo(() => approximateMinutes(answers.realityGroundedJourneyV1, materialText), [answers.realityGroundedJourneyV1, materialText]);
@@ -317,15 +350,16 @@ export default function SimpleBuilder(props: SimpleBuilderProps) {
       {phase === "creating" ? (
         <div className="flex flex-col gap-3" data-testid="simple-creating">
           <p className="text-sm text-white/70">{t.creating}</p>
-          <ProgramAuthorship {...programAuthorshipProps} onGenerate={guardedGenerate} onApply={guardedApply} />
+          <div hidden data-testid="simple-program-engine">
+            <ProgramAuthorship {...programAuthorshipProps} onGenerate={guardedGenerate} onApply={guardedApply} onAutoFailure={onAutoFailure} />
+          </div>
         </div>
       ) : null}
 
       {phase === "needs_detail" ? (
         <div className={`${card} flex flex-col gap-3`} data-testid="simple-needs-detail">
-          <p className="text-lg font-semibold text-white">{t.needsDetail}</p>
-          <p className="text-sm text-white/60">{t.needsDetailSub}</p>
-          <button type="button" data-testid="simple-edit-details" className={`${primary} self-start`} onClick={() => onEditDetails(recoveryStep)}>{t.editDetails}</button>
+          <p className="text-lg font-semibold text-white" data-testid="simple-needs-detail-title">{t.needsDetail}</p>
+          <button type="button" data-testid="simple-edit-details" className={`${primary} self-start`} onClick={() => onEditDetails(detailStep)}>{t.editDetails}</button>
         </div>
       ) : null}
 

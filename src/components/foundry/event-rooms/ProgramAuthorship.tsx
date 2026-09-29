@@ -125,6 +125,7 @@ export function ProgramAuthorship({
   onPendingChange,
   onAdopted,
   onTitleAuthored,
+  onAutoFailure,
 }: {
   /**
    * R4-R7A-R2 — so Review's repair CTA can bring this surface into view on a phone. The
@@ -259,6 +260,13 @@ export function ProgramAuthorship({
    * Never raised for a refusal or a save failure: nothing was added, so there is nowhere to go.
    */
   onAdopted?: () => void;
+  /**
+   * SIMPLE MODE ONLY. The automatic flow reached a terminal failure it would otherwise render with
+   * its own recovery surface — a remembered or fresh refusal (`blocked`), a proposal its own review
+   * refused, or a transient failure. Simple Mode owns every visible state, so it takes the outcome
+   * here instead. Absent (the detailed builder), nothing about this component changes.
+   */
+  onAutoFailure?: (f: { content: boolean; recovery: { field: string; step: number } | null }) => void;
 }) {
   // `confirm` sits between the button and the provider. Two controlled windows were
   // spent generating against the wrong training, so the PAID action gets its own target
@@ -899,6 +907,18 @@ export function ProgramAuthorship({
     setPhase("review");
   }, []);
 
+
+  const autoFailureRef = useRef(onAutoFailure);
+  autoFailureRef.current = onAutoFailure;
+  useEffect(() => {
+    if (!auto || !autoFailureRef.current) return;
+    if (blocked) {
+      autoFailureRef.current({ content: true, recovery: blocked.recovery ?? null });
+    } else if (phase === "failed") {
+      // The only non-blocked failure that is about content is a proposal its own review refused.
+      autoFailureRef.current({ content: failureCode === "program_auto_review_blocked", recovery: null });
+    }
+  }, [auto, blocked, phase, failureCode]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
