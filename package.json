@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "foundry:arena": "tsx src/foundry-lab/arena/cli.ts",
+    "foundry:arena:baseline": "tsx src/foundry-lab/arena/cli.ts baseline",
     "prebuild": "node scripts/check-env.mjs && node scripts/copy-pdf-worker.mjs",
     "predev": "node scripts/copy-pdf-worker.mjs",
     "build": "npm run prebuild && NODE_OPTIONS='--max-old-space-size=4096' next build",

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "arena-training",
+  "benchmark_version": "1.0.0",
+  "cases": {
+    "arena-training-001": "95c803fc8da22c0a1bd618db30eba65682db5a991c875b789cd9f2950005d4fa",
+    "arena-training-002": "b281ccba96427f72efbd0589a46fdec8da1b1d6094e83b96bdab99e84b3dd4a1",
+    "arena-training-003": "22b484d7d7c1ecd2a5d9743a988f69726852464d0b846f4fbfebcd26924c724c",
+    "arena-training-004": "4aae119580334253d1d169c805e75b3c4fd75f6ae85cc03204d83f2b38d4374e",
+    "arena-training-005": "5aecbe35be4fab85ebb8c7915ecce7fa9cc0be2969723ad312c2917caa5547e9",
+    "arena-training-006": "b627f0d47688c378170e0efd68ed6d7d9bed522e0d1a700ceffefa7b5d0f2cc6",
+    "arena-training-007": "787a7a862ce3c226e056bcac31eac21b542a7d95be0ca62115771c5aeb9302c2",
+    "arena-training-008": "2064311f981790bf7efaa075f4e8888d89685df8e8c72d225c1af1152f181599",
+    "arena-training-009": "9d152a24585f07e20fe4ab0a9cd819c78ba3d3c29f8ff4ba1e3d0d69579010df",
+    "arena-training-010": "db348dab221c2d0aa490e0298c31b64cc5c0164b73c067fa6a7430118eb0f6f3",
+    "arena-training-011": "f60687e713255b5abe755197be272d4709d2ca753b54df915fbee97f0e82c514",
+    "arena-training-012": "4c668ae6dd028f0572b9f82d088634ba76739f43f6cfb02b41f45a8d78e96b5a",
+    "arena-training-013": "ec844f931303ab3717f616531ce25e161fb59e8aeff22cd978a2ff706302296f",
+    "arena-training-014": "79d8671fcc19aa07700dec2a96882cc9aae53bdb5ca7b53a9e094fbca2d2b348",
+    "arena-training-015": "dc963b4d5dca7d25fd7d1a1f22f3dcbe80a7857c946ddcb81f0464e681faf27a",
+    "arena-training-016": "cb973c632b78160b13b9a8e1a766e3df2ed53956035e96d3041d0f9d4c38727c",
+    "arena-training-017": "a2f3dd71bd1b8f7fa4ec66d1d70e4e049b969a29cb2058a307956142ff9d0e4b",
+    "arena-training-018": "b33b6384523c1b2a41c321dba59595b851c0e7dce0f10164697da543b90548c2",
+    "arena-training-019": "2828ff2a74c8e69035f3829d5dd2503196111ff4f53384618f0fed5e829563fb",
+    "arena-training-020": "c297eb3f633489823739fc3c591fc431be4e5e8f06d2a628742fc431a231590b"
+  }
+}
