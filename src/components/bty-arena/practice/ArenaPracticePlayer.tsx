@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { isBranchAware, type ArenaScenarioDraft, type ScenarioDraftChoice, type SelectedPath } from "@/domain/foundry/arena-draft/types";
 import type { PathInput } from "@/domain/foundry/arena-draft/path";
 import { EliteArenaStep2Context } from "@/components/bty-arena/EliteArenaStep2Context";
+import { debriefForPath, type DebriefSide } from "@/domain/foundry/arena-draft/debrief";
 
 /**
  * Foundry-authored practice player — the learner-facing three-phase surface.
@@ -39,6 +40,12 @@ const COPY = {
     done: "Done",
     exitTest: "Back to editor",
     from: "From",
+    debriefTitle: "What each choice protected",
+    stage: { primary: "Your first move", tradeoff: "When it got harder", action: "Your next step" },
+    otherOption: "The other option",
+    protected: "Protected",
+    cost: "Cost",
+    debriefClose: "Both options were defensible. The skill is seeing what you protect, and what it costs, before you choose.",
   },
   ko: {
     testBanner: "테스트 · 미리보기 — 저장되지 않고 점수도 없습니다",
@@ -53,6 +60,12 @@ const COPY = {
     done: "완료",
     exitTest: "편집기로 돌아가기",
     from: "원본",
+    debriefTitle: "각 선택이 지킨 것",
+    stage: { primary: "첫 번째 판단", tradeoff: "상황이 어려워졌을 때", action: "다음 행동" },
+    otherOption: "다른 선택지",
+    protected: "지킨 것",
+    cost: "대가",
+    debriefClose: "두 선택 모두 타당했습니다. 핵심은 선택하기 전에 무엇을 지키고 무엇을 대가로 치르는지 보는 것입니다.",
   },
 };
 
@@ -118,6 +131,26 @@ function SectionHeading({ children }: { children: string }) {
 }
 
 /**
+ * One side of a decision in the debrief — the label as the learner saw it, then what it protected
+ * and what it cost. Both sides use the same structure: nothing marks the learner's choice as better
+ * or worse than the one they did not take.
+ */
+function DebriefOption({ heading, side, t }: { heading: string; side: DebriefSide; t: (typeof COPY)["en"] }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0B1F3A]/65">{heading}</p>
+      <p className="text-[0.95rem] leading-6 text-bty-navy">{side.label}</p>
+      <p className="text-sm leading-6 text-[#0B1F3A]/80">
+        <span className="font-semibold">{t.protected}:</span> {side.protects}
+      </p>
+      <p className="text-sm leading-6 text-[#0B1F3A]/80">
+        <span className="font-semibold">{t.cost}:</span> {side.costs}
+      </p>
+    </div>
+  );
+}
+
+/**
  * Restore the phase + selected primary from a stored path (Slice 3.2I). A path whose
  * primary no longer exists in the scenario is treated as corrupt → safe restart at the
  * opening (never guess another branch).
@@ -161,6 +194,9 @@ export function ArenaPracticePlayer({
   const [selectedTradeoffId, setSelectedTradeoffId] = useState<string | null>(
     restored.primaryId ? (initialPath?.tradeoffChoiceId ?? null) : null,
   );
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(
+    restored.phase === "complete" ? (initialPath?.actionChoiceId ?? null) : null,
+  );
   const completedRef = useRef(false);
 
   // The continuation the learner is actually walking: a branch-aware scenario resolves
@@ -192,6 +228,15 @@ export function ArenaPracticePlayer({
       actionDecision: scenario.actionDecision,
     };
   })();
+
+  const debrief =
+    phase === "complete"
+      ? debriefForPath(scenario, {
+          primaryChoiceId: selectedPrimaryId,
+          tradeoffChoiceId: selectedTradeoffId,
+          actionChoiceId: selectedActionId,
+        })
+      : [];
 
   // Every write sends the FULL cumulative path so far (the server merge is monotonic).
   const writePath = useCallback(
@@ -227,6 +272,7 @@ export function ArenaPracticePlayer({
       if (selectedPrimaryId && selectedTradeoffId) {
         writePath({ primaryChoiceId: selectedPrimaryId, tradeoffChoiceId: selectedTradeoffId, actionChoiceId });
       }
+      setSelectedActionId(actionChoiceId ?? null);
       setPhase("complete");
       if (mode === "play" && !completedRef.current) {
         completedRef.current = true;
@@ -320,6 +366,29 @@ export function ArenaPracticePlayer({
       {phase === "complete" ? (
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <h2 className="text-xl font-semibold text-bty-navy">{t.completeTitle}</h2>
+          {/*
+            PRACTICE DEBRIEF V1 — the FEEDBACK after the TRY. Shown only now, after the last decision:
+            during the choice, naming the value would cue the answer. Each decision the learner made is
+            set beside the option they did not take, in the same shape, so the screen explains the
+            tradeoff without ranking it. A Practice without a debrief keeps the plain ending.
+          */}
+          {debrief.length > 0 ? (
+            <section data-testid="practice-debrief" className="flex w-full flex-col gap-4 text-left">
+              <SectionHeading>{t.debriefTitle}</SectionHeading>
+              {debrief.map((v) => (
+                <div
+                  key={v.stage}
+                  data-testid={`practice-debrief-${v.stage}`}
+                  className="flex flex-col gap-3 rounded-2xl border border-bty-border/70 bg-white px-4 py-3.5"
+                >
+                  <p className="text-xs font-semibold text-[#0B1F3A]/65">{t.stage[v.stage]}</p>
+                  <DebriefOption heading={t.yourChoice} side={v.chosen} t={t} />
+                  {v.other ? <DebriefOption heading={t.otherOption} side={v.other} t={t} /> : null}
+                </div>
+              ))}
+              <p className="text-sm leading-6 text-[#0B1F3A]/80">{t.debriefClose}</p>
+            </section>
+          ) : null}
           <p className="max-w-sm text-sm leading-6 text-[#0B1F3A]/70">{t.completeBody}</p>
           <button
             type="button"

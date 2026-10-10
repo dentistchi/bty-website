@@ -88,6 +88,7 @@ import {
   type SemanticReview as ReviewerDetails,
 } from "@/domain/foundry/arena-draft/semanticReview";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import { buildScenarioDebrief } from "@/domain/foundry/arena-draft/debrief";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import {
   DECISION_PLAN_JSON_SCHEMA,
@@ -2151,7 +2152,12 @@ export async function generateArenaScenarioDraft(
           : {}),
       },
     );
-    return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings, constraintEvidence: projected.assessmentsByChoiceId } };
+    // Practice Debrief V1 — keep, from THIS accepted generation only, the value/cost each choice was
+    // constructed on, so the learner can be told why after deciding. Built after review, so it can
+    // never change what was reviewed; all-or-nothing, so its absence just means the plain ending.
+    const debrief = buildScenarioDebrief(llm.draft, llm.constructions);
+    const draft = debrief ? { ...llm.draft, debrief } : llm.draft;
+    return { ok: true, value: { draft, source: "ai", warnings: llm.warnings, constraintEvidence: projected.assessmentsByChoiceId } };
   }
   return { ok: false, reason: "generation_rejected" };
 }

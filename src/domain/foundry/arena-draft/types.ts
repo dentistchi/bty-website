@@ -147,6 +147,12 @@ export type ArenaScenarioDraft = {
    * assessments and semantic-review output are NEVER stored here.
    */
   practiceBoundary?: import("./boundary").PracticeBoundary;
+  /**
+   * Practice Debrief V1 — per choice, the value it protected and the cost it accepted, kept from an
+   * ACCEPTED generation's reviewed construction records and shown only AFTER the learner decides.
+   * Each entry is bound to the label it explains; see `debrief.ts`. Absent on every older Practice.
+   */
+  debrief?: import("./debrief").ScenarioDebrief;
 };
 
 /** A scenario is branch-aware iff it carries at least one branch. Pure discriminator. */

@@ -139,6 +139,30 @@ describe("generateArenaScenarioDraft — LIVE-model only (Slice 3.2I-R2)", () =>
     }
   });
 
+  it("Practice Debrief V1 — the accepted draft keeps each choice's reviewed value/cost, bound to its label", async () => {
+    mockGenThenReview(goodDraft);
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const debrief = r.value.draft.debrief;
+    expect(debrief).toBeDefined();
+    // Every learner-facing choice, in every phase and branch, is explained — all-or-nothing.
+    const ids = [
+      ...r.value.draft.primary.choices,
+      ...r.value.draft.tradeoff.choices,
+      ...r.value.draft.actionDecision.choices,
+      ...Object.values(r.value.draft.branches ?? {}).flatMap((b) => [...b.tradeoffChoices, ...b.actionDecision.choices]),
+    ];
+    expect(Object.keys(debrief!).sort()).toEqual(ids.map((c) => c.id).sort());
+    for (const c of ids) {
+      expect(debrief![c.id].forLabel).toBe(c.label);
+      expect(debrief![c.id].protects.length).toBeGreaterThan(0);
+      expect(debrief![c.id].costs.length).toBeGreaterThan(0);
+    }
+    // Only the value and the cost survive — the rest of the construction record stays provider-only.
+    expect(Object.keys(debrief![ids[0].id]).sort()).toEqual(["costs", "forLabel", "protects"]);
+  });
+
   it("FAILS SAFE (generation_unavailable) when no provider is configured — never a deterministic scenario", async () => {
     available = false;
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
