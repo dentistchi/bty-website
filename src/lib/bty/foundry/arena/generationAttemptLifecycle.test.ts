@@ -481,3 +481,63 @@ describe("[R5C-1] the exact stage and reason reach the durable row", () => {
     expect(attempts[0].refusal_gate ?? null).toBeNull();
   });
 });
+
+describe("terminal diagnostic CODES reach finding_codes (af921b9d: three failures recorded [])", () => {
+  it("a boundary terminal failure persists its stage-prefixed codes; outcome and reason are unchanged", async () => {
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "boundary_reviewer_terminal_failure",
+      boundaryTerminalDiagnostic: { code: "boundary_review_validation_failed", stage: "boundary_review", contractVersion: 1 },
+      diagnosticCodes: ["r1_boundary_candidate_wrong_role", "fp_field_repair_ambiguous_rule_target", "r2_boundary_candidate_wrong_role"],
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0]).toMatchObject({
+      outcome: "review_execution_failed",
+      terminal_reason_code: "boundary_reviewer_terminal_failure",
+      terminal_diagnostic_code: "boundary_review_validation_failed",
+      finding_codes: ["r1_boundary_candidate_wrong_role", "fp_field_repair_ambiguous_rule_target", "r2_boundary_candidate_wrong_role"],
+      finding_count: 3,
+      primary_finding_code: "r1_boundary_candidate_wrong_role",
+    });
+  });
+
+  it("a final-retry generation rejection persists its gate codes WITHOUT changing outcome or refusal class", async () => {
+    // `malformed_shape` as a rejectionCode would refine the outcome to provider_malformed_output;
+    // as a diagnostic it must not — refusal counting is decided by outcome, and it stays put.
+    mockGenerate.mockResolvedValue({ ok: false, reason: "generation_rejected", diagnosticCodes: ["g_malformed_shape", "g_confirmed_boundary_absent"] });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0]).toMatchObject({
+      outcome: "scenario_quality_rejected",
+      terminal_reason_code: "scenario_quality_rejected",
+      refusal_gate: null,
+      finding_codes: ["g_malformed_shape", "g_confirmed_boundary_absent"],
+    });
+  });
+
+  it("a content rejection keeps its own ranked codes; diagnostics never replace them", async () => {
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "generation_rejected",
+      rejectionGate: "semantic_review",
+      rejectionPrimaryCode: "dominated_choice",
+      rejectionCodes: ["dominated_choice"],
+      diagnosticCodes: ["g_should_not_win"],
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].finding_codes).toEqual(["dominated_choice"]);
+  });
+
+  it("prose or oversized values never reach the row", async () => {
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "boundary_reviewer_terminal_failure",
+      diagnosticCodes: ["r1_ok_code", "The reviewer said the patient waited", "x".repeat(80)],
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].finding_codes).toEqual(["r1_ok_code"]);
+  });
+});

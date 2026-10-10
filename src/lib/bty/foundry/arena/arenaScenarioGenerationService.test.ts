@@ -182,6 +182,17 @@ describe("generateArenaScenarioDraft — LIVE-model only (Slice 3.2I-R2)", () =>
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
 
+  it("the FINAL rejected attempt keeps its gate codes as diagnostics — outcome-bearing fields stay absent", async () => {
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: "not json {{{" } }] });
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected", diagnosticCodes: ["g_malformed_shape"] });
+    // Unchanged policy: no rejectionCodes / gate on this exit, so the outcome is not refined.
+    if (!r.ok) {
+      expect(r.rejectionCodes).toBeUndefined();
+      expect(r.rejectionGate).toBeUndefined();
+    }
+  });
+
   it("rejects STRUCTURALLY invalid provider output", async () => {
     const broken = { ...goodDraft, actionDecision: { prompt: "P", choices: [] } };
     mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(broken) } }] });
@@ -394,5 +405,24 @@ describe("isFixedAnswerTraining", () => {
   });
   it("allows an unspecified need set (lets the gates decide)", () => {
     expect(isFixedAnswerTraining({ ...facts, learningNeeds: [] })).toBe(false);
+  });
+});
+
+describe("generateArenaScenarioDraft — a boundary terminal exit carries its diagnostic codes", () => {
+  it("both boundary review calls unusable → terminal, and the result names each call's refusal by stage", async () => {
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isBoundaryReviewRequest(params)
+        ? { choices: [{ message: { content: "not json {{{" } }] }
+        : isReviewRequest(params)
+          ? reviewContent(acceptReview(groundedDraft, {}, ["c1_verify"]))
+          : aiContent(groundedDraft, CONSTRAINED_ASSESSMENTS, GROUNDING),
+    );
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "boundary_reviewer_terminal_failure" });
+    if (r.ok) return;
+    expect(r.diagnosticCodes?.[0]).toMatch(/^r1_boundary_review_/);
+    expect(r.diagnosticCodes?.some((c) => c.startsWith("r2_"))).toBe(true);
+    // Outcome-bearing fields are untouched on this exit.
+    expect(r.rejectionCodes).toBeUndefined();
   });
 });
