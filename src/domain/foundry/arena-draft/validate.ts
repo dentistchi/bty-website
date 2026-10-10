@@ -32,6 +32,7 @@ import {
   type ScenarioDraftChoice,
 } from "./types";
 import { validateBoundary, type PracticeBoundary } from "./boundary";
+import { parseScenarioDebrief } from "./debrief";
 
 export type DraftValidation = {
   ok: boolean;
@@ -341,6 +342,12 @@ export function parseArenaScenarioDraft(
       constraints: b.constraints.map((c) => ({ id: c.id, statement: c.statement.trim(), provenance: c.provenance })),
     };
   }
+
+  // Practice Debrief V1 — PRESERVE the entries that still describe a choice the learner will see.
+  // Unlike the boundary this is learner help, not a safety authority: a malformed or stale entry is
+  // dropped, never a reason to refuse the scenario.
+  const debrief = parseScenarioDebrief((raw as { debrief?: unknown }).debrief, value);
+  if (debrief) value.debrief = debrief;
 
   return { ok: true, value, warnings: v.warnings };
 }
