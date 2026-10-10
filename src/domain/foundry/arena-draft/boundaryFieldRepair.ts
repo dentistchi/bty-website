@@ -326,6 +326,8 @@ export type FieldRepairPlan = {
 };
 
 const digest = (v: unknown): string => createHash("sha256").update(typeof v === "string" ? v : JSON.stringify(v)).digest("hex");
+/** One assessment row's identity: the rule AND the surface. Never the surface alone. */
+const rowKey = (boundaryId: string, surfaceRef: string): string => `${boundaryId}\u0000${surfaceRef}`;
 export const baseRowSha256 = (row: BoundaryTruthAssessment): string => digest(canonicalRow(row));
 
 /**
@@ -423,81 +425,98 @@ export function planFieldRepair(
   });
   if (v.ok) return empty("field_repair_nothing_to_repair");
 
+  // A row is (rule, surface). With two or more rules a surface carries one row PER RULE, so keying by
+  // surface alone planned a defect against whichever rule's row happened to come last.
   const byRow = new Map<string, GroundingFinding[]>();
-  for (const f of v.findings) byRow.set(f.surfaceRef, [...(byRow.get(f.surfaceRef) ?? []), f]);
+  for (const f of v.findings) byRow.set(rowKey(f.boundaryId, f.surfaceRef), [...(byRow.get(rowKey(f.boundaryId, f.surfaceRef)) ?? []), f]);
   if (byRow.size === 0) return empty("field_repair_no_field_attribution");
 
-  const rowByRef = new Map(baseRows.map((r) => [r.surfaceRef, r]));
+  const rowByKey = new Map(baseRows.map((r) => [rowKey(r.boundaryId, r.surfaceRef), r]));
   const targets: FieldRepairTarget[] = [];
 
   for (const surfaceRef of v.failedSurfaceRefs) {
-    const row = rowByRef.get(surfaceRef);
-    const found = byRow.get(surfaceRef) ?? [];
-    // A failed row with no field-attributed finding cannot be patched safely — the whole response is
-    // untrustworthy at that surface, and guessing a closure would be inventing authority.
-    if (!row || found.length === 0) return empty("field_repair_no_field_attribution");
+    const failingKeys = [...new Set(baseRows.filter((r) => r.surfaceRef === surfaceRef).map((r) => rowKey(r.boundaryId, r.surfaceRef)))].filter((k) =>
+      byRow.has(k),
+    );
+    // A failed surface with no field-attributed finding cannot be patched safely — the whole response
+    // is untrustworthy there, and guessing a closure would be inventing authority.
+    if (failingKeys.length === 0) return empty("field_repair_no_field_attribution");
+    for (const key of failingKeys) {
+      const row = rowByKey.get(key)!;
+      const found = byRow.get(key)!;
 
-    const codes = found.map((f) => f.code);
-    let fields: RepairableBoundaryField[];
-    let owner: string;
-    if (codes.some((c) => GOVERNED_ACTION_GROUP_CODES.has(c))) {
-      fields = governedActionClosure();
-      owner = codes.find((c) => GOVERNED_ACTION_GROUP_CODES.has(c))!;
-    } else if (codes.some((c) => PREREQUISITE_GROUP_CODES.has(c))) {
-      fields = prerequisiteClosure();
-      owner = codes.find((c) => PREREQUISITE_GROUP_CODES.has(c))!;
-    } else if (codes.every((c) => CANDIDATE_ONLY_CODES.has(c))) {
-      fields = [...new Set(found.map((f) => f.field).filter((f): f is RepairableBoundaryField => f !== undefined))];
-      owner = codes[0]!;
-      if (fields.length === 0) return empty("field_repair_no_field_attribution");
-    } else {
-      // A reason/frame code, or anything else this graph does not model. Fail closed rather than
-      // patch a row whose defect nobody localized.
-      return empty("field_repair_unmodelled_code");
-    }
+      const codes = found.map((f) => f.code);
+      let fields: RepairableBoundaryField[];
+      let owner: string;
+      if (codes.some((c) => GOVERNED_ACTION_GROUP_CODES.has(c))) {
+        fields = governedActionClosure();
+        owner = codes.find((c) => GOVERNED_ACTION_GROUP_CODES.has(c))!;
+      } else if (codes.some((c) => PREREQUISITE_GROUP_CODES.has(c))) {
+        fields = prerequisiteClosure();
+        owner = codes.find((c) => PREREQUISITE_GROUP_CODES.has(c))!;
+      } else if (codes.every((c) => CANDIDATE_ONLY_CODES.has(c))) {
+        fields = [...new Set(found.map((f) => f.field).filter((f): f is RepairableBoundaryField => f !== undefined))];
+        owner = codes[0]!;
+        if (fields.length === 0) return empty("field_repair_no_field_attribution");
+      } else {
+        // A reason/frame code, or anything else this graph does not model. Fail closed rather than
+        // patch a row whose defect nobody localized.
+        return empty("field_repair_unmodelled_code");
+      }
 
-    const groupId = digest([surfaceRef, owner, fields]).slice(0, 16);
-    /**
-     * R2.54 — for a MULTI-FIELD group the legal shapes are canonical
-     * alternatives, not a Cartesian product of per-field lists. R2.53 measured
-     * that product at 150 combinations for one c18 group, only a small subset of
-     * which formed a valid state. A single-field group needs none: its scalar
-     * domain IS its shape.
-     */
-    const frame = ctx.frames.find((f) => f.boundaryId === row.boundaryId);
-    const alternatives =
-      fields.length > 1
-        ? deriveGroupAlternatives({
-            boundaryId: row.boundaryId,
-            surfaceRef,
-            governedActionStatus: row.governedActionStatus,
-            groupFields: fields,
-            ruleKind: frame?.ruleKind ?? "uncertain",
-            candidates: ctx.candidates,
-          })
-        : [];
-    const alternativesSha256 = groupAlternativesSha256(alternatives);
-    const valueAuthority: FieldRepairValueAuthority = fields.length > 1 ? "canonical_group_alternative" : "scalar_allowed_values";
-    for (const field of fields) {
-      const menu = menuFor(ctx, row.boundaryId, surfaceRef, field);
-      targets.push({
-        boundaryId: row.boundaryId,
-        surfaceRef,
-        field,
-        groupId,
-        groupFields: fields,
-        authorityCode: owner,
-        reason: REASONS[owner] ?? owner,
-        allowedValues: allowedFor(field, menu),
-        candidateMenu: menu,
-        valueAuthority,
-        alternatives,
-        alternativesSha256,
-        frozenContext: Object.fromEntries(
-          REPAIRABLE_BOUNDARY_FIELDS.filter((f) => !fields.includes(f)).map((f) => [f, String((row as unknown as Record<string, unknown>)[f] ?? "")]),
-        ),
-      });
+      const groupId = digest([surfaceRef, owner, fields]).slice(0, 16);
+      /**
+       * R2.54 — for a MULTI-FIELD group the legal shapes are canonical
+       * alternatives, not a Cartesian product of per-field lists. R2.53 measured
+       * that product at 150 combinations for one c18 group, only a small subset of
+       * which formed a valid state. A single-field group needs none: its scalar
+       * domain IS its shape.
+       */
+      const frame = ctx.frames.find((f) => f.boundaryId === row.boundaryId);
+      const alternatives =
+        fields.length > 1
+          ? deriveGroupAlternatives({
+              boundaryId: row.boundaryId,
+              surfaceRef,
+              governedActionStatus: row.governedActionStatus,
+              groupFields: fields,
+              ruleKind: frame?.ruleKind ?? "uncertain",
+              candidates: ctx.candidates,
+            })
+          : [];
+      const alternativesSha256 = groupAlternativesSha256(alternatives);
+      const valueAuthority: FieldRepairValueAuthority = fields.length > 1 ? "canonical_group_alternative" : "scalar_allowed_values";
+      for (const field of fields) {
+        const menu = menuFor(ctx, row.boundaryId, surfaceRef, field);
+        targets.push({
+          boundaryId: row.boundaryId,
+          surfaceRef,
+          field,
+          groupId,
+          groupFields: fields,
+          authorityCode: owner,
+          reason: REASONS[owner] ?? owner,
+          allowedValues: allowedFor(field, menu),
+          candidateMenu: menu,
+          valueAuthority,
+          alternatives,
+          alternativesSha256,
+          frozenContext: Object.fromEntries(
+            REPAIRABLE_BOUNDARY_FIELDS.filter((f) => !fields.includes(f)).map((f) => [f, String((row as unknown as Record<string, unknown>)[f] ?? "")]),
+          ),
+        });
+      }
     }
+  }
+
+  // The patch addresses a target by (surfaceRef, field) — it carries no rule id. If two rules need the
+  // same field repaired on the same surface, no patch can say which one it means, so none is asked for.
+  const addressed = new Map<string, string>();
+  for (const t of targets) {
+    const key = `${t.surfaceRef}\u0000${t.field}`;
+    const owner = addressed.get(key);
+    if (owner !== undefined && owner !== t.boundaryId) return empty("field_repair_ambiguous_rule_target");
+    addressed.set(key, t.boundaryId);
   }
 
   const rows = baseRows.map((r) => ({ surfaceRef: r.surfaceRef, sha256: baseRowSha256(r) }));
@@ -975,27 +994,42 @@ export function mergeFieldRepair(
     codes.push(...validation.codes);
     return fail();
   }
-  // (2) The base must be exactly what the plan was built from.
-  const planDigest = new Map(plan.baseRows.map((r) => [r.surfaceRef, r.sha256]));
+  // (2) The base must be exactly what the plan was built from. A surface carries one row per rule, so
+  // each row is matched against the plan's digests FOR ITS SURFACE as a set — the plan's row list is
+  // part of the plan digest, so its shape is left exactly as it was.
+  const planDigests = new Map<string, Set<string>>();
+  for (const r of plan.baseRows) planDigests.set(r.surfaceRef, (planDigests.get(r.surfaceRef) ?? new Set()).add(r.sha256));
+  if (baseRows.length !== plan.baseRows.length) codes.push("field_repair_base_row_digest_mismatch");
   for (const row of baseRows) {
-    if (planDigest.get(row.surfaceRef) !== baseRowSha256(row)) {
+    if (!planDigests.get(row.surfaceRef)?.has(baseRowSha256(row))) {
       if (!codes.includes("field_repair_base_row_digest_mismatch")) codes.push("field_repair_base_row_digest_mismatch");
     }
   }
   if (codes.length > 0) return fail();
 
-  const opBySurface = new Map<string, BoundaryFieldRepairOperation[]>();
-  for (const o of validation.operations) opBySurface.set(o.surfaceRef, [...(opBySurface.get(o.surfaceRef) ?? []), o]);
+  // Each operation lands on the row of the RULE its target belongs to. The plan refuses to exist when
+  // (surfaceRef, field) could mean two rules, so this resolution is unique.
+  const targetByAddress = new Map(plan.targets.map((t) => [`${t.surfaceRef}\u0000${t.field}`, t]));
+  const opByRow = new Map<string, BoundaryFieldRepairOperation[]>();
+  for (const o of validation.operations) {
+    const t = targetByAddress.get(`${o.surfaceRef}\u0000${o.field}`);
+    if (!t) continue;
+    const key = rowKey(t.boundaryId, t.surfaceRef);
+    opByRow.set(key, [...(opByRow.get(key) ?? []), o]);
+  }
   const targetedFields = new Map<string, Set<string>>();
-  for (const t of plan.targets) targetedFields.set(t.surfaceRef, (targetedFields.get(t.surfaceRef) ?? new Set()).add(t.field));
+  for (const t of plan.targets) {
+    const key = rowKey(t.boundaryId, t.surfaceRef);
+    targetedFields.set(key, (targetedFields.get(key) ?? new Set()).add(t.field));
+  }
 
   const rows: BoundaryTruthAssessment[] = baseRows.map((row) => {
-    const ops = opBySurface.get(row.surfaceRef) ?? [];
+    const ops = opByRow.get(rowKey(row.boundaryId, row.surfaceRef)) ?? [];
     if (ops.length === 0) return row;
     const next = { ...row } as unknown as Record<string, unknown>;
     for (const o of ops) next[o.field] = o.value;
     // (4) Prove nothing outside the targeted set moved.
-    const allowed = targetedFields.get(row.surfaceRef) ?? new Set<string>();
+    const allowed = targetedFields.get(rowKey(row.boundaryId, row.surfaceRef)) ?? new Set<string>();
     for (const f of REPAIRABLE_BOUNDARY_FIELDS) {
       if (allowed.has(f)) continue;
       if (next[f] !== (row as unknown as Record<string, unknown>)[f]) metrics.fieldRepairFrozenMutationCount++;

@@ -374,8 +374,16 @@ export const buildAllEvidenceCandidates = (
 // Resolution — the only way a candidate id becomes evidence
 // ---------------------------------------------------------------------------
 
+/**
+ * Keyed by RULE and id, never by id alone. Ids are `${surface}-${role}${n}`, so every rule on a
+ * surface is issued the same ids; a bare-id map kept only the LAST rule's candidate, and a reviewer
+ * citing the first rule's own evidence was refused `boundary_candidate_wrong_boundary`. Invisible with
+ * one rule — "Opening the Office Safely" (af921b9d) was the first Practice with two.
+ */
 export type CandidateIndex = Map<string, BoundaryEvidenceCandidate>;
-export const indexCandidates = (cs: BoundaryEvidenceCandidate[]): CandidateIndex => new Map(cs.map((c) => [c.candidateId, c]));
+const candidateKey = (boundaryId: string, candidateId: string) => `${boundaryId}\u0000${candidateId}`;
+export const indexCandidates = (cs: BoundaryEvidenceCandidate[]): CandidateIndex =>
+  new Map(cs.map((c) => [candidateKey(c.boundaryId, c.candidateId), c]));
 
 export const CANDIDATE_RESOLUTION_CODES = [
   "boundary_candidate_unknown",
@@ -398,9 +406,12 @@ export function resolveCandidate(
   candidateId: string,
   expect: { boundaryId: string; surfaceRef: string; role: EvidenceRole },
 ): CandidateResolution {
-  const c = index.get(candidateId);
-  if (!c) return { ok: false, code: "boundary_candidate_unknown" };
-  if (c.boundaryId !== expect.boundaryId) return { ok: false, code: "boundary_candidate_wrong_boundary" };
+  const c = index.get(candidateKey(expect.boundaryId, candidateId));
+  if (!c) {
+    // Issued, but only to another rule — a different mistake from an id nobody issued.
+    for (const other of index.values()) if (other.candidateId === candidateId) return { ok: false, code: "boundary_candidate_wrong_boundary" };
+    return { ok: false, code: "boundary_candidate_unknown" };
+  }
   if (c.assessedSurfaceRef !== expect.surfaceRef) return { ok: false, code: "boundary_candidate_wrong_surface" };
   if (c.semanticRole !== expect.role) return { ok: false, code: "boundary_candidate_wrong_role" };
   return { ok: true, candidate: c };
