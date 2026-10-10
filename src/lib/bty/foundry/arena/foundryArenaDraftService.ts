@@ -540,7 +540,8 @@ export async function regenerateArenaDraft(
         reason: outcome === "provider_malformed_output" ? "provider_malformed_output" : generated.reason,
         gate: generated.rejectionGate,
         primaryFindingCode: generated.rejectionPrimaryCode,
-        findingCodes: generated.rejectionCodes,
+        // A content rejection keeps its ranked codes; every other terminal exit records its diagnostics.
+        findingCodes: generated.rejectionCodes ?? generated.diagnosticCodes,
       }),
       boundaryTerminalDiagnostic: generated.boundaryTerminalDiagnostic ?? null,
       providerHttpStatus: generated.fault?.kind === "http" ? generated.fault.status : null,

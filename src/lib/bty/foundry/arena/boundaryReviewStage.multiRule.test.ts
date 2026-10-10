@@ -160,3 +160,76 @@ describe("[af921b9d stage] two confirmed rules", () => {
     expect(r.outcome).toBe(expected);
   });
 });
+
+describe("[af921b9d stage] the terminal exit names what the validators refused", () => {
+  /** Both rules misjudge the SAME surface the same way — natural for two near-duplicate rules. */
+  const sameSlipOnBothRules = (s: NarrowBoundarySubject) => {
+    const rows = perfectAssessments(s);
+    const surface = rows.find(
+      (r) =>
+        r.governedActionCandidateId !== NO_CANDIDATE &&
+        TWO_RULE_BOUNDARIES.every(
+          (b) =>
+            rows.some((x) => x.boundaryId === b.id && x.surfaceRef === r.surfaceRef && x.governedActionCandidateId !== NO_CANDIDATE) &&
+            poolFor(s.evidenceCandidates, b.id, r.surfaceRef, "prerequisite_satisfaction").length > 0,
+        ),
+    )!.surfaceRef;
+    return rows.map((r) =>
+      r.surfaceRef === surface && r.governedActionCandidateId !== NO_CANDIDATE
+        ? { ...r, governedActionCandidateId: poolFor(s.evidenceCandidates, r.boundaryId, surface, "prerequisite_satisfaction")[0]!.candidateId }
+        : r,
+    );
+  };
+
+  it("S3 same slip on both rules → no patch (ambiguous) → full re-review repeats it → terminal, and the codes say so", async () => {
+    let repairs = 0;
+    const r = await runBoundaryReviewStage(
+      {
+        review: reviewWith(sameSlipOnBothRules),
+        repair: async () => {
+          repairs++;
+          throw new Error("an unaddressable patch must never be requested");
+        },
+      },
+      args,
+    );
+    expect(repairs).toBe(0);
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic?.code).toBe("boundary_review_validation_failed");
+    expect(r.diagnosticCodes).toEqual([
+      "r1_boundary_candidate_wrong_role",
+      "fp_field_repair_ambiguous_rule_target",
+      "r2_boundary_candidate_wrong_role",
+    ]);
+  });
+
+  it("S4 a refused patch names its own refusal under fr_", async () => {
+    const r = await runBoundaryReviewStage(
+      {
+        review: reviewWith((s) => {
+          const rows = perfectAssessments(s);
+          const C1 = TWO_RULE_BOUNDARIES[0]!.id;
+          const i = rows.findIndex(
+            (x) => x.boundaryId === C1 && x.governedActionCandidateId !== NO_CANDIDATE && poolFor(s.evidenceCandidates, C1, x.surfaceRef, "prerequisite_satisfaction").length > 0,
+          );
+          const wrongRole = poolFor(s.evidenceCandidates, C1, rows[i]!.surfaceRef, "prerequisite_satisfaction")[0]!.candidateId;
+          return rows.map((x, j) => (j === i ? { ...x, governedActionCandidateId: wrongRole } : x));
+        }),
+        // An empty patch: the model answered nothing the plan asked for.
+        repair: async (subject, _plan, attempt) => patchOf({ repairs: [], groupSelections: [] }, subject, attempt),
+      },
+      args,
+    );
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.terminalDiagnostic?.code).toBe("boundary_repair_validation_failed");
+    expect(r.diagnosticCodes[0]).toBe("r1_boundary_candidate_wrong_role");
+    expect(r.diagnosticCodes).toContain("fr_field_repair_operation_missing");
+    for (const c of r.diagnosticCodes) expect(c).toMatch(/^(r1|fp|fr|r2)_[a-z0-9_]+$/);
+  });
+
+  it("S5 a review judged on its content (no malformed call) carries no diagnostic codes", async () => {
+    const r = await runBoundaryReviewStage({ review: reviewWith((s) => perfectAssessments(s)), repair: async () => { throw new Error("unused"); } }, args);
+    expect(r.terminalDiagnostic ?? null).toBeNull();
+    expect(r.diagnosticCodes).toEqual([]);
+  });
+});

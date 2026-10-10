@@ -89,6 +89,7 @@ import {
 } from "@/domain/foundry/arena-draft/semanticReview";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildScenarioDebrief } from "@/domain/foundry/arena-draft/debrief";
+import { generationDiagnosticCodes } from "@/domain/foundry/arena-draft/generationDiagnosticCodes";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import {
   DECISION_PLAN_JSON_SCHEMA,
@@ -175,6 +176,12 @@ export type GenerationResult =
       rejectionPrimaryCode?: string;
       /** Present only when the boundary reviewer reached its existing terminal execution failure. */
       boundaryTerminalDiagnostic?: BoundaryReviewTerminalDiagnostic;
+      /**
+       * Stage-prefixed, server-defined codes for the attempt row's `finding_codes` ONLY. Unlike
+       * `rejectionCodes` they never refine the outcome, name a gate or touch a refusal count — they exist
+       * so a terminal exit that used to record `[]` names what the validators actually refused.
+       */
+      diagnosticCodes?: string[];
       reason:
         | "generation_unavailable" // no live model configured
         | "generation_failed" // transport/exception/timeout — no usable content returned
@@ -1752,7 +1759,9 @@ export async function generateArenaScenarioDraft(
       ) {
         return { ok: false, reason: llm.reason, fault: llm.fault, rejectionCodes: llm.rejection?.findings?.map((f) => f.code) };
       }
-      if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected" };
+      // The final attempt's gate codes are kept as DIAGNOSTICS only (outcome, gate and refusal counting
+      // are unchanged); before this they were dropped and the attempt row recorded none.
+      if (attempt >= attemptCeiling) return { ok: false, reason: "generation_rejected", diagnosticCodes: generationDiagnosticCodes(llm.rejection?.defectCodes) };
       // R2.21 — a deterministic grounding failure carries actionable, boundary-specific correction
       // into the single retry. Without it the second request repeats the first, which is exactly how
       // an ungrounded scenario used to "recover" into another ungrounded one.
@@ -1918,15 +1927,20 @@ export async function generateArenaScenarioDraft(
         retryFeedback = fb;
         continue;
       }
-      if (boundaryStage.outcome === "boundary_review_inconclusive") return { ok: false, reason: "boundary_review_inconclusive" };
+      if (boundaryStage.outcome === "boundary_review_inconclusive") {
+        return { ok: false, reason: "boundary_review_inconclusive", diagnosticCodes: boundaryStage.diagnosticCodes };
+      }
       if (boundaryStage.outcome === "boundary_reviewer_terminal_failure") {
         return {
           ok: false,
           reason: "boundary_reviewer_terminal_failure",
           ...(boundaryStage.terminalDiagnostic ? { boundaryTerminalDiagnostic: boundaryStage.terminalDiagnostic } : {}),
+          diagnosticCodes: boundaryStage.diagnosticCodes,
         };
       }
-      if (boundaryStage.outcome === "boundary_review_authority_failure") return { ok: false, reason: "boundary_review_authority_failure" };
+      if (boundaryStage.outcome === "boundary_review_authority_failure") {
+        return { ok: false, reason: "boundary_review_authority_failure", diagnosticCodes: boundaryStage.diagnosticCodes };
+      }
 
       let review: ReviewOutcome | null = null;
       let terminal: { reason: GenerationFailureReason } | null = null;

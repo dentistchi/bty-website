@@ -54,6 +54,7 @@ import { validateTransportEvidence, type BoundaryTransportEvidence, type Provide
 import { classifyAssessmentState, requiresModelReason } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationSha256, type ServerExplanation } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
+import { boundaryDiagnosticCodes } from "@/domain/foundry/arena-draft/generationDiagnosticCodes";
 import {
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
   NARROW_BOUNDARY_JSON_SCHEMA,
@@ -135,6 +136,12 @@ export type BoundaryStageResult = {
   fieldRepairEvidence: unknown;
   fieldRepairMetrics: FieldRepairMetrics;
   fieldRepairCodes: string[];
+  /**
+   * Stage-prefixed, server-defined codes for the attempt row's `finding_codes` (see
+   * `generationDiagnosticCodes.ts`): what each review call refused, why no field patch was used, and
+   * what the patch refused. Identifiers only — never reviewer prose or scenario text.
+   */
+  diagnosticCodes: string[];
   /**
    * R2.54 — the redacted record of WHAT the group decided and whether the merge boundary was
    * crossed. `null` when no patch was validated at all, which is itself the honest answer.
@@ -348,6 +355,7 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   fieldRepairEvidence: null,
   fieldRepairMetrics: EMPTY_FIELD_REPAIR_METRICS,
   fieldRepairCodes: [],
+  diagnosticCodes: [],
   fieldRepairObservability: null,
   repairMode: "none",
   fullRowReviewCallCount: 0,
@@ -517,6 +525,8 @@ export async function runBoundaryReviewStage(
   let fieldRepairEvidence: unknown = null;
   let fieldRepairMetrics = EMPTY_FIELD_REPAIR_METRICS;
   let fieldRepairCodes: string[] = [];
+  /** Why a malformed first review was NOT answered with a field patch. Kept for diagnostics only. */
+  let repairPlanUnavailable: string | null = null;
   let fieldRepairObservation: FieldRepairObservation | null = null;
   let repairMode: RepairMode = "none";
   let fullRowReviewCallCount = 0;
@@ -679,6 +689,15 @@ export async function runBoundaryReviewStage(
       fieldRepairEvidence,
       fieldRepairMetrics,
       fieldRepairCodes,
+      diagnosticCodes: boundaryDiagnosticCodes({
+        calls: evidences.map((e) => ({
+          attempt: e.boundaryReviewAttempt,
+          kind: "mergedRows" in (e as object) ? ("repair" as const) : ("review" as const),
+          codes: (e.verdict as { codes?: string[] } | undefined)?.codes ?? [],
+        })),
+        repairPlanUnavailable,
+        repairCodes: fieldRepairCodes,
+      }),
       fieldRepairObservability: fieldRepairObservation,
       repairMode,
       fullRowReviewCallCount,
@@ -742,6 +761,7 @@ export async function runBoundaryReviewStage(
       // immutable base; the next call is a patch against this plan, not a second review. R2.49
       // measured a whole-row re-ask re-opening fields the model had already answered correctly.
       const parsedRows = (call.evidence.parsed as { assessments?: BoundaryTruthAssessment[] } | null)?.assessments;
+      if (!Array.isArray(parsedRows) || parsedRows.length === 0) repairPlanUnavailable = "field_repair_no_base_rows";
       if (Array.isArray(parsedRows) && parsedRows.length > 0) {
         const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
         const p = planFieldRepair(parsedRows, ctxAll, {
@@ -749,6 +769,7 @@ export async function runBoundaryReviewStage(
           surfaceMapSha256: subject.surfaceMapSha256,
           lineageSha256: subject.lineageSha256,
         });
+        if (!p.repairable) repairPlanUnavailable = p.because ?? "field_repair_unavailable";
         if (p.repairable) {
           fieldRepairPlan = p;
           baseRows = parsedRows;
@@ -781,6 +802,7 @@ export async function runBoundaryReviewStage(
 
     if (decision.action === "rerun_boundary_review") {
       reruns++;
+      repairPlanUnavailable = "review_not_subset_repairable";
       log("boundary_review_rerun", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
         boundaryReviewSubjectSha256: subjectSha,
         because: decision.because,
