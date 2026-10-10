@@ -721,7 +721,14 @@ export function ArenaPracticeFlow({
 
   // ---- editable-draft mutators (local only; Save persists) ----
   const patchDraft = useCallback((fn: (d: ArenaScenarioDraft) => ArenaScenarioDraft) => {
-    setEditable((prev) => (prev ? fn(prev) : prev));
+    // An edited scenario is no longer the reviewed one, so its debrief goes with the first edit — the
+    // TEST preview then ends the way the saved draft will (the server strips it too).
+    setEditable((prev) => {
+      if (!prev) return prev;
+      const { debrief: _reviewedOnly, ...next } = fn(prev);
+      void _reviewedOnly;
+      return next;
+    });
     setSaveState("idle");
     setDirty(true);
     setPublishState("idle");

@@ -314,10 +314,17 @@ export async function saveArenaDraftEdits(
   const check = validateArenaScenarioDraft(scenarioDraft);
   if (!check.ok) return { ok: false, reason: "invalid_structure", errors: check.errors };
 
+  // Practice Debrief V1 — the debrief is the REVIEWED reasoning of one accepted generation. An edit
+  // to the opening, an escalation, a prompt or a commitment flag leaves every label intact, so the
+  // label binding cannot see it; the edited scenario is simply no longer what the reviewer judged.
+  // An edited draft therefore carries no debrief, and its learners get the plain ending.
+  const { debrief: _reviewedOnly, ...edited } = scenarioDraft as Record<string, unknown>;
+  void _reviewedOnly;
+
   const { data, error } = await admin
     .from("foundry_arena_scenario_drafts")
     .update({
-      scenario_draft: scenarioDraft,
+      scenario_draft: edited,
       generation_source: "edited",
       revision: current.revision + 1,
       updated_at: new Date().toISOString(),

@@ -378,6 +378,33 @@ describe("saveArenaDraftEdits — honesty + validity", () => {
     expect(reloaded?.scenario_draft?.title).toBe("My edited title");
   });
 
+  it("Practice Debrief V1 — an edited draft never keeps the reviewed debrief, even with every label unchanged", async () => {
+    const { admin } = seedOwnedEventWithModule();
+    const created = await createArenaDraft(admin, OWNER, {
+      sourceEventId: "evt-owned",
+      guidedAnswers: guided,
+      locale: "en",
+    });
+    if (!created.ok) throw new Error("setup failed");
+    // Only the opening changed — the label binding alone could not detect this edit.
+    const debrief = Object.fromEntries(
+      [...editedDraft.primary.choices, ...editedDraft.tradeoff.choices, ...editedDraft.actionDecision.choices].map((c) => [
+        c.id,
+        { forLabel: c.label, protects: "safety", costs: "the patient waits" },
+      ]),
+    );
+    const saved = await saveArenaDraftEdits(admin, OWNER, created.value.row.id, {
+      ...editedDraft,
+      opening: "A rewritten opening the reviewer never saw.",
+      debrief,
+    });
+    expect(saved.ok).toBe(true);
+    if (saved.ok) expect(saved.value.row.scenario_draft?.debrief).toBeUndefined();
+    const reloaded = await getOwnerArenaDraft(admin, OWNER, created.value.row.id);
+    expect(reloaded?.scenario_draft?.debrief).toBeUndefined();
+    expect(reloaded?.scenario_draft?.opening).toBe("A rewritten opening the reviewer never saw.");
+  });
+
   it("refuses an INVALID edited structure (never silently saved)", async () => {
     const { admin } = seedOwnedEventWithModule();
     const created = await createArenaDraft(admin, OWNER, {
