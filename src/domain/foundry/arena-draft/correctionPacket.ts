@@ -68,7 +68,7 @@ const CORRECTIONS: Record<string, string> = {
   boundary_not_operationalized:
     "Make the confirmed rule change the decisions. If deleting it would leave the scenario identical, it is decorative — rewrite so it rules out a tempting option and shapes what each remaining option costs.",
   vacuous_boundary_compliance:
-    "The confirmed rule is present but constrains nothing. Make it bite at a decision stage, not only in the opening.",
+    "This confirmed rule is set up in the opening but never reaches a decision. Bring it into at least one decision-stage sentence — an escalation, a consequence or one option — in the terms the rule itself uses for its people, actions and subject, once and in natural speech. Do not repeat it in every option.",
   choice_bypasses_boundary:
     "Replace the choice that crosses the confirmed rule. Keep the decision tension INSIDE the rule; obeying it is never one of the options.",
   branch_drops_boundary: "Keep the confirmed rule in force after the primary consequence. Every branch must preserve it.",
@@ -137,7 +137,7 @@ const CORRECTIONS: Record<string, string> = {
   boundary_violation: "A choice crossed a confirmed non-negotiable rule. Every path must obey every active rule; put the difficulty in HOW to comply.",
   constraint_violation: "Learner-facing text describes skipping, delaying past or bypassing a confirmed rule. Remove it; the rule holds on every path.",
   unknown_boundary_reference: "A grounding record names a rule that was not confirmed for this situation. Reference only the active boundary ids you were given.",
-  missing_boundary_reference: "An active confirmed rule has no grounding record. Produce exactly one record for every active rule.",
+  missing_boundary_reference: "This confirmed rule has no grounding record. Produce exactly one record for every active rule, this one included.",
   grounding_missing: "The grounding records are absent. Produce one per active confirmed rule, each stating where the rule is operative and what it excludes.",
   grounding_malformed: "A grounding record is malformed. Each needs the boundary id, the confirmed statement, where it is operative, what it forces, the stages it constrains, the excluded alternative and the remaining judgment.",
   grounding_duplicate_boundary: "One rule is grounded twice. Produce exactly one record per active rule.",

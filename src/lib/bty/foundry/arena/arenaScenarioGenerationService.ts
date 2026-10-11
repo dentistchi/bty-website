@@ -55,7 +55,7 @@ import {
 } from "./generationAccounting";
 import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRequestProjection";
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
-import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
+import { boundaryGroundingFindings } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
 import type { ClassifiedFinding } from "@/domain/foundry/arena-draft/contentAuthority";
 import {
@@ -830,8 +830,10 @@ async function generateWithLlmCall(
     }
     // BOUNDARY GROUNDING (R2.21). The per-choice assessment above only proves the model SAID
     // "satisfied" for every rule — its `status` enum cannot even express a violation.
-    const grounding = validateBoundaryGrounding(canonical.boundaryGrounding, constraints, result.value);
-    if (!grounding.ok) push("boundary_grounding", grounding.errors);
+    // Each defect carries the confirmed rule it concerns, so the retry correction names WHICH rule.
+    for (const f of boundaryGroundingFindings(canonical.boundaryGrounding, constraints, result.value)) {
+      findings.push(f.boundaryId === undefined ? { code: f.code, gate: "boundary_grounding" } : { code: f.code, gate: "boundary_grounding", boundaryId: f.boundaryId });
+    }
     // CHOICE CONSTRUCTION (R2.22) and the measured label rules.
     const factsText = factsTextOf(input);
     const construction = validateChoiceConstructions(result.value, canonical.constructionsByChoiceId, {

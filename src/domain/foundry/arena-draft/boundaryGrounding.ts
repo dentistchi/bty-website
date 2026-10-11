@@ -210,6 +210,13 @@ export function learnerFacingSurfaces(draft: ArenaScenarioDraft): { opening: str
 
 export type GroundingValidation = { ok: boolean; errors: string[] };
 
+/**
+ * One grounding defect, attached to the confirmed rule it concerns. `boundaryId` is set ONLY when the
+ * defect belongs to a Manager-confirmed id — never for an unknown id or a record with no id — so the
+ * retry correction can name WHICH rule failed without inventing a mapping.
+ */
+export type GroundingFinding = { code: string; boundaryId?: string };
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const nonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 
@@ -231,13 +238,28 @@ export function validateBoundaryGrounding(
   constraints: BoundaryConstraint[],
   draft: ArenaScenarioDraft,
 ): GroundingValidation {
-  const errors: string[] = [];
+  const errors = Array.from(new Set(boundaryGroundingFindings(raw, constraints, draft).map((f) => f.code)));
+  return { ok: errors.length === 0, errors };
+}
+
+/**
+ * The same gate, with each defect attached to its confirmed rule. With three confirmed rules a bare
+ * `missing_boundary_reference` or `vacuous_boundary_compliance` cannot tell a retry which of the three
+ * to repair (Case Acceptance attempt 05480582); the rule id can.
+ */
+export function boundaryGroundingFindings(
+  raw: unknown,
+  constraints: BoundaryConstraint[],
+  draft: ArenaScenarioDraft,
+): GroundingFinding[] {
+  const findings: GroundingFinding[] = [];
+  const push = (code: string, boundaryId?: string) => findings.push(boundaryId === undefined ? { code } : { code, boundaryId });
   // No confirmed boundary → nothing to ground. An unsolicited declaration is still rejected.
   if (constraints.length === 0) {
-    if (Array.isArray(raw) && raw.length > 0) errors.push("unknown_boundary_reference");
-    return { ok: errors.length === 0, errors };
+    if (Array.isArray(raw) && raw.length > 0) push("unknown_boundary_reference");
+    return findings;
   }
-  if (!Array.isArray(raw)) return { ok: false, errors: ["grounding_missing"] };
+  if (!Array.isArray(raw)) return [{ code: "grounding_missing" }];
 
   const byId = new Map<string, BoundaryConstraint>(constraints.map((c) => [c.id, c]));
   const seen = new Set<string>();
@@ -245,58 +267,58 @@ export function validateBoundaryGrounding(
 
   for (const entry of raw) {
     if (!isObj(entry) || !nonEmpty(entry.boundaryId)) {
-      errors.push("grounding_malformed");
+      push("grounding_malformed");
       continue;
     }
     const id = entry.boundaryId.trim();
     const confirmed = byId.get(id);
     if (!confirmed) {
-      errors.push("unknown_boundary_reference");
+      push("unknown_boundary_reference");
       continue;
     }
     if (seen.has(id)) {
-      errors.push("grounding_duplicate_boundary");
+      push("grounding_duplicate_boundary", id);
       continue;
     }
     seen.add(id);
 
     // 1. FIDELITY — the restated rule must still be the confirmed rule, not a softened paraphrase.
-    if (!nonEmpty(entry.boundaryStatement)) errors.push("grounding_statement_altered");
+    if (!nonEmpty(entry.boundaryStatement)) push("grounding_statement_altered", id);
     else {
       const f = evidence(confirmed.statement, entry.boundaryStatement);
-      if (f.hits < f.needed) errors.push("grounding_statement_altered");
+      if (f.hits < f.needed) push("grounding_statement_altered", id);
     }
 
     // 2. OPERATIONAL DECLARATION — named effect, named excluded alternative, real decision stages.
     if (!nonEmpty(entry.scenarioPresence) || !nonEmpty(entry.operationalEffect) || !nonEmpty(entry.prohibitedAlternativeExcluded)) {
-      errors.push("boundary_not_operationalized");
+      push("boundary_not_operationalized", id);
     }
     const stages = Array.isArray(entry.affectedDecisionStages)
       ? entry.affectedDecisionStages.filter((s): s is DecisionStage => (DECISION_STAGES as readonly string[]).includes(s as string))
       : [];
-    if (!stages.some((s) => OPERATIVE_STAGES.includes(s))) errors.push("boundary_not_operationalized");
+    if (!stages.some((s) => OPERATIVE_STAGES.includes(s))) push("boundary_not_operationalized", id);
 
     // 3. REMAINING JUDGMENT — a rule that leaves nothing to decide should have been no-safe.
     const remaining = Array.isArray(entry.remainingJudgmentDimensions)
       ? entry.remainingJudgmentDimensions.filter((d): d is string => nonEmpty(d))
       : [];
-    if (remaining.length === 0) errors.push("grounding_missing_remaining_judgment");
+    if (remaining.length === 0) push("grounding_missing_remaining_judgment", id);
 
     // 4. PRESENCE — the rule's own vocabulary must reach the learner-facing scenario at all.
     //    THIS is the c18 failure: the rule existed only in the prompt and the declaration.
     const whole = evidence(confirmed.statement, `${opening} ${decisions}`);
     if (whole.hits < whole.needed) {
-      errors.push("confirmed_boundary_absent");
+      push("confirmed_boundary_absent", id);
       continue; // absent subsumes vacuity — reporting both would be noise
     }
 
     // 5. VACUITY — established in the opening but touching no decision surface means the scenario
     //    would be byte-for-byte unchanged if the rule were deleted.
     const inDecisions = evidence(confirmed.statement, decisions);
-    if (inDecisions.hits < inDecisions.needed) errors.push("vacuous_boundary_compliance");
+    if (inDecisions.hits < inDecisions.needed) push("vacuous_boundary_compliance", id);
   }
 
-  for (const c of constraints) if (!seen.has(c.id)) errors.push("missing_boundary_reference");
+  for (const c of constraints) if (!seen.has(c.id)) push("missing_boundary_reference", c.id);
 
-  return { ok: errors.length === 0, errors: Array.from(new Set(errors)) };
+  return findings;
 }
