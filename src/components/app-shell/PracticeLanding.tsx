@@ -7,12 +7,15 @@ import { showsAuthoringEntry, type PracticeSurface } from "@/components/app-shel
 import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
 import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPracticeFlow";
 import { ClinicalReasoningTrainer } from "@/components/bty-arena/ClinicalReasoningTrainer";
+import { AiPatientPractice } from "@/components/app-shell/AiPatientPractice";
 
 /**
  * Practice — landing surface (App Shell + Today Simplification V1, Phase 6).
  *
  * A calm entry surface for the "Practice" tab. It does NOT expose internal runtime-state vocabulary;
  * it offers a small set of doors:
+ *   • AI patient — a spoken or typed conversation with one fictional patient, then coaching
+ *     ({@link AiPatientPractice}). Opened in place; nothing about it is stored.
  *   • Arena practice — the existing in-shell Arena runtime (unchanged), opened in place.
  *   • Clinical cases — the existing conversational encounter, opened inside Practice.
  *   • Field Actions — opens the focused in-shell Field Actions surface ({@link FieldActionsFocus}),
@@ -30,6 +33,8 @@ type Locale = "en" | "ko";
 const COPY: Record<Locale, {
   eyebrow: string;
   title: string;
+  aiPatient: string;
+  aiPatientSub: string;
   arena: string;
   arenaSub: string;
   clinical: string;
@@ -46,6 +51,8 @@ const COPY: Record<Locale, {
   en: {
     eyebrow: "Practice",
     title: "Practice it before you need it.",
+    aiPatient: "AI patient: Case Acceptance 01",
+    aiPatientSub: "Talk with a fictional patient, then get coaching.",
     arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
     clinical: "Clinical cases",
@@ -62,6 +69,8 @@ const COPY: Record<Locale, {
   ko: {
     eyebrow: "연습",
     title: "필요해지기 전에 미리 연습하세요.",
+    aiPatient: "AI 환자: Case Acceptance 01",
+    aiPatientSub: "가상의 환자와 대화하고 코칭을 받습니다 (영어).",
     arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
     clinical: "임상 케이스",
@@ -146,7 +155,7 @@ export default function PracticeLanding({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [view, setView] = useState<"landing" | "arena" | "clinical" | "fieldActions">(
+  const [view, setView] = useState<"landing" | "aiPatient" | "arena" | "clinical" | "fieldActions">(
     initialView === "fieldActions" || initialFieldActionId ? "fieldActions" : "landing",
   );
   /**
@@ -202,6 +211,10 @@ export default function PracticeLanding({
     );
   }
 
+  if (view === "aiPatient") {
+    return <AiPatientPractice onBack={() => setView("landing")} />;
+  }
+
   if (view === "clinical") {
     return (
       <div className="flex flex-col gap-4" data-testid="practice-clinical">
@@ -240,6 +253,7 @@ export default function PracticeLanding({
         <h1 data-bty-main-heading="" className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
       </header>
       <div className="flex flex-col gap-2">
+        <DoorRow testId="practice-ai-patient-entry" title={t.aiPatient} sub={t.aiPatientSub} onClick={() => setView("aiPatient")} />
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
         <DoorRow testId="practice-clinical-entry" title={t.clinical} sub={t.clinicalSub} onClick={() => setView("clinical")} />
         <DoorRow testId="practice-field-actions" title={t.fieldActions} sub={t.fieldActionsSub} onClick={() => setView("fieldActions")} />

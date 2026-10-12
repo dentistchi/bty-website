@@ -316,7 +316,8 @@ describe("★ the package around it is unchanged", () => {
     const m = JSON.parse(readFileSync(join(process.cwd(), "teams/manifest/manifest.json"), "utf8"));
     expect(m.icons).toEqual({ color: "color.png", outline: "outline-s1-v112.png" });
     expect(m.id).toBe("374ec662-0deb-4e0b-8514-e38a035a349e");
-    expect(m.version).toBe("1.0.14");
+    // 1.0.15 (AI Patient Practice V1) added devicePermissions: ["media"]; the icons did not move.
+    expect(m.version).toBe("1.0.15");
     expect(m.bots[0].botId).toBe("820f231b-9dbb-4c84-94c5-65bc43d35d91");
     expect(m.staticTabs[0].contentUrl).toBe("https://arena.btydaily.com/teams");
     // color.png must be byte-identical to what has shipped since 1.0.6.

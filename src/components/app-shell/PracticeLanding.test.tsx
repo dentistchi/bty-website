@@ -29,14 +29,16 @@ describe("PracticeLanding", () => {
   it("shows Clinical cases directly between Practice situations and Action plans", () => {
     render(<PracticeLanding {...base} />);
     const doors = within(screen.getByTestId("practice-landing")).getAllByRole("button");
+    // AI Patient Practice V1 leads the list; the original order of the other doors is unchanged.
     expect(doors.map(door => door.dataset.testid)).toEqual([
-      "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
+      "practice-ai-patient-entry", "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
     ]);
-    expect(doors[0].textContent).toContain("Practice situations");
-    expect(doors[1].textContent).toContain("Clinical cases");
-    expect(doors[1].textContent).toContain("Interview a patient, order tests, and decide treatment.");
-    expect(doors[2].textContent).toContain("Action plans");
-    expect(doors[3].textContent).toContain("Live sessions");
+    expect(doors[0].textContent).toContain("AI patient: Case Acceptance 01");
+    expect(doors[1].textContent).toContain("Practice situations");
+    expect(doors[2].textContent).toContain("Clinical cases");
+    expect(doors[2].textContent).toContain("Interview a patient, order tests, and decide treatment.");
+    expect(doors[3].textContent).toContain("Action plans");
+    expect(doors[4].textContent).toContain("Live sessions");
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
 

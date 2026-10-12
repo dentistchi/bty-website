@@ -43,24 +43,32 @@ const nextConfig = {
       "https://*.office.com",
     ].join(" ");
 
-    const SHARED = [
+    const BASE = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
     ];
+    /*
+      MICROPHONE (AI Patient Practice V1). The microphone is OFF everywhere except the two surfaces
+      that host the Practice tab — the Teams tab and the in-shell app — and there it is granted to
+      BTY's own origin only (`self`), never to an embedded third party. Camera and location stay off
+      everywhere. Each path gets exactly one Permissions-Policy value, because Next.js applies every
+      matching rule and the last same-key header would silently win.
+    */
+    const MIC_OFF = [...BASE, { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" }];
+    const MIC_SELF = [...BASE, { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" }];
 
     return [
       {
         source: "/teams",
         headers: [
-          ...SHARED,
+          ...MIC_SELF,
           { key: "Content-Security-Policy", value: `frame-ancestors ${TEAMS_FRAME_ANCESTORS}` },
         ],
       },
       {
         source: "/teams/:path*",
         headers: [
-          ...SHARED,
+          ...MIC_SELF,
           { key: "Content-Security-Policy", value: `frame-ancestors ${TEAMS_FRAME_ANCESTORS}` },
         ],
       },
@@ -71,11 +79,23 @@ const nextConfig = {
           second matching rule would otherwise re-attach `X-Frame-Options: DENY` to the tab and
           blank it, and ordering is not a contract Next.js makes.
         */
-        source: "/((?!teams$|teams/).*)",
+        source: "/((?!teams$|teams/|en/app$|ko/app$).*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
-          ...SHARED,
+          ...MIC_OFF,
+        ],
+      },
+      {
+        /*
+          The in-shell app (`/{locale}/app`). Framing is exactly as strict as every other non-tab
+          path; only the microphone differs, for AI Patient Practice in a browser.
+        */
+        source: "/:locale(en|ko)/app",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          ...MIC_SELF,
         ],
       },
     ];

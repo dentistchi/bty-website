@@ -24,7 +24,8 @@ const nextConfig = require_("../../../../next.config.js") as {
 function matches(source: string, pathname: string): boolean {
   const pattern = source
     .replace(/\/:path\*/g, "(?:/.*)?")
-    .replace(/\/:path(?!\*)/g, "/[^/]+");
+    .replace(/\/:path(?!\*)/g, "/[^/]+")
+    .replace(/\/:\w+\(([^)]+)\)/g, "/(?:$1)");
   return new RegExp(`^${pattern}$`).test(pathname);
 }
 
@@ -89,17 +90,18 @@ describe("every other route keeps DENY — the exception is the size of the tab"
     }
   });
 
-  it("the global rule EXCLUDES /teams, because Next.js applies every matching rule", async () => {
-    // If this exclusion regressed, the tab would receive DENY from the global rule in addition to
-    // its own CSP — and would blank on device while every other check still looked green.
+  it("no DENY rule matches /teams, because Next.js applies every matching rule", async () => {
+    // If an exclusion regressed, the tab would receive DENY in addition to its own CSP — and would
+    // blank on device while every other check still looked green. The in-shell app has its own
+    // DENY rule (AI Patient Practice V1), so EVERY rule carrying X-Frame-Options is checked.
     const rules = await nextConfig.headers();
-    const globalRule = rules.find((r) => r.headers.some((h) => h.key === "X-Frame-Options"));
-    expect(globalRule).toBeTruthy();
+    const denyRules = rules.filter((r) => r.headers.some((h) => h.key === "X-Frame-Options"));
+    expect(denyRules.length).toBeGreaterThan(0);
     for (const p of TEAMS_PATHS) {
-      expect(matches(globalRule!.source, p), `global rule must not match ${p}`).toBe(false);
+      for (const r of denyRules) expect(matches(r.source, p), `DENY rule ${r.source} must not match ${p}`).toBe(false);
     }
     for (const p of PROTECTED_PATHS) {
-      expect(matches(globalRule!.source, p), `global rule must match ${p}`).toBe(true);
+      expect(denyRules.some((r) => matches(r.source, p)), `some DENY rule must match ${p}`).toBe(true);
     }
   });
 
@@ -109,6 +111,37 @@ describe("every other route keeps DENY — the exception is the size of the tab"
       expect(h["x-content-type-options"], `path ${p}`).toBe("nosniff");
       expect(h["referrer-policy"], `path ${p}`).toBe("strict-origin-when-cross-origin");
       expect(h["permissions-policy"], `path ${p}`).toContain("camera=()");
+    }
+  });
+});
+
+describe("the microphone is granted to BTY only where Practice runs (AI Patient Practice V1)", () => {
+  const MIC_PATHS = ["/teams", "/teams/link", "/en/app", "/ko/app"];
+  const MIC_OFF_PATHS = ["/", "/en/bty/login", "/api/version", "/start", "/f/token", "/en/app/extra", "/en/apple", "/fr/app"];
+
+  it("allows microphone=(self) — never a third party — on the Teams tab and the in-shell app", async () => {
+    for (const p of MIC_PATHS) {
+      const pp = (await headersFor(p))["permissions-policy"] ?? "";
+      expect(pp, `path ${p}`).toContain("microphone=(self)");
+      expect(pp, `path ${p}`).toContain("camera=()");
+      expect(pp, `path ${p}`).toContain("geolocation=()");
+      expect(pp, `path ${p}`).not.toMatch(/microphone=\*|microphone=\([^)]*https?:/);
+    }
+  });
+
+  it("keeps the microphone off everywhere else", async () => {
+    for (const p of MIC_OFF_PATHS) {
+      expect((await headersFor(p))["permissions-policy"], `path ${p}`).toBe("camera=(), microphone=(), geolocation=()");
+    }
+  });
+
+  it("gives every path one Permissions-Policy VALUE, so no rule silently overrides another", async () => {
+    // `/teams/:path*` also matches `/teams` (zero segments), so the tab legitimately receives the
+    // same header from two rules. What must never happen is two DIFFERENT values for one path.
+    const rules = await nextConfig.headers();
+    for (const p of [...MIC_PATHS, ...MIC_OFF_PATHS, ...TEAMS_PATHS, ...PROTECTED_PATHS]) {
+      const values = rules.filter((r) => matches(r.source, p)).flatMap((r) => r.headers.filter((h) => h.key === "Permissions-Policy").map((h) => h.value));
+      expect(new Set(values).size, `path ${p} has conflicting Permissions-Policy values: ${values.join(" | ")}`).toBe(1);
     }
   });
 });

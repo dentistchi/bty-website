@@ -219,8 +219,8 @@ describe("★ 22-27 — TEAMS: the packaged manifest", () => {
     expect(existsSync("teams/manifest/outline-s1-v112.png")).toBe(true);
   });
 
-  it("★ version bumped to 1.0.14", () => {
-    expect(pkg.version).toBe("1.0.14");
+  it("★ version bumped past 1.0.14 (1.0.15 adds devicePermissions: media for AI Patient Practice)", () => {
+    expect(pkg.version).toBe("1.0.15");
     expect(pkg.manifestVersion).toBe("1.25");
   });
 
