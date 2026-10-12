@@ -29,16 +29,15 @@ describe("PracticeLanding", () => {
   it("shows Clinical cases directly between Practice situations and Action plans", () => {
     render(<PracticeLanding {...base} />);
     const doors = within(screen.getByTestId("practice-landing")).getAllByRole("button");
-    // AI Patient Practice V1 leads the list; the original order of the other doors is unchanged.
+    // The AI patient pilot door is absent until the server confirms access (see below).
     expect(doors.map(door => door.dataset.testid)).toEqual([
-      "practice-ai-patient-entry", "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
+      "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
     ]);
-    expect(doors[0].textContent).toContain("AI patient: Case Acceptance 01");
-    expect(doors[1].textContent).toContain("Practice situations");
-    expect(doors[2].textContent).toContain("Clinical cases");
-    expect(doors[2].textContent).toContain("Interview a patient, order tests, and decide treatment.");
-    expect(doors[3].textContent).toContain("Action plans");
-    expect(doors[4].textContent).toContain("Live sessions");
+    expect(doors[0].textContent).toContain("Practice situations");
+    expect(doors[1].textContent).toContain("Clinical cases");
+    expect(doors[1].textContent).toContain("Interview a patient, order tests, and decide treatment.");
+    expect(doors[2].textContent).toContain("Action plans");
+    expect(doors[3].textContent).toContain("Live sessions");
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
 
@@ -112,5 +111,31 @@ describe("PracticeLanding", () => {
   it("does not expose internal runtime-state vocabulary on the landing", () => {
     const { container } = render(<PracticeLanding {...base} />);
     expect(container.textContent).not.toMatch(/pending_outcome|complete_verified|arena_run|reexposure|scenario_signal/i);
+  });
+});
+
+describe("PracticeLanding — AI patient pilot door", () => {
+  const stubAccess = (body: unknown, status = 200) =>
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url).endsWith("/api/arena/ai-patient/access") ? Response.json(body, { status }) : Response.json({}))));
+
+  it("appears first, only after the server says this user is on the pilot allowlist", async () => {
+    stubAccess({ enabled: true });
+    render(<PracticeLanding {...base} />);
+    expect(screen.queryByTestId("practice-ai-patient-entry")).toBeNull(); // not before the answer
+    const door = await screen.findByTestId("practice-ai-patient-entry");
+    expect(door.textContent).toContain("AI patient: Case Acceptance 01");
+    const doors = within(screen.getByTestId("practice-landing")).getAllByRole("button");
+    expect(doors[0]!.dataset.testid).toBe("practice-ai-patient-entry");
+  });
+
+  it.each([
+    ["not on the allowlist", { enabled: false }, 200],
+    ["signed out", { error: "UNAUTHENTICATED" }, 401],
+    ["a malformed answer", { enabled: "yes" }, 200],
+  ])("stays hidden when %s", async (_label, body, status) => {
+    stubAccess(body, status);
+    render(<PracticeLanding {...base} />);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId("practice-ai-patient-entry")).toBeNull();
   });
 });

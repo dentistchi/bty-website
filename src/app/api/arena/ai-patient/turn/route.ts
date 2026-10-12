@@ -13,7 +13,7 @@ export const runtime = "nodejs";
  * The clip is forwarded for transcription and not stored.
  */
 export async function POST(req: Request) {
-  const gate = await requireLearner();
+  const gate = await requireLearner("turn");
   if (!gate.ok) return gate.response;
 
   const isMultipart = (req.headers.get("content-type") ?? "").toLowerCase().startsWith("multipart/form-data");

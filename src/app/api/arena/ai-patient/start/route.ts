@@ -13,7 +13,7 @@ export const runtime = "nodejs";
  * Returns the sealed session, the authored opening line and the limits. Nothing is stored.
  */
 export async function POST(req: Request) {
-  const gate = await requireLearner();
+  const gate = await requireLearner("start");
   if (!gate.ok) return gate.response;
   const body = (await req.json().catch(() => ({}))) as { acknowledged?: unknown };
   if (body.acknowledged !== true) return jsonError("acknowledgement_required", 400);

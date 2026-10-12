@@ -135,7 +135,10 @@ describe("AiPatientPractice", () => {
     expect(body.textContent).toMatch(/It was a real money limit/);
     expect(screen.getByTestId("ai-patient-concerns").textContent).toMatch(/couldn't match this to your exact words/);
     expect(screen.getByTestId("ai-patient-concerns").textContent).toMatch(/Talk this through with your mentor. BTY has not told anyone./);
-    expect(body.textContent).not.toMatch(/\bscore\b(?! or)|\bpoints?\b|\bpassed\b|\bfailed\b|\d+\s?%/i);
+    // "not a score" is the disclaimer itself; any other mention of a score, points, pass/fail or a
+    // percentage would be a grade.
+    expect(body.textContent).not.toMatch(/(?<!not a )\bscore\b|\bpoints?\b|\bpassed\b|\bfailed\b|\d+\s?%/i);
+    expect(body.textContent).toMatch(/not a score, and not a clinical or professional certification/);
     expect(screen.getByTestId("ai-patient-again")).toBeTruthy();
   });
 });

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
  * Body: { state }. Evidence-checked against the sealed transcript; no score, nothing stored.
  */
 export async function POST(req: Request) {
-  const gate = await requireLearner();
+  const gate = await requireLearner("feedback");
   if (!gate.ok) return gate.response;
   const body = (await req.json().catch(() => ({}))) as { state?: unknown };
   const opened = await openSession(body.state, gate.userId);

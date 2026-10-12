@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import { PracticeAuthoringEntry } from "@/components/app-shell/PracticeAuthoringEntry";
 import { showsAuthoringEntry, type PracticeSurface } from "@/components/app-shell/practiceSurface";
@@ -15,7 +15,8 @@ import { AiPatientPractice } from "@/components/app-shell/AiPatientPractice";
  * A calm entry surface for the "Practice" tab. It does NOT expose internal runtime-state vocabulary;
  * it offers a small set of doors:
  *   • AI patient — a spoken or typed conversation with one fictional patient, then coaching
- *     ({@link AiPatientPractice}). Opened in place; nothing about it is stored.
+ *     ({@link AiPatientPractice}). Opened in place; nothing about it is stored. Pilot-gated: the door
+ *     appears only when the server says this user is on the allowlist (and every route re-checks).
  *   • Arena practice — the existing in-shell Arena runtime (unchanged), opened in place.
  *   • Clinical cases — the existing conversational encounter, opened inside Practice.
  *   • Field Actions — opens the focused in-shell Field Actions surface ({@link FieldActionsFocus}),
@@ -170,6 +171,27 @@ export default function PracticeLanding({
    * return from a practice, instead of blinking it out and back in.
    */
   const [practiceSurface, setPracticeSurface] = useState<PracticeSurface>("index_loading");
+  /**
+   * AI Patient pilot: hidden until the server confirms this user may use it. Loading, refusal and
+   * any error all mean hidden — the door must never appear to someone the routes would refuse.
+   */
+  const [aiPatientEnabled, setAiPatientEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/arena/ai-patient/access", { credentials: "include", cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => ({}))) as { enabled?: unknown };
+        if (alive && data.enabled === true) setAiPatientEnabled(true);
+      } catch {
+        /* stays hidden */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
   const onSurfaceChange = useCallback((s: PracticeSurface) => setPracticeSurface(s), []);
 
   if (view === "arena" && authoringEventId) {
@@ -253,7 +275,9 @@ export default function PracticeLanding({
         <h1 data-bty-main-heading="" className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
       </header>
       <div className="flex flex-col gap-2">
-        <DoorRow testId="practice-ai-patient-entry" title={t.aiPatient} sub={t.aiPatientSub} onClick={() => setView("aiPatient")} />
+        {aiPatientEnabled ? (
+          <DoorRow testId="practice-ai-patient-entry" title={t.aiPatient} sub={t.aiPatientSub} onClick={() => setView("aiPatient")} />
+        ) : null}
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
         <DoorRow testId="practice-clinical-entry" title={t.clinical} sub={t.clinicalSub} onClick={() => setView("clinical")} />
         <DoorRow testId="practice-field-actions" title={t.fieldActions} sub={t.fieldActionsSub} onClick={() => setView("fieldActions")} />

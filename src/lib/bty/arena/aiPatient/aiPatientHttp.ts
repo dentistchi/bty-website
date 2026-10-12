@@ -2,24 +2,39 @@
  * AI PATIENT — shared request plumbing for the four thin routes.
  *
  * Every route: authenticated learner with CURRENT consent (the same gate as published practices),
- * then the sealed session opened for THAT user. No route reads or writes a database row about the
- * conversation itself.
+ * on the pilot allowlist, within their per-user budget for that action — then the sealed session
+ * opened for THAT user. No route reads or writes a database row about the conversation itself.
  */
 
 import { NextResponse } from "next/server";
 import { requireConsentedArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import { AI_PATIENT_LIMITS, turnsLeft, type AiPatientSessionState } from "@/domain/arena/aiPatient/sessionRules";
 import { AiPatientConfigError, sealSession, unsealSession } from "./sessionSeal";
+import { consumeAiPatientBudget, isAiPatientAllowed, type AiPatientAction } from "./aiPatientAccess";
 import type { ServiceFailure } from "./aiPatientService";
 
 export const noStore = { "Cache-Control": "no-store" } as const;
 
 export const jsonError = (error: string, status: number) => NextResponse.json({ error }, { status, headers: noStore });
 
-export async function requireLearner(): Promise<{ ok: true; userId: string } | { ok: false; response: NextResponse }> {
+/**
+ * The gate every AI patient route passes before doing anything paid: signed in with current consent,
+ * on the pilot allowlist (server-side; the hidden door is only a convenience), then one unit of this
+ * user's budget for `action`.
+ */
+export async function requireLearner(action: AiPatientAction): Promise<{ ok: true; userId: string } | { ok: false; response: NextResponse }> {
   const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate;
-  return { ok: true, userId: gate.access.userId };
+  const userId = gate.access.userId;
+  if (!isAiPatientAllowed(userId)) return { ok: false, response: jsonError("ai_patient_not_enabled", 403) };
+  const budget = await consumeAiPatientBudget(userId, action);
+  if (!budget.allowed) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "rate_limited", retryAfterSeconds: budget.retryAfterSeconds }, { status: 429, headers: { ...noStore, "Retry-After": String(budget.retryAfterSeconds) } }),
+    };
+  }
+  return { ok: true, userId };
 }
 
 export async function openSession(sealed: unknown, userId: string): Promise<{ ok: true; state: AiPatientSessionState } | { ok: false; response: NextResponse }> {

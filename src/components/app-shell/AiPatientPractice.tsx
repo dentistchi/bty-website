@@ -91,6 +91,8 @@ const ERROR_COPY: Record<string, string> = {
   llm_unavailable: "AI patient practice is not available right now.",
   ai_patient_unconfigured: "AI patient practice is not set up yet.",
   UNAUTHENTICATED: "Please sign in to BTY again.",
+  ai_patient_not_enabled: "AI patient practice isn't open for your account yet.",
+  rate_limited: "You've reached the practice limit for now. Try again a little later.",
 };
 const errorCopy = (e: string) => ERROR_COPY[e] ?? "Something went wrong. Try again.";
 
@@ -410,7 +412,9 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
         <div className="flex flex-col gap-2 rounded-2xl border border-[#C9A66B]/40 bg-[#C9A66B]/10 px-4 py-3 text-[0.85rem] leading-relaxed text-white/85" data-testid="ai-patient-notice">
           <p className="font-semibold text-white">Fictional patient · practice only</p>
           <ul className="flex list-disc flex-col gap-1 pl-5">
-            <li>Dana and Dr. Patel are invented. Never use a real patient&apos;s name or details.</li>
+            <li>Dana, Dr. Patel, the $1,450 fee and the $800 estimated patient portion are all invented. Never use a real patient&apos;s name or details.</li>
+            <li>In this case the insurance company has not confirmed coverage. The estimate is only an estimate.</li>
+            <li>Clinical decisions belong to the treating dentist. This practice is about how you communicate, not about clinical care.</li>
             <li>Dana is played by AI. It can say things a real patient wouldn&apos;t.</li>
             <li>If you speak, your voice is sent to BTY&apos;s AI provider to be turned into text. BTY does not keep the recording or the conversation.</li>
             <li>Feedback is written by AI from what you said. It isn&apos;t a score and can be wrong — talk it over with your mentor.</li>
@@ -687,7 +691,7 @@ function FeedbackBody({ feedback, patientName }: { feedback: ShownFeedback; pati
 
       <p className="text-[0.75rem] leading-relaxed text-white/50">
         A separate AI check looks for misstatements about the dentist&apos;s recommendation, insurance promises and pressure. It can miss things.{" "}
-        This feedback was written by AI from the transcript only. It isn&apos;t a score or a certification, it can be wrong, and it says nothing about real patients.
+        This feedback was written by AI from the transcript only. It is communication coaching — not a score, and not a clinical or professional certification. It can be wrong, and it says nothing about real patients.
       </p>
     </div>
   );
