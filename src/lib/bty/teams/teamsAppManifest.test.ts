@@ -58,8 +58,11 @@ describe("Teams app manifest — identity", () => {
     expect(manifest.composeExtensions?.[0]?.botId).toBe(BOT_ID);
   });
 
-  it("declares manifest v1.25 and app version 1.0.14, and points $schema at the same version", () => {
+  it("declares manifest v1.25 and app version 1.0.15, and points $schema at the same version", () => {
     /*
+      1.0.15 (AI Patient Practice V1) adds `devicePermissions: ["media"]` and nothing else, so the
+      Practice tab can ask for the microphone. Identity, scopes, icons and domains are unchanged.
+
       1.0.12 (Slice TQ-4.9) is a SIZE change and nothing else. 1.0.11 proved the hypothesis it was
       built to test — renaming the asset path made the approved S1 finally appear on both clients,
       so Teams was caching the icon by path. With S1 visible, the remaining complaint was that it
@@ -84,7 +87,7 @@ describe("Teams app manifest — identity", () => {
       the change in which an identity quietly moves.
     */
     expect(manifest.manifestVersion).toBe("1.25");
-    expect(manifest.version).toBe("1.0.14");
+    expect(manifest.version).toBe("1.0.15");
     // A manifest that declares one version and links another is the state in which a property is
     // "valid" against the schema nobody is actually validating against.
     expect(manifest.$schema).toContain("/v1.25/");
@@ -232,6 +235,12 @@ describe("Teams app manifest — permission boundary", () => {
   it("requests only identity, and only its own domain", () => {
     expect(manifest.permissions).toEqual(["identity"]);
     expect(manifest.validDomains).toEqual(["arena.btydaily.com"]);
+  });
+
+  it("asks for media (microphone) only — never location, notifications, MIDI or external links", () => {
+    // AI Patient Practice records the learner's spoken turns. Teams requires this declaration before
+    // a tab may use the microphone; nothing broader is needed or requested.
+    expect((manifest as { devicePermissions?: unknown }).devicePermissions).toEqual(["media"]);
   });
 });
 
