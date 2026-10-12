@@ -6,7 +6,8 @@
  * instructions — and a reply that steps out of the patient role is regenerated once, then refused.
  */
 
-import { getLlmClient, isLlmAvailable, type LlmChatMessage } from "@/lib/bty/llm/client";
+import type { LlmChatMessage } from "@/lib/bty/llm/client";
+import { aiPatientLlm, isAiPatientProviderConfigured } from "./aiPatientProvider";
 import { AI_PATIENT_CASE_ID, CASE_ACCEPTANCE_01, HIDDEN_CONCERNS, type HiddenConcern } from "@/domain/arena/aiPatient/caseAcceptance01";
 import {
   AI_PATIENT_LIMITS,
@@ -40,7 +41,8 @@ export type ServiceFailure =
   | "nothing_to_review"
   | "feedback_unreadable";
 
-export const isAiPatientAvailable = (): boolean => isLlmAvailable();
+/** True only when the DEDICATED AI Patient provider key is configured (see aiPatientProvider). */
+export const isAiPatientAvailable = (): boolean => isAiPatientProviderConfigured();
 
 /** Uniform random choice of the hidden concern, made by the server before the first word. */
 export function pickConcern(random: () => number = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32): HiddenConcern {
@@ -61,7 +63,7 @@ export function newSession(userId: string, now: number, concern: HiddenConcern =
 }
 
 async function patientReply(messages: LlmChatMessage[]): Promise<string> {
-  const res = await getLlmClient().chat.completions.create(
+  const res = await aiPatientLlm().chat.completions.create(
     { model: AI_PATIENT_MODELS.patient, messages, temperature: 0.8, max_tokens: AI_PATIENT_LIMITS.patientMaxTokens },
     { signal: AbortSignal.timeout(PATIENT_TIMEOUT_MS) },
   );
@@ -77,7 +79,7 @@ export type TurnResult =
 /** One exchange: the learner's words in, the patient's answer out. The input state is never mutated. */
 export async function takeTurn(state: AiPatientSessionState, learnerText: string, via: "voice" | "text", now: number): Promise<TurnResult> {
   if (sessionPhase(state, now) !== "active") return { ok: false, reason: "session_over" };
-  if (!isLlmAvailable()) return { ok: false, reason: "llm_unavailable" };
+  if (!isAiPatientProviderConfigured()) return { ok: false, reason: "llm_unavailable" };
   const turns = [...state.turns, { role: "tc" as const, text: learnerText, via }];
   const messages = buildPatientMessages(state.concern, turns);
   let reply: string;
@@ -96,7 +98,7 @@ export type FeedbackResult = { ok: true; feedback: ShownFeedback } | { ok: false
 /** One strict-JSON model call. Any failure — transport, refusal, truncation, bad JSON — is `null`. */
 async function strictJson(model: string, messages: LlmChatMessage[], name: string, schema: object, maxTokens: number): Promise<unknown | null> {
   try {
-    const res = await getLlmClient().chat.completions.create(
+    const res = await aiPatientLlm().chat.completions.create(
       { model, messages, temperature: 0.1, max_tokens: maxTokens, response_format: { type: "json_schema", json_schema: { name, strict: true, schema } } },
       { signal: AbortSignal.timeout(FEEDBACK_TIMEOUT_MS) },
     );
@@ -115,7 +117,7 @@ async function strictJson(model: string, messages: LlmChatMessage[], name: strin
 export async function reviewSession(state: AiPatientSessionState, now: number): Promise<FeedbackResult> {
   if (sessionPhase(state, now) === "feedback_window_closed") return { ok: false, reason: "feedback_window_closed" };
   if (learnerTurnCount(state) === 0) return { ok: false, reason: "nothing_to_review" };
-  if (!isLlmAvailable()) return { ok: false, reason: "llm_unavailable" };
+  if (!isAiPatientProviderConfigured()) return { ok: false, reason: "llm_unavailable" };
   const [coach, screenRaw] = await Promise.all([
     strictJson(AI_PATIENT_MODELS.feedback, buildFeedbackMessages(state.concern, state.turns), "ai_patient_feedback", FEEDBACK_JSON_SCHEMA, 1600),
     strictJson(AI_PATIENT_MODELS.screen, buildSafetyScreenMessages(state.turns), "ai_patient_safety_screen", SAFETY_SCREEN_JSON_SCHEMA, 800),

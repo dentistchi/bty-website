@@ -5,9 +5,11 @@
  * to BTY, and BTY returns text and audio. Audio is forwarded to the provider for this one request and
  * not stored by BTY.
  *
- * Speech needs the OpenAI audio endpoints, so it uses OPENAI_API_KEY directly rather than the
- * chat-compatible LLM_BASE_URL switch (a local chat model has no audio endpoint).
+ * Speech uses the same DEDICATED AI Patient key as the conversation (see aiPatientProvider), on the
+ * OpenAI audio endpoints, so its spending sits under the same enforced project hard limit.
  */
+
+import { AI_PATIENT_OPENAI_BASE, aiPatientApiKey } from "./aiPatientProvider";
 
 export const SPEECH_MODELS = {
   transcribe: process.env.AI_PATIENT_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe",
@@ -26,8 +28,8 @@ export class SpeechProviderError extends Error {
 }
 
 function apiKey(): string {
-  const k = process.env.OPENAI_API_KEY ?? (process.env.LLM_BASE_URL ? "" : process.env.LLM_API_KEY) ?? "";
-  if (!k.trim()) throw new SpeechUnavailableError("speech is not configured");
+  const k = aiPatientApiKey();
+  if (!k) throw new SpeechUnavailableError("speech is not configured");
   return k;
 }
 
@@ -60,7 +62,7 @@ export async function transcribeClip(audio: Blob, signal?: AbortSignal): Promise
   form.append("model", SPEECH_MODELS.transcribe);
   form.append("language", "en");
   form.append("prompt", TRANSCRIBE_PROMPT);
-  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+  const res = await fetch(`${AI_PATIENT_OPENAI_BASE}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey()}` },
     body: form,
@@ -75,7 +77,7 @@ const VOICE_DIRECTION =
   "Speak as an ordinary adult dental patient in a calm office: natural, a little hesitant and thoughtful, conversational pace. Not dramatic.";
 
 export async function synthesizePatientLine(text: string, signal?: AbortSignal): Promise<ArrayBuffer> {
-  const res = await fetch("https://api.openai.com/v1/audio/speech", {
+  const res = await fetch(`${AI_PATIENT_OPENAI_BASE}/audio/speech`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: SPEECH_MODELS.speak, voice: SPEECH_MODELS.voice, input: text, instructions: VOICE_DIRECTION, response_format: "mp3" }),

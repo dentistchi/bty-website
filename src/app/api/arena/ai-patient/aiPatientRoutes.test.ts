@@ -7,9 +7,12 @@ import { NextResponse } from "next/server";
  */
 
 const mockCreate = vi.fn();
-vi.mock("@/lib/bty/llm/client", () => ({
-  isLlmAvailable: () => true,
-  getLlmClient: () => ({ chat: { completions: { create: mockCreate } } }),
+let providerKey: string | null = "sk-ai-patient-dedicated-test";
+vi.mock("@/lib/bty/arena/aiPatient/aiPatientProvider", () => ({
+  AI_PATIENT_OPENAI_BASE: "https://api.openai.com/v1",
+  aiPatientApiKey: () => providerKey,
+  isAiPatientProviderConfigured: () => providerKey !== null,
+  aiPatientLlm: () => ({ chat: { completions: { create: mockCreate } } }),
 }));
 
 const adminFrom = vi.fn();
@@ -49,6 +52,7 @@ beforeEach(() => {
   mockCreate.mockReset();
   adminFrom.mockReset();
   providerFetch.mockReset();
+  providerKey = "sk-ai-patient-dedicated-test";
   budgetCalls.length = 0;
   budgetRefuse = null;
   vi.stubEnv("AI_PATIENT_ALLOWED_USER_IDS", "user-a");
@@ -181,6 +185,8 @@ describe("[AI patient] voice turns", () => {
     expect(body.patientText).toBe("I'm just not sure I really need it.");
     const [url, init] = providerFetch.mock.calls[0]!;
     expect(url).toBe("https://api.openai.com/v1/audio/transcriptions");
+    // Spent on the DEDICATED AI Patient key, never the shared BTY key.
+    expect(((init as RequestInit).headers as Record<string, string>).Authorization).toBe("Bearer sk-ai-patient-dedicated-test");
     expect((init as RequestInit).body).toBeInstanceOf(FormData);
   });
 
@@ -387,5 +393,24 @@ describe("[AI patient] replay and cost are bounded per user", () => {
     expect((await feedback(json({ state: s.state }))).status).toBe(429);
     expect(providerFetch).not.toHaveBeenCalled();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("[AI patient] dedicated provider key — fail closed", () => {
+  it("without the dedicated key nothing starts and nothing is spent", async () => {
+    providerKey = null;
+    const res = await start(json({ acknowledged: true }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "ai_patient_unconfigured" });
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it("speech is refused, not sent on another key, when the dedicated key is missing", async () => {
+    const s = await begin();
+    providerKey = null;
+    const res = await speech(json({ state: s.state, index: 0 }));
+    expect(res.status).toBe(503);
+    expect(providerFetch).not.toHaveBeenCalled();
   });
 });

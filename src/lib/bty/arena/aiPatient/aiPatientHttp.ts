@@ -65,7 +65,7 @@ export async function sessionView(state: AiPatientSessionState) {
 export function failureResponse(reason: ServiceFailure): NextResponse {
   switch (reason) {
     case "llm_unavailable":
-      return jsonError(reason, 503);
+      return jsonError("ai_patient_unconfigured", 503);
     case "provider_failed":
     case "patient_left_role":
     case "feedback_unreadable":

@@ -17,7 +17,8 @@ export async function POST(req: Request) {
   if (!gate.ok) return gate.response;
   const body = (await req.json().catch(() => ({}))) as { acknowledged?: unknown };
   if (body.acknowledged !== true) return jsonError("acknowledgement_required", 400);
-  if (!isAiPatientAvailable()) return jsonError("llm_unavailable", 503);
+  // Fail closed: without the dedicated AI Patient provider key nothing is started or spent.
+  if (!isAiPatientAvailable()) return jsonError("ai_patient_unconfigured", 503);
   try {
     const view = await sessionView(newSession(gate.userId, Date.now()));
     return NextResponse.json(
