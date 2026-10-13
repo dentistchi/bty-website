@@ -16,8 +16,11 @@ vi.mock("@microsoft/teams-js", () => ({
 }));
 
 import { CaptureError, decodeBase64Clip, formatCaptureDiagnostic, recordWithTeams } from "./voiceCapture";
-// The REAL TeamsJS 2.55 validator that Media.getMedia() runs before transferring anything.
-import { validateGetMediaInputs } from "@microsoft/teams-js/dist/esm/packages/teams-js/src/internal/mediaUtil.js";
+// The REAL TeamsJS 2.55 validator that Media.getMedia() runs before transferring anything. The
+// internal module ships no type declarations; @ts-expect-error fails loudly if TeamsJS ever adds them.
+// @ts-expect-error TS7016 — untyped internal TeamsJS module, imported only to pin the SDK contract
+import { validateGetMediaInputs as untypedValidateGetMediaInputs } from "@microsoft/teams-js/dist/esm/packages/teams-js/src/internal/mediaUtil.js";
+const validateGetMediaInputs = untypedValidateGetMediaInputs as (mimeType?: string, format?: string, content?: string) => boolean;
 
 afterEach(() => {
   selectImpl = () => undefined;
