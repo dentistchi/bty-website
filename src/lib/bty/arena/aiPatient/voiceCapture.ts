@@ -14,12 +14,66 @@
 
 export type VoiceMode = "teams_native" | "browser_recorder" | "none";
 
-export type CaptureFailure = "permission_denied" | "cancelled" | "unsupported" | "no_audio" | "failed";
+/**
+ * `handoff_failed` (Issue #64): the recording WAS made — Teams' recorder opened and the learner pressed
+ * Save — but the clip could not be handed to BTY. It must never be reported as "the microphone didn't
+ * start", which sent the Founder looking at permissions when the microphone had worked.
+ */
+export type CaptureFailure = "permission_denied" | "cancelled" | "unsupported" | "no_audio" | "handoff_failed" | "failed";
+
+/** Where a capture failed. Teams stages are in the order they happen after the learner taps record. */
+export type CaptureStage =
+  | "select_media_call" // calling Teams' recorder threw before it could open
+  | "select_media_callback" // Teams' recorder returned (after Save or cancel) with an error or nothing
+  | "get_media_invocation" // calling getMedia() on the returned clip threw
+  | "get_media_callback" // getMedia() answered with an SDK error
+  | "blob_validation" // a clip arrived but held no usable audio
+  | "browser_recorder"; // desktop/web getUserMedia/MediaRecorder path
+
+/**
+ * What the Founder sees, and only this: stages, SDK codes, the attachment's declared shape and sizes.
+ * Never audio, never a transcript, never content or preview data, never an identity or a credential.
+ */
+export type CaptureDiagnostic = {
+  stage: CaptureStage;
+  sdkErrorCode?: number;
+  errorName?: string;
+  attachmentCount?: number;
+  format?: string;
+  mimeType?: string;
+  hasContent?: boolean;
+  hasPreview?: boolean;
+  blobSize?: number;
+};
+
 export class CaptureError extends Error {
   readonly name = "CaptureError";
-  constructor(readonly kind: CaptureFailure) {
+  constructor(
+    readonly kind: CaptureFailure,
+    readonly diagnostic?: CaptureDiagnostic,
+  ) {
     super(kind);
   }
+}
+
+const SAFE_TOKEN = /^[A-Za-z0-9_.+/-]{1,40}$/;
+const safe = (v: unknown): string | undefined => (typeof v === "string" && SAFE_TOKEN.test(v) ? v : undefined);
+
+/** One short, copyable line. Every field is a code, a declared type, a boolean or a size. */
+export function formatCaptureDiagnostic(d: CaptureDiagnostic): string {
+  const parts = [`AIP-VOICE ${d.stage}`];
+  if (typeof d.sdkErrorCode === "number" && Number.isFinite(d.sdkErrorCode)) parts.push(`code=${Math.trunc(d.sdkErrorCode)}`);
+  const name = safe(d.errorName);
+  if (name) parts.push(`err=${name}`);
+  if (typeof d.attachmentCount === "number") parts.push(`n=${d.attachmentCount}`);
+  const format = safe(d.format);
+  if (format) parts.push(`fmt=${format}`);
+  const mime = safe(d.mimeType);
+  if (mime) parts.push(`mime=${mime}`);
+  if (typeof d.hasContent === "boolean") parts.push(`content=${d.hasContent ? "y" : "n"}`);
+  if (typeof d.hasPreview === "boolean") parts.push(`preview=${d.hasPreview ? "y" : "n"}`);
+  if (typeof d.blobSize === "number") parts.push(`bytes=${d.blobSize}`);
+  return parts.join(" ");
 }
 
 const MOBILE_HOSTS = new Set(["ios", "ipados", "android"]);
@@ -40,23 +94,100 @@ export async function detectVoiceMode(): Promise<VoiceMode> {
   return hasRecorder ? "browser_recorder" : "none";
 }
 
-/** Teams mobile: open Teams' recorder for one clip and return it as a Blob. */
+/** The attachment fields BTY reads. Typed loosely: a host may return a plain object, not a `Media`. */
+type TeamsClip = {
+  format?: unknown;
+  mimeType?: unknown;
+  content?: unknown;
+  preview?: unknown;
+  getMedia?: (cb: (error: { errorCode?: number } | null | undefined, blob: Blob) => void) => void;
+};
+
+/** Largest base64 payload decoded in the browser: a 45-second clip is far below this. */
+const MAX_BASE64_CHARS = 8_000_000;
+
+/** Decode base64 audio carried on the attachment itself. Returns null for anything that is not base64 audio data. */
+export function decodeBase64Clip(data: unknown, mimeType: string): Blob | null {
+  if (typeof data !== "string") return null;
+  const b64 = data.replace(/^data:[^,]*,/, "").replace(/\s+/g, "");
+  if (!b64 || b64.length > MAX_BASE64_CHARS || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(b64)) return null;
+  try {
+    const bin = atob(b64.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType });
+  } catch {
+    return null;
+  }
+}
+
+/** Codes Teams uses for "the user/host cannot do this" — reported as such, at any stage. */
+function stageKind(code: number | undefined, afterSave: boolean): CaptureFailure {
+  const k = teamsErrorKind(code);
+  return k === "failed" && afterSave ? "handoff_failed" : k;
+}
+
+/**
+ * Teams mobile: open Teams' recorder for one clip and return it as a Blob.
+ *
+ * After Save, Teams returns the clip as an attachment. TeamsJS 2.55 `Media.getMedia()` validates
+ * `mimeType`, `format` and `content` first and answers 4000 INVALID_ARGUMENTS with an empty Blob unless
+ * `format === "id"` (internal/mediaUtil.js `validateGetMediaInputs`). An attachment that carries its
+ * audio inline (`format: "base64"`, as Microsoft's audio sample reads it from the attachment) can never
+ * pass that check, so it is decoded here instead. A `format: "id"` attachment still goes through
+ * getMedia() exactly as before. Every failure names its stage (Issue #64).
+ */
 export async function recordWithTeams(maxMinutes = 1): Promise<Blob> {
-  const { media } = await import("@microsoft/teams-js");
-  const attachments = await new Promise<InstanceType<typeof media.Media>[]>((resolve, reject) => {
-    media.selectMedia({ mediaType: media.MediaType.Audio, maxMediaCount: 1, audioProps: { maxDuration: maxMinutes } }, (error, files) => {
-      if (error) reject(new CaptureError(teamsErrorKind(error.errorCode)));
-      else resolve(files ?? []);
-    });
+  let media: typeof import("@microsoft/teams-js").media;
+  try {
+    ({ media } = await import("@microsoft/teams-js"));
+  } catch (e) {
+    throw new CaptureError("unsupported", { stage: "select_media_call", errorName: (e as Error)?.name });
+  }
+
+  const attachments = await new Promise<TeamsClip[]>((resolve, reject) => {
+    try {
+      media.selectMedia({ mediaType: media.MediaType.Audio, maxMediaCount: 1, audioProps: { maxDuration: maxMinutes } }, (error, files) => {
+        const n = Array.isArray(files) ? files.length : 0;
+        if (error) reject(new CaptureError(stageKind(error.errorCode, true), { stage: "select_media_callback", sdkErrorCode: error.errorCode, attachmentCount: n }));
+        else resolve(Array.isArray(files) ? (files as unknown as TeamsClip[]) : []);
+      });
+    } catch (e) {
+      reject(new CaptureError("failed", { stage: "select_media_call", errorName: (e as Error)?.name }));
+    }
   });
+
   const clip = attachments[0];
-  if (!clip) throw new CaptureError("cancelled");
+  if (!clip) throw new CaptureError("cancelled", { stage: "select_media_callback", attachmentCount: 0 });
+
+  const mimeType = typeof clip.mimeType === "string" && clip.mimeType ? clip.mimeType : "audio/mp4";
+  const shape: CaptureDiagnostic = {
+    stage: "blob_validation",
+    attachmentCount: attachments.length,
+    format: typeof clip.format === "string" ? clip.format : undefined,
+    mimeType: typeof clip.mimeType === "string" ? clip.mimeType : undefined,
+    hasContent: typeof clip.content === "string" && clip.content.length > 0,
+    hasPreview: typeof clip.preview === "string" && clip.preview.length > 0,
+  };
+
+  // Inline audio: getMedia() would refuse it (format must be "id"), so read it from the attachment.
+  if (clip.format !== "id") {
+    const blob = decodeBase64Clip(clip.content, mimeType) ?? decodeBase64Clip(clip.preview, mimeType);
+    if (!blob || blob.size === 0) throw new CaptureError("no_audio", { ...shape, blobSize: blob?.size ?? 0 });
+    return blob;
+  }
+
   return new Promise<Blob>((resolve, reject) => {
-    clip.getMedia((error, blob) => {
-      if (error) reject(new CaptureError(teamsErrorKind(error.errorCode)));
-      else if (!blob || blob.size === 0) reject(new CaptureError("no_audio"));
-      else resolve(blob.type ? blob : new Blob([blob], { type: clip.mimeType || "audio/mp4" }));
-    });
+    try {
+      if (typeof clip.getMedia !== "function") throw new TypeError("getMedia unavailable");
+      clip.getMedia((error, blob) => {
+        if (error) reject(new CaptureError(stageKind(error.errorCode, true), { ...shape, stage: "get_media_callback", sdkErrorCode: error.errorCode }));
+        else if (!blob || blob.size === 0) reject(new CaptureError("no_audio", { ...shape, blobSize: blob?.size ?? 0 }));
+        else resolve(blob.type ? blob : new Blob([blob], { type: mimeType }));
+      });
+    } catch (e) {
+      reject(new CaptureError("handoff_failed", { ...shape, stage: "get_media_invocation", errorName: (e as Error)?.name }));
+    }
   });
 }
 
@@ -113,7 +244,8 @@ export class BrowserTurnRecorder {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (e) {
-      throw new CaptureError(browserErrorKind((e as { name?: string })?.name));
+      const name = (e as { name?: string })?.name;
+      throw new CaptureError(browserErrorKind(name), { stage: "browser_recorder", errorName: name });
     }
     const mime = pickRecorderMime((t) => MediaRecorder.isTypeSupported(t));
     const recorder = mime ? new MediaRecorder(this.stream, { mimeType: mime }) : new MediaRecorder(this.stream);
@@ -142,7 +274,7 @@ export class BrowserTurnRecorder {
     if (!this.recorder || !this.done) throw new CaptureError("failed");
     if (this.recording) this.recorder.stop();
     const blob = await this.done;
-    if (blob.size < 1000) throw new CaptureError("no_audio");
+    if (blob.size < 1000) throw new CaptureError("no_audio", { stage: "browser_recorder", blobSize: blob.size });
     return blob;
   }
 
