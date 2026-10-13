@@ -5,6 +5,7 @@ import {
   BrowserTurnRecorder,
   CaptureError,
   detectVoiceMode,
+  formatCaptureDiagnostic,
   recordWithTeams,
   type CaptureFailure,
   type VoiceMode,
@@ -102,6 +103,7 @@ const CAPTURE_COPY: Record<CaptureFailure, string> = {
   cancelled: "Recording cancelled.",
   unsupported: "Voice isn't supported on this device. You can keep going by typing.",
   no_audio: "No sound was recorded. Check your microphone and try again, or type.",
+  handoff_failed: "Your recording was made, but Teams couldn't pass it to BTY. Try again, or type.",
   failed: "The microphone didn't start. Try again, or type.",
 };
 
@@ -136,6 +138,8 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const [slow, setSlow] = useState(false);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  /** Issue #64: a short, copyable code naming WHERE capture failed. No audio, text or identity in it. */
+  const [captureDiag, setCaptureDiag] = useState<string | null>(null);
   const [failed, setFailed] = useState<Pending | null>(null);
   const [blockedAudioIndex, setBlockedAudioIndex] = useState<number | null>(null);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -301,6 +305,21 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
     [applyView, patientVoiceOn, sending, speak, voiceAvailable],
   );
 
+  useEffect(() => {
+    if (!notice) setCaptureDiag(null);
+  }, [notice]);
+
+  /** Every capture failure is shown with the message for what actually happened, plus its stage code. */
+  const reportCapture = useCallback((e: unknown): CaptureFailure => {
+    const ce = e instanceof CaptureError ? e : null;
+    const kind: CaptureFailure = ce?.kind ?? "failed";
+    if (kind === "cancelled") return kind;
+    setNotice(CAPTURE_COPY[kind]);
+    const name = (e as { name?: unknown })?.name;
+    setCaptureDiag(ce?.diagnostic ? formatCaptureDiagnostic(ce.diagnostic) : formatCaptureDiagnostic({ stage: "select_media_call", errorName: typeof name === "string" ? name : undefined }));
+    return kind;
+  }, []);
+
   const toggleRecording = useCallback(async () => {
     setNotice(null);
     stopAudio(); // the learner may interrupt the patient at any time
@@ -309,8 +328,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
         const clip = await recordWithTeams(1);
         await send({ kind: "audio", clip });
       } catch (e) {
-        const kind = e instanceof CaptureError ? e.kind : "failed";
-        if (kind !== "cancelled") setNotice(CAPTURE_COPY[kind]);
+        const kind = reportCapture(e);
         if (kind === "permission_denied" || kind === "unsupported") setVoiceMode("none");
       }
       return;
@@ -323,7 +341,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
         await send({ kind: "audio", clip });
       } catch (e) {
         recorderRef.current = null;
-        setNotice(CAPTURE_COPY[e instanceof CaptureError ? e.kind : "failed"]);
+        reportCapture(e);
       }
       return;
     }
@@ -337,7 +355,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
           await send({ kind: "audio", clip });
         } catch (e) {
           recorderRef.current = null;
-          setNotice(CAPTURE_COPY[e instanceof CaptureError ? e.kind : "failed"]);
+          reportCapture(e);
         }
       })();
     });
@@ -346,11 +364,10 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
       recorderRef.current = recorder;
       setRecording(true);
     } catch (e) {
-      const kind = e instanceof CaptureError ? e.kind : "failed";
-      setNotice(CAPTURE_COPY[kind]);
+      const kind = reportCapture(e);
       if (kind === "permission_denied" || kind === "unsupported") setVoiceMode("none");
     }
-  }, [send, stopAudio, voiceMode]);
+  }, [reportCapture, send, stopAudio, voiceMode]);
 
   const finish = useCallback(async () => {
     const current = viewRef.current;
@@ -557,6 +574,11 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
       {notice ? (
         <div className="flex flex-col gap-1.5 rounded-xl border border-amber-200/30 bg-amber-200/10 px-3 py-2 text-[0.82rem] text-amber-100" role="alert">
           <span>{notice}</span>
+          {captureDiag ? (
+            <code className="select-all break-all font-mono text-[0.7rem] text-amber-100/80" data-testid="ai-patient-capture-diag">
+              {captureDiag}
+            </code>
+          ) : null}
           {failed ? (
             <button type="button" onClick={() => void send(failed)} className="self-start text-[0.8rem] font-semibold underline" data-testid="ai-patient-retry">
               Send again

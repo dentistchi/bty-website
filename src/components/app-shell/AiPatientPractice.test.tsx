@@ -23,7 +23,15 @@ vi.mock("@/lib/bty/arena/aiPatient/voiceCapture", async () => {
     }
     cancel() {}
   }
-  return { ...actual, detectVoiceMode: async () => voiceMode, BrowserTurnRecorder: FakeRecorder, recordWithTeams: vi.fn() };
+  return {
+    ...actual,
+    detectVoiceMode: async () => voiceMode,
+    BrowserTurnRecorder: FakeRecorder,
+    // Issue #64: Teams iPhone — the recording was saved, then the handoff to BTY failed.
+    recordWithTeams: vi.fn(async () => {
+      throw new actual.CaptureError("handoff_failed", { stage: "get_media_callback", sdkErrorCode: 4000, attachmentCount: 1, format: "base64", mimeType: "audio/mp4", hasContent: true, hasPreview: false });
+    }),
+  };
 });
 
 import { AiPatientPractice } from "./AiPatientPractice";
@@ -140,5 +148,27 @@ describe("AiPatientPractice", () => {
     expect(body.textContent).not.toMatch(/(?<!not a )\bscore\b|\bpoints?\b|\bpassed\b|\bfailed\b|\d+\s?%/i);
     expect(body.textContent).toMatch(/not a score, and not a clinical or professional certification/);
     expect(screen.getByTestId("ai-patient-again")).toBeTruthy();
+  });
+});
+
+describe("AiPatientPractice — Teams iPhone Save handoff (Issue #64)", () => {
+  it("says the recording was made but not handed over — never that the microphone didn't start — shows the stage code, and keeps typing open", async () => {
+    voiceMode = "teams_native";
+    render(<AiPatientPractice onBack={() => undefined} />);
+    fireEvent.click(screen.getByTestId("ai-patient-ack"));
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(async () =>
+      Response.json({ ...view([{ role: "patient", text: OPENING }], "aps1.s0"), patientName: "Dana", briefing: "", voiceAvailable: true }),
+    );
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-start")));
+    await screen.findByTestId("ai-patient-talking");
+    expect(screen.getByTestId("ai-patient-mic").textContent).toBe("Record what you say");
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-mic")));
+    const alert = screen.getByTestId("ai-patient-talking").querySelector('[role="alert"]')!;
+    expect(alert.textContent).toMatch(/Your recording was made, but Teams couldn't pass it to BTY/);
+    expect(alert.textContent).not.toMatch(/microphone didn't start/);
+    expect(screen.getByTestId("ai-patient-capture-diag").textContent).toBe("AIP-VOICE get_media_callback code=4000 n=1 fmt=base64 mime=audio/mp4 content=y preview=n");
+    // A handoff failure is retryable: the record button stays, and typing works.
+    expect(screen.getByTestId("ai-patient-mic")).toBeTruthy();
+    expect((screen.getByTestId("ai-patient-input") as HTMLTextAreaElement).disabled).toBe(false);
   });
 });
