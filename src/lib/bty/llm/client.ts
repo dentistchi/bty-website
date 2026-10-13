@@ -107,7 +107,17 @@ export class LlmClient {
   }
 }
 
-export function getLlmClient(): LlmClient {
+/**
+ * Explicit dedicated-project credential for narrowly scoped callers.
+ * No fallback to global keys or self-hosted URLs; every existing caller without
+ * options keeps the original selection behavior.
+ */
+export function getLlmClient(options?: { dedicatedOpenAiApiKey: string }): LlmClient {
+  if (options) {
+    const key = options.dedicatedOpenAiApiKey.trim();
+    if (!key) throw new Error("Dedicated OpenAI credential is not configured");
+    return new LlmClient("https://api.openai.com/v1/chat/completions", key);
+  }
   const baseURL = process.env.LLM_BASE_URL?.trim();
   const apiKey = process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
 

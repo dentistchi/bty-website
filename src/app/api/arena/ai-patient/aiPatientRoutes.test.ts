@@ -54,6 +54,7 @@ beforeEach(() => {
   vi.stubEnv("AI_PATIENT_ALLOWED_USER_IDS", "user-a");
   vi.stubEnv("AI_PATIENT_SESSION_SECRET", "route-test-secret");
   vi.stubEnv("OPENAI_API_KEY", "sk-test-not-real");
+  vi.stubEnv("AI_PATIENT_OPENAI_API_KEY", "sk-dedicated-ai-patient-test");
   vi.stubGlobal("fetch", providerFetch);
 });
 afterEach(() => {
@@ -69,6 +70,18 @@ async function begin() {
 }
 
 describe("[AI patient] start", () => {
+  it("fails closed when dedicated key is missing even if the global OpenAI key exists", async () => {
+    vi.stubEnv("AI_PATIENT_OPENAI_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "sk-global-bty-must-not-be-used");
+    expect((await access()).status).toBe(200);
+    expect(await (await access()).json()).toEqual({ enabled: false });
+    const result = await start(json({ acknowledged: true }));
+    expect(result.status).toBe(503);
+    expect(await result.json()).toEqual({ error: "llm_unavailable" });
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
   it("401 without a signed-in, consented learner", async () => {
     gateUser = null;
     expect((await start(json({ acknowledged: true }))).status).toBe(401);

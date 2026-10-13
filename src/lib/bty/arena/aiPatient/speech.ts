@@ -5,9 +5,11 @@
  * to BTY, and BTY returns text and audio. Audio is forwarded to the provider for this one request and
  * not stored by BTY.
  *
- * Speech needs the OpenAI audio endpoints, so it uses OPENAI_API_KEY directly rather than the
- * chat-compatible LLM_BASE_URL switch (a local chat model has no audio endpoint).
+ * Speech uses the same dedicated AI_PATIENT_OPENAI_API_KEY as conversation, coaching,
+ * and safety review. No fallback to other BTY credentials or LLM_BASE_URL.
  */
+
+import { aiPatientOpenAIKey } from "./providerKey";
 
 export const SPEECH_MODELS = {
   transcribe: process.env.AI_PATIENT_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe",
@@ -26,7 +28,7 @@ export class SpeechProviderError extends Error {
 }
 
 function apiKey(): string {
-  const k = process.env.OPENAI_API_KEY ?? (process.env.LLM_BASE_URL ? "" : process.env.LLM_API_KEY) ?? "";
+  const k = aiPatientOpenAIKey();
   if (!k.trim()) throw new SpeechUnavailableError("speech is not configured");
   return k;
 }
