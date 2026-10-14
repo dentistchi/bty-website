@@ -97,7 +97,7 @@ export type SafetyPoint = {
   /** How many separate times this theme came up — one theme is one point, not N failures. */
   occurrences: number;
   /** The other quotes on the same theme, for the details. */
-  otherQuotes: string[];
+  otherQuotes: Array<{ quote: string; verified: boolean }>;
 };
 
 export type CoachingView = {
@@ -143,7 +143,7 @@ function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
       quote: head.quote,
       quoteVerified: head.quoteVerified,
       occurrences: distinct.length,
-      otherQuotes: distinct.slice(1).map((d) => d.quote).filter(Boolean),
+      otherQuotes: distinct.slice(1).filter((d) => Boolean(d.quote)).map((d) => ({ quote: d.quote, verified: d.quoteVerified })),
     });
   }
   return points;
