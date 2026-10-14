@@ -181,6 +181,7 @@ describe("AiPatientPractice", () => {
       observations: [],
       concerns: [
         { kind: "insurance_guarantee", quote: "Your insurance will definitely cover all of it.", explanation: "Coverage is unconfirmed.", quoteVerified: true, source: "screen" },
+        { kind: "insurance_guarantee", quote: "Your payment is definitely $100.", explanation: "Possible additional concern.", quoteVerified: false, source: "coach" },
         { kind: "pressure_or_urgency", quote: "You must schedule immediately.", explanation: "Not confirmed by transcript.", quoteVerified: false, source: "coach" },
       ],
     };
@@ -197,6 +198,10 @@ describe("AiPatientPractice", () => {
     expect(uncertain).toContain("couldn't confirm the exact wording");
     expect(uncertain).not.toContain("You said:");
     expect(uncertain).not.toContain("You must schedule immediately.");
+
+    const details = screen.getByTestId("coach-details").textContent ?? "";
+    expect(details).toContain("The AI suggested additional wording about this concern");
+    expect(details).not.toContain("Your payment is definitely $100.");
   });
 });
 
