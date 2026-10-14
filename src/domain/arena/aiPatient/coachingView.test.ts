@@ -96,7 +96,38 @@ describe("[#69] One thing to handle differently — safety first, never hidden, 
     expect(p.quote).toBe(turns[3]!.text);
     expect(p.quoteVerified).toBe(true);
     expect(p.whyItMatters).toBe(SAFETY_COACHING.insurance_guarantee.whyItMatters);
-    expect(p.tryInstead).toMatch(/hasn't confirmed it yet/);
+    expect(p.tryInstead).toContain("insurance hasn't confirmed coverage");
+    expect(p.tryInstead).not.toMatch(/pre-estimate|real number|guarantee/i);
+  });
+
+  it("insurance coaching never promises that a pre-estimate reveals the final bill", () => {
+    const spoken = SAFETY_COACHING.insurance_guarantee.tryInstead;
+    expect(spoken).toContain("only an estimate");
+    expect(spoken).toContain("insurance hasn't confirmed coverage");
+    expect(spoken).toContain("what still needs to be checked");
+    expect(spoken).not.toMatch(/real number|pre-estimate|definitely|will cover/i);
+  });
+
+  it("respects the doctor's authored timing while letting Dana choose without pressure", () => {
+    const spoken = SAFETY_COACHING.pressure_or_urgency.tryInstead;
+    const caseFacts = CASE_ACCEPTANCE_01.knownFacts.join(" ");
+    expect(caseFacts).toContain("not an emergency");
+    expect(caseFacts).toContain("not leave it for a long time");
+    expect(spoken).toContain("don't have to decide this minute");
+    expect(spoken).toContain("isn't an emergency");
+    expect(spoken).toContain("wouldn't leave it for a long time");
+    expect(spoken).toContain("ask her to explain the timing");
+    expect(spoken).not.toMatch(/there'?s no rush|we can wait indefinitely|I'll check in next week/i);
+  });
+
+  it("optional quotes retain verification status for both supported and unsupported phrases", () => {
+    const f = reconcileFeedback(raw({ concerns: [
+      { kind: "insurance_guarantee", quote: "Your insurance will definitely cover most of it", explanation: "Verified" },
+      { kind: "insurance_guarantee", quote: "you have to decide immediately", explanation: "Not confirmed" },
+    ] }), "financial_limit", turns, []);
+    const point = buildCoachingView(f).safety[0]!;
+    expect(point.quoteVerified).toBe(true);
+    expect(point.otherQuotes).toEqual([{ quote: "you have to decide immediately", verified: false }]);
   });
 
   it("the same line flagged twice is one event, not two", () => {
