@@ -681,11 +681,13 @@ function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; pa
           <div key={p.kind} className="flex flex-col gap-1 text-[0.86rem] text-white/85" data-testid={`coach-safety-${p.kind}`}>
             {i > 0 ? <span className="text-[0.72rem] uppercase tracking-[0.1em] text-amber-100/80">Also worth a look</span> : null}
             <span className="font-semibold text-white">{p.title}</span>
-            {p.quote ? (
+            {p.quoteVerified && p.quote ? (
+              <span className="text-white/75">You said: “{p.quote}”</span>
+            ) : (
               <span className="text-white/75">
-                You said: “{p.quote}”{p.quoteVerified ? "" : " (we couldn't match this to your exact words)"}
+                The AI raised a possible concern about this part of the conversation, but couldn't confirm the exact wording.
               </span>
-            ) : null}
+            )}
             {p.occurrences > 1 ? <span className="text-white/60">This came up {p.occurrences} times in the conversation.</span> : null}
             <span className="text-white/75">{p.whyItMatters}</span>
             <span className="text-white/85">Try saying: “{p.tryInstead}”</span>
