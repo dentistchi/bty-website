@@ -121,6 +121,28 @@ export function decodeBase64Clip(data: unknown, mimeType: string): Blob | null {
   }
 }
 
+/**
+ * Teams iPhone audio: Microsoft documents a small audio clip in Media.preview as base64, even
+ * when Media.format is "id". On a real Founder iPhone, getMedia() returned code 4000 with
+ * format=id and non-empty preview. This narrowly validated fallback is used ONLY after that
+ * specific failed getMedia() call. The id in Media.content must never be decoded as audio.
+ *
+ * We cannot prove completeness from an MP4 header; the speech provider is the final decoder.
+ * Reject non-MP4, non-base64, tiny, or oversized preview content rather than forwarding junk.
+ */
+async function smallMp4AudioPreview(preview: unknown, mimeType: string): Promise<Blob | null> {
+  if (mimeType !== "audio/mp4" && mimeType !== "audio/x-m4a") return null;
+  const blob = decodeBase64Clip(preview, mimeType);
+  if (!blob || blob.size < 1024 || blob.size > 4_000_000) return null;
+  try {
+    const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+    if (bytes.length < 12 || String.fromCharCode(...bytes.slice(4, 8)) !== "ftyp") return null;
+    return blob;
+  } catch {
+    return null;
+  }
+}
+
 /** Codes Teams uses for "the user/host cannot do this" — reported as such, at any stage. */
 function stageKind(code: number | undefined, afterSave: boolean): CaptureFailure {
   const k = teamsErrorKind(code);
@@ -134,8 +156,9 @@ function stageKind(code: number | undefined, afterSave: boolean): CaptureFailure
  * `mimeType`, `format` and `content` first and answers 4000 INVALID_ARGUMENTS with an empty Blob unless
  * `format === "id"` (internal/mediaUtil.js `validateGetMediaInputs`). An attachment that carries its
  * audio inline (`format: "base64"`, as Microsoft's audio sample reads it from the attachment) can never
- * pass that check, so it is decoded here instead. A `format: "id"` attachment still goes through
- * getMedia() exactly as before. Every failure names its stage (Issue #64).
+ * pass that check, so it is decoded here instead. An ID attachment uses getMedia(); only
+ * a validated small audio preview can recover its observed iPhone code=4000 failure.
+ * Every other failure preserves its stage and SDK code (Issue #64).
  */
 export async function recordWithTeams(maxMinutes = 1): Promise<Blob> {
   let media: typeof import("@microsoft/teams-js").media;
@@ -181,8 +204,19 @@ export async function recordWithTeams(maxMinutes = 1): Promise<Blob> {
     try {
       if (typeof clip.getMedia !== "function") throw new TypeError("getMedia unavailable");
       clip.getMedia((error, blob) => {
-        if (error) reject(new CaptureError(stageKind(error.errorCode, true), { ...shape, stage: "get_media_callback", sdkErrorCode: error.errorCode }));
-        else if (!blob || blob.size === 0) reject(new CaptureError("no_audio", { ...shape, blobSize: blob?.size ?? 0 }));
+        if (error) {
+          const failure = new CaptureError(stageKind(error.errorCode, true), { ...shape, stage: "get_media_callback", sdkErrorCode: error.errorCode });
+          // Issue #64 real iPhone: fmt=id mime=audio/mp4 preview=y, getMedia code=4000.
+          // Official Teams audio sample allows small files to be read directly from preview.
+          if (error.errorCode === 4000) {
+            void smallMp4AudioPreview(clip.preview, mimeType).then(
+              (previewBlob) => previewBlob ? resolve(previewBlob) : reject(failure),
+              () => reject(failure),
+            );
+          } else {
+            reject(failure);
+          }
+        } else if (!blob || blob.size === 0) reject(new CaptureError("no_audio", { ...shape, blobSize: blob?.size ?? 0 }));
         else resolve(blob.type ? blob : new Blob([blob], { type: mimeType }));
       });
     } catch (e) {
