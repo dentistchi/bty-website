@@ -73,8 +73,17 @@ export async function transcribeClip(audio: Blob, signal?: AbortSignal): Promise
   return typeof json.text === "string" ? json.text : "";
 }
 
-const VOICE_DIRECTION =
-  "Speak as an ordinary adult dental patient in a calm office: natural, a little hesitant and thoughtful, conversational pace. Not dramatic.";
+/**
+ * How Dana sounds. Delivery only: what she says comes from the conversation and its rules, never
+ * from here. The first direction ("a little hesitant and thoughtful … in a calm office") made her
+ * sound grave and heavy; Dana is an everyday patient chatting at the front desk, not a narrator.
+ */
+export const VOICE_DIRECTION = [
+  "Voice: an ordinary, friendly American adult in her forties, chatting with the treatment coordinator at her own dentist's front desk.",
+  "Tone: warm, relaxed and conversational, like talking to someone she knows and likes. When she is unsure about the cost or the treatment, let a light, natural hesitation show, never sad, heavy or dramatic.",
+  "Delivery: everyday pace with casual phrasing and small natural pauses; a little smile in the voice where it fits.",
+  "Avoid sounding like a news anchor, narrator, announcer or professional voice actor. Do not over-enunciate.",
+].join(" ");
 
 export async function synthesizePatientLine(text: string, signal?: AbortSignal): Promise<ArrayBuffer> {
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
