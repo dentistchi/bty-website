@@ -36,13 +36,13 @@ export const SAFETY_COACHING: Record<ConcernKind, { title: string; whyItMatters:
     whyItMatters:
       "Coverage hasn't been confirmed, so a promise about what insurance will pay can leave the patient with a bill they didn't expect.",
     tryInstead:
-      "This is our estimate, and your insurance hasn't confirmed it yet. I can request a pre-estimate so you'll know the real number before you decide.",
+      "This is only an estimate, and your insurance hasn't confirmed coverage. Let's review what we know and what still needs to be checked before you decide.",
   },
   pressure_or_urgency: {
     title: "Let the patient set the pace",
     whyItMatters:
       "Pressure to decide now can lead a patient to agree before they're ready, or to stop trusting the office. Going ahead, waiting or saying no is their choice.",
-    tryInstead: "There's no rush. Would it help to take the estimate home, and I'll check in with you next week?",
+    tryInstead: "You don't have to decide this minute. Dr. Patel said this isn't an emergency, but she wouldn't leave it for a long time. Would you like me to ask her to explain the timing?",
   },
   other: {
     title: "Keep the decision with the patient",
