@@ -734,7 +734,9 @@ function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; pa
               <span className="text-white/85">Other lines on the same points</span>
               {c.safety.flatMap((p) => p.otherQuotes.map((q, i) => (
                 <span key={`${p.kind}-${i}`} className="text-[0.8rem] text-white/60">
-                  “{q}”
+                  {q.verified
+                    ? <>“{q.quote}”</>
+                    : "The AI suggested additional wording about this concern, but couldn't confirm the exact words."}
                 </span>
               )))}
             </div>
