@@ -27,6 +27,10 @@ afterEach(() => {
 });
 
 const AUDIO_B64 = Buffer.from(new Uint8Array(4096).map((_, i) => i % 251)).toString("base64");
+/** Small ISO-BMFF-looking audio payload. It has an MP4 'ftyp' header; no real patient audio. */
+const MP4_PREVIEW_B64 = Buffer.from(new Uint8Array(2048).map((_, i) =>
+  [0, 0, 0, 32, 102, 116, 121, 112, 105, 115, 111, 109][i] ?? (i % 251),
+)).toString("base64");
 
 async function failure(): Promise<CaptureError> {
   try {
@@ -85,6 +89,62 @@ describe("[#64] a format 'id' attachment still goes through getMedia(), stage by
     const e = await failure();
     expect(e.kind).toBe("handoff_failed");
     expect(e.diagnostic).toMatchObject({ stage: "get_media_callback", sdkErrorCode: 4000, format: "id", attachmentCount: 1 });
+  });
+
+  it("iPhone Save regression: format=id, audio/mp4, preview present, getMedia code 4000 recovers the short audio Blob", async () => {
+    const getMedia = vi.fn((done: (e: { errorCode: number }, b: Blob) => void) =>
+      done({ errorCode: 4000 }, new Blob()));
+    selectImpl = (_i, cb) => cb(null, [{
+      format: "id", mimeType: "audio/mp4", content: "opaque-id-not-base64",
+      preview: MP4_PREVIEW_B64, getMedia,
+    }]);
+    const blob = await recordWithTeams(1);
+    expect(getMedia).toHaveBeenCalledTimes(1);
+    expect(blob.type).toBe("audio/mp4");
+    expect(blob.size).toBe(2048);
+    expect(new Uint8Array(await blob.slice(4, 8).arrayBuffer())).toEqual(Uint8Array.from([102, 116, 121, 112]));
+  });
+
+  it("an invalid or unrelated preview cannot mask the original getMedia code 4000", async () => {
+    for (const preview of ["not base64!", AUDIO_B64, "", Buffer.from("fake").toString("base64")]) {
+      selectImpl = (_i, cb) => cb(null, [{
+        format: "id", mimeType: "audio/mp4", content: "opaque-id",
+        preview, getMedia: (done: (e: { errorCode: number }, b: Blob) => void) => done({ errorCode: 4000 }, new Blob()),
+      }]);
+      const e = await failure();
+      expect(e.kind).toBe("handoff_failed");
+      expect(e.diagnostic).toMatchObject({ stage: "get_media_callback", sdkErrorCode: 4000 });
+    }
+  });
+
+  it("the small-audio preview fallback refuses excessive data and wrong MIME", async () => {
+    const hugePreview = Buffer.from(new Uint8Array(4_000_100).map((_, i) =>
+      [0, 0, 0, 32, 102, 116, 121, 112, 105, 115, 111, 109][i] ?? 0,
+    )).toString("base64");
+    for (const [mimeType, preview] of [
+      ["audio/mp4", hugePreview],
+      ["image/png", MP4_PREVIEW_B64],
+      ["audio/aac", MP4_PREVIEW_B64],
+    ]) {
+      selectImpl = (_i, cb) => cb(null, [{
+        format: "id", mimeType, content: "opaque-id",
+        preview, getMedia: (done: (e: { errorCode: number }, b: Blob) => void) => done({ errorCode: 4000 }, new Blob()),
+      }]);
+      const e = await failure();
+      expect(e.kind).toBe("handoff_failed");
+      expect(e.diagnostic?.sdkErrorCode).toBe(4000);
+    }
+  });
+
+  it("getMedia errors other than 4000 do not silently use a preview", async () => {
+    selectImpl = (_i, cb) => cb(null, [{
+      format: "id", mimeType: "audio/mp4", content: "opaque-id",
+      preview: MP4_PREVIEW_B64,
+      getMedia: (done: (e: { errorCode: number }, b: Blob) => void) => done({ errorCode: 500 }, new Blob()),
+    }]);
+    const e = await failure();
+    expect(e.kind).toBe("handoff_failed");
+    expect(e.diagnostic?.sdkErrorCode).toBe(500);
   });
 
   it("getMedia throwing → handoff_failed at get_media_invocation", async () => {
