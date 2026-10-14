@@ -12,6 +12,10 @@ import {
 } from "@/lib/bty/arena/aiPatient/voiceCapture";
 import { AI_PATIENT_TRAINING_TITLE } from "@/domain/arena/aiPatient/caseAcceptance01";
 import type { ShownFeedback } from "@/domain/arena/aiPatient/feedback";
+import { DETAIL_STATUS, type CoachingView } from "@/domain/arena/aiPatient/coachingView";
+
+/** What the feedback route returns: the reconciled review plus its coaching view (Issue #69). */
+type CoachedFeedback = ShownFeedback & { coaching: CoachingView };
 
 /**
  * AI PATIENT PRACTICE — a spoken (or typed) conversation with ONE fictional patient, then coaching.
@@ -107,21 +111,6 @@ const CAPTURE_COPY: Record<CaptureFailure, string> = {
   failed: "The microphone didn't start. Try again, or type.",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  seen: "Seen",
-  partly: "Partly",
-  not_seen: "Not seen",
-  not_applicable: "Didn't come up",
-  unclear: "Unclear",
-};
-
-const CONCERN_LABEL: Record<string, string> = {
-  clinical_misrepresentation: "Clinical recommendation or urgency",
-  insurance_guarantee: "Insurance or cost promise",
-  pressure_or_urgency: "Pressure to decide",
-  other: "Patient's right to decide",
-};
-
 export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>("intro");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -143,7 +132,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const [failed, setFailed] = useState<Pending | null>(null);
   const [blockedAudioIndex, setBlockedAudioIndex] = useState<number | null>(null);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<ShownFeedback | null>(null);
+  const [feedback, setFeedback] = useState<CoachedFeedback | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -383,7 +372,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
     }
     setPhase("reviewing");
     setFeedbackError(null);
-    const r = await postJson<{ feedback: ShownFeedback }>("/api/arena/ai-patient/feedback", { state: current.state });
+    const r = await postJson<{ feedback: CoachedFeedback }>("/api/arena/ai-patient/feedback", { state: current.state });
     if (!r.ok) {
       setFeedbackError(errorCopy(r.error));
       setPhase("feedback");
@@ -644,64 +633,77 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   );
 }
 
-function FeedbackBody({ feedback, patientName }: { feedback: ShownFeedback; patientName: string }) {
+/**
+ * Coaching, not a report card (Issue #69): what helped, one thing to handle differently, what to try
+ * next. Every sentence of praise is tied to the learner's own verified words; safety points are never
+ * hidden and are explained with an example line; the full review stays one tap away.
+ */
+function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; patientName: string }) {
+  const c = feedback.coaching;
   const surfaced = feedback.concernSurfaced;
+  const heading = "text-[0.75rem] font-semibold uppercase tracking-[0.12em]";
   return (
     <div className="flex flex-col gap-4" data-testid="ai-patient-feedback-body">
       <section className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-white/55">{patientName}&apos;s real concern</span>
+        <span className={`${heading} text-white/55`}>What {patientName} was worried about</span>
         <p className="text-[0.95rem] text-white">It was {feedback.hiddenConcern.label}.</p>
         <p className="text-[0.85rem] text-white/70">
           {surfaced.status === "yes"
-            ? "You brought it into the open."
+            ? "You helped bring it into the open."
             : surfaced.status === "partly"
               ? "You got close to it."
               : surfaced.status === "no"
-                ? "It didn't come out in this conversation."
-                : "The review couldn't tell from your words whether it came out."}
-          {surfaced.quote ? <span className="mt-1 block text-white/60">“{surfaced.quote}”</span> : null}
+                ? "It didn't come up this time. That's what the next round is for."
+                : "We couldn't tell from this conversation whether it came up."}
         </p>
       </section>
 
-      {feedback.concerns.length > 0 ? (
-        <section className="flex flex-col gap-2 rounded-2xl border border-amber-300/40 bg-amber-300/10 px-4 py-3" data-testid="ai-patient-concerns">
-          <span className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-amber-100">Worth a second look</span>
-          {feedback.concerns.map((c, i) => (
-            <div key={i} className="flex flex-col gap-0.5 text-[0.85rem] text-white/85">
-              <span className="font-semibold">{CONCERN_LABEL[c.kind] ?? CONCERN_LABEL.other}</span>
-              {c.quote ? (
-                <span className="text-white/70">
-                  “{c.quote}”{c.quoteVerified ? "" : " (the AI couldn't match this to your exact words)"}
-                </span>
-              ) : null}
-              <span className="text-white/70">{c.explanation}</span>
+      <section className="flex flex-col gap-2 rounded-2xl border border-white/10 px-4 py-3" data-testid="coach-helped">
+        <span className={`${heading} text-white/55`}>What helped the patient</span>
+        {c.helped.length ? (
+          c.helped.map((h) => (
+            <div key={h.key} className="flex flex-col gap-0.5">
+              <span className="text-[0.9rem] text-white/90">{h.text}</span>
+              <span className="text-[0.8rem] text-white/60">You said: “{h.quote}”</span>
             </div>
-          ))}
-          {feedback.suggestMentorReview ? <p className="text-[0.8rem] text-amber-100/90">Talk this through with your mentor. BTY has not told anyone.</p> : null}
-        </section>
-      ) : null}
-
-      <section className="flex flex-col gap-2">
-        {feedback.observations.map((o) => (
-          <div key={o.key} className="flex flex-col gap-1 rounded-xl border border-white/10 px-3 py-2" data-testid={`obs-${o.key}`}>
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-[0.88rem] text-white/90">{o.label}</span>
-              <span className="shrink-0 rounded-md border border-white/15 px-2 py-0.5 text-[0.7rem] text-white/70">{STATUS_LABEL[o.status] ?? o.status}</span>
-            </div>
-            {o.quotes.map((q, i) => (
-              <span key={i} className="text-[0.8rem] text-white/60">
-                “{q}”
-              </span>
-            ))}
-            {o.note ? <span className="text-[0.8rem] text-white/65">{o.note}</span> : null}
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="text-[0.88rem] text-white/75">{c.helpedFallback}</p>
+        )}
       </section>
 
-      {feedback.nextStep ? (
-        <section className="flex flex-col gap-1 rounded-2xl bg-[#C9A66B]/15 px-4 py-3">
-          <span className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-[#C9A66B]">Try next time</span>
-          <p className="text-[0.9rem] text-white/90">{feedback.nextStep}</p>
+      <section
+        className={`flex flex-col gap-3 rounded-2xl px-4 py-3 ${c.safety.length ? "border border-amber-300/40 bg-amber-300/10" : "border border-white/10"}`}
+        data-testid="coach-one-thing"
+      >
+        <span className={`${heading} ${c.safety.length ? "text-amber-100" : "text-white/55"}`}>One thing to handle differently</span>
+        {c.safety.map((p, i) => (
+          <div key={p.kind} className="flex flex-col gap-1 text-[0.86rem] text-white/85" data-testid={`coach-safety-${p.kind}`}>
+            {i > 0 ? <span className="text-[0.72rem] uppercase tracking-[0.1em] text-amber-100/80">Also worth a look</span> : null}
+            <span className="font-semibold text-white">{p.title}</span>
+            {p.quoteVerified && p.quote ? (
+              <span className="text-white/75">You said: “{p.quote}”</span>
+            ) : (
+              <span className="text-white/75">
+                The AI raised a possible concern about this part of the conversation, but couldn't confirm the exact wording.
+              </span>
+            )}
+            {p.occurrences > 1 ? <span className="text-white/60">This came up {p.occurrences} times in the conversation.</span> : null}
+            <span className="text-white/75">{p.whyItMatters}</span>
+            <span className="text-white/85">Try saying: “{p.tryInstead}”</span>
+          </div>
+        ))}
+        {c.growth ? <p className="text-[0.88rem] text-white/85">{c.growth.text}</p> : null}
+        {c.growthFallback ? <p className="text-[0.88rem] text-white/75">{c.growthFallback}</p> : null}
+        {c.safety.length ? (
+          <p className="text-[0.78rem] text-amber-100/85">If you'd like, talk it through with your mentor. BTY hasn't shared this with anyone.</p>
+        ) : null}
+      </section>
+
+      {c.tryNext ? (
+        <section className="flex flex-col gap-1 rounded-2xl bg-[#C9A66B]/15 px-4 py-3" data-testid="coach-try-next">
+          <span className={`${heading} text-[#C9A66B]`}>Try next time</span>
+          <p className="text-[0.9rem] text-white/90">{c.tryNext}</p>
         </section>
       ) : null}
 
@@ -711,10 +713,39 @@ function FeedbackBody({ feedback, patientName }: { feedback: ShownFeedback; pati
         </p>
       ) : null}
 
-      <p className="text-[0.75rem] leading-relaxed text-white/50">
-        A separate AI check looks for misstatements about the dentist&apos;s recommendation, insurance promises and pressure. It can miss things.{" "}
-        This feedback was written by AI from the transcript only. It is communication coaching — not a score, and not a clinical or professional certification. It can be wrong, and it says nothing about real patients.
-      </p>
+      <details className="rounded-2xl border border-white/10 px-4 py-3 text-[0.85rem] text-white/75" data-testid="coach-details">
+        <summary className="cursor-pointer text-white/85">Review the conversation</summary>
+        <div className="mt-3 flex flex-col gap-2">
+          {feedback.observations.map((o) => (
+            <div key={o.key} className="flex flex-col gap-0.5" data-testid={`obs-${o.key}`}>
+              <span className="text-white/85">
+                {o.label} <span className="text-white/55">· {DETAIL_STATUS[o.status] ?? o.status}</span>
+              </span>
+              {o.quotes.map((q, i) => (
+                <span key={i} className="text-[0.8rem] text-white/60">
+                  “{q}”
+                </span>
+              ))}
+              {o.note ? <span className="text-[0.8rem] text-white/60">{o.note}</span> : null}
+            </div>
+          ))}
+          {c.safety.some((p) => p.otherQuotes.length) ? (
+            <div className="flex flex-col gap-0.5 border-t border-white/10 pt-2">
+              <span className="text-white/85">Other lines on the same points</span>
+              {c.safety.flatMap((p) => p.otherQuotes.map((q, i) => (
+                <span key={`${p.kind}-${i}`} className="text-[0.8rem] text-white/60">
+                  {q.verified
+                    ? <>“{q.quote}”</>
+                    : "The AI suggested additional wording about this concern, but couldn't confirm the exact words."}
+                </span>
+              )))}
+            </div>
+          ) : null}
+          <p className="border-t border-white/10 pt-2 text-[0.75rem] leading-relaxed text-white/55">
+            A separate AI check looks for misstatements about the dentist&apos;s recommendation, insurance promises and pressure. It can miss things. This coaching was written by AI from the transcript only. It isn&apos;t a score or a clinical or professional certification, it can be wrong, and it says nothing about real patients.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

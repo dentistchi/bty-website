@@ -270,6 +270,10 @@ describe("[AI patient] coaching feedback", () => {
     expect(f.observations.find((o: { key: string }) => o.key === "no_pressure").status).toBe("unclear");
     expect(f.concerns).toEqual([{ kind: "insurance_guarantee", quote: "your insurance will cover it all", explanation: "Coverage was not confirmed.", quoteVerified: true, source: "coach" }]);
     expect(f.safetyScreen).toBe("ran");
+    // Issue #69: the coaching view travels with the review, built from the same checked evidence.
+    expect(f.coaching.helped.map((h: { key: string }) => h.key)).toEqual(["open_question"]);
+    expect(f.coaching.safety.map((p: { kind: string }) => p.kind)).toEqual(["insurance_guarantee"]);
+    expect(f.coaching.tryNext).toBe(modelFeedback.nextStep);
     expect(f.suggestMentorReview).toBe(true);
     expect(["a real money limit", "doubt about whether the crown is needed"]).toContain(f.hiddenConcern.label);
     const call = mockCreate.mock.calls[2]![0] as { response_format: { type: string; json_schema: { strict: boolean } } };
@@ -310,6 +314,9 @@ describe("[AI patient] coaching feedback", () => {
     expect(obs("found_concern").status).toBe("unclear"); // its only evidence was the flagged line
     expect(f.concernSurfaced.status).toBe("unclear");
     expect(f.suggestMentorReview).toBe(true);
+    // The line the screen flagged is never praised, and it heads "one thing to handle differently".
+    expect(f.coaching.helped).toEqual([]);
+    expect(f.coaching.safety[0]).toMatchObject({ kind: "clinical_misrepresentation", quote: undermining, quoteVerified: true });
     const screenCall = mockCreate.mock.calls[2]![0] as { model: string; messages: Array<{ content: string }> };
     expect(screenCall.messages[1]!.content).toContain(`LINE 1: ${undermining}`);
     expect(screenCall.messages[0]!.content).toMatch(/insurance company has NOT confirmed coverage/);

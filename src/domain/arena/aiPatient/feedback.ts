@@ -108,6 +108,7 @@ export function buildFeedbackMessages(concern: HiddenConcern, turns: Turn[], kas
         "CONCERNS — list every TC line that could mislead or pressure a patient: clinical_misrepresentation (changing, softening, reinterpreting or second-guessing the dentist's recommendation, e.g. calling it minor, saying the dentist is just being cautious, saying it can wait a long time, offering a different treatment; inventing clinical facts or urgency); insurance_guarantee (promising or confidently stating what insurance will pay when coverage is not confirmed); pressure_or_urgency (pushing to book now, deadlines, price expiries, fear); other (anything else that disrespects the patient's right to decide, or invents a policy or payment option). Quote the TC exactly. If there are none, return an empty list.",
         "concernSurfaced: did the TC bring the patient's actual concern into the open? Quote the TC's words that did it, or an empty string.",
         "nextStep: one or two sentences with one specific thing to try in the next real conversation, written to the TC as 'you'.",
+        "TONE: you are a supportive senior colleague, not an examiner. Write notes and nextStep warmly and plainly, the way you would talk to someone you want to see succeed. Describe what was said and what to try; never label the TC (no 'failed', 'poor', 'weak', 'should have known').",
         "Never give a score, grade, rating, percentage or pass/fail. Never claim the TC is competent or certified. Never comment on real patients or outcomes.",
       ].join("\n"),
     },
@@ -231,10 +232,10 @@ export function reconcileFeedback(
   const byKey = new Map(raw.observations.map((o) => [o.key, o]));
   const observations: ShownObservation[] = FEEDBACK_BEHAVIORS.map(({ key, label }) => {
     const o = byKey.get(key);
-    if (!o) return { key, label, status: "unclear", quotes: [], note: "The review did not cover this." };
+    if (!o) return { key, label, status: "unclear", quotes: [], note: "Not covered in this review." };
     const positive = o.status === "seen" || o.status === "partly";
     if (positive && blocked.has(key)) {
-      return { key, label, status: "not_seen", quotes: [], note: "Not credited: a concern was found in what you said about this." };
+      return { key, label, status: "not_seen", quotes: [], note: "Not counted this time, because of the point about this in your coaching." };
     }
     const quotes = o.quotes
       .filter((q) => {
@@ -244,7 +245,7 @@ export function reconcileFeedback(
       .slice(0, 2)
       .map((q) => clip(q, 300));
     if (positive && quotes.length === 0) {
-      return { key, label, status: "unclear", quotes: [], note: "The review claimed this but could not point to your exact words." };
+      return { key, label, status: "unclear", quotes: [], note: "We couldn't confirm that from this conversation." };
     }
     return { key, label, status: o.status, quotes: positive ? quotes : [], note: clip(o.note, 300) };
   });

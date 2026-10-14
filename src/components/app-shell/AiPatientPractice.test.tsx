@@ -35,7 +35,21 @@ vi.mock("@/lib/bty/arena/aiPatient/voiceCapture", async () => {
 });
 
 import { AiPatientPractice } from "./AiPatientPractice";
+import { buildCoachingView, HELPED_TEXT, SAFETY_COACHING } from "@/domain/arena/aiPatient/coachingView";
+import type { ShownFeedback } from "@/domain/arena/aiPatient/feedback";
 
+/** A reconciled review as the route returns it; its coaching view comes from the REAL builder. */
+const REVIEW: ShownFeedback = {
+  hiddenConcern: { key: "financial_limit", label: "a real money limit" },
+  concernSurfaced: { status: "yes", quote: "What feels hardest?" },
+  observations: [{ key: "open_question", label: "Asked an open question before explaining more", status: "seen", quotes: ["What feels hardest?"], note: "You asked first." }],
+  concerns: [{ kind: "insurance_guarantee", quote: "it's covered", explanation: "Not confirmed.", quoteVerified: false, source: "coach" }],
+  nextStep: "Ask before explaining.",
+  suggestMentorReview: true,
+  safetyScreen: "ran",
+};
+
+let feedbackOverride: ShownFeedback | null = null;
 const OPENING = "I'm not in pain, and my insurance doesn't cover much. I think I need to think about it.";
 const view = (turns: Array<{ role: string; text: string }>, state: string) => ({
   state,
@@ -51,6 +65,7 @@ beforeEach(() => {
   voiceMode = "none";
   calls.length = 0;
   startRecorder.mockReset();
+  feedbackOverride = null;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
@@ -59,20 +74,13 @@ beforeEach(() => {
       if (url.endsWith("/start")) return Response.json({ ...view([{ role: "patient", text: OPENING }], "aps1.s0"), patientName: "Dana", briefing: "Dana has just seen Dr. Patel.", voiceAvailable: false });
       if (url.endsWith("/turn"))
         return Response.json({
-          ...view([{ role: "patient", text: OPENING }, { role: "tc", text: "What feels hardest?" }, { role: "patient", text: "Honestly, money is tight." }], "aps1.s1"),
+          ...view([{ role: "patient", text: OPENING }, { role: "tc", text: (body as { text?: string })?.text ?? "What feels hardest?" }, { role: "patient", text: "Honestly, money is tight." }], "aps1.s1"),
           patientText: "Honestly, money is tight.",
           learnerText: "What feels hardest?",
         });
       if (url.endsWith("/feedback"))
         return Response.json({
-          feedback: {
-            hiddenConcern: { key: "financial_limit", label: "a real money limit" },
-            concernSurfaced: { status: "yes", quote: "What feels hardest?" },
-            observations: [{ key: "open_question", label: "Asked an open question before explaining more", status: "seen", quotes: ["What feels hardest?"], note: "You asked first." }],
-            concerns: [{ kind: "insurance_guarantee", quote: "it's covered", explanation: "Not confirmed.", quoteVerified: false }],
-            nextStep: "Ask before explaining.",
-            suggestMentorReview: true,
-          },
+          feedback: { ...(feedbackOverride ?? REVIEW), coaching: buildCoachingView(feedbackOverride ?? REVIEW) },
         });
       return new Response("{}", { status: 404 });
     }),
@@ -141,13 +149,59 @@ describe("AiPatientPractice", () => {
     const body = await screen.findByTestId("ai-patient-feedback-body");
     expect(calls.at(-1)).toEqual({ url: "/api/arena/ai-patient/feedback", body: { state: "aps1.s1" } });
     expect(body.textContent).toMatch(/It was a real money limit/);
-    expect(screen.getByTestId("ai-patient-concerns").textContent).toMatch(/couldn't match this to your exact words/);
-    expect(screen.getByTestId("ai-patient-concerns").textContent).toMatch(/Talk this through with your mentor. BTY has not told anyone./);
-    // "not a score" is the disclaimer itself; any other mention of a score, points, pass/fail or a
+    // Issue #69: three coaching sections, not a seven-row report card.
+    const helped = screen.getByTestId("coach-helped").textContent ?? "";
+    expect(helped).toContain(HELPED_TEXT.open_question);
+    expect(helped).toContain("You said: \u201cWhat feels hardest?\u201d");
+    const oneThing = screen.getByTestId("coach-one-thing").textContent ?? "";
+    expect(oneThing).toContain(SAFETY_COACHING.insurance_guarantee.title);
+    expect(oneThing).toContain(SAFETY_COACHING.insurance_guarantee.whyItMatters);
+    expect(oneThing).toContain(`Try saying: \u201c${SAFETY_COACHING.insurance_guarantee.tryInstead}\u201d`);
+    expect(oneThing).toMatch(/AI raised a possible concern.*couldn't confirm the exact wording/);
+    expect(oneThing).not.toContain("You said:");
+    expect(oneThing).not.toContain("it's covered");
+    expect(oneThing).toMatch(/BTY hasn't shared this with anyone/);
+    expect(screen.getByTestId("coach-try-next").textContent).toContain("Ask before explaining.");
+    // The default view carries no report-card statuses; the full review is one tap away, closed.
+    for (const id of ["coach-helped", "coach-one-thing", "coach-try-next"]) {
+      expect(screen.getByTestId(id).textContent).not.toMatch(/\b(Seen|Partly|Not seen|Unclear)\b/);
+    }
+    const details = screen.getByTestId("coach-details") as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain("Asked an open question before explaining more");
+    // "isn't a score" is the disclaimer itself; any other mention of a score, points, pass/fail or a
     // percentage would be a grade.
-    expect(body.textContent).not.toMatch(/(?<!not a )\bscore\b|\bpoints?\b|\bpassed\b|\bfailed\b|\d+\s?%/i);
-    expect(body.textContent).toMatch(/not a score, and not a clinical or professional certification/);
+    expect(body.textContent).not.toMatch(/(?<!(?:not|isn't) a )\bscore\b|\bpoints?\b|\bpassed\b|\bfailed\b|\d+\s?%/i);
+    expect(body.textContent).toMatch(/It isn't a score or a clinical or professional certification/);
     expect(screen.getByTestId("ai-patient-again")).toBeTruthy();
+  });
+  it("quotes verified unsafe learner speech but never presents an unverified quote as spoken", async () => {
+    feedbackOverride = {
+      ...REVIEW,
+      observations: [],
+      concerns: [
+        { kind: "insurance_guarantee", quote: "Your insurance will definitely cover all of it.", explanation: "Coverage is unconfirmed.", quoteVerified: true, source: "screen" },
+        { kind: "insurance_guarantee", quote: "Your payment is definitely $100.", explanation: "Possible additional concern.", quoteVerified: false, source: "coach" },
+        { kind: "pressure_or_urgency", quote: "You must schedule immediately.", explanation: "Not confirmed by transcript.", quoteVerified: false, source: "coach" },
+      ],
+    };
+    await startConversation();
+    fireEvent.change(screen.getByTestId("ai-patient-input"), { target: { value: "Your insurance will definitely cover all of it." } });
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-send")));
+    await waitFor(() => expect(screen.getAllByTestId("turn-patient")).toHaveLength(2));
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-end")));
+    await screen.findByTestId("ai-patient-feedback-body");
+
+    const confirmed = screen.getByTestId("coach-safety-insurance_guarantee").textContent ?? "";
+    const uncertain = screen.getByTestId("coach-safety-pressure_or_urgency").textContent ?? "";
+    expect(confirmed).toContain("You said: “Your insurance will definitely cover all of it.”");
+    expect(uncertain).toContain("couldn't confirm the exact wording");
+    expect(uncertain).not.toContain("You said:");
+    expect(uncertain).not.toContain("You must schedule immediately.");
+
+    const details = screen.getByTestId("coach-details").textContent ?? "";
+    expect(details).toContain("The AI suggested additional wording about this concern");
+    expect(details).not.toContain("Your payment is definitely $100.");
   });
 });
 

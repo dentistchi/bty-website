@@ -19,6 +19,7 @@ import {
 } from "@/domain/arena/aiPatient/sessionRules";
 import { buildPatientMessages, ROLE_REMINDER } from "@/domain/arena/aiPatient/patientPrompt";
 import { buildFeedbackMessages, FEEDBACK_JSON_SCHEMA, parseRawFeedback, reconcileFeedback, type ShownFeedback } from "@/domain/arena/aiPatient/feedback";
+import { buildCoachingView, type CoachingView } from "@/domain/arena/aiPatient/coachingView";
 import { buildSafetyScreenMessages, parseSafetyScreen, SAFETY_SCREEN_JSON_SCHEMA, type ScreenFinding } from "@/domain/arena/aiPatient/safetyScreen";
 
 export const AI_PATIENT_MODELS = {
@@ -92,7 +93,10 @@ export async function takeTurn(state: AiPatientSessionState, learnerText: string
   return { ok: true, state: { ...state, turns: [...turns, { role: "patient", text: reply }] }, patientText: reply };
 }
 
-export type FeedbackResult = { ok: true; feedback: ShownFeedback } | { ok: false; reason: ServiceFailure };
+/** The reconciled review plus the coaching view built from it (Issue #69). */
+export type CoachedFeedback = ShownFeedback & { coaching: CoachingView };
+
+export type FeedbackResult = { ok: true; feedback: CoachedFeedback } | { ok: false; reason: ServiceFailure };
 
 /** One strict-JSON model call. Any failure — transport, refusal, truncation, bad JSON — is `null`. */
 async function strictJson(model: string, messages: LlmChatMessage[], name: string, schema: object, maxTokens: number): Promise<unknown | null> {
@@ -124,5 +128,6 @@ export async function reviewSession(state: AiPatientSessionState, now: number): 
   const raw = parseRawFeedback(coach);
   if (!raw) return { ok: false, reason: "feedback_unreadable" };
   const screen: ScreenFinding[] | null = screenRaw === null ? null : parseSafetyScreen(screenRaw, state.turns);
-  return { ok: true, feedback: reconcileFeedback(raw, state.concern, state.turns, screen) };
+  const feedback = reconcileFeedback(raw, state.concern, state.turns, screen);
+  return { ok: true, feedback: { ...feedback, coaching: buildCoachingView(feedback) } };
 }
