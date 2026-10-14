@@ -14,7 +14,8 @@ import { aiPatientOpenAIKey } from "./providerKey";
 export const SPEECH_MODELS = {
   transcribe: process.env.AI_PATIENT_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe",
   speak: process.env.AI_PATIENT_TTS_MODEL ?? "gpt-4o-mini-tts",
-  voice: process.env.AI_PATIENT_TTS_VOICE ?? "coral",
+  // Founder-chosen 2026-10-13 from a side-by-side listening check (current Coral, warmer Coral, Marin).
+  voice: process.env.AI_PATIENT_TTS_VOICE ?? "marin",
 };
 
 export class SpeechUnavailableError extends Error {

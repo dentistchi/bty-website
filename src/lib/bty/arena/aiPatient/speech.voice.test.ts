@@ -17,6 +17,11 @@ describe("[AI patient] Dana's speaking voice", () => {
     expect(body.instructions).toBe(VOICE_DIRECTION);
   });
 
+  it("speaks in the Founder-chosen Marin voice by default", () => {
+    expect(process.env.AI_PATIENT_TTS_VOICE ?? "").toBe("");
+    expect(SPEECH_MODELS.voice).toBe("marin");
+  });
+
   it("asks for a friendly front-desk conversation — not a grave, thoughtful or announcer delivery", () => {
     expect(VOICE_DIRECTION).toMatch(/warm, relaxed and conversational/);
     expect(VOICE_DIRECTION).toMatch(/never sad, heavy or dramatic/);
