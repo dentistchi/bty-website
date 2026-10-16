@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CASE_ACCEPTANCE_01 } from "./caseAcceptance01";
 import { FEEDBACK_BEHAVIORS, reconcileFeedback, type RawFeedback } from "./feedback";
-import { buildCoachingView, CONCERN_ORDER, GROWTH_TEXT, HELPED_TEXT, NO_VERIFIED_HELP, NOTHING_TO_CHANGE, SAFETY_COACHING } from "./coachingView";
+import { buildCoachingView, CONCERN_ORDER, GROWTH_TEXT, HELPED_TEXT, MODEST_HELP, NO_VERIFIED_HELP, NOTHING_TO_CHANGE, SAFETY_COACHING, TRY_FIRST, TRY_THEN } from "./coachingView";
 import type { Turn } from "./sessionRules";
 
 /**
@@ -74,13 +74,10 @@ describe("[#69] One thing to handle differently — safety first, never hidden, 
     { turnIndex: 6, kind: "clinical_misrepresentation" as const, explanation: "This changed the dentist's recommendation." },
   ];
 
-  it("groups one theme into one point with a count, and keeps a separate theme as its own point", () => {
+  it("groups one theme into one point, and keeps a separate theme as its own point", () => {
     const f = reconcileFeedback(raw(), "financial_limit", turns, screen);
     const c = buildCoachingView(f);
-    expect(c.safety.map((p) => [p.kind, p.occurrences])).toEqual([
-      ["clinical_misrepresentation", 1],
-      ["insurance_guarantee", 2],
-    ]);
+    expect(c.safety.map((p) => p.kind)).toEqual(["clinical_misrepresentation", "insurance_guarantee"]);
     expect(c.safety[1]!.otherQuotes).toHaveLength(1);
   });
 
@@ -137,7 +134,7 @@ describe("[#69] One thing to handle differently — safety first, never hidden, 
       turns,
       [{ turnIndex: 1, kind: "pressure_or_urgency", explanation: "y" }],
     );
-    expect(buildCoachingView(f).safety).toEqual([expect.objectContaining({ kind: "pressure_or_urgency", occurrences: 1 })]);
+    expect(buildCoachingView(f).safety).toEqual([expect.objectContaining({ kind: "pressure_or_urgency", otherQuotes: [] })]);
   });
 
   it("a coaching concern the screen did not confirm is still shown — marked, not dropped", () => {
@@ -172,7 +169,10 @@ describe("[#69] tone", () => {
       ...Object.values(GROWTH_TEXT),
       ...Object.values(SAFETY_COACHING).flatMap((s) => [s.title, s.whyItMatters, s.tryInstead]),
       NO_VERIFIED_HELP,
+      MODEST_HELP,
       NOTHING_TO_CHANGE,
+      TRY_FIRST,
+      ...Object.values(TRY_THEN),
     ].join(" ");
     expect(all).not.toMatch(/\b(fail(ed|ure)?|poor|wrong|bad|score|grade|rating|pass)\b/i);
   });
@@ -182,8 +182,126 @@ describe("[#69] tone", () => {
     expect(f.observations.find((o) => o.key === "open_question")!.note).toBe("We couldn't confirm that from this conversation.");
   });
 
-  it("try next time is the review's own single next step", () => {
-    const f = reconcileFeedback(raw(), "financial_limit", turns);
-    expect(buildCoachingView(f).tryNext).toBe("Ask one open question before explaining.");
+  it("try next time is two short authored steps: an open question first, then the habit for the primary point", () => {
+    const clinical = reconcileFeedback(raw(), "financial_limit", turns, [{ turnIndex: 6, kind: "clinical_misrepresentation", explanation: "x" }]);
+    expect(buildCoachingView(clinical).tryNext).toEqual(["Ask an open question first.", "If the patient asks a clinical question, bring the dentist in."]);
+    const coverage = reconcileFeedback(raw(), "financial_limit", turns, [{ turnIndex: 3, kind: "insurance_guarantee", explanation: "x" }]);
+    expect(buildCoachingView(coverage).tryNext).toEqual([TRY_FIRST, TRY_THEN.insurance_guarantee]);
+    // The model's longer suggestion is not the headline; it stays in the details.
+    expect(buildCoachingView(coverage).tryNext).not.toContain("Ask one open question before explaining.");
+    for (const step of [TRY_FIRST, ...Object.values(TRY_THEN)]) expect(step.length).toBeLessThanOrEqual(90);
+  });
+});
+
+describe("[Coaching Tone V1] modest, grounded positives — never invented", () => {
+  it("nothing clearly seen, but the learner verifiably moved toward the concern → the modest line, with their words", () => {
+    const f = reconcileFeedback(raw({ observations: obs("found_concern", "partly", ["What part of this feels hardest for you right now?"]) }), "financial_limit", turns, []);
+    expect(buildCoachingView(f).helped).toEqual([{ key: "engaged", text: MODEST_HELP, quote: "What part of this feels hardest for you right now?" }]);
+    expect(buildCoachingView(f).helpedFallback).toBeNull();
+  });
+
+  it("'got close to it' backed by the learner's own unflagged words also earns the modest line", () => {
+    const f = reconcileFeedback(raw({ concernSurfaced: { status: "partly", quote: "What part of this feels hardest" } }), "financial_limit", turns, []);
+    expect(buildCoachingView(f).helped).toEqual([expect.objectContaining({ key: "engaged", quote: "What part of this feels hardest" })]);
+  });
+
+  it("an unverifiable or flagged 'engagement' quote earns nothing — the neutral short-evidence line instead", () => {
+    const unsaid = reconcileFeedback(raw({ observations: obs("open_question", "partly", ["How are you feeling about all this?"]) }), "financial_limit", turns, []);
+    expect(buildCoachingView(unsaid).helped).toEqual([]);
+    expect(buildCoachingView(unsaid).helpedFallback).toBe("The conversation was short, so there wasn't enough evidence yet to call out a specific strength.");
+    const flagged = reconcileFeedback(
+      raw({ concernSurfaced: { status: "partly", quote: "Your insurance will definitely cover most of it" } }),
+      "financial_limit",
+      turns,
+      [{ turnIndex: 3, kind: "insurance_guarantee", explanation: "x" }],
+    );
+    expect(buildCoachingView(flagged).helped).toEqual([]);
+  });
+
+  it("a clearly SEEN behaviour still wins over the modest line", () => {
+    const f = reconcileFeedback(raw({ observations: obs("open_question", "seen", ["What part of this feels hardest for you right now?"]) }), "financial_limit", turns, []);
+    expect(buildCoachingView(f).helped.map((h) => h.key)).toEqual(["open_question"]);
+  });
+
+  it("the old 'there wasn't a moment we could point to' line is gone", () => {
+    expect(NO_VERIFIED_HELP).not.toMatch(/point to with confidence/);
+  });
+});
+
+/**
+ * Regression fixture shaped on the Founder's device run (Teams iPhone, production ba8c05c5): one
+ * short conversation, Dana's money line as observed in Issue #64, no clearly-seen behaviour, and ONE
+ * theme the learner hit with three different lines — which the screen showed as "This came up 3 times
+ * in the conversation." beneath "There wasn't a moment we could point to with confidence…".
+ *
+ * NOT the exact transcript: BTY stores no conversations, and the Founder's exact learner lines were
+ * not recorded anywhere this repo can read. Only Dana's reply below is verbatim from the device. Replace
+ * DEVICE_TURNS with the exact transcript when the Founder supplies it; every assertion stays as is.
+ */
+const DEVICE_TURNS: Turn[] = [
+  { role: "patient", text: CASE_ACCEPTANCE_01.openingLine },
+  { role: "tc", text: "I understand. Can you tell me what's making you hesitate, Dana?" },
+  { role: "patient", text: "It's mostly the money. I just can't afford that much right now." },
+  { role: "tc", text: "Honestly, the crack is pretty small, so it can probably wait." },
+  { role: "patient", text: "So I don't really need the crown?" },
+  { role: "tc", text: "You probably don't need it right away." },
+  { role: "patient", text: "Would a filling work instead?" },
+  { role: "tc", text: "A filling would most likely be fine for now." },
+];
+const DEVICE_SCREEN = [
+  { turnIndex: 3, kind: "clinical_misrepresentation" as const, explanation: "Softened the dentist's recommendation." },
+  { turnIndex: 5, kind: "clinical_misrepresentation" as const, explanation: "Answered a clinical question." },
+  { turnIndex: 7, kind: "clinical_misrepresentation" as const, explanation: "Offered a clinical alternative." },
+];
+const DEVICE_RAW = raw({
+  observations: obs("open_question", "partly", ["Can you tell me what's making you hesitate"]),
+  concernSurfaced: { status: "partly", quote: "what's making you hesitate" },
+  nextStep: "Next time, start with an open question, and when Dana asks about the tooth itself, offer to bring Dr. Patel back.",
+});
+
+describe("[Coaching Tone V1] the Founder device run", () => {
+  const f = reconcileFeedback(DEVICE_RAW, "financial_limit", DEVICE_TURNS, DEVICE_SCREEN);
+  const c = buildCoachingView(f);
+  const learnerLines = DEVICE_TURNS.filter((t) => t.role === "tc").map((t) => t.text);
+
+  it("no invented praise: the only positive is the modest line, on words the learner really said", () => {
+    expect(c.helped).toHaveLength(1);
+    expect(c.helped[0]!.text).toBe(MODEST_HELP);
+    expect(learnerLines.some((l) => l.includes(c.helped[0]!.quote))).toBe(true);
+    expect(c.helped.map((h) => h.key)).not.toContain("referred_clinical");
+  });
+
+  it("no score-like count: three lines on one theme are one point, and nothing in the view is a number of times", () => {
+    expect(c.safety).toHaveLength(1);
+    expect(c.safety[0]).not.toHaveProperty("occurrences");
+    expect(JSON.stringify(c)).not.toMatch(/\b\d+ times\b|came up/i);
+  });
+
+  it("exactly one primary improvement point: one quote, one principle, one safer line", () => {
+    const [p] = c.safety;
+    expect(c.growth).toBeNull();
+    expect(p!.kind).toBe("clinical_misrepresentation");
+    expect(p!.quoteVerified).toBe(true);
+    expect(learnerLines).toContain(p!.quote);
+    expect(p!.whyItMatters).toBe(SAFETY_COACHING.clinical_misrepresentation.whyItMatters);
+    expect(p!.tryInstead).toBe(SAFETY_COACHING.clinical_misrepresentation.tryInstead);
+  });
+
+  it("every quote shown is real", () => {
+    const shown = [...c.helped.map((h) => h.quote), ...c.safety.flatMap((p) => [p.quote, ...p.otherQuotes.filter((q) => q.verified).map((q) => q.quote)])];
+    for (const q of shown) expect(learnerLines.some((l) => l.includes(q))).toBe(true);
+  });
+
+  it("the replacement language stays inside the TC's role: it hands the clinical question to the dentist", () => {
+    const line = c.safety[0]!.tryInstead;
+    expect(line).toMatch(/Dr\. Patel/);
+    expect(line).not.toMatch(/\b(filling|crown|crack|small|wait|need it|cover|insurance)\b/i);
+    expect(c.tryNext).toEqual(["Ask an open question first.", "If the patient asks a clinical question, bring the dentist in."]);
+  });
+
+  it("safety is unchanged: every flagged line is still reported, and a mentor conversation is still suggested", () => {
+    expect(f.concerns.map((x) => x.quote)).toEqual([DEVICE_TURNS[3]!.text, DEVICE_TURNS[5]!.text, DEVICE_TURNS[7]!.text]);
+    expect(f.suggestMentorReview).toBe(true);
+    expect([c.safety[0]!.quote, ...c.safety[0]!.otherQuotes.map((q) => q.quote)].sort()).toEqual(f.concerns.map((x) => x.quote).sort());
   });
 });
