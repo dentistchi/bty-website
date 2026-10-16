@@ -178,7 +178,7 @@ export const BEHAVIORS_BLOCKED_BY: Record<ConcernKind, FeedbackBehaviorKey[]> = 
 };
 
 /** The learner turn a quote came from, or -1. */
-function turnOfQuote(quote: string, turns: Turn[]): number {
+export function turnOfQuote(quote: string, turns: Turn[]): number {
   const q = normalize(quote);
   if (q.length < 3) return -1;
   return turns.findIndex((t) => t.role === "tc" && normalize(t.text).includes(q));

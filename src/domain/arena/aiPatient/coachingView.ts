@@ -24,7 +24,8 @@
  * Pure: no I/O.
  */
 
-import type { ConcernKind, FeedbackBehaviorKey, ShownConcern, ShownFeedback, ShownObservation } from "./feedback";
+import { turnOfQuote, type ConcernKind, type FeedbackBehaviorKey, type ShownConcern, type ShownFeedback, type ShownObservation } from "./feedback";
+import type { Turn } from "./sessionRules";
 
 /** Safety first, and in this order: clinical authority, financial honesty, the patient's own pace. */
 export const CONCERN_ORDER: readonly ConcernKind[] = ["clinical_misrepresentation", "insurance_guarantee", "pressure_or_urgency", "other"];
@@ -156,6 +157,35 @@ const BEHAVIOR_ORDER: readonly FeedbackBehaviorKey[] = [
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
+/**
+ * Which positive point a contested utterance goes to: the more specific behaviour first, the broad
+ * ones last. Founder device run: "how much do you think you can pay?" was credited both as giving the
+ * patient room (broad) and as checking cost versus treatment (specific) — one line, two compliments.
+ */
+export const HELPED_SPECIFICITY: readonly FeedbackBehaviorKey[] = [
+  "told_apart",
+  "referred_clinical",
+  "accurate_money",
+  "open_question",
+  "respected_choice",
+  "found_concern",
+  "no_pressure",
+];
+
+/**
+ * The same learner utterance: the same learner turn when the transcript is at hand (two different
+ * spans of one turn are still one utterance), otherwise the same words or one inside the other.
+ */
+function sameUtterance(a: string, b: string, turns: Turn[] | undefined): boolean {
+  if (turns) {
+    const ta = turnOfQuote(a, turns);
+    if (ta >= 0 && ta === turnOfQuote(b, turns)) return true;
+  }
+  const na = norm(a);
+  const nb = norm(b);
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
 function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
   const byKind = new Map<ConcernKind, ShownConcern[]>();
   for (const c of concerns) byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), c]);
@@ -180,15 +210,21 @@ function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
   return points;
 }
 
-export function buildCoachingView(feedback: ShownFeedback): CoachingView {
+export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[]): CoachingView {
   const byKey = new Map(feedback.observations.map((o) => [o.key, o]));
 
-  const helped = BEHAVIOR_ORDER.flatMap((key) => {
+  // ONE UTTERANCE, ONE POSITIVE POINT. Most specific behaviour first; each takes the first of its
+  // quotes no stronger point has already used. A behaviour left with no independent quote is dropped,
+  // never re-evidenced with a paraphrase. Reconciliation already guarantees `seen` quotes are the
+  // learner's own and never a flagged line.
+  const helped: CoachingView["helped"] = [];
+  for (const key of HELPED_SPECIFICITY) {
+    if (helped.length === 2) break;
     const o = byKey.get(key);
-    // Reconciliation already guarantees `seen` quotes are the learner's own and never a flagged line.
-    if (!o || o.status !== "seen" || o.quotes.length === 0) return [];
-    return [{ key, text: HELPED_TEXT[key], quote: o.quotes[0]! }];
-  }).slice(0, 2);
+    if (!o || o.status !== "seen") continue;
+    const quote = o.quotes.find((q) => !helped.some((h) => sameUtterance(h.quote, q, turns)));
+    if (quote) helped.push({ key, text: HELPED_TEXT[key], quote });
+  }
 
   // Only when nothing was clearly seen: a modest, quote-backed observation that the learner moved
   // toward the patient's concern. Reconciliation already dropped any quote that is not the learner's

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CASE_ACCEPTANCE_01 } from "./caseAcceptance01";
 import { FEEDBACK_BEHAVIORS, reconcileFeedback, type RawFeedback } from "./feedback";
-import { buildCoachingView, CONCERN_ORDER, GROWTH_TEXT, HELPED_TEXT, MODEST_HELP, NO_VERIFIED_HELP, NOTHING_TO_CHANGE, SAFETY_COACHING, TRY_FIRST, TRY_THEN } from "./coachingView";
+import { buildCoachingView, CONCERN_ORDER, HELPED_SPECIFICITY, GROWTH_TEXT, HELPED_TEXT, MODEST_HELP, NO_VERIFIED_HELP, NOTHING_TO_CHANGE, SAFETY_COACHING, TRY_FIRST, TRY_THEN } from "./coachingView";
 import type { Turn } from "./sessionRules";
 
 /**
@@ -55,15 +55,14 @@ describe("[#69] What helped the patient — only what the learner verifiably sai
     expect(buildCoachingView(f).helped).toEqual([]);
   });
 
-  it("keeps it short: at most two moments", () => {
+  it("keeps it short: at most two moments, even with more independent evidence", () => {
+    const distinct = ["What part of this feels hardest for you right now?", "Your insurance will definitely cover most of it", "the crack is tiny"];
     const f = reconcileFeedback(
-      raw({
-        observations: FEEDBACK_BEHAVIORS.map((b) => ({ key: b.key, status: "seen" as const, quotes: ["What part of this feels hardest for you right now?"], note: "" })),
-      }),
+      raw({ observations: FEEDBACK_BEHAVIORS.map((b, i) => ({ key: b.key, status: "seen" as const, quotes: [distinct[i % 3]!], note: "" })) }),
       "financial_limit",
       turns,
     );
-    expect(buildCoachingView(f).helped).toHaveLength(2);
+    expect(buildCoachingView(f, turns).helped).toHaveLength(2);
   });
 });
 
@@ -303,5 +302,94 @@ describe("[Coaching Tone V1] the Founder device run", () => {
     expect(f.concerns.map((x) => x.quote)).toEqual([DEVICE_TURNS[3]!.text, DEVICE_TURNS[5]!.text, DEVICE_TURNS[7]!.text]);
     expect(f.suggestMentorReview).toBe(true);
     expect([c.safety[0]!.quote, ...c.safety[0]!.otherQuotes.map((q) => q.quote)].sort()).toEqual(f.concerns.map((x) => x.quote).sort());
+  });
+});
+
+/**
+ * Founder device run on production 7487a354: the learner's one line "how much do you think you can
+ * pay?" was the evidence for BOTH "You gave the patient room to say what was really worrying them" and
+ * "You checked whether the hesitation was about the cost or about the treatment itself". The quote
+ * is verbatim from the device; the surrounding turns are shaped around it (BTY keeps no transcripts).
+ */
+const PAY_LINE = "how much do you think you can pay?";
+const PAY_TURNS: Turn[] = [
+  { role: "patient", text: CASE_ACCEPTANCE_01.openingLine },
+  { role: "tc", text: "I hear you. So how much do you think you can pay?" },
+  { role: "patient", text: "It's mostly the money. I just can't afford that much right now." },
+  { role: "tc", text: "And the crack is tiny, so it can wait." },
+];
+const PAY_RAW = raw({
+  observations: FEEDBACK_BEHAVIORS.map((b) =>
+    b.key === "found_concern" || b.key === "told_apart"
+      ? { key: b.key, status: "seen" as const, quotes: [PAY_LINE], note: "" }
+      : { key: b.key, status: "not_seen" as const, quotes: [], note: "" },
+  ),
+  concernSurfaced: { status: "yes", quote: PAY_LINE },
+});
+const PAY_SCREEN = [{ turnIndex: 3, kind: "clinical_misrepresentation" as const, explanation: "Softened the dentist's recommendation." }];
+
+describe("[One utterance, one positive point] the Founder device case", () => {
+  const f = reconcileFeedback(PAY_RAW, "financial_limit", PAY_TURNS, PAY_SCREEN);
+  const c = buildCoachingView(f, PAY_TURNS);
+  const learnerLines = PAY_TURNS.filter((t) => t.role === "tc").map((t) => t.text);
+
+  it("the one line backs one point: the specific cost-versus-treatment check wins, the broad 'room' point is dropped", () => {
+    expect(c.helped).toEqual([{ key: "told_apart", text: HELPED_TEXT.told_apart, quote: PAY_LINE }]);
+    expect(c.helped.map((h) => h.text)).not.toContain(HELPED_TEXT.found_concern);
+  });
+
+  it("no invented evidence: every positive quote is the learner's, and no quote is used twice", () => {
+    for (const h of c.helped) expect(learnerLines.some((l) => l.toLowerCase().includes(h.quote.toLowerCase()))).toBe(true);
+    expect(new Set(c.helped.map((h) => h.quote.toLowerCase())).size).toBe(c.helped.length);
+  });
+
+  it("a different span of the SAME turn is still the same utterance", () => {
+    const spans = raw({
+      observations: FEEDBACK_BEHAVIORS.map((b) =>
+        b.key === "found_concern"
+          ? { key: b.key, status: "seen" as const, quotes: ["I hear you"], note: "" }
+          : b.key === "told_apart"
+            ? { key: b.key, status: "seen" as const, quotes: [PAY_LINE], note: "" }
+            : { key: b.key, status: "not_seen" as const, quotes: [], note: "" },
+      ),
+    });
+    const v = buildCoachingView(reconcileFeedback(spans, "financial_limit", PAY_TURNS, PAY_SCREEN), PAY_TURNS);
+    expect(v.helped.map((h) => h.key)).toEqual(["told_apart"]);
+  });
+
+  it("the weaker point survives only with an independent line of its own", () => {
+    const turnsWithMore: Turn[] = [...PAY_TURNS, { role: "patient", text: "I don't know." }, { role: "tc", text: "Take your time, what's on your mind?" }];
+    const independent = raw({
+      observations: FEEDBACK_BEHAVIORS.map((b) =>
+        b.key === "found_concern"
+          ? { key: b.key, status: "seen" as const, quotes: [PAY_LINE, "Take your time, what's on your mind?"], note: "" }
+          : b.key === "told_apart"
+            ? { key: b.key, status: "seen" as const, quotes: [PAY_LINE], note: "" }
+            : { key: b.key, status: "not_seen" as const, quotes: [], note: "" },
+      ),
+    });
+    const v = buildCoachingView(reconcileFeedback(independent, "financial_limit", turnsWithMore, PAY_SCREEN), turnsWithMore);
+    expect(v.helped).toEqual([
+      { key: "told_apart", text: HELPED_TEXT.told_apart, quote: PAY_LINE },
+      { key: "found_concern", text: HELPED_TEXT.found_concern, quote: "Take your time, what's on your mind?" },
+    ]);
+  });
+
+  it("without the transcript, the same words are still caught", () => {
+    expect(buildCoachingView(f).helped.map((h) => h.key)).toEqual(["told_apart"]);
+  });
+
+  it("everything else is unchanged: one main improvement, no counts, safety intact, two steps to try", () => {
+    expect(c.safety.map((p) => p.kind)).toEqual(["clinical_misrepresentation"]);
+    expect(c.safety[0]!.quote).toBe(PAY_TURNS[3]!.text);
+    expect(c.safety[0]!.tryInstead).toBe(SAFETY_COACHING.clinical_misrepresentation.tryInstead);
+    expect(c.growth).toBeNull();
+    expect(f.suggestMentorReview).toBe(true);
+    expect(JSON.stringify(c)).not.toMatch(/\b\d+ times\b|came up/i);
+    expect(c.tryNext).toEqual([TRY_FIRST, TRY_THEN.clinical_misrepresentation]);
+  });
+
+  it("the specificity order covers every behaviour exactly once", () => {
+    expect([...HELPED_SPECIFICITY].sort()).toEqual(FEEDBACK_BEHAVIORS.map((b) => b.key).sort());
   });
 });
