@@ -16,12 +16,33 @@ export const AI_PATIENT_CASE_ID = "case-acceptance-01-v1";
 /** The learning context this case belongs to. Display only; the Training itself is never modified. */
 export const AI_PATIENT_TRAINING_TITLE = "Case Acceptance 01 — When the Patient Says “I Need to Think About It”";
 
-export const HIDDEN_CONCERNS = ["financial_limit", "clinical_need_doubt"] as const;
-export type HiddenConcern = (typeof HIDDEN_CONCERNS)[number];
+import type { ConcernKind, FeedbackBehaviorKey } from "./feedback";
 
-export type AiPatientCase = {
+/** The two concerns of THIS case. Other scenarios name their own (see scenarios.ts). */
+export const HIDDEN_CONCERNS = ["financial_limit", "clinical_need_doubt"] as const;
+/** A hidden-concern key, valid only within the case that defines it. */
+export type HiddenConcern = string;
+
+export type HiddenConcernDef = { label: string; patientTruth: string; revealWhen: string };
+
+/**
+ * Scenario-specific INPUTS to the one shared engine (Scenario Pack V1). Every field is optional and
+ * only replaces wording: the behaviour keys, the reconciliation, the one-utterance rule, the main-point
+ * selection and the Try-next structure are the same code for every scenario.
+ */
+export type ScenarioLearnerTargets = Partial<Record<FeedbackBehaviorKey, { label?: string; definition?: string }>>;
+export type ScenarioCoachingCopy = {
+  helped?: Partial<Record<FeedbackBehaviorKey, string>>;
+  growth?: Partial<Record<FeedbackBehaviorKey, string>>;
+  tryThen?: Partial<Record<FeedbackBehaviorKey | ConcernKind, string>>;
+  safety?: Partial<Record<ConcernKind, Partial<{ title: string; whyItMatters: string; tryInstead: string }>>>;
+};
+
+export type AiPatientCase<K extends string = string> = {
   id: string;
   patientName: string;
+  /** The treating dentist named in the case. Clinical authority belongs to them. */
+  dentistName?: string;
   /** What the learner is told before the conversation starts. */
   learnerBriefing: string;
   /** The patient's first line — authored, so every session opens on the Training's own moment. */
@@ -30,12 +51,28 @@ export type AiPatientCase = {
   knownFacts: string[];
   /** The same case truth in the third person, for the reviewers that judge the learner's words. */
   reviewerFacts: string[];
-  hiddenConcerns: Record<HiddenConcern, { label: string; patientTruth: string; revealWhen: string }>;
+  hiddenConcerns: Record<K, HiddenConcernDef>;
+  /** How this patient's openness moves with the learner's behaviour. Private to the patient model. */
+  patientBehavior?: string[];
+  /** Who decides what in this situation, for the reviewers. */
+  roleBoundaries?: string[];
+  /** Scenario-specific examples of each concern kind, for the reviewers. */
+  safetySignals?: Partial<Record<ConcernKind, string[]>>;
+  learnerTargets?: ScenarioLearnerTargets;
+  coaching?: ScenarioCoachingCopy;
 };
 
-export const CASE_ACCEPTANCE_01: AiPatientCase = {
+/** The hidden concern's definition, or a loud failure — a session never runs on an unknown concern. */
+export function hiddenConcernOf(kase: AiPatientCase, concern: HiddenConcern): HiddenConcernDef {
+  const def = (kase.hiddenConcerns as Record<string, HiddenConcernDef | undefined>)[concern];
+  if (!def) throw new Error(`Unknown hidden concern "${concern}" for ${kase.id}`);
+  return def;
+}
+
+export const CASE_ACCEPTANCE_01: AiPatientCase<(typeof HIDDEN_CONCERNS)[number]> = {
   id: AI_PATIENT_CASE_ID,
   patientName: "Dana",
+  dentistName: "Dr. Patel",
   learnerBriefing:
     "Dana, an adult patient, has just finished an exam with the treating dentist, Dr. Patel. Dr. Patel recommended a crown on a lower back tooth and has left the room. You are the Treatment Coordinator. Dana turns to you.",
   openingLine: "I'm not in pain, and my insurance doesn't cover much. I think I need to think about it.",

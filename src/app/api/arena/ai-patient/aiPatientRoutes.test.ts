@@ -37,6 +37,9 @@ import { POST as speech } from "./speech/route";
 import { POST as feedback } from "./feedback/route";
 import { GET as access } from "./access/route";
 import { CASE_ACCEPTANCE_01 } from "@/domain/arena/aiPatient/caseAcceptance01";
+import { AI_PATIENT_SCENARIOS } from "@/domain/arena/aiPatient/scenarios";
+import { AI_PATIENT_SCENARIO_IDS } from "@/domain/arena/aiPatient/scenarioCatalog";
+import { sealSession } from "@/lib/bty/arena/aiPatient/sessionSeal";
 import { AI_PATIENT_LIMITS } from "@/domain/arena/aiPatient/sessionRules";
 import { FEEDBACK_BEHAVIORS } from "@/domain/arena/aiPatient/feedback";
 
@@ -95,7 +98,8 @@ describe("[AI patient] start", () => {
 
   it("opens on the authored line, sealed, with the limits — and calls no model yet", async () => {
     const s = await begin();
-    expect(s.turns).toEqual([{ role: "patient", text: CASE_ACCEPTANCE_01.openingLine }]);
+    // Scenario Pack V1: the default situation is Cost Concern.
+    expect(s.turns).toEqual([{ role: "patient", text: AI_PATIENT_SCENARIOS.cost_concern.openingLine }]);
     expect(s.state.startsWith("aps1.")).toBe(true);
     expect(s.turnsLeft).toBe(AI_PATIENT_LIMITS.maxLearnerTurns);
     expect(s.voiceAvailable).toBe(true);
@@ -407,6 +411,113 @@ describe("[AI patient] replay and cost are bounded per user", () => {
     budgetRefuse = "ai-patient:feedback";
     expect((await feedback(json({ state: s.state }))).status).toBe(429);
     expect(providerFetch).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("[Scenario Pack V1] choosing a patient situation", () => {
+  it.each([...AI_PATIENT_SCENARIO_IDS])("%s opens on its own authored line, with its patient and briefing, and reveals nothing hidden", async (id) => {
+    const kase = AI_PATIENT_SCENARIOS[id];
+    const res = await start(json({ acknowledged: true, scenarioId: id }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.scenarioId).toBe(id);
+    expect(body.turns).toEqual([{ role: "patient", text: kase.openingLine }]);
+    expect(body.patientName).toBe(kase.patientName);
+    expect(body.briefing).toBe(kase.learnerBriefing);
+    const sent = JSON.stringify(body);
+    for (const [key, def] of Object.entries(kase.hiddenConcerns)) {
+      expect(sent).not.toContain(key);
+      expect(sent).not.toContain(def.label);
+      expect(sent).not.toContain(def.patientTruth);
+    }
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("an unknown situation is refused before anything starts", async () => {
+    const res = await start(json({ acknowledged: true, scenarioId: "made_up" }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "unknown_scenario" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("the patient model plays the CHOSEN scenario: its facts, its hidden concern, its name", async () => {
+    mockCreate.mockResolvedValueOnce(reply("Linda: It's just a lot of money for a back tooth."));
+    const s = await (await start(json({ acknowledged: true, scenarioId: "just_pull_it" }))).json();
+    const body = await (await turn(json({ state: s.state, text: "What makes pulling it feel like the better option?" }))).json();
+    expect(body.patientText).toBe("It's just a lot of money for a back tooth."); // the speaker label is stripped
+    const system = (mockCreate.mock.calls[0]![0] as { messages: Array<{ content: string }> }).messages[0]!.content;
+    for (const f of AI_PATIENT_SCENARIOS.just_pull_it.knownFacts) expect(system).toContain(f);
+    expect(system).toContain(AI_PATIENT_SCENARIOS.just_pull_it.hiddenConcerns.extraction_belief.patientTruth);
+    expect(system).toContain("You are role-playing Linda");
+    expect(system).not.toContain(CASE_ACCEPTANCE_01.knownFacts[0]!);
+  });
+
+  it("feedback for a scenario reviews against THAT scenario and reveals its concern from the case file", async () => {
+    mockCreate
+      .mockResolvedValueOnce(reply("I just don't want to be stuck in the chair."))
+      .mockResolvedValueOnce(
+        reply(
+          JSON.stringify({
+            observations: FEEDBACK_BEHAVIORS.map((b) =>
+              b.key === "told_apart"
+                ? { key: b.key, status: "seen", quotes: ["What part of it worries you most?"], note: "" }
+                : { key: b.key, status: "not_applicable", quotes: [], note: "" },
+            ),
+            concerns: [],
+            concernSurfaced: { status: "yes", quote: "What part of it worries you most?" },
+            nextStep: "Keep asking first.",
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(reply(JSON.stringify({ findings: [] })));
+    const s = await (await start(json({ acknowledged: true, scenarioId: "afraid_of_treatment" }))).json();
+    const t = await (await turn(json({ state: s.state, text: "That sounds really hard. What part of it worries you most?" }))).json();
+    const f = (await (await feedback(json({ state: t.state }))).json()).feedback;
+    const kase = AI_PATIENT_SCENARIOS.afraid_of_treatment;
+    expect(f.hiddenConcern).toEqual({ key: "fear_of_treatment", label: kase.hiddenConcerns.fear_of_treatment.label });
+    expect(f.coaching.helped).toEqual([{ key: "told_apart", text: kase.coaching!.helped!.told_apart, quote: "What part of it worries you most?" }]);
+    expect(f.observations.find((o: { key: string }) => o.key === "told_apart").label).toBe(kase.learnerTargets!.told_apart!.label);
+    const reviewer = (mockCreate.mock.calls[1]![0] as { messages: Array<{ content: string }> }).messages[0]!.content;
+    const screen = (mockCreate.mock.calls[2]![0] as { messages: Array<{ content: string }> }).messages[0]!.content;
+    for (const fact of kase.reviewerFacts) {
+      expect(reviewer).toContain(fact);
+      expect(screen).toContain(fact);
+    }
+    expect(screen).toContain(kase.roleBoundaries![0]!);
+  });
+
+  it("a session sealed before the pack still finishes on its original case", async () => {
+    mockCreate.mockResolvedValueOnce(reply("Money's tight."));
+    const state = await sealSession({
+      v: 1,
+      sid: "legacy",
+      uid: "user-a",
+      caseId: CASE_ACCEPTANCE_01.id,
+      concern: "clinical_need_doubt",
+      startedAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+      turns: [{ role: "patient", text: CASE_ACCEPTANCE_01.openingLine }],
+    });
+    const r = await turn(json({ state, text: "What feels hardest?" }));
+    expect(r.status).toBe(200);
+    const system = (mockCreate.mock.calls[0]![0] as { messages: Array<{ content: string }> }).messages[0]!.content;
+    expect(system).toContain(CASE_ACCEPTANCE_01.hiddenConcerns.clinical_need_doubt.patientTruth);
+  });
+
+  it("a sealed session whose concern does not belong to its case is refused", async () => {
+    const state = await sealSession({
+      v: 1,
+      sid: "mixed",
+      uid: "user-a",
+      caseId: "afraid_of_treatment",
+      concern: "financial_limit",
+      startedAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+      turns: [{ role: "patient", text: "x" }],
+    });
+    const r = await turn(json({ state, text: "Hello" }));
+    expect(r.status).toBeGreaterThanOrEqual(400);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 });

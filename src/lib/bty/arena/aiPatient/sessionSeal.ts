@@ -12,7 +12,7 @@
  */
 
 import type { AiPatientSessionState } from "@/domain/arena/aiPatient/sessionRules";
-import { isHiddenConcern } from "@/domain/arena/aiPatient/sessionRules";
+import { isValidSessionCase } from "@/domain/arena/aiPatient/scenarios";
 
 export const SEAL_PREFIX = "aps1";
 const KEY_CONTEXT = "bty-ai-patient-session-v1";
@@ -82,7 +82,7 @@ export async function unsealSession(sealed: unknown, userId: string): Promise<Un
   } catch {
     return { ok: false, reason: "malformed" };
   }
-  if (state?.v !== 1 || !isHiddenConcern(state.concern) || !Array.isArray(state.turns)) return { ok: false, reason: "malformed" };
+  if (state?.v !== 1 || !isValidSessionCase(state.caseId, state.concern) || !Array.isArray(state.turns)) return { ok: false, reason: "malformed" };
   if (state.uid !== userId) return { ok: false, reason: "not_owner" };
   return { ok: true, state };
 }

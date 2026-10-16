@@ -24,8 +24,10 @@
  * Pure: no I/O.
  */
 
-import { turnOfQuote, type ConcernKind, type FeedbackBehaviorKey, type ShownConcern, type ShownFeedback, type ShownObservation } from "./feedback";
+import type { ConcernKind, FeedbackBehaviorKey, ShownConcern, ShownFeedback, ShownObservation } from "./feedback";
+import { turnOfQuote } from "./quoteMatch";
 import type { Turn } from "./sessionRules";
+import type { ScenarioCoachingCopy } from "./caseAcceptance01";
 
 /** Safety first, and in this order: clinical authority, financial honesty, the patient's own pace. */
 export const CONCERN_ORDER: readonly ConcernKind[] = ["clinical_misrepresentation", "insurance_guarantee", "pressure_or_urgency", "other"];
@@ -186,7 +188,7 @@ function sameUtterance(a: string, b: string, turns: Turn[] | undefined): boolean
   return na === nb || na.includes(nb) || nb.includes(na);
 }
 
-function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
+function groupSafety(concerns: ShownConcern[], copy: ScenarioCoachingCopy): SafetyPoint[] {
   const byKind = new Map<ConcernKind, ShownConcern[]>();
   for (const c of concerns) byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), c]);
   const points: SafetyPoint[] = [];
@@ -202,6 +204,7 @@ function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
     points.push({
       kind,
       ...SAFETY_COACHING[kind],
+      ...copy.safety?.[kind],
       quote: head.quote,
       quoteVerified: head.quoteVerified,
       otherQuotes: distinct.slice(1).filter((d) => Boolean(d.quote)).map((d) => ({ quote: d.quote, verified: d.quoteVerified })),
@@ -210,7 +213,11 @@ function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
   return points;
 }
 
-export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[]): CoachingView {
+/**
+ * `copy` is the scenario's WORDING only (Scenario Pack V1): which points are chosen, and in what order,
+ * is decided below identically for every scenario. Absent copy is the original Case Acceptance wording.
+ */
+export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[], copy: ScenarioCoachingCopy = {}): CoachingView {
   const byKey = new Map(feedback.observations.map((o) => [o.key, o]));
 
   // ONE UTTERANCE, ONE POSITIVE POINT. Most specific behaviour first; each takes the first of its
@@ -223,7 +230,7 @@ export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[]): Coac
     const o = byKey.get(key);
     if (!o || o.status !== "seen") continue;
     const quote = o.quotes.find((q) => !helped.some((h) => sameUtterance(h.quote, q, turns)));
-    if (quote) helped.push({ key, text: HELPED_TEXT[key], quote });
+    if (quote) helped.push({ key, text: copy.helped?.[key] ?? HELPED_TEXT[key], quote });
   }
 
   // Only when nothing was clearly seen: a modest, quote-backed observation that the learner moved
@@ -236,7 +243,7 @@ export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[]): Coac
       (feedback.concernSurfaced.status === "partly" && feedback.concernSurfaced.quote ? feedback.concernSurfaced.quote : null));
   const shownHelped: CoachingView["helped"] = engagedQuote ? [{ key: "engaged", text: MODEST_HELP, quote: engagedQuote }] : helped;
 
-  const safety = groupSafety(feedback.concerns);
+  const safety = groupSafety(feedback.concerns, copy);
 
   const gapKey = safety.length
     ? null
@@ -245,14 +252,15 @@ export function buildCoachingView(feedback: ShownFeedback, turns?: Turn[]): Coac
         return s === "not_seen" || s === "partly";
       }) ?? null);
 
-  const focus = safety[0]?.kind ?? gapKey ?? "default";
+  const primaryKind = safety.length ? safety[0]!.kind : null;
+  const focus = primaryKind ?? gapKey ?? "default";
 
   return {
     helped: shownHelped,
     helpedFallback: shownHelped.length ? null : NO_VERIFIED_HELP,
     safety,
-    growth: gapKey ? { key: gapKey, text: GROWTH_TEXT[gapKey] } : null,
+    growth: gapKey ? { key: gapKey, text: copy.growth?.[gapKey] ?? GROWTH_TEXT[gapKey] } : null,
     growthFallback: safety.length || gapKey ? null : NOTHING_TO_CHANGE,
-    tryNext: [TRY_FIRST, TRY_THEN[focus]],
+    tryNext: [TRY_FIRST, (focus !== "default" ? copy.tryThen?.[focus] : undefined) ?? TRY_THEN[focus]],
   };
 }

@@ -10,7 +10,7 @@ import {
   type CaptureFailure,
   type VoiceMode,
 } from "@/lib/bty/arena/aiPatient/voiceCapture";
-import { AI_PATIENT_TRAINING_TITLE } from "@/domain/arena/aiPatient/caseAcceptance01";
+import { AI_PATIENT_SCENARIO_CATALOG, type AiPatientScenarioId } from "@/domain/arena/aiPatient/scenarioCatalog";
 import type { ShownFeedback } from "@/domain/arena/aiPatient/feedback";
 import { DETAIL_STATUS, type CoachingView } from "@/domain/arena/aiPatient/coachingView";
 
@@ -113,6 +113,7 @@ const CAPTURE_COPY: Record<CaptureFailure, string> = {
 
 export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>("intro");
+  const [startingId, setStartingId] = useState<AiPatientScenarioId | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
@@ -214,7 +215,8 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
     setView(next);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (scenarioId: AiPatientScenarioId) => {
+    setStartingId(scenarioId);
     setNotice(null);
     setFeedback(null);
     setFeedbackError(null);
@@ -231,7 +233,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
       /* playback stays locked; replies will offer "Tap to hear" */
     }
     setPhase("starting");
-    const r = await postJson<View & { patientName: string; briefing: string; voiceAvailable: boolean }>("/api/arena/ai-patient/start", { acknowledged: true });
+    const r = await postJson<View & { patientName: string; briefing: string; voiceAvailable: boolean }>("/api/arena/ai-patient/start", { acknowledged: true, scenarioId });
     if (!r.ok) {
       setNotice(errorCopy(r.error));
       setPhase("intro");
@@ -407,21 +409,20 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
         <header className="flex flex-col gap-1">
           <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#C9A66B]/80">AI patient practice</span>
           <h1 data-bty-main-heading="" className="text-[1.35rem] font-semibold leading-tight tracking-tight text-white">
-            When the patient says “I need to think about it”
+            Choose a patient situation
           </h1>
-          <p className="text-[0.85rem] text-white/60">Builds on: {AI_PATIENT_TRAINING_TITLE}</p>
         </header>
         <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.9rem] leading-relaxed text-white/85">
-          <p>Talk with Dana, a patient who has just heard Dr. Patel recommend a crown. Speak or type as you would at the front desk. You have up to 5 minutes; then you get coaching on what you said.</p>
-          <p className="text-white/60">Dana has one real concern she won&apos;t say right away. Your job is to understand it, not to win the case.</p>
+          <p>Talk with a patient at the front desk. Speak or type as you would. You have up to 5 minutes; then you get coaching on what you said.</p>
+          <p className="text-white/60">Each patient has one real concern they won&apos;t say right away. Your job is to understand it, not to win the case.</p>
         </div>
         <div className="flex flex-col gap-2 rounded-2xl border border-[#C9A66B]/40 bg-[#C9A66B]/10 px-4 py-3 text-[0.85rem] leading-relaxed text-white/85" data-testid="ai-patient-notice">
-          <p className="font-semibold text-white">Fictional patient · practice only</p>
+          <p className="font-semibold text-white">Fictional patients · practice only</p>
           <ul className="flex list-disc flex-col gap-1 pl-5">
-            <li>Dana, Dr. Patel, the $1,450 fee and the $800 estimated patient portion are all invented. Never use a real patient&apos;s name or details.</li>
-            <li>In this case the insurance company has not confirmed coverage. The estimate is only an estimate.</li>
+            <li>Every patient, dentist, fee and insurance detail here is invented. Never use a real patient&apos;s name or details.</li>
+            <li>In every situation the insurance company has not confirmed coverage. An estimate is only an estimate.</li>
             <li>Clinical decisions belong to the treating dentist. This practice is about how you communicate, not about clinical care.</li>
-            <li>Dana is played by AI. It can say things a real patient wouldn&apos;t.</li>
+            <li>The patient is played by AI. It can say things a real patient wouldn&apos;t.</li>
             <li>If you speak, your voice is sent to BTY&apos;s AI provider to be turned into text. BTY does not keep the recording or the conversation.</li>
             <li>Feedback is written by AI from what you said. It isn&apos;t a score and can be wrong — talk it over with your mentor.</li>
           </ul>
@@ -434,19 +435,26 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
               className="mt-1 h-4 w-4"
               data-testid="ai-patient-ack"
             />
-            <span>I understand this is a fictional patient and I won&apos;t use real patient information.</span>
+            <span>I understand these are fictional patients and I won&apos;t use real patient information.</span>
           </label>
         </div>
         {notice ? <p className="text-[0.85rem] text-amber-200" role="alert">{notice}</p> : null}
-        <button
-          type="button"
-          disabled={!acknowledged || phase === "starting"}
-          onClick={() => void start()}
-          className="rounded-2xl bg-[#C9A66B] px-4 py-3 text-[0.95rem] font-semibold text-[#0B1F3A] disabled:opacity-50"
-          data-testid="ai-patient-start"
-        >
-          {phase === "starting" ? "Starting…" : "Start conversation"}
-        </button>
+        <ul className="flex flex-col gap-2" data-testid="ai-patient-scenarios">
+          {AI_PATIENT_SCENARIO_CATALOG.map((sc) => (
+            <li key={sc.id}>
+              <button
+                type="button"
+                disabled={!acknowledged || phase === "starting"}
+                onClick={() => void start(sc.id)}
+                className="flex w-full flex-col items-start gap-0.5 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-left disabled:opacity-50"
+                data-testid={`ai-patient-scenario-${sc.id}`}
+              >
+                <span className="text-[0.95rem] font-semibold text-white">{phase === "starting" && startingId === sc.id ? "Starting…" : sc.title}</span>
+                <span className="text-[0.82rem] text-white/65">{sc.description}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
         <p className="text-[0.75rem] text-white/50">
           {voiceMode === "none" ? "Voice isn't available on this device — you'll type your side." : "You can speak or type."}
         </p>

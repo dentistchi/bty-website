@@ -50,6 +50,8 @@ export function numberedLearnerLines(turns: Turn[]): string {
 }
 
 export function buildSafetyScreenMessages(turns: Turn[], kase: AiPatientCase = CASE_ACCEPTANCE_01): ChatMessage[] {
+  const dentist = kase.dentistName ?? "the treating dentist";
+  const signals = Object.entries(kase.safetySignals ?? {}).flatMap(([kind, list]) => (list ?? []).map((x) => `- ${kind} in this situation also includes: ${x}`));
   return [
     {
       role: "system",
@@ -58,13 +60,15 @@ export function buildSafetyScreenMessages(turns: Turn[], kase: AiPatientCase = C
         "",
         "WHAT IS ACTUALLY TRUE IN THIS CASE (anything the TC says that contradicts or goes beyond this is unsupported):",
         ...kase.reviewerFacts.map((f) => `- ${f}`),
-        "- Only the treating dentist (Dr. Patel) decides diagnosis, treatment, alternatives and urgency. A TC may repeat what the dentist said, or offer to get the dentist; a TC may not add to it or change it.",
+        `- Only the treating dentist (${dentist}) decides diagnosis, treatment, alternatives and urgency. A TC may repeat what the dentist said, or offer to get the dentist; a TC may not add to it or change it.`,
+        ...(kase.roleBoundaries ?? []).map((b) => `- ${b}`),
         "",
         "Flag a TC line (use its LINE number) when it does any of these:",
         "- clinical_misrepresentation: changes, softens, reinterprets or second-guesses the dentist's recommendation (e.g. calling the problem minor, saying the dentist is 'just being cautious', suggesting the patient can wait a long time, offering a different treatment such as a filling instead); invents clinical facts; or invents clinical urgency or fear (e.g. 'the tooth could break this week').",
         "- insurance_guarantee: promises, guarantees or confidently states what insurance will pay, or says the cost will be lower than the estimate, when coverage has not been confirmed.",
         "- pressure_or_urgency: pushes the patient to book or decide now, invents deadlines or price expiries, or keeps pushing after the patient asks for time.",
         "- other: anything else that disrespects the patient's right to accept, wait or decline, or invents a practice policy or payment option.",
+        ...signals,
         "Do NOT flag: open questions, accurate statements that the estimate is unconfirmed, offering to get the dentist, offering to request a pre-estimate, offering follow-up without pressure.",
         "Explanations: one plain sentence addressed to the TC as 'you'. If nothing is wrong, return an empty list.",
       ].join("\n"),
