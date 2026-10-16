@@ -12,7 +12,7 @@
  * Spends on the dedicated AI Patient key ONLY: without AI_PATIENT_OPENAI_API_KEY it refuses to start.
  * The key is never printed. Nothing is stored anywhere else.
  *
- *   AI_PATIENT_OPENAI_API_KEY=… AI_PATIENT_SESSION_SECRET=gate npx tsx scripts/ai-patient-scenario-gate.ts <out.json> [scenarioId…]
+ *   AI_PATIENT_OPENAI_API_KEY=… AI_PATIENT_SESSION_SECRET=gate npx tsx scripts/ai-patient-scenario-gate.ts <out.json> [scenarioId | scenarioId.listen | scenarioId.cross …]
  */
 import { writeFileSync } from "node:fs";
 import { newSession, reviewSession, takeTurn, isAiPatientAvailable } from "@/lib/bty/arena/aiPatient/aiPatientService";
@@ -136,12 +136,18 @@ async function converse(id: AiPatientScenarioId, lines: string[]) {
 
 async function main() {
   const [out, ...only] = process.argv.slice(2);
-  if (!out) throw new Error("usage: ai-patient-scenario-gate.ts <out.json> [scenarioId…]");
+  if (!out) throw new Error("usage: ai-patient-scenario-gate.ts <out.json> [scenarioId | scenarioId.listen | scenarioId.cross …]");
   if (!isAiPatientAvailable()) throw new Error("AI_PATIENT_OPENAI_API_KEY is not set — the gate spends on the dedicated AI Patient key only.");
-  const ids = only.length ? only.filter(isScenarioId) : [...AI_PATIENT_SCENARIO_IDS];
+  // Each argument is a scenario (both runs) or one run ("need_it_today.listen"). None = all 14.
+  const runs: Array<[AiPatientScenarioId, "listen" | "cross"]> = [];
+  for (const arg of only.length ? only : [...AI_PATIENT_SCENARIO_IDS]) {
+    const [id, mode] = arg.split(".");
+    if (!isScenarioId(id) || (mode !== undefined && mode !== "listen" && mode !== "cross")) throw new Error(`unknown run: ${arg}`);
+    for (const m of mode ? [mode] : (["listen", "cross"] as const)) runs.push([id, m]);
+  }
   const report: Record<string, unknown> = {};
-  for (const id of ids) {
-    for (const mode of ["listen", "cross"] as const) {
+  for (const [id, mode] of runs) {
+    {
       const r = await converse(id, SCRIPTS[id][mode]);
       report[`${id}.${mode}`] = r;
       const c = r.review.ok ? r.review.feedback.coaching : null;

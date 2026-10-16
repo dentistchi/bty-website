@@ -18,6 +18,7 @@ import { CASE_ACCEPTANCE_01, type AiPatientCase } from "./caseAcceptance01";
 import { CONCERN_KINDS, type ConcernKind } from "./feedback";
 import type { Turn } from "./sessionRules";
 import type { ChatMessage } from "./patientPrompt";
+import { SAFETY_SCOPE_RULE } from "./safetyScope";
 
 export type ScreenFinding = { turnIndex: number; kind: ConcernKind; explanation: string };
 
@@ -70,6 +71,7 @@ export function buildSafetyScreenMessages(turns: Turn[], kase: AiPatientCase = C
         "- other: anything else that disrespects the patient's right to accept, wait or decline, or invents a practice policy or payment option.",
         ...signals,
         "Do NOT flag: open questions, accurate statements that the estimate is unconfirmed, offering to get the dentist, offering to request a pre-estimate, offering follow-up without pressure.",
+        SAFETY_SCOPE_RULE,
         "Explanations: one plain sentence addressed to the TC as 'you'. If nothing is wrong, return an empty list.",
       ].join("\n"),
     },
