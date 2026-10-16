@@ -72,3 +72,6 @@ teams/dist/
 # Python bytecode from the Teams icon generator (build artifact, never source)
 __pycache__/
 *.pyc
+
+# BTY Foundry Lab — local benchmark runs (never committed)
+.foundry/
