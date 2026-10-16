@@ -129,5 +129,5 @@ export async function reviewSession(state: AiPatientSessionState, now: number): 
   if (!raw) return { ok: false, reason: "feedback_unreadable" };
   const screen: ScreenFinding[] | null = screenRaw === null ? null : parseSafetyScreen(screenRaw, state.turns);
   const feedback = reconcileFeedback(raw, state.concern, state.turns, screen);
-  return { ok: true, feedback: { ...feedback, coaching: buildCoachingView(feedback) } };
+  return { ok: true, feedback: { ...feedback, coaching: buildCoachingView(feedback, state.turns) } };
 }
