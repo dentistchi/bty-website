@@ -15,6 +15,7 @@ import type { ChatMessage } from "./patientPrompt";
 import type { ScreenFinding } from "./safetyScreen";
 import { normalizeQuote, turnOfQuote } from "./quoteMatch";
 import { SAFETY_SCOPE_RULE } from "./safetyScope";
+import { acceptOtherFinding, OTHER_ACTS } from "./otherEvidence";
 
 export const FEEDBACK_BEHAVIORS = [
   { key: "open_question", label: "Asked an open question before explaining more" },
@@ -36,7 +37,8 @@ export type ConcernKind = (typeof CONCERN_KINDS)[number];
 /** What the model must return. Strict JSON schema below mirrors it exactly. */
 export type RawFeedback = {
   observations: Array<{ key: FeedbackBehaviorKey; status: ObservationStatus; quotes: string[]; note: string }>;
-  concerns: Array<{ kind: ConcernKind; quote: string; explanation: string }>;
+  /** `act` is required for kind "other" (checked in code against the quote); null for the other kinds. */
+  concerns: Array<{ kind: ConcernKind; quote: string; explanation: string; act?: string | null }>;
   concernSurfaced: { status: "yes" | "partly" | "no"; quote: string };
   nextStep: string;
 };
@@ -68,8 +70,13 @@ export const FEEDBACK_JSON_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["kind", "quote", "explanation"],
-        properties: { kind: { type: "string", enum: [...CONCERN_KINDS] }, quote: str(300), explanation: str(300) },
+        required: ["kind", "quote", "explanation", "act"],
+        properties: {
+          kind: { type: "string", enum: [...CONCERN_KINDS] },
+          quote: str(300),
+          explanation: str(300),
+          act: { type: ["string", "null"], enum: [...OTHER_ACTS, null] },
+        },
       },
     },
     concernSurfaced: {
@@ -126,6 +133,7 @@ export function buildFeedbackMessages(concern: HiddenConcern, turns: Turn[], kas
         "CONCERNS — list every TC line that could mislead or pressure a patient: clinical_misrepresentation (changing, softening, reinterpreting or second-guessing the dentist's recommendation, e.g. calling it minor, saying the dentist is just being cautious, saying it can wait a long time, offering a different treatment; inventing clinical facts or urgency); insurance_guarantee (promising or confidently stating what insurance will pay when coverage is not confirmed); pressure_or_urgency (pushing to book now, deadlines, price expiries, fear); other (anything else that disrespects the patient's right to decide, or invents a policy or payment option). Quote the TC exactly. If there are none, return an empty list.",
         ...signals,
         SAFETY_SCOPE_RULE,
+        `For a concern of kind "other" only, also give act (one of: ${OTHER_ACTS.join(", ")}), and quote exactly the TC's words that themselves express it; for every other kind, act is null.`,
         "concernSurfaced: did the TC bring the patient's actual concern into the open? Quote the TC's words that did it, or an empty string.",
         "nextStep: one or two sentences with one specific thing to try in the next real conversation, written to the TC as 'you'.",
         "TONE: you are a supportive senior colleague, not an examiner. Write notes and nextStep warmly and plainly, the way you would talk to someone you want to see succeed. Describe what was said and what to try; never label the TC (no 'failed', 'poor', 'weak', 'should have known').",
@@ -225,6 +233,8 @@ export function reconcileFeedback(
   for (const c of raw.concerns) {
     if (!c.quote.trim() && !c.explanation.trim()) continue;
     const at = turnOfQuote(c.quote, turns);
+    // `other` stands only on a concrete act expressed in the learner's own words (otherEvidence.ts).
+    if (c.kind === "other" && (at < 0 || !acceptOtherFinding(c.act, c.quote, turns[at]!.text))) continue;
     if (at >= 0 && screenKeys.has(`${at}|${c.kind}`)) continue;
     concerns.push({ kind: c.kind, quote: clip(c.quote, 300), explanation: clip(c.explanation, 300), quoteVerified: at >= 0, source: "coach" });
   }
@@ -295,7 +305,14 @@ export function parseRawFeedback(v: unknown): RawFeedback | null {
   const concerns = o.concerns.flatMap((x) => {
     const r = x as Record<string, unknown>;
     if (typeof r.kind !== "string" || !(CONCERN_KINDS as readonly string[]).includes(r.kind)) return [];
-    return [{ kind: r.kind as ConcernKind, quote: typeof r.quote === "string" ? r.quote : "", explanation: typeof r.explanation === "string" ? r.explanation : "" }];
+    return [
+      {
+        kind: r.kind as ConcernKind,
+        quote: typeof r.quote === "string" ? r.quote : "",
+        explanation: typeof r.explanation === "string" ? r.explanation : "",
+        act: typeof r.act === "string" ? r.act : null,
+      },
+    ];
   });
   if (!["yes", "partly", "no"].includes(cs.status)) return null;
   return { observations, concerns, concernSurfaced: { status: cs.status as "yes" | "partly" | "no", quote: cs.quote }, nextStep: o.nextStep };

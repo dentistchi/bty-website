@@ -19,6 +19,7 @@ import { CONCERN_KINDS, type ConcernKind } from "./feedback";
 import type { Turn } from "./sessionRules";
 import type { ChatMessage } from "./patientPrompt";
 import { SAFETY_SCOPE_RULE } from "./safetyScope";
+import { acceptOtherFinding, OTHER_ACTS } from "./otherEvidence";
 
 export type ScreenFinding = { turnIndex: number; kind: ConcernKind; explanation: string };
 
@@ -32,11 +33,14 @@ export const SAFETY_SCREEN_JSON_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["line", "kind", "explanation"],
+        required: ["line", "kind", "explanation", "act", "evidence"],
         properties: {
           line: { type: "integer" },
           kind: { type: "string", enum: [...CONCERN_KINDS] },
           explanation: { type: "string" },
+          // Required for kind "other", where they are checked in code (otherEvidence.ts); null otherwise.
+          act: { type: ["string", "null"], enum: [...OTHER_ACTS, null] },
+          evidence: { type: ["string", "null"] },
         },
       },
     },
@@ -73,13 +77,18 @@ export function buildSafetyScreenMessages(turns: Turn[], kase: AiPatientCase = C
         "Do NOT flag: open questions, accurate statements that the estimate is unconfirmed, offering to get the dentist, offering to request a pre-estimate, offering follow-up without pressure.",
         SAFETY_SCOPE_RULE,
         "Explanations: one plain sentence addressed to the TC as 'you'. If nothing is wrong, return an empty list.",
+        `For kind "other" only, also give act (one of: ${OTHER_ACTS.join(", ")}) and evidence (the exact words from that LINE that themselves express the act, copied character for character). For every other kind, act and evidence are null.`,
       ].join("\n"),
     },
     { role: "user", content: numberedLearnerLines(turns) },
   ];
 }
 
-/** Keep only findings that point at a real TC line, with a known kind. One finding per (line, kind). */
+/**
+ * Keep only findings that point at a real TC line, with a known kind. One finding per (line, kind).
+ * An `other` finding also needs a concrete act and the learner's own words expressing it — otherwise it
+ * is dropped here and leaves no trace downstream (Scenario Pack V1, `other` evidence gate).
+ */
 export function parseSafetyScreen(v: unknown, turns: Turn[]): ScreenFinding[] | null {
   if (!v || typeof v !== "object" || !Array.isArray((v as { findings?: unknown }).findings)) return null;
   const seen = new Set<string>();
@@ -89,6 +98,7 @@ export function parseSafetyScreen(v: unknown, turns: Turn[]): ScreenFinding[] | 
     const i = r.line;
     if (typeof i !== "number" || !Number.isInteger(i) || turns[i]?.role !== "tc") continue;
     if (typeof r.kind !== "string" || !(CONCERN_KINDS as readonly string[]).includes(r.kind)) continue;
+    if (r.kind === "other" && !acceptOtherFinding(r.act, r.evidence, turns[i]!.text)) continue;
     const key = `${i}|${r.kind}`;
     if (seen.has(key)) continue;
     seen.add(key);

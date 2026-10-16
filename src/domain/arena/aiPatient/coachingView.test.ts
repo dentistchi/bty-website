@@ -137,8 +137,13 @@ describe("[#69] One thing to handle differently — safety first, never hidden, 
   });
 
   it("a coaching concern the screen did not confirm is still shown — marked, not dropped", () => {
-    const f = reconcileFeedback(raw({ concerns: [{ kind: "other", quote: "you have to decide today", explanation: "z" }] }), "financial_limit", turns, []);
-    expect(buildCoachingView(f).safety).toEqual([expect.objectContaining({ kind: "other", quoteVerified: false })]);
+    const f = reconcileFeedback(raw({ concerns: [{ kind: "pressure_or_urgency", quote: "you have to decide today", explanation: "z" }] }), "financial_limit", turns, []);
+    expect(buildCoachingView(f).safety).toEqual([expect.objectContaining({ kind: "pressure_or_urgency", quoteVerified: false })]);
+  });
+
+  it("…except `other`, which stands only on the learner's own words expressing a concrete act (evidence gate)", () => {
+    const f = reconcileFeedback(raw({ concerns: [{ kind: "other", quote: "you have to decide today", explanation: "z", act: "removes_choice" }] }), "financial_limit", turns, []);
+    expect(buildCoachingView(f).safety).toEqual([]);
   });
 
   it("a safety point replaces the general tip — it is the one thing to handle differently", () => {
