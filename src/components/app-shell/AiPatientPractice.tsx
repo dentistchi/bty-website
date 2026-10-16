@@ -677,10 +677,9 @@ function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; pa
         data-testid="coach-one-thing"
       >
         <span className={`${heading} ${c.safety.length ? "text-amber-100" : "text-white/55"}`}>One thing to handle differently</span>
-        {c.safety.map((p, i) => (
+        {c.safety.slice(0, 1).map((p) => (
           <div key={p.kind} className="flex flex-col gap-1 text-[0.86rem] text-white/85" data-testid={`coach-safety-${p.kind}`}>
-            {i > 0 ? <span className="text-[0.72rem] uppercase tracking-[0.1em] text-amber-100/80">Also worth a look</span> : null}
-            <span className="font-semibold text-white">{p.title}</span>
+            <span className="font-semibold text-white" data-testid="coach-primary">{p.title}</span>
             {p.quoteVerified && p.quote ? (
               <span className="text-white/75">You said: “{p.quote}”</span>
             ) : (
@@ -688,22 +687,35 @@ function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; pa
                 The AI raised a possible concern about this part of the conversation, but couldn't confirm the exact wording.
               </span>
             )}
-            {p.occurrences > 1 ? <span className="text-white/60">This came up {p.occurrences} times in the conversation.</span> : null}
             <span className="text-white/75">{p.whyItMatters}</span>
             <span className="text-white/85">Try saying: “{p.tryInstead}”</span>
           </div>
         ))}
-        {c.growth ? <p className="text-[0.88rem] text-white/85">{c.growth.text}</p> : null}
+        {c.safety.length > 1 ? (
+          <div className="flex flex-col gap-1 border-t border-amber-300/25 pt-2 text-[0.82rem] text-white/80">
+            <span className="text-[0.72rem] uppercase tracking-[0.1em] text-amber-100/80">Also keep in mind</span>
+            {c.safety.slice(1).map((p) => (
+              <span key={p.kind} data-testid={`coach-safety-${p.kind}`}>
+                {p.title}. Try: “{p.tryInstead}”
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {c.growth ? <p className="text-[0.88rem] text-white/85" data-testid="coach-primary">{c.growth.text}</p> : null}
         {c.growthFallback ? <p className="text-[0.88rem] text-white/75">{c.growthFallback}</p> : null}
         {c.safety.length ? (
           <p className="text-[0.78rem] text-amber-100/85">If you'd like, talk it through with your mentor. BTY hasn't shared this with anyone.</p>
         ) : null}
       </section>
 
-      {c.tryNext ? (
+      {c.tryNext.length ? (
         <section className="flex flex-col gap-1 rounded-2xl bg-[#C9A66B]/15 px-4 py-3" data-testid="coach-try-next">
           <span className={`${heading} text-[#C9A66B]`}>Try next time</span>
-          <p className="text-[0.9rem] text-white/90">{c.tryNext}</p>
+          <ol className="list-decimal pl-5 text-[0.9rem] text-white/90">
+            {c.tryNext.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
         </section>
       ) : null}
 
@@ -729,6 +741,12 @@ function FeedbackBody({ feedback, patientName }: { feedback: CoachedFeedback; pa
               {o.note ? <span className="text-[0.8rem] text-white/60">{o.note}</span> : null}
             </div>
           ))}
+          {feedback.nextStep ? (
+            <div className="flex flex-col gap-0.5 border-t border-white/10 pt-2">
+              <span className="text-white/85">The reviewer&apos;s suggestion</span>
+              <span className="text-[0.8rem] text-white/60">{feedback.nextStep}</span>
+            </div>
+          ) : null}
           {c.safety.some((p) => p.otherQuotes.length) ? (
             <div className="flex flex-col gap-0.5 border-t border-white/10 pt-2">
               <span className="text-white/85">Other lines on the same points</span>

@@ -273,7 +273,8 @@ describe("[AI patient] coaching feedback", () => {
     // Issue #69: the coaching view travels with the review, built from the same checked evidence.
     expect(f.coaching.helped.map((h: { key: string }) => h.key)).toEqual(["open_question"]);
     expect(f.coaching.safety.map((p: { kind: string }) => p.kind)).toEqual(["insurance_guarantee"]);
-    expect(f.coaching.tryNext).toBe(modelFeedback.nextStep);
+    expect(f.coaching.tryNext).toEqual(["Ask an open question first.", "If cost or coverage comes up, call it an estimate until insurance confirms it."]);
+    expect(f.nextStep).toBe(modelFeedback.nextStep);
     expect(f.suggestMentorReview).toBe(true);
     expect(["a real money limit", "doubt about whether the crown is needed"]).toContain(f.hiddenConcern.label);
     const call = mockCreate.mock.calls[2]![0] as { response_format: { type: string; json_schema: { strict: boolean } } };

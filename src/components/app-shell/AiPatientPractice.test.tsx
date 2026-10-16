@@ -161,7 +161,12 @@ describe("AiPatientPractice", () => {
     expect(oneThing).not.toContain("You said:");
     expect(oneThing).not.toContain("it's covered");
     expect(oneThing).toMatch(/BTY hasn't shared this with anyone/);
-    expect(screen.getByTestId("coach-try-next").textContent).toContain("Ask before explaining.");
+    const tryNext = screen.getByTestId("coach-try-next");
+    expect([...tryNext.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
+      "Ask an open question first.",
+      "If cost or coverage comes up, call it an estimate until insurance confirms it.",
+    ]);
+    expect(screen.getByTestId("coach-details").textContent).toContain("Ask before explaining.");
     // The default view carries no report-card statuses; the full review is one tap away, closed.
     for (const id of ["coach-helped", "coach-one-thing", "coach-try-next"]) {
       expect(screen.getByTestId(id).textContent).not.toMatch(/\b(Seen|Partly|Not seen|Unclear)\b/);
@@ -195,8 +200,13 @@ describe("AiPatientPractice", () => {
     const confirmed = screen.getByTestId("coach-safety-insurance_guarantee").textContent ?? "";
     const uncertain = screen.getByTestId("coach-safety-pressure_or_urgency").textContent ?? "";
     expect(confirmed).toContain("You said: “Your insurance will definitely cover all of it.”");
-    expect(uncertain).toContain("couldn't confirm the exact wording");
+    // A second theme stays visible, briefly: its title and a line to try — and no quote at all.
+    expect(uncertain).toContain(SAFETY_COACHING.pressure_or_urgency.title);
+    expect(uncertain).toContain(SAFETY_COACHING.pressure_or_urgency.tryInstead);
     expect(uncertain).not.toContain("You said:");
+    expect(screen.getAllByTestId("coach-primary")).toHaveLength(1);
+    // Two insurance lines are one point; the screen never counts them.
+    expect(screen.getByTestId("ai-patient-feedback-body").textContent).not.toMatch(/came up \d+ times|\b\d+ times\b/i);
     expect(uncertain).not.toContain("You must schedule immediately.");
 
     const details = screen.getByTestId("coach-details").textContent ?? "";

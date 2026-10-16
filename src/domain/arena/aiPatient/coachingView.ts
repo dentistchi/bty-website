@@ -8,9 +8,15 @@
  * This shapes the ALREADY-RECONCILED feedback (quotes checked against the learner's own turns, the
  * independent safety screen merged, coherence rules applied) into three short sections:
  *
- *   What helped the patient   — only behaviours SEEN with a verified quote. No quote, no praise.
- *   One thing to handle differently — safety concerns first and never hidden; otherwise one gap.
- *   Try next time             — the review's single concrete next step.
+ *   What helped the patient   — behaviours SEEN with a verified quote; failing that, one modest
+ *                               observation backed by a verified quote; failing that, a neutral line.
+ *                               No quote, no praise.
+ *   One thing to handle differently — ONE primary point: the most consequential safety theme, else
+ *                               one gap. Any further safety theme stays visible, briefly, never hidden.
+ *   Try next time             — at most two short authored steps, the second tied to the primary point.
+ *
+ * Coaching Tone V1 (Founder device review): nothing here counts. "This came up 3 times" read as a
+ * score, so repetition is grouped silently into one point and never shown as a number.
  *
  * Everything said TO the learner here is authored text below (Founder-reviewable), tied to their
  * verified words. The model's own notes stay in the optional details. Nothing is scored.
@@ -82,8 +88,13 @@ export const DETAIL_STATUS: Record<ShownObservation["status"], string> = {
   unclear: "Couldn't confirm",
 };
 
-export const NO_VERIFIED_HELP =
-  "There wasn't a moment we could point to with confidence in this conversation. That's normal in a short practice, and the next round will give more to work with.";
+/**
+ * When nothing was clearly SEEN but the learner verifiably moved toward the patient's concern (a
+ * PARTLY observation or "got close to it", each backed by a verified, unflagged quote of their own).
+ */
+export const MODEST_HELP = "One thing worth building on is that you stayed engaged with the patient's concern.";
+/** Nothing honest to build on. Neutral, not discouraging, and never invented praise. */
+export const NO_VERIFIED_HELP = "The conversation was short, so there wasn't enough evidence yet to call out a specific strength.";
 export const NOTHING_TO_CHANGE = "Nothing stood out to change in this conversation.";
 
 export type SafetyPoint = {
@@ -94,22 +105,43 @@ export type SafetyPoint = {
   quoteVerified: boolean;
   whyItMatters: string;
   tryInstead: string;
-  /** How many separate times this theme came up — one theme is one point, not N failures. */
-  occurrences: number;
   /** The other quotes on the same theme, for the details. */
   otherQuotes: Array<{ quote: string; verified: boolean }>;
 };
 
 export type CoachingView = {
-  helped: Array<{ key: FeedbackBehaviorKey; text: string; quote: string }>;
+  /** `engaged` is the modest observation (MODEST_HELP), used only when no behaviour was clearly seen. */
+  helped: Array<{ key: FeedbackBehaviorKey | "engaged"; text: string; quote: string }>;
   /** Shown instead of praise when nothing could be verified. Never invented praise. */
   helpedFallback: string | null;
-  /** Every safety theme, most consequential first. Never empty when a concern exists. */
+  /**
+   * Every safety theme, most consequential first. Never empty when a concern exists. The first is the
+   * primary point; the rest are shown briefly so a safety concern is never hidden.
+   */
   safety: SafetyPoint[];
   /** The single gap to work on — only when there is no safety concern. */
   growth: { key: FeedbackBehaviorKey; text: string } | null;
   growthFallback: string | null;
-  tryNext: string;
+  /** At most two short steps. The review's own longer next step stays in the details. */
+  tryNext: string[];
+};
+
+/** The first habit for every round: understand before explaining. */
+export const TRY_FIRST = "Ask an open question first.";
+/** The second step follows the primary point. The default is the clinical-referral habit. */
+export const TRY_THEN: Record<ConcernKind | FeedbackBehaviorKey | "default", string> = {
+  default: "If the patient asks a clinical question, bring the dentist in.",
+  clinical_misrepresentation: "If the patient asks a clinical question, bring the dentist in.",
+  insurance_guarantee: "If cost or coverage comes up, call it an estimate until insurance confirms it.",
+  pressure_or_urgency: "If the patient hesitates, let them set the pace.",
+  other: "Ask what would feel right to them as a next step.",
+  open_question: "If the patient asks a clinical question, bring the dentist in.",
+  found_concern: "Let the patient name what's really on their mind before offering a solution.",
+  told_apart: "Check whether it's more the cost or more whether they need it.",
+  referred_clinical: "If the patient asks a clinical question, bring the dentist in.",
+  accurate_money: "If cost or coverage comes up, call it an estimate until insurance confirms it.",
+  no_pressure: "If the patient hesitates, let them set the pace.",
+  respected_choice: "Let the patient know that waiting or saying no is okay.",
 };
 
 const BEHAVIOR_ORDER: readonly FeedbackBehaviorKey[] = [
@@ -142,7 +174,6 @@ function groupSafety(concerns: ShownConcern[]): SafetyPoint[] {
       ...SAFETY_COACHING[kind],
       quote: head.quote,
       quoteVerified: head.quoteVerified,
-      occurrences: distinct.length,
       otherQuotes: distinct.slice(1).filter((d) => Boolean(d.quote)).map((d) => ({ quote: d.quote, verified: d.quoteVerified })),
     });
   }
@@ -159,6 +190,16 @@ export function buildCoachingView(feedback: ShownFeedback): CoachingView {
     return [{ key, text: HELPED_TEXT[key], quote: o.quotes[0]! }];
   }).slice(0, 2);
 
+  // Only when nothing was clearly seen: a modest, quote-backed observation that the learner moved
+  // toward the patient's concern. Reconciliation already dropped any quote that is not the learner's
+  // own or that sits on a flagged line.
+  const ENGAGEMENT: readonly FeedbackBehaviorKey[] = ["open_question", "found_concern", "told_apart"];
+  const engagedQuote = helped.length
+    ? null
+    : (ENGAGEMENT.map((key) => byKey.get(key)).find((o) => o?.status === "partly" && o.quotes.length > 0)?.quotes[0] ??
+      (feedback.concernSurfaced.status === "partly" && feedback.concernSurfaced.quote ? feedback.concernSurfaced.quote : null));
+  const shownHelped: CoachingView["helped"] = engagedQuote ? [{ key: "engaged", text: MODEST_HELP, quote: engagedQuote }] : helped;
+
   const safety = groupSafety(feedback.concerns);
 
   const gapKey = safety.length
@@ -168,12 +209,14 @@ export function buildCoachingView(feedback: ShownFeedback): CoachingView {
         return s === "not_seen" || s === "partly";
       }) ?? null);
 
+  const focus = safety[0]?.kind ?? gapKey ?? "default";
+
   return {
-    helped,
-    helpedFallback: helped.length ? null : NO_VERIFIED_HELP,
+    helped: shownHelped,
+    helpedFallback: shownHelped.length ? null : NO_VERIFIED_HELP,
     safety,
     growth: gapKey ? { key: gapKey, text: GROWTH_TEXT[gapKey] } : null,
     growthFallback: safety.length || gapKey ? null : NOTHING_TO_CHANGE,
-    tryNext: feedback.nextStep,
+    tryNext: [TRY_FIRST, TRY_THEN[focus]],
   };
 }
