@@ -5,7 +5,7 @@
  * what the screen shows. Nothing here performs I/O.
  */
 
-import { HIDDEN_CONCERNS, type HiddenConcern } from "./caseAcceptance01";
+import type { HiddenConcern } from "./caseAcceptance01";
 
 export const AI_PATIENT_LIMITS = {
   /** The practice conversation itself. */
@@ -37,9 +37,6 @@ export type AiPatientSessionState = {
   expiresAt: number;
   turns: Turn[];
 };
-
-export const isHiddenConcern = (v: unknown): v is HiddenConcern =>
-  typeof v === "string" && (HIDDEN_CONCERNS as readonly string[]).includes(v);
 
 export const learnerTurnCount = (s: Pick<AiPatientSessionState, "turns">): number => s.turns.filter((t) => t.role === "tc").length;
 
@@ -89,9 +86,10 @@ const ROLE_BREAK_PATTERNS: RegExp[] = [
 export const breaksPatientRole = (reply: string): boolean => ROLE_BREAK_PATTERNS.some((re) => re.test(reply));
 
 /** Strip what a spoken patient line should never carry: stage directions, labels, quotes, markup. */
-export function cleanPatientReply(raw: string): string {
+export function cleanPatientReply(raw: string, patientName = "Dana"): string {
+  const label = new RegExp(`^\\s*(?:${patientName.replace(/[^A-Za-z]/g, "")}|dana|patient)\\s*:\\s*`, "i");
   return raw
-    .replace(/^\s*(?:dana|patient)\s*:\s*/i, "")
+    .replace(label, "")
     .replace(/\*[^*]{0,80}\*/g, " ")
     .replace(/\[[^\]]{0,80}\]/g, " ")
     .replace(/\s+/g, " ")

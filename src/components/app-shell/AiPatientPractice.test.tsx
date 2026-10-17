@@ -35,6 +35,7 @@ vi.mock("@/lib/bty/arena/aiPatient/voiceCapture", async () => {
 });
 
 import { AiPatientPractice } from "./AiPatientPractice";
+import { AI_PATIENT_SCENARIO_CATALOG } from "@/domain/arena/aiPatient/scenarioCatalog";
 import { buildCoachingView, HELPED_TEXT, SAFETY_COACHING } from "@/domain/arena/aiPatient/coachingView";
 import type { ShownFeedback } from "@/domain/arena/aiPatient/feedback";
 
@@ -93,7 +94,7 @@ afterEach(() => {
 
 async function startConversation() {
   render(<AiPatientPractice onBack={() => undefined} />);
-  const startBtn = screen.getByTestId("ai-patient-start") as HTMLButtonElement;
+  const startBtn = screen.getByTestId("ai-patient-scenario-cost_concern") as HTMLButtonElement;
   expect(startBtn.disabled).toBe(true); // the notice must be acknowledged first
   fireEvent.click(screen.getByTestId("ai-patient-ack"));
   expect(startBtn.disabled).toBe(false);
@@ -114,7 +115,7 @@ describe("AiPatientPractice", () => {
 
   it("opens on the patient's line and sends the learner's typed turn with the sealed session", async () => {
     await startConversation();
-    expect(calls[0]).toEqual({ url: "/api/arena/ai-patient/start", body: { acknowledged: true } });
+    expect(calls[0]).toEqual({ url: "/api/arena/ai-patient/start", body: { acknowledged: true, scenarioId: "cost_concern" } });
     expect(screen.getAllByTestId("turn-patient")[0]!.textContent).toContain(OPENING);
     fireEvent.change(screen.getByTestId("ai-patient-input"), { target: { value: "What feels hardest?" } });
     await act(async () => fireEvent.click(screen.getByTestId("ai-patient-send")));
@@ -131,7 +132,7 @@ describe("AiPatientPractice", () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(async () =>
       Response.json({ ...view([{ role: "patient", text: OPENING }], "aps1.s0"), patientName: "Dana", briefing: "", voiceAvailable: true }),
     );
-    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-start")));
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-scenario-cost_concern")));
     await screen.findByTestId("ai-patient-talking");
     await act(async () => fireEvent.click(screen.getByTestId("ai-patient-mic")));
     expect(startRecorder).toHaveBeenCalled();
@@ -223,7 +224,7 @@ describe("AiPatientPractice — Teams iPhone Save handoff (Issue #64)", () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(async () =>
       Response.json({ ...view([{ role: "patient", text: OPENING }], "aps1.s0"), patientName: "Dana", briefing: "", voiceAvailable: true }),
     );
-    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-start")));
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-scenario-cost_concern")));
     await screen.findByTestId("ai-patient-talking");
     expect(screen.getByTestId("ai-patient-mic").textContent).toBe("Record what you say");
     await act(async () => fireEvent.click(screen.getByTestId("ai-patient-mic")));
@@ -234,5 +235,32 @@ describe("AiPatientPractice — Teams iPhone Save handoff (Issue #64)", () => {
     // A handoff failure is retryable: the record button stays, and typing works.
     expect(screen.getByTestId("ai-patient-mic")).toBeTruthy();
     expect((screen.getByTestId("ai-patient-input") as HTMLTextAreaElement).disabled).toBe(false);
+  });
+});
+
+describe("AiPatientPractice — choose a patient situation (Scenario Pack V1)", () => {
+  it("shows seven simple cards — a title and one line each — locked until the notice is acknowledged", () => {
+    render(<AiPatientPractice onBack={() => undefined} />);
+    expect(screen.getByRole("heading", { name: "Choose a patient situation" })).toBeTruthy();
+    const cards = AI_PATIENT_SCENARIO_CATALOG.map((sc) => screen.getByTestId(`ai-patient-scenario-${sc.id}`) as HTMLButtonElement);
+    expect(cards).toHaveLength(7);
+    for (const [i, card] of cards.entries()) {
+      expect(card.textContent).toBe(AI_PATIENT_SCENARIO_CATALOG[i]!.title + AI_PATIENT_SCENARIO_CATALOG[i]!.description);
+      expect(card.disabled).toBe(true);
+    }
+    expect(AI_PATIENT_SCENARIO_CATALOG[0]!.title).toBe("Cost Concern");
+    // No advanced settings: no slider, select or extra inputs beyond the acknowledgement.
+    expect(document.querySelectorAll('input[type="range"], select')).toHaveLength(0);
+    expect(document.querySelectorAll("input")).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("ai-patient-ack"));
+    for (const card of cards) expect(card.disabled).toBe(false);
+  });
+
+  it("tapping a card starts that situation", async () => {
+    render(<AiPatientPractice onBack={() => undefined} />);
+    fireEvent.click(screen.getByTestId("ai-patient-ack"));
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-scenario-need_it_today")));
+    await screen.findByTestId("ai-patient-talking");
+    expect(calls[0]).toEqual({ url: "/api/arena/ai-patient/start", body: { acknowledged: true, scenarioId: "need_it_today" } });
   });
 });

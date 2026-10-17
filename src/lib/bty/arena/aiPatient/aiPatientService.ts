@@ -8,7 +8,9 @@
 
 import { getLlmClient, type LlmChatMessage } from "@/lib/bty/llm/client";
 import { aiPatientOpenAIKey } from "./providerKey";
-import { AI_PATIENT_CASE_ID, CASE_ACCEPTANCE_01, HIDDEN_CONCERNS, type HiddenConcern } from "@/domain/arena/aiPatient/caseAcceptance01";
+import type { AiPatientCase, HiddenConcern } from "@/domain/arena/aiPatient/caseAcceptance01";
+import { resolveCase, scenarioFor } from "@/domain/arena/aiPatient/scenarios";
+import { DEFAULT_SCENARIO_ID, type AiPatientScenarioId } from "@/domain/arena/aiPatient/scenarioCatalog";
 import {
   AI_PATIENT_LIMITS,
   breaksPatientRole,
@@ -17,7 +19,7 @@ import {
   sessionPhase,
   type AiPatientSessionState,
 } from "@/domain/arena/aiPatient/sessionRules";
-import { buildPatientMessages, ROLE_REMINDER } from "@/domain/arena/aiPatient/patientPrompt";
+import { buildPatientMessages, roleReminder } from "@/domain/arena/aiPatient/patientPrompt";
 import { buildFeedbackMessages, FEEDBACK_JSON_SCHEMA, parseRawFeedback, reconcileFeedback, type ShownFeedback } from "@/domain/arena/aiPatient/feedback";
 import { buildCoachingView, type CoachingView } from "@/domain/arena/aiPatient/coachingView";
 import { buildSafetyScreenMessages, parseSafetyScreen, SAFETY_SCREEN_JSON_SCHEMA, type ScreenFinding } from "@/domain/arena/aiPatient/safetyScreen";
@@ -44,32 +46,41 @@ export type ServiceFailure =
 
 export const isAiPatientAvailable = (): boolean => Boolean(aiPatientOpenAIKey());
 
-/** Uniform random choice of the hidden concern, made by the server before the first word. */
-export function pickConcern(random: () => number = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32): HiddenConcern {
-  return HIDDEN_CONCERNS[Math.min(HIDDEN_CONCERNS.length - 1, Math.floor(random() * HIDDEN_CONCERNS.length))]!;
+/** Uniform random choice among the scenario's hidden concerns, made by the server before the first word. */
+export function pickConcern(kase: AiPatientCase, random: () => number = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32): HiddenConcern {
+  const keys = Object.keys(kase.hiddenConcerns);
+  return keys[Math.min(keys.length - 1, Math.floor(random() * keys.length))]!;
 }
 
-export function newSession(userId: string, now: number, concern: HiddenConcern = pickConcern()): AiPatientSessionState {
+export function newSession(userId: string, now: number, scenarioId: AiPatientScenarioId = DEFAULT_SCENARIO_ID, concern?: HiddenConcern): AiPatientSessionState {
+  const kase = scenarioFor(scenarioId);
   return {
     v: 1,
     sid: crypto.randomUUID(),
     uid: userId,
-    caseId: AI_PATIENT_CASE_ID,
-    concern,
+    caseId: kase.id,
+    concern: concern ?? pickConcern(kase),
     startedAt: now,
     expiresAt: now + AI_PATIENT_LIMITS.sessionSeconds * 1000,
-    turns: [{ role: "patient", text: CASE_ACCEPTANCE_01.openingLine }],
+    turns: [{ role: "patient", text: kase.openingLine }],
   };
 }
 
-async function patientReply(messages: LlmChatMessage[]): Promise<string> {
+/** The case a live session runs on. Unseal already refused any session whose case is unknown. */
+export function caseOf(state: Pick<AiPatientSessionState, "caseId">): AiPatientCase {
+  const kase = resolveCase(state.caseId);
+  if (!kase) throw new Error(`Unknown AI patient case: ${state.caseId}`);
+  return kase;
+}
+
+async function patientReply(messages: LlmChatMessage[], patientName: string): Promise<string> {
   const res = await getLlmClient({ dedicatedOpenAiApiKey: aiPatientOpenAIKey() }).chat.completions.create(
     { model: AI_PATIENT_MODELS.patient, messages, temperature: 0.8, max_tokens: AI_PATIENT_LIMITS.patientMaxTokens },
     { signal: AbortSignal.timeout(PATIENT_TIMEOUT_MS) },
   );
   const choice = res.choices?.[0];
   if (!choice || choice.message.refusal) return "";
-  return cleanPatientReply(choice.message.content ?? "");
+  return cleanPatientReply(choice.message.content ?? "", patientName);
 }
 
 export type TurnResult =
@@ -81,11 +92,12 @@ export async function takeTurn(state: AiPatientSessionState, learnerText: string
   if (sessionPhase(state, now) !== "active") return { ok: false, reason: "session_over" };
   if (!isAiPatientAvailable()) return { ok: false, reason: "llm_unavailable" };
   const turns = [...state.turns, { role: "tc" as const, text: learnerText, via }];
-  const messages = buildPatientMessages(state.concern, turns);
+  const kase = caseOf(state);
+  const messages = buildPatientMessages(state.concern, turns, kase);
   let reply: string;
   try {
-    reply = await patientReply(messages);
-    if (!reply || breaksPatientRole(reply)) reply = await patientReply([...messages, ROLE_REMINDER]);
+    reply = await patientReply(messages, kase.patientName);
+    if (!reply || breaksPatientRole(reply)) reply = await patientReply([...messages, roleReminder(kase)], kase.patientName);
   } catch {
     return { ok: false, reason: "provider_failed" };
   }
@@ -121,13 +133,14 @@ export async function reviewSession(state: AiPatientSessionState, now: number): 
   if (sessionPhase(state, now) === "feedback_window_closed") return { ok: false, reason: "feedback_window_closed" };
   if (learnerTurnCount(state) === 0) return { ok: false, reason: "nothing_to_review" };
   if (!isAiPatientAvailable()) return { ok: false, reason: "llm_unavailable" };
+  const kase = caseOf(state);
   const [coach, screenRaw] = await Promise.all([
-    strictJson(AI_PATIENT_MODELS.feedback, buildFeedbackMessages(state.concern, state.turns), "ai_patient_feedback", FEEDBACK_JSON_SCHEMA, 1600),
-    strictJson(AI_PATIENT_MODELS.screen, buildSafetyScreenMessages(state.turns), "ai_patient_safety_screen", SAFETY_SCREEN_JSON_SCHEMA, 800),
+    strictJson(AI_PATIENT_MODELS.feedback, buildFeedbackMessages(state.concern, state.turns, kase), "ai_patient_feedback", FEEDBACK_JSON_SCHEMA, 1600),
+    strictJson(AI_PATIENT_MODELS.screen, buildSafetyScreenMessages(state.turns, kase), "ai_patient_safety_screen", SAFETY_SCREEN_JSON_SCHEMA, 800),
   ]);
   const raw = parseRawFeedback(coach);
   if (!raw) return { ok: false, reason: "feedback_unreadable" };
   const screen: ScreenFinding[] | null = screenRaw === null ? null : parseSafetyScreen(screenRaw, state.turns);
-  const feedback = reconcileFeedback(raw, state.concern, state.turns, screen);
-  return { ok: true, feedback: { ...feedback, coaching: buildCoachingView(feedback, state.turns) } };
+  const feedback = reconcileFeedback(raw, state.concern, state.turns, screen, kase);
+  return { ok: true, feedback: { ...feedback, coaching: buildCoachingView(feedback, state.turns, kase.coaching) } };
 }

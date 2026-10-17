@@ -9,10 +9,13 @@
  * screen says so.
  */
 
-import { CASE_ACCEPTANCE_01, type AiPatientCase, type HiddenConcern } from "./caseAcceptance01";
+import { CASE_ACCEPTANCE_01, hiddenConcernOf, type AiPatientCase, type HiddenConcern } from "./caseAcceptance01";
 import type { Turn } from "./sessionRules";
 import type { ChatMessage } from "./patientPrompt";
 import type { ScreenFinding } from "./safetyScreen";
+import { normalizeQuote, turnOfQuote } from "./quoteMatch";
+import { SAFETY_SCOPE_RULE } from "./safetyScope";
+import { acceptOtherFinding, OTHER_ACTS } from "./otherEvidence";
 
 export const FEEDBACK_BEHAVIORS = [
   { key: "open_question", label: "Asked an open question before explaining more" },
@@ -34,7 +37,8 @@ export type ConcernKind = (typeof CONCERN_KINDS)[number];
 /** What the model must return. Strict JSON schema below mirrors it exactly. */
 export type RawFeedback = {
   observations: Array<{ key: FeedbackBehaviorKey; status: ObservationStatus; quotes: string[]; note: string }>;
-  concerns: Array<{ kind: ConcernKind; quote: string; explanation: string }>;
+  /** `act` is required for kind "other" (checked in code against the quote); null for the other kinds. */
+  concerns: Array<{ kind: ConcernKind; quote: string; explanation: string; act?: string | null }>;
   concernSurfaced: { status: "yes" | "partly" | "no"; quote: string };
   nextStep: string;
 };
@@ -66,8 +70,13 @@ export const FEEDBACK_JSON_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["kind", "quote", "explanation"],
-        properties: { kind: { type: "string", enum: [...CONCERN_KINDS] }, quote: str(300), explanation: str(300) },
+        required: ["kind", "quote", "explanation", "act"],
+        properties: {
+          kind: { type: "string", enum: [...CONCERN_KINDS] },
+          quote: str(300),
+          explanation: str(300),
+          act: { type: ["string", "null"], enum: [...OTHER_ACTS, null] },
+        },
       },
     },
     concernSurfaced: {
@@ -80,13 +89,34 @@ export const FEEDBACK_JSON_SCHEMA = {
   },
 } as const;
 
+/**
+ * What each behaviour means, for the reviewer. A scenario may reword a definition (and the label the
+ * learner sees in the details) for its own situation; the keys, statuses and evidence rules never change.
+ */
+export const BEHAVIOR_DEFINITIONS: Record<FeedbackBehaviorKey, string> = {
+  open_question: "the TC asked an open question about the patient's hesitation before explaining or selling.",
+  found_concern: "the TC listened and brought the patient's actual concern into the open.",
+  told_apart: "the TC checked whether the hesitation was about money or about whether the treatment is needed, instead of assuming.",
+  referred_clinical:
+    "when a clinical question arose, the TC offered to get the dentist or said the dentist should answer it. It is NOT seen if the TC answered a clinical question themselves, minimized the problem, or suggested a different treatment.",
+  accurate_money: "the TC described the estimate and insurance accurately (an estimate, coverage not confirmed) and promised nothing.",
+  no_pressure: "the TC did not push for a booking, invent deadlines, or create fear.",
+  respected_choice: "the TC accepted the patient's wish to wait, decline or decide later.",
+};
+
+export const behaviorLabel = (key: FeedbackBehaviorKey, kase: AiPatientCase): string =>
+  kase.learnerTargets?.[key]?.label ?? FEEDBACK_BEHAVIORS.find((b) => b.key === key)!.label;
+
+const behaviorDefinition = (key: FeedbackBehaviorKey, kase: AiPatientCase): string => kase.learnerTargets?.[key]?.definition ?? BEHAVIOR_DEFINITIONS[key];
+
 /** Lines are labelled so the reviewer can only quote the learner from the learner's own turns. */
 export function transcriptText(turns: Turn[], kase: AiPatientCase = CASE_ACCEPTANCE_01): string {
   return turns.map((t, i) => `${i + 1}. ${t.role === "tc" ? "TREATMENT COORDINATOR" : `PATIENT (${kase.patientName})`}: ${t.text}`).join("\n");
 }
 
 export function buildFeedbackMessages(concern: HiddenConcern, turns: Turn[], kase: AiPatientCase = CASE_ACCEPTANCE_01): ChatMessage[] {
-  const hidden = kase.hiddenConcerns[concern];
+  const hidden = hiddenConcernOf(kase, concern);
+  const signals = Object.entries(kase.safetySignals ?? {}).flatMap(([kind, list]) => (list ?? []).map((x) => `- ${kind} in this situation includes: ${x}`));
   return [
     {
       role: "system",
@@ -94,18 +124,16 @@ export function buildFeedbackMessages(concern: HiddenConcern, turns: Turn[], kas
         "You are a careful dental-practice communication coach reviewing a PRACTICE conversation between a Treatment Coordinator (TC) and a fictional patient played by an AI.",
         "WHAT IS ACTUALLY TRUE IN THIS CASE:",
         ...kase.reviewerFacts.map((f) => `- ${f}`),
+        ...(kase.roleBoundaries ?? []).map((b) => `- ${b}`),
         `The patient's hidden concern in this session was ${hidden.label}. The TC did not know this in advance.`,
         "Judge ONLY what the TC actually said. Do not infer intentions or credit things that were not said.",
         "BEHAVIORS — for each give a status: seen, partly, not_seen, or not_applicable (only when the situation never arose).",
-        "- open_question: the TC asked an open question about the patient's hesitation before explaining or selling.",
-        "- found_concern: the TC listened and brought the patient's actual concern into the open.",
-        "- told_apart: the TC checked whether the hesitation was about money or about whether the treatment is needed, instead of assuming.",
-        "- referred_clinical: when a clinical question arose, the TC offered to get the dentist or said the dentist should answer it. It is NOT seen if the TC answered a clinical question themselves, minimized the problem, or suggested a different treatment.",
-        "- accurate_money: the TC described the estimate and insurance accurately (an estimate, coverage not confirmed) and promised nothing.",
-        "- no_pressure: the TC did not push for a booking, invent deadlines, or create fear.",
-        "- respected_choice: the TC accepted the patient's wish to wait, decline or decide later.",
+        ...FEEDBACK_BEHAVIORS.map((b) => `- ${b.key}: ${behaviorDefinition(b.key, kase)}`),
         "For seen or partly, quote the TC's exact words (copied character for character from a TREATMENT COORDINATOR line; at most two short quotes). A line that you list as a concern must NEVER be quoted as evidence of a good behavior. Keep each note to one plain sentence written to the TC as 'you' (never 'the TC').",
         "CONCERNS — list every TC line that could mislead or pressure a patient: clinical_misrepresentation (changing, softening, reinterpreting or second-guessing the dentist's recommendation, e.g. calling it minor, saying the dentist is just being cautious, saying it can wait a long time, offering a different treatment; inventing clinical facts or urgency); insurance_guarantee (promising or confidently stating what insurance will pay when coverage is not confirmed); pressure_or_urgency (pushing to book now, deadlines, price expiries, fear); other (anything else that disrespects the patient's right to decide, or invents a policy or payment option). Quote the TC exactly. If there are none, return an empty list.",
+        ...signals,
+        SAFETY_SCOPE_RULE,
+        `For a concern of kind "other" only, also give act (one of: ${OTHER_ACTS.join(", ")}), and quote exactly the TC's words that themselves express it; for every other kind, act is null.`,
         "concernSurfaced: did the TC bring the patient's actual concern into the open? Quote the TC's words that did it, or an empty string.",
         "nextStep: one or two sentences with one specific thing to try in the next real conversation, written to the TC as 'you'.",
         "TONE: you are a supportive senior colleague, not an examiner. Write notes and nextStep warmly and plainly, the way you would talk to someone you want to see succeed. Describe what was said and what to try; never label the TC (no 'failed', 'poor', 'weak', 'should have known').",
@@ -120,14 +148,7 @@ export function buildFeedbackMessages(concern: HiddenConcern, turns: Turn[], kas
 // Evidence check
 // ---------------------------------------------------------------------------
 
-const normalize = (s: string): string =>
-  s
-    .toLowerCase()
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[^a-z0-9'$%\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+const normalize = normalizeQuote;
 
 /** True when `quote` is the learner's own words: a normalized substring of one of their turns. */
 export function isLearnerQuote(quote: string, turns: Turn[]): boolean {
@@ -177,12 +198,7 @@ export const BEHAVIORS_BLOCKED_BY: Record<ConcernKind, FeedbackBehaviorKey[]> = 
   other: ["respected_choice"],
 };
 
-/** The learner turn a quote came from, or -1. */
-export function turnOfQuote(quote: string, turns: Turn[]): number {
-  const q = normalize(quote);
-  if (q.length < 3) return -1;
-  return turns.findIndex((t) => t.role === "tc" && normalize(t.text).includes(q));
-}
+export { turnOfQuote };
 
 /**
  * Reconcile the reviews with the transcript.
@@ -217,6 +233,8 @@ export function reconcileFeedback(
   for (const c of raw.concerns) {
     if (!c.quote.trim() && !c.explanation.trim()) continue;
     const at = turnOfQuote(c.quote, turns);
+    // `other` stands only on a concrete act expressed in the learner's own words (otherEvidence.ts).
+    if (c.kind === "other" && (at < 0 || !acceptOtherFinding(c.act, c.quote, turns[at]!.text))) continue;
     if (at >= 0 && screenKeys.has(`${at}|${c.kind}`)) continue;
     concerns.push({ kind: c.kind, quote: clip(c.quote, 300), explanation: clip(c.explanation, 300), quoteVerified: at >= 0, source: "coach" });
   }
@@ -230,7 +248,8 @@ export function reconcileFeedback(
 
   // ---- observations
   const byKey = new Map(raw.observations.map((o) => [o.key, o]));
-  const observations: ShownObservation[] = FEEDBACK_BEHAVIORS.map(({ key, label }) => {
+  const observations: ShownObservation[] = FEEDBACK_BEHAVIORS.map(({ key }) => {
+    const label = behaviorLabel(key, kase);
     const o = byKey.get(key);
     if (!o) return { key, label, status: "unclear", quotes: [], note: "Not covered in this review." };
     const positive = o.status === "seen" || o.status === "partly";
@@ -258,7 +277,7 @@ export function reconcileFeedback(
       : { status: raw.concernSurfaced.status, quote: surfacedOk ? clip(raw.concernSurfaced.quote, 300) : "" };
 
   return {
-    hiddenConcern: { key: concern, label: kase.hiddenConcerns[concern].label },
+    hiddenConcern: { key: concern, label: hiddenConcernOf(kase, concern).label },
     concernSurfaced,
     observations,
     concerns,
@@ -286,7 +305,14 @@ export function parseRawFeedback(v: unknown): RawFeedback | null {
   const concerns = o.concerns.flatMap((x) => {
     const r = x as Record<string, unknown>;
     if (typeof r.kind !== "string" || !(CONCERN_KINDS as readonly string[]).includes(r.kind)) return [];
-    return [{ kind: r.kind as ConcernKind, quote: typeof r.quote === "string" ? r.quote : "", explanation: typeof r.explanation === "string" ? r.explanation : "" }];
+    return [
+      {
+        kind: r.kind as ConcernKind,
+        quote: typeof r.quote === "string" ? r.quote : "",
+        explanation: typeof r.explanation === "string" ? r.explanation : "",
+        act: typeof r.act === "string" ? r.act : null,
+      },
+    ];
   });
   if (!["yes", "partly", "no"].includes(cs.status)) return null;
   return { observations, concerns, concernSurfaced: { status: cs.status as "yes" | "partly" | "no", quote: cs.quote }, nextStep: o.nextStep };
