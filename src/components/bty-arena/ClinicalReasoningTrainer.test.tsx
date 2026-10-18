@@ -135,12 +135,25 @@ describe("ClinicalReasoningTrainer V2", () => {
     render(<ClinicalReasoningTrainer />); await ready();
     const original = writes[0].trace!.traceId;
     send("When did this happen?");
+    fillDecision();
+    fireEvent.click(screen.getByRole("button", { name: "Record decision" }));
+    fireEvent.change(screen.getByLabelText("Clinical encounter message"), { target: { value: "unsent old question" } });
     fireEvent.click(screen.getByRole("button", { name: "Start over" }));
     expect(screen.getByText("Abandon this attempt and start a new one?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Start new attempt" }));
-    await ready();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Started new attempt"));
+    expect(screen.queryByText("Abandon this attempt and start a new one?")).toBeNull();
+    expect(screen.queryByText(/It happened about two hours ago/)).toBeNull();
+    expect((screen.getByLabelText("Clinical encounter message") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Diagnosis") as HTMLTextAreaElement).value).toBe("");
+    expect(writes.filter(w => w.operation === "restart")).toHaveLength(1);
     expect(rows[0].raw_trace.traceId).not.toBe(original);
     expect(rows[0].raw_trace.events.map(event => event.type)).toEqual(["encounter_started", "chief_complaint_presented"]);
+    const replacement = rows[0].raw_trace.traceId;
+    send("When did this happen?");
+    expect(screen.getByText(/It happened about two hours ago/)).toBeTruthy();
+    await waitFor(() => expect(writes.at(-1)?.trace?.traceId).toBe(replacement));
+    expect(writes.at(-1)!.trace.events.some(event => event.doctorMessage === "unsent old question")).toBe(false);
   });
 
   it("does not resume completed or other-case traces as editable", async () => {
