@@ -6,7 +6,7 @@ import { PracticeAuthoringEntry } from "@/components/app-shell/PracticeAuthoring
 import { showsAuthoringEntry, type PracticeSurface } from "@/components/app-shell/practiceSurface";
 import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
 import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPracticeFlow";
-import { ClinicalReasoningTrainer } from "@/components/bty-arena/ClinicalReasoningTrainer";
+import { ClinicalCasesPractice } from "@/components/bty-arena/ClinicalCasesPractice";
 import { AiPatientPractice } from "@/components/app-shell/AiPatientPractice";
 
 /**
@@ -57,7 +57,7 @@ const COPY: Record<Locale, {
     arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
     clinical: "Clinical cases",
-    clinicalSub: "Interview a patient, order tests, and decide treatment.",
+    clinicalSub: "Evaluate a case, compare approaches, and share your reasoning.",
     fieldActions: "Action plans",
     fieldActionsSub: "Your action plans for real life.",
     live: "Live sessions",
@@ -75,7 +75,7 @@ const COPY: Record<Locale, {
     arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
     clinical: "임상 케이스",
-    clinicalSub: "환자를 문진하고 검사한 뒤 치료를 결정합니다.",
+    clinicalSub: "사례를 평가하고 접근 방식을 비교하며 판단을 기록합니다.",
     fieldActions: "행동 계획",
     fieldActionsSub: "실제 삶을 위한 나의 행동 계획.",
     live: "라이브 세션",
@@ -249,7 +249,7 @@ export default function PracticeLanding({
           ‹ {t.back}
         </button>
         <div className="overflow-hidden rounded-2xl bg-white text-slate-900">
-          <ClinicalReasoningTrainer />
+          <ClinicalCasesPractice />
         </div>
       </div>
     );
