@@ -35,28 +35,28 @@ describe("PracticeLanding", () => {
     ]);
     expect(doors[0].textContent).toContain("Practice situations");
     expect(doors[1].textContent).toContain("Clinical cases");
-    expect(doors[1].textContent).toContain("Interview a patient, order tests, and decide treatment.");
+    expect(doors[1].textContent).toContain("Evaluate a case, compare approaches, and share your reasoning.");
     expect(doors[2].textContent).toContain("Action plans");
     expect(doors[3].textContent).toContain("Live sessions");
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
 
   it.each([ ["en", "Clinical cases", "Back"], ["ko", "임상 케이스", "뒤로"] ])(
-    "%s opens the real encounter in-shell and Back restores the landing",
+    "%s opens the case library in-shell and Back restores the landing",
     async (locale, title, back) => {
       vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => Response.json(
-        init?.method === "POST" ? { ok: true, status: "active" } : { ok: true, traces: [] },
+        { ok: true, cases: [], userId: "owner", isAdmin: false },
       )));
       const location = window.location.href;
       render(<PracticeLanding {...base} locale={locale} />);
       const entry = screen.getByTestId("practice-clinical-entry");
       expect(entry.textContent).toContain(title);
-      if (locale === "ko") expect(entry.textContent).toContain("환자를 문진하고 검사한 뒤 치료를 결정합니다.");
+      if (locale === "ko") expect(entry.textContent).toContain("사례를 평가하고 접근 방식을 비교하며 판단을 기록합니다.");
       fireEvent.click(entry);
       expect(screen.queryByTestId("practice-landing")).toBeNull();
-      expect(within(screen.getByTestId("practice-clinical")).getByText("I fell earlier today and broke my two front teeth.")).toBeTruthy();
-      await screen.findByText("Saved to server");
-      expect(screen.getByLabelText("Clinical encounter message")).toBeTruthy();
+      expect(within(screen.getByTestId("practice-clinical")).getByText("How would you approach this patient?")).toBeTruthy();
+      await screen.findByText("0 available · 0 recorded cases");
+      expect(screen.getByRole("button", { name: "Interview simulator" })).toBeTruthy();
       expect(window.location.href).toBe(location);
       expect(screen.queryAllByRole("tab")).toHaveLength(0);
       expect(screen.getByTestId("practice-clinical-back").textContent).toContain(back);

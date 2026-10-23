@@ -1,2 +1,2 @@
-import { ClinicalReasoningTrainer } from "@/components/bty-arena/ClinicalReasoningTrainer";
-export default function ClinicalReasoningPage() { return <ClinicalReasoningTrainer />; }
+import { ClinicalCasesPractice } from "@/components/bty-arena/ClinicalCasesPractice";
+export default function ClinicalReasoningPage() { return <ClinicalCasesPractice />; }

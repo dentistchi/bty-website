@@ -1,0 +1,717 @@
+[
+  {
+    "caseId": "drchi-001",
+    "number": 1,
+    "version": "2026-10-23.1",
+    "title": "Large restoration with bite and cold symptoms",
+    "scenario": "A mandibular molar with a large MOD restoration; intermittent sharp pain on hard food and brief cold sensitivity; no spontaneous/nocturnal pain; negative percussion; no obvious periapical radiolucency. Cusp-specific bite testing, periodontal probing, and transillumination were not yet performed.",
+    "findings": [],
+    "question": "Explain your evaluation, diagnosis, and treatment plan.",
+    "authorOriginal": "case 1- 먼저 환자에게 bite에 문제가 있는지 물어볼거 같아. 환자가 그게 무슨 말이냐고 물으면 그건 bite에 문제가 없는거니까 다음처럼 진행할꺼야. BU/CRN를 recommend 할거 같아. 지금 상황은 large restoration에 의한 기존 치아의 crack이 원인으로 보여져. 물론 보일수도 있고 안보일수도 있어. bite test에서 pain을 reproduce할수도 있고 하지 않을수도 잇어. crack이 root까지 이어졌다면 살릴수 없으니 ext/bone/implant가 맞고 지금은 최대한 빨리 bu/crn이 치아를 살릴수 있는 최고의 선택으로 보여. 환자가 bite force가 크거나 인지하든 인지하지 않든 night grind/clenching으로보고 night guard를 highly recommend 할거 같아. 만약에 환자가 bite에 문제가 있다고 하면 나는 다음에 이렇게 물어봐. jaw를 뒤로 보내거나 옆으로 보내야 bite을 맞출수 있냐고 물어보고 그렇다고 하면 그건 bite에 문제가 있는거니까 full mouth reconstruction을 고려할꺼야. bite에 문제가 있는건 jaw의 ideal position(Centric relation)과 teeth position의 discrepency가 존재하는거니까 kois deprogrammer로 먼저 한달간 jaw position을 이상적인 포지션이 되도록 훈련시키고 그 포지션에 맞게 치아를 세울꺼야. 그건 full mouth reconstruction case이기 때문에 치아 하나에 대해서 크라운을 진행하는게 아니라 치아 전체에 bite를 바꾸는 방법으로 진행할거고 그건 모든 치아에 대해 크라운을 씌워야 한다는 걸 의미해.",
+    "authorParaphrase": "1. Ask whether the patient has a problem with the bite.\n2. In the stated approach, a patient asking what that means is interpreted as not recognizing a bite problem, and Dr. Chi proceeds toward single-tooth treatment.\n3. Suspect a crack associated with the large restoration. The crack may not be visible, and bite testing may or may not reproduce pain.\n4. Recommend timely BU/CRN with the intent of protecting the remaining tooth.\n5. If the crack extends into the root, the original approach considers the tooth nonrestorable and favors extraction, bone grafting, and implant replacement.\n6. With high loading concerns, suspect unrecognized nocturnal grinding/clenching and strongly recommend a night guard.\n7. If the patient reports a bite problem, ask whether they must move the jaw backward or sideways to bring the teeth together.\n8. A positive answer is interpreted in the original as a CR-to-tooth-position discrepancy.\n9. The stated comprehensive pathway uses a Kois deprogrammer for approximately one month, then reconstructs the occlusion at the intended reference position. The original describes this as crowns on all teeth.",
+    "sourceSections": [
+      "SCENARIO CONTEXT: Case 001",
+      "CASE 001 — STRUCTURAL CRACK / OCCLUSAL SCREEN",
+      "CLINICAL REVIEW NOTES — KEPT SEPARATE FROM DR. CHI'S ORIGINAL"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "Only the recorded scenario context is available; no original patient question is preserved for this case.",
+      "No actual occlusal findings, crack extent, probing pattern, pulpal diagnosis, or radiographic comparison has been added by Dr. Chi."
+    ],
+    "evidenceNotes": [
+      "A patient asking what “bite problem” means has not provided a reliable negative finding. Record “unsure” and clarify with concrete functional questions and examination.",
+      "A reported mandibular shift prompts assessment; it does not alone establish the diagnosis or require full crowns on every tooth. Source: https://compendiumlive.com/2022/09/correcting-occlusal-dysfunction-while-addressing-patient-s-esthetic-concerns/",
+      "Root extension of a crack, a split tooth, and a confirmed vertical root fracture are different findings. Source: https://doi.org/10.1111/iej.14186",
+      "High force or structural damage does not confirm sleep bruxism. Source: https://pmc.ncbi.nlm.nih.gov/articles/PMC12408978/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-002",
+    "number": 2,
+    "version": "2026-10-23.1",
+    "title": "Deep recurrent caries and restorability",
+    "scenario": "Deep recurrent caries under a large restoration approaching the pulp radiographically; distal margin subgingival; brief cold sensitivity without spontaneous pain or percussion tenderness. Remaining structure and isolation feasibility unknown.",
+    "findings": [],
+    "question": "Explain your evaluation, diagnosis, and treatment plan.",
+    "authorOriginal": "case 2- 환자의 통증에 상관없이 무조건 상황의 심각성을 설명할거야. 통증이 치료의 판단 기준이 되지 않도록 환자를 교육하고 caries의 깊이가 bone level까지 갔으면 restore가 안된다고 보고 ext/bone/implant를 진행할꺼야. caries의 깊이가 bone level보다 높고 2mm 이상의 차이가 잇으면 최대한 살려보자고 할꺼야. 그리고 RCT는 충치를 제거하고 판단할거라고 할꺼야. periapical lesion이 보이면 RCT를 진행하되 prognosis가 높지 않다고 하고 PA lesion이 안보이면 RCT 할 필요가 없을거 같지만 caries lesion을 제거해보고 결정해야 할거 같다고 설명할거야.",
+    "authorParaphrase": "1. Explain disease severity regardless of whether the patient has pain.\n2. Teach that pain alone should not determine the need for treatment.\n3. In the original approach, caries reaching bone level favors extraction, bone grafting, and an implant.\n4. Caries ending at least 2 mm coronal to bone favors attempting preservation. Intermediate distances were not specified.\n5. Discuss the possibility of RCT, with the final decision after caries removal.\n6. A PA lesion raises concern and leads to a guarded endodontic prognosis in the stated approach.\n7. Without a PA lesion, Dr. Chi anticipates a lower likelihood of needing RCT but still defers the final decision until excavation.",
+    "sourceSections": [
+      "SCENARIO CONTEXT: Case 002",
+      "CASE 002 — SEVERITY EDUCATION / RESTORABILITY BEFORE ENDO COMMITMENT",
+      "CLINICAL REVIEW NOTES — KEPT SEPARATE FROM DR. CHI'S ORIGINAL"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "Only the recorded scenario context is available; no original patient question is preserved for this case.",
+      "The lesion-to-bone distance is not explicitly defined as ferrule height, restorative-margin location, or circumferential extent."
+    ],
+    "evidenceNotes": [
+      "Pulpal and apical diagnoses are separate. Absence of PA radiolucency does not exclude significant pulpal disease. Source: https://www.aae.org/specialty/wp-content/uploads/sites/2/2017/07/aaeconsensusconferencerecommendeddiagnosticterminology.pdf",
+      "Lesion-to-bone distance alone is insufficient. Assess sound structure, ferrule, periodontal attachment, isolation, and feasibility of margin management, crown lengthening or extrusion. Source: https://www.aae.org/specialty/fundamentals-of-restorability/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-003",
+    "number": 3,
+    "version": "2026-10-23.1",
+    "title": "Symptoms after prior RCT",
+    "scenario": "A crowned mandibular molar treated endodontically years earlier; intermittent chewing soreness and periapical radiolucency at one root; no swelling/sinus tract. Prior radiographs, occlusal exam, probing, crown-margin evaluation, and adjacent-tooth evaluation unavailable.",
+    "findings": [],
+    "question": "Explain your evaluation, diagnosis, and treatment plan.",
+    "authorOriginal": "case 3- prognosis에 대해 설명할거 같아. RCT가 fail 한것으로 보인다. 그건 의사가 치료를 잘못해서라기 보다 워낙에 RCT 의 성공 확률은 높지 않다. 그래서 RCT보다는 ext/bone/implant를 추천하는 추세이다. 그런데 환자분이 살기길 원하면 RCT를 진행하지만 실패할수 잇음을 알리고 환자가 선택하도록 한다. 지금 상황에서는 option이 두가지다. 하나는 치료를 한 의사에게 돌아가서 재치료를 받는것이다. 여의치 않다면 전문의에게 가서 2nd opinion을 받는걸 추천한다. 치료가 가능하다면 치료를 받지만 재치료의 성공확률은 확연히 떨어지는걸 알아야 한다. fracture가 있거나 어떠한 이유에서든 재치료가 가능하지 않다면 우리에게 와서 ext/bone/implant을 진행해라. 성공확률은 높다. 97프로의 성공 확률이고 만약에 재치료과정을 겪기 싫으면 우리와 ext/bone/implant를 진행하면 된다. 실패 확률이 없지는 않는데 실패할 경우 다시 진행하면 된다. 크라운이 부러질수는 있지만 뿌리에 해당하는 임플란트는 한번 성공하면 계속 있는거다. 그건 나중에 뽑기가 더 어려운 상황이다. 어떤 치료를 받을지 선택하면 된다.",
+    "authorParaphrase": "1. Discuss suspected failure of prior RCT and prognosis without automatically blaming the previous dentist.\n2. The stated counseling expresses concern about the reliability of RCT and especially retreatment and favors extraction/bone grafting/implant when appropriate.\n3. If the patient wants to preserve the tooth, offer return to the treating clinician or an endodontist's second opinion and retreatment assessment.\n4. If retreatment is feasible and the patient chooses it, proceed through that pathway with discussion of failure risk.\n5. If a fracture or other condition precludes retention, or the informed patient elects replacement, discuss extraction, bone grafting, and an implant.\n6. The original quotes 97% implant success, says failure may be managed by repeating treatment, distinguishes crown failure from the fixture, and describes the fixture as remaining once successful.",
+    "sourceSections": [
+      "SCENARIO CONTEXT: Case 003",
+      "CASE 003 — PROGNOSIS / RETREATMENT BURDEN / PATIENT CHOICE",
+      "CLINICAL REVIEW NOTES — KEPT SEPARATE FROM DR. CHI'S ORIGINAL"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "Only the recorded scenario context is available; no original patient question is preserved for this case.",
+      "The cause of symptoms/nonhealing, lesion trajectory, root-fracture status, structural condition, retreatment feasibility, patient implant risk, and source/time horizon/endpoint of the 97% estimate are unknown."
+    ],
+    "evidenceNotes": [
+      "Both endodontic and implant treatment can have high survival; endpoints and case selection differ. Neither has a lifetime guarantee. Source: https://www.aae.org/specialty/wp-content/uploads/sites/2/2019/04/Implants_PositionStatement_v2.pdf",
+      "A 97% implant estimate requires its own source, endpoint, population, and follow-up. Repeat placement after loss requires reassessment; success cannot be assumed. Source: https://www.efp.org/education/continuing-education/clinical-guidelines/guideline-on-treatment-of-peri-implant-diseases/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-004",
+    "number": 4,
+    "version": "2026-10-23.1",
+    "title": "An improving apical lesion at eight months",
+    "scenario": "RCT completed eight months earlier; patient asymptomatic; comparable radiographs show a lesion decreasing from approximately 6 mm to 3 mm; crown margins appear intact; probing within normal limits; no sinus tract.",
+    "findings": [],
+    "question": "Explain your evaluation, diagnosis, and treatment plan.",
+    "authorOriginal": "case4- 지금 8개월 밖에 안됏기 때문에 어떤 결론을 말할수는 없다. 다만 줄어들고 있으니까 좋은 방향이다. 통증이 없으면 지켜보고 follow up을 하는게 맞다.",
+    "authorParaphrase": "\"In this case, eight months is too early to make a final judgment about the outcome. The decreasing lesion size is encouraging. If the patient remains free of pain, I would continue observation and follow-up.\"",
+    "sourceSections": [
+      "CASE 004 ADDENDUM — 2026-10-18, AMERICA/LOS_ANGELES"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "Dr. Chi did not specify a recall interval, a maximum monitoring duration, or the complete set of findings that would trigger intervention.",
+      "The eight-month observation statement is contextual to this improving, asymptomatic scenario, not a universal prohibition on diagnosing failure before a particular date."
+    ],
+    "evidenceNotes": [
+      "The ESE S3 guideline recommends prolonged review when healing is uncertain and recognizes reduction on sequential radiographs as potentially favorable/healing. It does not require ignoring new symptoms merely because the treatment was recent. Source: https://doi.org/10.1111/iej.13974"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-005",
+    "number": 5,
+    "version": "2026-10-23.1",
+    "title": "Chewing discomfort during apical healing",
+    "scenario": "Eight months after RCT, the apical radiolucency is smaller than before treatment. Pain initially resolved, but mild chewing discomfort returned two weeks earlier. There is no swelling or sinus tract. The tooth is mildly tender to percussion. Occlusion, periodontal probing, crown integrity, and adjacent teeth have not yet been assessed.",
+    "findings": [],
+    "question": "Explain your evaluation, diagnosis, and treatment plan.",
+    "authorOriginal": "case 5- RCT 관련 문제는 없는데 chewing 에 문제가 있으니 그건 bite의 문제로 문제를 focus하면 되. bite check를 하고 adjust를 하고 나아지는 보면 좋을거 같아. noctural bruxism이나 comprehensive bite issue인지도 확인해봐야겠지.",
+    "authorParaphrase": "\"I do not see this as an RCT-related problem. Since the problem is with chewing, I would focus on the bite. I would check and adjust the bite, then see whether the symptoms improve. I would also assess for nocturnal bruxism or a comprehensive bite issue.\"",
+    "sourceSections": [
+      "CASE 005 ADDENDUM — 2026-10-18, AMERICA/LOS_ANGELES"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "The author states that there is no RCT-related problem. That is his interpretation, not an established scenario finding.",
+      "No occlusal contact finding, confirmed bruxism behavior, adjustment, or response to adjustment has actually been supplied.",
+      "The precise findings that trigger adjustment, referral, or other treatment remain unspecified."
+    ],
+    "evidenceNotes": [
+      "A decreasing apical lesion does not exclude an endodontic contributor to new pain. Maintain a differential that includes occlusal, endodontic, structural, periodontal, and adjacent-tooth causes. Source: https://doi.org/10.1111/iej.13974"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-006",
+    "number": 6,
+    "version": "2026-10-23.1",
+    "title": "An asymptomatic molar with a large restoration",
+    "scenario": "An adult patient has a lower molar with a large, longstanding MOD restoration, without pain, sensitivity, or chewing difficulty. The restoration appears serviceable, with no obvious recurrent caries. A fine line is visible on one remaining cusp, but its depth and relationship to the restoration are unclear. Periodontal probing is unremarkable. Cusp thickness, bite testing, and transillumination have not yet been evaluated.",
+    "findings": [],
+    "question": "What findings would move you from monitoring to recommending treatment?",
+    "authorOriginal": "caries risk를 볼거 같아. 만약에 그게 유일한 치료된 치아면 굳이 크라운을 할 필요가 없다라고 설명하겠지만, 만약에 lower anterior에 충치가 있으면 그건 caries risk가 크다고 판단, 즉 충치균이 환자에게 많다고 판단해서 그 치아는 recurrent decay의 확률도 높다고 판단해서 크라운을 recommend할거 같아. bite에 대한 evaluation도 해서 만약에 환자가 치아를 깨트릴 확률이 높으면 또한 크라운을 추천하고.",
+    "authorParaphrase": "\"I would assess caries risk. If this is the patient's only previously treated tooth, I would explain that a crown is not necessarily needed. If there is caries in the lower anterior teeth, I would consider the patient at high caries risk, interpret that as a greater cariogenic bacterial burden, and expect a higher risk of recurrent decay in this molar; I would therefore recommend a crown. I would also evaluate the bite and recommend a crown if the tooth is at high risk of fracture.\"",
+    "sourceSections": [
+      "CASE 006 — FICTIONAL PROMPT",
+      "CASE 006 AUTHOR RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "No lower-anterior caries has actually been established in the fictional patient; it is a conditional branch.",
+      "No fixed cusp-thickness, crack-depth, force, or other numerical threshold was supplied."
+    ],
+    "evidenceNotes": [
+      "Caries risk is multifactorial. Lesion location alone does not measure bacterial burden. Source: https://www.ada.org/resources/ada-library/oral-health-topics/caries-risk-assessment-and-management",
+      "The structural indication for a crown should be supported by findings in the target tooth, including remaining structure and fracture susceptibility. Source: https://www.mouthhealthy.org/all-topics-a-z/crowns"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-007",
+    "number": 7,
+    "version": "2026-10-23.1",
+    "title": "A localized deep periodontal pocket",
+    "scenario": "An adult patient has a 7 mm pocket with bleeding beside a mandibular molar. Subgingival calculus and localized angular bone loss are present. There is no swelling, spontaneous pain, or marked mobility. Full periodontal charting, smoking and diabetes history, tooth vitality, and previous radiographs have not yet been reviewed.",
+    "findings": [],
+    "question": "What would you check first, and how would you explain your diagnosis and treatment plan to the patient?",
+    "authorOriginal": "note record를 하고 OHI를 go over 할거 같아. 특히 waterpik을 추천하고 smoking과 diabete 가 어떻게 영향을 미치는지 구체적인 설명을 통해 환자가 건강 회복의 의지가 있는지 확인할거야. 의지가 있다면 MD 의사와 상의해 약을 바꾸고 음식 습관에 대해 나눌거 같아. 환자가 의자가 없으면 periodontist와 상의를 하라고 보내고 결국에는 치아를 뽑고 임플란트를 심어야 한다고 설명하고 치아를 오래 보전하는것보다는 뼈를 오래 보전하는게 더 좋은 치료일수 있다라고 설명할거 같아. 그 말은 치아를 오래 버티면 그만큼 염증이 커지고 뼈는 녹고 나중에 임플란트를 심는데 어려움이 있다고 설명할거 같아.",
+    "authorParaphrase": "\"I would document the findings and review OHI, particularly recommending a Waterpik. I would explain specifically how smoking and diabetes affect the situation and assess whether the patient is willing to work toward recovery. If they are willing, I would consult their physician about changing medication and discuss dietary habits. If they are not willing, I would send them to a periodontist and explain that extraction and an implant may ultimately be necessary. I would explain that preserving bone over the long term may be a better goal than keeping a tooth for as long as possible: ongoing inflammation and bone loss while retaining the tooth can make later implant treatment more difficult.\"",
+    "sourceSections": [
+      "CASE 007 — FICTIONAL PROMPT",
+      "CASE 007 AUTHOR RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "The fictional patient's smoking status, diabetes status, glycaemic control, medications, diet, adherence barriers, willingness, and response to treatment remain unknown.",
+      "No medication change is actually indicated or performed in the scenario.",
+      "Dr. Chi has not specified subgingival treatment, the complete diagnostic workup, an extraction threshold, or a reassessment interval."
+    ],
+    "evidenceNotes": [
+      "OHI and risk-factor control are initial care. Confirmed periodontitis also calls for appropriate active periodontal treatment and reassessment. Motivation affects feasibility and prognosis but alone does not establish a hopeless tooth or inevitable extraction. Source: https://onlinelibrary.wiley.com/doi/10.1111/jcpe.13290",
+      "Extraction does not remove risks associated with smoking, poor glycaemic control, or inadequate home care. Source: https://doi.org/10.1111/jcpe.13823"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-008",
+    "number": 8,
+    "version": "2026-10-23.1",
+    "title": "A long-standing missing first molar",
+    "scenario": "An adult patient has been missing a mandibular first molar for five years. Adjacent teeth appear sound, and chewing is comfortable. The patient prefers a fixed replacement but is concerned about cost. Bone availability, tooth movement, opposing-tooth position, occlusion, and medical history have not yet been assessed.",
+    "findings": [],
+    "question": "What would you check first, and how would you explain your diagnosis and treatment plan to the patient?",
+    "authorOriginal": "만약 30번 치아라면 #3의 over eruption, #31 mesially tilt를 확인할거 같아. 그리고 환자에게 설명하겠지. 30번이 missing돼서 생긴 문제라고 그리고 곧바로 restore할게 아니라 어떻게 #3,31의 tiltation을 해결할지를 고민할거 같아. 그냥 restore 할수 있을지 그렇다면 30번이 occlusal plain에서 off해서  bite에 문제가 생길수 있다는것과 #31의  mesial tilation으로 인해 implant시 food trap이 많이 생길수 있다는것을 설명하고 경우에 따라 너무 많이 #3이 over eruption했으면 ortho tx 나 crown으로 occlusion을 adjust하고 #31 tiltation이 심하면 같이 ortho tx을 recommend하고 너무 심하면 뽑고 임플란트를 30,31에 심는 옵션도 고려할거 같아.",
+    "authorParaphrase": "\"If the missing tooth is #30, I would check for supraeruption of #3 and mesial tipping of #31. I would explain changes associated with losing #30 and first consider how to manage the positions of #3 and #31 rather than immediately restoring the space. I would determine whether #30 can be restored acceptably as things stand, explaining the possibility of an unfavorable occlusal plane and bite, and food-trap concerns associated with the mesial tipping of #31. If #3 is substantially supraerupted, I would consider orthodontic treatment or correction through a crown. Significant tipping of #31 would prompt an orthodontic recommendation. In an extreme case, I would also consider extracting #31 and replacing #30 and #31 with implants.\"",
+    "sourceSections": [
+      "CASE 008 — FICTIONAL PROMPT",
+      "CASE 008 AUTHOR RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "No actual supraeruption of #3, tipping of #31, reduced restorative space, food impaction, occlusal interference, poor prognosis, or need for extraction has been established.",
+      "The patient was not assigned a specific missing-tooth number until the author's conditional “if #30” response.",
+      "No numerical movement, reduction, crown-height, tooth-prognosis, or orthodontic-feasibility threshold was supplied."
+    ],
+    "evidenceNotes": [
+      "Adjacent and opposing tooth movement can affect posterior replacement planning; orthodontic uprighting or intrusion may be considered when indicated. Such changes vary and require examination rather than assumption. Source: https://www.prosthodontics.org/about-acp/position-statement-posterior-single-tooth-replacement/",
+      "Tipping alone is not an automatic extraction indication. Assess retention and corrective alternatives, risks, and the definitive replacement plan. Source: https://www.prosthodontics.org/about-acp/position-statement-extractions-of-asymptomatic-natural-teeth-to-facilitate-prosthodontic-treatment/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-009",
+    "number": 9,
+    "version": "2026-10-23.1",
+    "title": "Anterior spacing and a rotated lateral incisor",
+    "scenario": "An adult patient wants to close small spaces between the maxillary anterior teeth. One lateral incisor is slightly rotated. The teeth appear sound and there is no discomfort. The patient hopes for relatively quick improvement. Occlusion, tooth proportions, periodontal health, the cause of spacing, and precise esthetic goals have not yet been assessed.",
+    "findings": [],
+    "question": "What would you check first, and how would you explain your diagnosis and treatment plan to the patient?",
+    "authorOriginal": "bite 부터 체크할거 같아. 애초에 왜 그 치아만 rotate 됐는지 확인하고 만약에 그게 lower anterior하고 bite 때문이면 그건 고치기가 힘든거잖아. 그러면 ortho tx 을 추천하고 bite이 아랫 치아에서 공간이 존재하면 veneer도 괜찮을 방법이라고 추천할거 같아. 아무래도 오랜 시간 걸리는 ortho는 환자들이 선호하지 않으니까. 그리고 upper anterior space가 전반적인 문제라면 어려운 상황이야. 치아를 안쪽으로 모아야 하잖아 스페이스를 없애러면. 그러면 bite에 문제가 생길수 잇어. ortho가 어려운 상황이거나 ortho를 진행해도 나중에 veneer를 해야할수 있어.",
+    "authorParaphrase": "\"I would check the bite first and investigate why only that tooth is rotated. If it relates to the lower anterior teeth and the bite, correction would be difficult, and I would recommend orthodontic treatment. If adequate clearance from the lower teeth exists, I would consider veneers a reasonable option, taking into account that patients often do not prefer lengthy orthodontic treatment. Generalized upper anterior spacing is more complex: my concern is that bringing the teeth inward to close the spaces could create a bite problem. Orthodontics may be difficult in some situations, and veneers may still be needed after orthodontic treatment.\"",
+    "sourceSections": [
+      "CASE 009 — FICTIONAL PROMPT",
+      "CASE 009 AUTHOR RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "No occlusal interference, lower-anterior contact causing rotation, inadequate clearance, periodontal disease, tooth-size discrepancy, or need for lingual movement has been established.",
+      "No overjet, overbite, tooth dimensions, specific planned movement, preparative requirements, or treatment-time estimate was supplied.",
+      "The author expressed a general observation about orthodontic duration; the fictional patient has not refused orthodontics."
+    ],
+    "evidenceNotes": [
+      "Spacing and isolated rotation have multiple possible contributors. Generalized spacing alone does not establish a need for lingual retraction or prove that orthodontics is infeasible. Source: https://aaoinfo.org/whats-trending/teeth-spacing-causes-treatment-options/",
+      "Occlusal conditions and parafunction can affect veneer suitability; assess existing disease, preparation requirements, and patient expectations. Source: https://www.mouthhealthy.org/all-topics-a-z/veneers"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-010",
+    "number": 10,
+    "version": "2026-10-23.1",
+    "title": "Cold sensitivity and a cervical notch",
+    "scenario": "An adult patient has brief cold sensitivity at one maxillary premolar, localized gingival recession, and a shallow cervical notch without obvious caries. There is no spontaneous or biting pain; cold discomfort stops promptly. A radiograph shows no apparent apical change. Progression, brushing habits, and other contributing factors have not been assessed.",
+    "findings": [],
+    "question": "What would you check first, and how would you explain your diagnosis and treatment plan to the patient?",
+    "authorOriginal": "CASE 010 ORIGINAL\n먼저 환자의 brushing technique를 체크해볼거 같아. 전동 칫소를 쓰거나 manual을 쓰더라도 hard 한걸 쓰고 있다면 (사실 환자가 본인은 soft brush를 쓴다고 하더라도) Nimbus toothbrush를 추천하고 치약은 CTx나 Sensodyne pronamel을 추천해. 치약의 량은 완두콩만큼 조금만 사용하고. 왜 칫솔질을 하는지 생각해보면 사람들은 치아를 자동차 세차하듯이 해. 그런데 충치가 생기는 원인은 박테리아거든. 아무리 청소를 열심히 해도 박테리아는 제거할수 없지. 너무 작으니까. 그러면 어떻게 해야하나? 박테리아가 acidophilic이고 산성을 좋아하는 균이니까 산성의 환경을 알카리 환경으로 바꿔주면 박테리아의 활동이 최소화 된다는걸 가르칠거야. 우리가 마시는 음료들, 커피, 티, energy drink등이 매우 산성이고 그것들을 마시면 아무리 양치를 많이하고 잘해도 박테리아의 수는 증가하게 되어 있고 그 수가 증가하면 충치는 필연 생길수밖에 없는거지. 박테리아의 수에 따라 충치가 생기는 부위가 다르다는걸 연구를 통해 알아냈어. Occlusal에 생기면 low risk- 균수가 적다. interproximal에 생기면 moderate- 균수가 많다. lower anterior interproximal이나 root caries가 있으면 high risk- 균수가 너무나 많다. 균수가 많다는건 양치를 안해서라기보다는/ floss를 안해서라기 보다는 균수가 많은 환경을 제공하고 있다가 더 정답에 가깝고 그러니 양치하는 법을 그리고 균이 자라는 환경에 대한 교육이 필수로 들어가야해. 그러면 양치를 어떻게 하느냐? 45도로 잇몸쪽으로 꺾고 칫솔을 원형으로 살살 돌린다. 마사지를 한다는 느낌으로. 그정도의 강도가 적당하고 마사지를 하면 혈액순환이 되고 혈액안에는 백혈구가 있지. 백혈구가 균을 죽이는거지 양치로, 치약으로 거품을 내서 균을 죽이는게 아니라는걸 가르치는거지. 그리고 산성 환경의 무언가를 먹거나 마시면, 물이 중성이니까 물로 헹구면 큰 도움이 되겠지. 그렇게 pH를 조절하면 박테리아 수를 조절할수 있다라고 교육해야 하는거야. 그리고 nimbus/pronamel 로 바꾸면 cold sensitivity도 모두 좋아지더라고. 이건 임상 경험이야.\n\nCASE 010 AUTHOR CLARIFICATION\n**Brushing does remove bacterial plaque.** - 당연하지 그런게 그렇게 환자들에게 가르치면 hard brushing habit을 깨트리기가 어려워. 그래서 pH로만 설명하고 더이상 hard brushing 하지 말라라고 가르치기 위해서 한쪽으로 치우치게 가르치는거야. erosion은 다르지. 그건 그런 상황을 발견했을때 나눌 대화야. Lesion location can inform risk assessment, but does not measure bacterial count- Kois research에서는 충치 위치와 균의수의 상관관계에대한 리서치를 메인으로 가르쳐. 다른 연구에서 어떤 결과를 가져왔든 난 그걸 오히려 biased 된 연구라고 봐.\n\nCASE 010 CONTINUING AUTHOR EXPLANATION — PLAQUE AND BACTERIA\nbrushing이 plaque를 제거하지  bacteria 자체를 제거하지는 못해. 음식물을 제거한다고 bacteria 수가 줄어드는건 아니야.",
+    "authorParaphrase": "1. Begin by checking brushing technique and the actual brush used; do not rely only on the patient's description of it as soft.\n2. Recommend a Nimbus toothbrush in the described circumstances and CTx or Sensodyne Pronamel toothpaste, with a pea-sized amount as his instruction.\n3. Teach a gentle circular technique at approximately 45 degrees toward the gingival margin, using a light, massage-like pressure.\n4. Discuss drinking habits and the oral environment, including acidic beverages, rather than attributing disease solely to failure to brush or floss.\n5. Recommend rinsing with water after acidic foods or drinks.\n6. Start with this conservative home-care and education approach for the presented sensitivity scenario.\n\nAuthor clarification:\n\"I know that brushing removes bacterial plaque. In patient counseling, I deliberately emphasize pH because explaining cleaning in that way can reinforce a hard-brushing habit. My aim is to stop aggressive brushing. Erosion is a separate discussion that I would have when the relevant situation is found. Kois teaching emphasizes research relating caries location to bacterial numbers. I regard conflicting research as potentially biased.\"\nThe final sentence reports the author's position; this record does not establish bias in any particular study.\n\nContinuing author explanation:\n\"Brushing removes plaque, but cannot remove the bacteria themselves. Removing food does not mean that bacterial numbers decrease.\"",
+    "sourceSections": [
+      "CASE 010 — FICTIONAL PROMPT",
+      "CASE 010 AUTHOR RESPONSE",
+      "CASE 010 AUTHOR CLARIFICATION",
+      "CASE 010 SOURCE ADDENDUM — USER-SUPPLIED RISK CHART",
+      "CASE 010 CONTINUING AUTHOR EXPLANATION — PLAQUE AND BACTERIA"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "The findings that would move Dr. Chi from conservative care to a cervical restoration remain unspecified; Case 010B has no author response.",
+      "Dr. Chi explicitly understands the plaque-removal effect of brushing and describes deliberate pH-focused counseling to reduce aggressive brushing.",
+      "His location-based risk classification is documented in supplied educational material; the exact underlying Kois research source and numerical bacterial-count mapping remain unverified.",
+      "CTx and Pronamel do not identify one unique formulation; ingredients, fluoride concentration and intended instructions have not been specified.",
+      "His reported all-improved sensitivity experience has no denominator, follow-up duration, comparison group or standardized outcome measure."
+    ],
+    "evidenceNotes": [
+      "Plaque is a bacteria-containing biofilm, distinct from food debris. Physical removal of that biofilm can remove bacteria carried within it; removal does not require killing them. Brushing does not sterilize the mouth. Sources: https://www.nidcr.nih.gov/health-info/gum-disease ; https://www.ada.org/resources/ada-library/oral-health-topics/floss/",
+      "Caries involves biofilm fermentation of dietary carbohydrates with interacting risk and protective factors. Acidity alone does not establish inevitable bacterial growth or caries. Source: https://www.ada.org/resources/ada-library/oral-health-topics/caries-risk-assessment-and-management",
+      "Do not teach the proposed gum-massage/WBC mechanism as the explanation for caries prevention. Foam volume is not the therapeutic endpoint. Source: https://www.ada.org/resources/ada-library/oral-health-topics/toothbrushes",
+      "The supplied chart documents location-based risk categories but no numerical bacterial counts, CFU thresholds, or measured microbiological results.",
+      "Sensitivity has multiple possible causes and treatment is cause dependent. Desensitizing toothpaste can help some patients; persistent symptoms require reassessment. Source: https://www.mouthhealthy.org/all-topics-a-z/sensitive-teeth/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-011",
+    "number": 11,
+    "version": "2026-10-23.1",
+    "title": "Recurrent implant crown loosening",
+    "scenario": "A 58-year-old patient has a screw-retained implant crown at #30, delivered five years ago. The patient asks: \"Can you just tighten it again? I can’t keep taking time off work.\"",
+    "findings": [
+      "The crown has been retightened twice during the past six months. It is mobile again.",
+      "There is no pain or visible swelling.",
+      "A PA shows no obvious interval bone-level change compared with the previous film.",
+      "The source of mobility has not yet been determined. Component condition, fit, occlusion, and parafunction have not been assessed."
+    ],
+    "question": "What would you check first, and how would you explain your approach to the patient?",
+    "authorOriginal": "bite check를 먼저 해볼거 같아. 지난 두번 내가 본 환자가  bite check를 했었던 환자면 night guard를 추천하고 occlusal disease가 있는지(bite을 했을때 턱을 뒤로 또는 옆으로 옮겨야 하나요?)를 확인하고 occlusal dz면 full mouth reconstruction을 고려하고 만약에 모두 문제가 없으면 screw, connection에 문제가 없는지 확인할거 같아. 먼저는 screw를 새걸로 바꿔보고 상황을 볼거 같고, 제품 가운데 비슷한 모양/크기인데 다른 부품이 들어간 경우도 있어서 최악의 경우는 크라운을 새로 만들거 같아 abutment하고 같이.",
+    "authorParaphrase": "I would check the bite first. If this were a patient whose bite I had already checked at the previous two visits, I would recommend a night guard and investigate whether there is an occlusal problem by asking, 'Do you have to move your jaw backward or sideways to make your teeth fit together?' If there is occlusal disease, I would consider full-mouth reconstruction. If that assessment does not identify a problem, I would examine the screw and connection. My first mechanical step would be to replace the screw and reassess. I would also investigate component compatibility, because parts can look similar and have similar dimensions while belonging to different systems. If necessary, I would remake the crown together with the abutment.",
+    "sourceSections": [
+      "CASE 011"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "No mobile component, implant fixture stability, screw integrity, compatibility problem, bruxism or occlusal disease has been confirmed.",
+      "The jaw-shift question is a screen; no CR-MIP discrepancy or diagnosis is established. The author said “consider” full-mouth reconstruction.",
+      "The reference to previous bite checks does not establish two normal examinations."
+    ],
+    "evidenceNotes": [
+      "ITI identifies handling, fit, and occlusal forces as contributors to prosthetic screw complications and recommends evaluating differential causes and following manufacturer instructions. This does not validate full-mouth reconstruction based on the jaw-shift question alone. https://academy.iti.org/academy/consensus-database/consensus-statement/-/consensus/survival-and-complication-rates-of-implant-supported-fixed-prostheses-over-the-last-decades/1317"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-012",
+    "number": 12,
+    "version": "2026-10-23.1",
+    "title": "Repeated swelling around a wisdom tooth",
+    "scenario": "A 27-year-old has a partially erupted, mesioangular #32.",
+    "findings": [
+      "Two episodes of swelling around #32 resolved during the past year.",
+      "There is currently no fever, facial swelling, or trismus.",
+      "Distal probing at #31 measures 6 mm with bleeding.",
+      "On the panoramic image, #32’s roots project over the inferior alveolar canal. Their actual three-dimensional relationship is undetermined."
+    ],
+    "question": "What would you evaluate first, and how would you explain the situation to the patient?",
+    "authorOriginal": "w. teeth의 존재가 pericoronitis를 만드니 w. teeth ext를 추천할거 같아. 나이가 들면 회복이 더욱 더디니 하루 빨리 뽑자고. 4개 다. 그리고 환자가 긴장하고 어려워하면 iv sedaion 추천하고.",
+    "authorParaphrase": "I would recommend wisdom-tooth extraction to address the pericoronitis. I would encourage treatment sooner because I expect recovery to become slower with age. My preference would be to remove all four wisdom teeth. If the patient is very anxious or has difficulty tolerating treatment, I would recommend IV sedation.",
+    "sourceSections": [
+      "CASE 012"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "The other three third molars’ presence, position, disease status and individual indications are not supplied; the four-tooth recommendation is the author’s stated preference.",
+      "Panoramic superimposition is not confirmed nerve contact. No #31 prognosis, medical history, surgical risk estimate or sedation eligibility is established."
+    ],
+    "evidenceNotes": [
+      "AAOMS discusses age-related morbidity/recovery, examination of adjacent second molars, consideration of other impacted teeth during the same surgical session, and individualized assessment of treatment versus retention. Considering other teeth does not document an indication to extract each undescribed third molar. https://aaoms.org/wp-content/uploads/2024/07/impacted_third_molars.pdf"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-013",
+    "number": 13,
+    "version": "2026-10-23.1",
+    "title": "A darkened anterior tooth",
+    "scenario": "A 35-year-old has a darkened #9, root-canal-treated after trauma about ten years ago. The patient asks: \"Can I get a crown so this tooth matches the others?\"",
+    "findings": [
+      "There is a small palatal composite; most visible coronal structure appears intact.",
+      "There is no spontaneous or biting pain.",
+      "A PA shows no obvious apical radiolucency.",
+      "Root-filling quality, coronal seal, occlusion, caries risk, and the precise cause of discoloration have not been assessed."
+    ],
+    "question": "What would you check first, and what would you recommend initially?",
+    "authorOriginal": "[CASE 013]\ninternal bleaching을 진행해도 결국은 크라운을 해야하는 상황이니 emax 보다는 layered zirconia로 light through를 block하는 옵션을 사용할거 같아. 그 치아 하나만 문제인지 아니면 6-11  veneer로 처리해서 모두 같은 esthetic을 만들지를 고려할거 같아. smile line을 확인해서 high smile line 일 경우 hard case 로 분류. gum line 의 height와 symmetry를 고려하고 asymmetry와 gum line height의 proportion이 이상적이지 않으면 non-invasive crown lenghthening을 통해 esthetic을 형성하면서 동시에 크라운 프랩을 할거 같아.\n\n[CASE 013 TECHNIQUE]\nsoft tissue를 이상적인 gum height으로 자르고 chisel을 이용해서 안쪽 뼈 높이를 정해서 검이 다시 자라는걸 막는 시술이야. [https://shop.brasselerusa.com/Product/5026284U0](https://shop.brasselerusa.com/Product/5026284U0)",
+    "authorParaphrase": "[CASE 013]\nI expect this tooth will ultimately need a crown even if internal bleaching is performed. I would therefore favor layered zirconia over e.max to block light transmission and mask the underlying discoloration. I would assess whether the concern is limited to this tooth or whether veneers on #6–11 should be considered for a more uniform esthetic result. I would evaluate the smile line and classify a high smile line as a more challenging case. I would also assess gingival height, symmetry, and tooth–gingival proportions. If these are unfavorable, I would consider what I call 'non-invasive crown lengthening' to establish the desired esthetics while preparing the crown.\n\n[CASE 013 TECHNIQUE]\nI cut the soft tissue to the ideal gingival height, then use a chisel to establish the underlying bone level with the aim of preventing the gum from growing back.",
+    "sourceSections": [
+      "CASE 013",
+      "CASE 013 TECHNIQUE"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "The scenario does not independently establish that internal bleaching must be followed by a crown or that #6–11 need veneers.",
+      "No high smile line, gingival asymmetry, excessive gingival display or nonideal proportions have been established.",
+      "The technique clarification explicitly includes gingival and chisel-assisted osseous recontouring. It is not soft-tissue-only treatment; exact access, selection criteria and timing remain unspecified.",
+      "Prevention of gingival rebound is the author’s intended goal, not a guarantee."
+    ],
+    "evidenceNotes": [
+      "The reviewed laboratory study found that masking depends on zirconia formulation, thickness, and substrate. It studied monolithic disks and Rosetta lithium disilicate, not layered zirconia versus e.max crowns; it does not establish universal superiority. https://jap.or.kr/DOIx.php?id=10.4047/jap.2022.14.5.324",
+      "Bakeman and Kois describe selected minimally invasive crown-lengthening cases with trans-sulcular chisel-assisted osseous recontouring and potentially same-day restorative work. This technique description is not comparative proof of permanent freedom from gingival rebound. https://insidedentistry.net/2020/12/minimally-invasive-crown-lengthening/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-014",
+    "number": 14,
+    "version": "2026-10-23.1",
+    "title": "Extraction and implant on the same day?",
+    "scenario": "A 45-year-old patient has a confirmed vertical root fracture in #8; the tooth has been assessed as non-restorable. The patient asks: \"Can you remove the tooth, place the implant, and give me a fixed temporary tooth on the same day?\"",
+    "findings": [
+      "High smile line and thin gingival phenotype.",
+      "The gingival margin at #8 is already 1.5 mm apical to #9.",
+      "CBCT shows a localized facial bone defect.",
+      "Available anchorage and achievable primary implant stability remain undetermined.",
+      "No fever or facial swelling.",
+      "Occlusion, parafunction, medical history, and the full extent of the site defect have not yet been evaluated for this treatment plan."
+    ],
+    "question": "What would you evaluate before agreeing to same-day treatment, and how would you explain the possible sequences? Which interim option would you usually recommend while the patient waits for the crown?",
+    "authorOriginal": "[CASE 014]\n환자가 최대한 빨리 치아를 원하는 상황이기 때문에 immediate implant placement recommended 할거 같아. 보통 maxillary의 치아는 facially locate하기때문에 임플란트는 45도 정도 각도를 꺾어서 lingually place해야해. custom abutment사용해야하고 cement retained crown을 사용하게 될거야. immediate implant는 심고 3개월만에 크라운을 올릴수 있기 때문에 환자에게 이점이 많아. 성공 확률도 한참 높고. facial bone이 defect 된건 bone particle로 넣으면 되. 문제는 임플란트와 크라운이 아니야.  smile line이 높기 때문에 gum height에 문제가 생길때(#9의 gum height이 어떻게 결정될지 예측할수는 있어도 100프로 그렇게 되리라는 보장은 없어.), #8을 비롯해서 6-11의 gum height에 관한 crown lenghtening이나 crown을 넣어야 할수 도 있다라고 미리 설명하는게 좋아. anterior 뿐만 아니라 posterior 도 immediate implant를 추천해. 기술이 필요하지만, 훈련하면 충분히 이룰수 있어.\n\n[CASE 014B]\nessix가 가장 좋아. 임플란트를 건들지 않으면서 esthetic을 유지할수 있으니까. provisional은 환자가 추가로 돈을 내야해. 그리고  abutment가 impact시 부러지도록 설계되어 있어. 부러지면 환자가 다시 돈을 내야해. 그걸 원하는 환자도 있어. essix도 돈을 내야하지만, 그보다는 싸기도 하고. 임플란트 보존 목적으로는  essix가 최선이야.",
+    "authorParaphrase": "[CASE 014]\nI would recommend immediate implant placement because the patient wants a tooth as soon as possible. I regard maxillary teeth as generally facially positioned, and would place the implant more lingually/palatally with an angulation change of approximately 45 degrees. I expect to use a custom abutment and a cement-retained crown. I would plan crown delivery approximately three months after implant placement. I consider this advantageous for the patient and believe the success rate is substantially higher. I would use particulate bone graft material for the facial bone defect. With a high smile line, my main counseling concern is uncertainty in the final gingival levels. Although the gingival result can be predicted, it cannot be guaranteed. Depending on that result, I would explain beforehand that crown lengthening and/or crowns involving #8 and potentially #6–11 might be needed. I also recommend immediate placement in posterior sites. It requires technical skill, but I believe clinicians can develop that skill through training.\n\n[CASE 014B]\nI prefer Essix because it maintains esthetics without disturbing the implant. An implant-supported provisional involves an additional fee. My understanding is that the abutment is designed to fracture under impact, and replacement would involve another fee. Some patients still want that option. Essix also has a fee, but is less expensive. For protecting the implant, Essix is my preferred option.",
+    "sourceSections": [
+      "CASE 014",
+      "CASE 014B"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "Immediate placement and immediate implant-supported restoration/loading are separate decisions; no fixed provisional or permanent same-day crown is promised.",
+      "The 45-degree statement has no reference axis or patient-specific measurement; “substantially higher success” has no specified comparator, endpoint or dataset.",
+      "The three-month timeline is anticipated, not guaranteed. The original parenthetical names #9 although the implant site is #8; that numbering is preserved.",
+      "Essix preference and relative fees are practice-specific. No abutment specification validates the assertion that it is designed to fracture under impact."
+    ],
+    "evidenceNotes": [
+      "ITI’s 2023 Type 1A consensus describes selected populations, restoration-driven 3D planning, primary stability and assessment of defect extent. It does not establish a universal 45-degree angulation, fixed three-month schedule, comparative superiority or particulate grafting as sufficient for every facial defect. Type 1A combines immediate placement and immediate loading; the author has not specified immediate loading. https://network.iti.org/academy/consensus-database/consensus-statement/-/consensus/selection-criteria-for-immediate-implant-placement-and-immediate-loading-for-single-tooth-replacement-in-the-maxillary-esthetic-zone/2305",
+      "The reviewed provisional-replacement clinical report does not compare Essix superiority, establish fee differences, or validate intentional abutment-fracture design. Appliance selection alone does not establish absence of pressure at the fictional site. https://pubmed.ncbi.nlm.nih.gov/12131880/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-015",
+    "number": 15,
+    "version": "2026-10-23.1",
+    "title": "A persistent tongue ulcer",
+    "scenario": "A 52-year-old reports an approximately 8-mm ulcer on the right lateral tongue, present for three weeks, beside a sharp lingual edge of #31. The patient thinks they bit the tongue.",
+    "findings": [
+      "Induration and cervical lymph nodes have not been assessed.",
+      "There is no tissue diagnosis."
+    ],
+    "question": "What would you check first, and how would you explain the next step? Separate variation: would a firm, indurated border on palpation today change your referral timing?",
+    "authorOriginal": "[CASE 015]\n왜 bite을 했는지를 확인할거야. #31 이 최근에 크라운이나 임플란트 크라운, partial denture, 등을 한 케이스라면 horizontal overlap을 확인하고 bite을 adjust해서 또  bite을 하는 일이 적어지도록 도울거 같아. lesion이 한달이상 되고 lesion이라고 판단되면 oral pathology로 refer할거야.\n\n[CASE 015B]\n만성 질환을 의미하므로 당장 biopsy",
+    "authorParaphrase": "[CASE 015]\nI would first investigate why the patient is biting the tongue. If there has been recent restorative or prosthetic treatment around #31, such as a crown, implant crown, or partial denture, I would check the horizontal overlap and adjust the bite as appropriate to reduce repeated biting. If the area persists beyond one month and I judge it to be an oral lesion, I would refer to oral pathology.\n\n[CASE 015B]\nI regard this as indicating a chronic condition, so I would proceed to biopsy immediately.",
+    "sourceSections": [
+      "CASE 015",
+      "CASE 015B"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "The nearby sharp edge is not proof of a traumatic cause; no malignancy or other diagnosis is established.",
+      "Case 015B adds a firm, indurated border only as a separate fictional variation. It is not a baseline finding. The immediate-biopsy response applies to that variation.",
+      "The author’s one-month referral trigger is not an unconditional waiting period: in the induration variation he chooses immediate biopsy."
+    ],
+    "evidenceNotes": [
+      "The separate clinical qualification states that suspicious findings warrant prompt biopsy/referral rather than an automatic wait to one month. The ADA 2026 chairside guide recommends biopsy or referral when abnormalities are not resolving 10–14 days after initial evaluation without a definitive diagnosis or treatment plan. The vignette’s three-week history does not establish that such a documented post-evaluation interval elapsed. https://www.ada.org/resources/research/science/evidence-based-dental-research/oral-cancer-guideline/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-016",
+    "number": 16,
+    "version": "2026-10-23.1",
+    "title": "Anticoagulation and extraction bleeding",
+    "scenario": "A 72-year-old taking apixaban 5 mg twice daily for atrial fibrillation needs extraction of #19. A straightforward extraction is anticipated. The patient asks whether to stop Eliquis for a few days.",
+    "findings": [
+      "The patient reports no unusual bleeding.",
+      "Renal function and the complete medication list remain unconfirmed."
+    ],
+    "question": "What would you confirm, and what instructions would you give? Separate postoperative variation: the same fictional patient calls after an extraction, describing blood-tinged saliva and repeated gauze changes; severity and pressure technique are unconfirmed. What would you tell them, and when would you have them return?",
+    "authorOriginal": "[CASE 016]\n담당 의사의 소견을 들을꺼야. 내가 선택할 문제는 아니니까. risk와 benefit을 따질꺼야. aspirin을 먹어도  bleeding에 문제가 없는 환자도 있고 몇일 끊어도 bleeding에 문제가 있는 환자가 있어. 정작 중요한건 치아를 뽑고 나서 bleeding control을 하는거야. 직접 압박이 bleeding control 에서는 최선이야.\n\n[CASE 016B]\n피 색은 날수 있어. woozing out 할수 있으니까. 다만 피 색이 진하다고 하면 일단 오피스로 오라고 할꺼야. 직접 확인해야지 환자에게 상황을 물어보는건 잘못된 진단을 내릴수도 있어. 그리고 정말로 피가 나면 거즈로 압박해서 피가 완전히 멎을때까지 10분이고 20분이고 누르고 있을꺼야.",
+    "authorParaphrase": "[CASE 016]\nI would obtain the treating physician's opinion rather than independently decide on medication changes. I would weigh the risks and benefits. Some patients taking aspirin have no bleeding problem, while others still have bleeding problems after stopping it for several days. My main emphasis is controlling bleeding after extraction, and I consider direct pressure the best measure for bleeding control.\n\n[CASE 016B]\nSome blood-tinged saliva or oozing can occur. If the patient reports a darker blood color, I would ask them to come to the office so I can examine the site directly. Relying only on the patient's description could lead to an incorrect assessment. If I confirm active bleeding, I would apply direct pressure with gauze, maintaining it for 10 or 20 minutes as needed until the bleeding stops.",
+    "sourceSections": [
+      "CASE 016",
+      "CASE 016B"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "The apixaban dose is fictional history, not a dosing recommendation. No physician advice, medication change, extraction or actual bleeding event has occurred.",
+      "The aspirin example describes variability; it does not equate aspirin with apixaban or supply an apixaban interruption schedule.",
+      "Case 016B is a separate postoperative variation. Blood color is the author’s return trigger, not an established measure of bleeding severity.",
+      "The stated 10 or 20 minutes is his approach, not a universal fixed protocol or a decision to continue pressure alone indefinitely."
+    ],
+    "evidenceNotes": [
+      "ADA distinguishes antiplatelet agents from direct oral anticoagulants, discusses local pressure and other hemostatic measures, and recommends physician coordination if medication modification is considered. It does not establish routine interruption or mandatory clearance for every low-risk extraction. https://www.ada.org/resources/ada-library/oral-health-topics/oral-anticoagulant-and-antiplatelet-medications-and-dental-procedures",
+      "AAOMS postoperative guidance describes gauze pressure and contacting the surgeon for persistent or excessive bleeding. It does not establish darker blood alone as severe bleeding or pressure alone as universally sufficient. https://myoms.org/what-we-do/wisdom-teeth-management/wisdom-tooth-extraction-postoperative-instructions/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-017",
+    "number": 17,
+    "version": "2026-10-23.1",
+    "title": "Dry mouth and new root caries",
+    "scenario": "A 67-year-old has three new root-surface caries lesions at #22, #27, and #28 over the past year, with gingival recession. The patient brushes three times daily and asks why new decay is developing.",
+    "findings": [
+      "The patient reports dry mouth and waking at night for water.",
+      "Amitriptyline was started nine months ago.",
+      "Salivary flow, diet, fluoride exposure, the complete medication history, and lesion activity, depth, and restorability have not been assessed."
+    ],
+    "question": "What would you assess first, and how would you explain your plan? Separate variation: if the lesions are active, other teeth have restorations, and most remaining teeth appear restorable with adequate periodontal support, what additional findings would move you toward considering All-on-X?",
+    "authorOriginal": "[CASE 017]\n나도 Dr. B 와 같은 의견으로 먼저 dry mouth 부터 해결할거 같아. 전에도 말했듯이 root caries는 박테리아 수가 엄청 많다는 거고 caries risk가 크기 때문에 치료에 있어서도 크라운으로 치료하고 만약에 충치가 너무 깊으면 빼고 임플란트로 넘어갈꺼야. 이게 3개의 치아가 아니라 전체적인 문제라면 살릴려고 노력하기 보다는 오히려 all on X tx도 고려할꺼야. 지금 상황은 기존에 있는 크라운, filling 치료한 치아들도 recurrent decay의 위험이 상당히 높은 상황이야.\n\n[CASE 017B]\n더 많은 teeth가 영향을 받을때, 그리고 dry mouth가 개선이 안될때, 환자의 치아가 root caries로 인해 부러지기 시작할때.",
+    "authorParaphrase": "[CASE 017]\nI agree with Doctor B and would address the dry mouth first. As I have said before, I interpret root caries as indicating a very high bacterial burden and high caries risk. Because of that risk, I would favor treatment with crowns; if the decay is too deep, I would move to extraction and implant replacement. If this is a generalized problem rather than one limited to three teeth, I would also consider All-on-X rather than trying to preserve the teeth. I would regard the existing crowned and filled teeth as being at substantial risk of recurrent decay.\n\n[CASE 017B]\nThe factors that would move me toward considering All-on-X are more teeth becoming affected, dry mouth not improving, and teeth beginning to fracture because of root caries.",
+    "sourceSections": [
+      "CASE 017",
+      "CASE 017B"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "Dry mouth is reported; objective hyposalivation and medication causation are not established. Root location is the author’s risk interpretation, not a measured bacterial count.",
+      "Crowns, extraction and All-on-X are author preferences/conditional considerations. Tooth-specific indications, “too deep,” and generalized involvement are not fully defined.",
+      "Case 017B’s restorable-dentition findings are a separate variation. Increased tooth involvement, persistent dry mouth and fractures are hypothetical triggers; none has actually occurred.",
+      "The author does not specify whether all three All-on-X factors must coexist, their weighting, a minimum tooth count or a failed prevention interval."
+    ],
+    "evidenceNotes": [
+      "The separate clinical qualification distinguishes caries risk, tooth-specific restorability and full-arch prognosis. It notes nonrestorative root-caries management options and that high risk alone does not establish a crown or extraction indication for every tooth. https://www.ada.org/resources/research/science/evidence-based-dental-research/caries-management-clinical-practice-guidelines/evidence-based-clinical-practice-guideline-on-nonrestorative-treatments-for-caries-lesions/",
+      "Crowns do not by themselves resolve underlying disease risk. Full-arch implant treatment also requires prevention and long-term maintenance. https://www.efp.org/for-patients/dental-implants/peri-implant-diseases/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-018",
+    "number": 18,
+    "version": "2026-10-23.1",
+    "title": "Morning jaw aching",
+    "scenario": "A 38-year-old reports intermittent aching in both cheeks and temples, usually worse in the morning during stressful weeks.",
+    "findings": [
+      "There is occasional jaw clicking but no reported locking, trauma, or swelling.",
+      "Opening range, muscle and joint tenderness, dental findings, and awake or sleep-related habits have not been assessed."
+    ],
+    "question": "What would you evaluate first, and what would you recommend initially?",
+    "authorOriginal": "나는 근육을 체크할거 같아. masseter, SCM, neck, shoulder, temporal M. 환자가 아프다 그러면 밤에 grinding/clenching 으로 보고 night guard를 하라 하고 그리고 neck and shoulder streching 프로그램을 추천할거 같아. 스트레칭을 하면 그만큼 턱 관절이 유연해져서 통증이 줄어들어. 정기적으로 스트레칭을 하면 정말 도움이 되",
+    "authorParaphrase": "I would first check the masseter, SCM, neck, shoulder, and temporalis muscles. If the patient reports pain, I would view it as reflecting nighttime grinding or clenching and recommend a night guard and a neck and shoulder stretching program. I explain that stretching makes the jaw joint more flexible and reduces pain. I find regular stretching really helpful.",
+    "sourceSections": [
+      "CASE 018"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "No examination finding, specific TMD subtype, confirmed sleep bruxism, occlusal cause or exclusion of other causes is established.",
+      "The response does not clearly distinguish pain elicited on muscle examination from the general pain report.",
+      "The stretching benefit and flexibility explanation are author experience and proposed mechanism, not measured outcomes. Guard design, exercises and reassessment timing are unspecified."
+    ],
+    "evidenceNotes": [
+      "NIDCR describes bruxism assessment using history, examination and, when appropriate, sleep testing; muscle pain is not a standalone confirmation. https://www.nidcr.nih.gov/health-info/bruxism",
+      "NIDCR TMD guidance includes conservative care and gentle jaw exercises/manual therapy, while noting limited evidence for intraoral appliances improving TMD pain. It does not establish effectiveness of the author’s unspecified neck/shoulder program or proposed flexibility mechanism. https://www.nidcr.nih.gov/health-info/tmd"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-019",
+    "number": 19,
+    "version": "2026-10-23.1",
+    "title": "Pain after wisdom-tooth extraction",
+    "scenario": "Four days after extraction of #32, an adult reports worsening pain radiating toward the ear after initially feeling better. The patient requests antibiotics.",
+    "findings": [
+      "No fever, increasing facial swelling, or difficulty swallowing is reported.",
+      "The socket and adjacent tissues have not been examined."
+    ],
+    "question": "What would you examine first, and how would you explain your treatment plan?",
+    "authorOriginal": "사랑니후의 통증은 대부분 food trap 때문이야. saline으로 irrigate 하고 syringe를 줘서 식사후 그곳을 청소하라고 할거 같아. 그게 먼저고 그래도 infection 증후가 나타나면 그후에 antibiotic을 더 처방할거 같아. ext 후에 ibuprofen, amox를 주로 처방하고 impacted w. teeth 같은 경우는 decadron도 처방해. 임플란트를 심은 후에는 amox, T3 처방해. ibuprofen은 NSAIDS라 implant healing hinder가 될수 있거든.",
+    "authorParaphrase": "I consider food trapping the cause of most pain after wisdom-tooth extraction. My first step would be saline irrigation and providing a syringe so the patient can clean the area after meals. If signs of infection subsequently appear, I would consider an additional antibiotic prescription. After extractions, I commonly prescribe ibuprofen and amoxicillin; for impacted wisdom teeth, I also prescribe Decadron. After implant placement, I prescribe amoxicillin and T3 because I am concerned that NSAIDs such as ibuprofen could interfere with implant healing.",
+    "sourceSections": [
+      "CASE 019"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "Food trapping, alveolar osteitis, infection, retained fragments and adjacent-tooth pathology are not confirmed or excluded.",
+      "The response includes additional self-reported usual prescribing practices; it does not establish prior antibiotics in this patient or provide a patient-specific prescription.",
+      "Doses, routes, duration, contraindications and escalation criteria are unspecified. “T3” is preserved without expanding ingredients or strength.",
+      "The NSAID-healing concern is the author’s rationale, not a confirmed universal harm or a measured failure in this case."
+    ],
+    "evidenceNotes": [
+      "The separate clinical qualification states that post-extraction pain requires assessment. SDCEP includes saline irrigation among local management options and distinguishes this from antibiotic indications such as spreading/systemic infection or selected immunocompromised patients. It does not establish that every painful socket is infected or every extraction needs amoxicillin. https://www.acutedentalproblems.sdcep.org.uk/guidance/management-of-oral-conditions/common-oral-conditions/alveolar-osteitis-dry-socket/",
+      "The ADA acute dental pain guideline recommends nonopioid first-line treatment for extraction pain when appropriate and individualized assessment. https://www.ada.org/resources/ada-library/oral-health-topics/oral-analgesics-for-acute-dental-pain",
+      "One randomized human implant trial found no statistically significant early marginal-bone difference after a short ibuprofen course; its size, endpoints and follow-up do not exclude every possible healing risk. https://pubmed.ncbi.nlm.nih.gov/20467629/"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-020",
+    "number": 20,
+    "version": "2026-10-23.1",
+    "title": "Prolia before extraction",
+    "scenario": "A 68-year-old receiving Prolia every six months for osteoporosis has a confirmed nonrestorable #30. The patient asks about stopping Prolia and receiving an implant immediately after extraction.",
+    "findings": [
+      "Treatment began four years ago; the last injection was two months ago.",
+      "There is pain without reported swelling.",
+      "The complete medical history and surgical assessment remain pending."
+    ],
+    "question": "What would you confirm first, and what options would you explain?",
+    "authorOriginal": "나는 osteoporosis 환자 특히 injection을 맞은 환자들은 치료를 하지 않아. bone necrosis가 일어날시 치료방법이 없기 때문이야.",
+    "authorParaphrase": "I do not personally treat patients with osteoporosis, especially those who have received injections. My reason is that I believe there would be no treatment available if bone necrosis occurred.",
+    "sourceSections": [
+      "CASE 020"
+    ],
+    "limitations": [
+      "Fictional scenario; recorded author perspective, not a validated clinical answer key.",
+      "English paraphrase is awaiting Dr. Chi’s review.",
+      "The precise procedural scope of “do not treat” is unresolved. Do not expand it to all preventive, nonsurgical, restorative or other care.",
+      "No active MRONJ, individual MRONJ probability, fracture-risk assessment, medication change, implant candidacy or care handoff is established.",
+      "Case 020B asks for scope and the next step but remains unanswered. Referral, interim care and prescriber coordination must not be invented as author decisions.",
+      "“No treatment” is the author’s stated rationale and is not a validated general teaching claim."
+    ],
+    "evidenceNotes": [
+      "The record’s separate clinical correction states that MRONJ has nonoperative and operative management options, including patient-specific wound care, pain/secondary-infection management and selected surgery. Treatment availability does not guarantee resolution. https://aaoms.org/wp-content/uploads/2024/03/mronj_position_paper.pdf",
+      "ADA does not advise changing all routine dental care solely because of osteoporosis antiresorptive therapy; medication, indication, schedule, duration, comorbidities and procedure matter. https://www.ada.org/resources/ada-library/oral-health-topics/osteoporosis-medications"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-021",
+    "number": 21,
+    "version": "2026-10-23.1",
+    "title": "My implant doesn't hurt. Why does it need treatment?",
+    "scenario": "A 61-year-old patient presents with occasional bleeding and a bad taste around implant #30.\n\n\"It doesn't hurt, and the implant isn't loose. Can you just clean it or give me antibiotics?\"",
+    "findings": [
+      "Implant placed and restored six years ago with a cement-retained crown.",
+      "No spontaneous pain.",
+      "Implant and crown are stable.",
+      "Probing depths: 7-8 mm, with bleeding and localized suppuration.",
+      "Comparable PAs show crestal bone loss increasing from approximately 1 mm to 4 mm over two years.",
+      "The crown contour makes interproximal cleaning difficult. Residual cement has not been assessed.",
+      "Smokes five cigarettes daily; most recent HbA1c: 8.0%.",
+      "Occlusion, implant position, defect morphology, and remaining circumferential bone support have not yet been evaluated."
+    ],
+    "question": "What would you check first, and what findings would lead you to implant retention versus removal? Explain it as you would to the patient.",
+    "authorOriginal": "CASE 021 INITIAL RESPONSE\n임플란트 심은지 1년내에 cretal bone loss가 일어나. 1년동안 1mm가 bone loss가 생겼으면 그후에 bone loss가 생길 확률은 극히 드물어. 그래서 너의 케이스는 현실적이지 않다라는 느낌이야. 다만 7mm의 probing depth가 생겼으면 임플란트가 stable하다 하더라도 infection이 계속 생기겠지. 내가 알기론 이런 경우 해결방법은 없어. 빼고 다시 심는수밖에는. 근데 환자가 결정할 일이야. 환자는 불편하지도 않고 사용하는데 문제가 없으면 그냥 상황을 지켜보는게 최선이야. 환자가 불편하다고 하면 의사가 불편해도 임플란트를 뽑는게 맞고. 이런 경우 해결 방법이 있는지 확인해봐.\n\nCASE 021 POST-REVIEW AUTHOR POSITION\n가상 환자에서는 implant removal가 맞네. 그리고 추가로 큰돈을 내면서 확실치 않은 치료를 할 환자는 없어보여. 그리고 보장도 안되고 다시 임플란트를 해야하는데 그 돈에 대해서도 새로 다 내야하면. 리스크 메니지먼트 차원에서 그렇게 좋은 치료가 아닌거 같아.",
+    "authorParaphrase": "Initial response:\n\"I expect crestal bone loss to occur within the first year after implant placement. If approximately 1 mm is lost during that year, I consider subsequent bone loss extremely rare, so this scenario feels unrealistic to me. However, with a 7 mm probing depth, I expect infection to recur even if the implant is stable. To my knowledge, there is no solution other than removal and replacement. The patient should decide. If there is no discomfort and the implant functions without difficulty, I consider observation the best approach. If the patient is uncomfortable, I favor removal even if that is uncomfortable for the clinician. Please check whether treatments are available for this situation.\"\n\nPost-review position:\n\"In this fictional case, I consider implant removal the appropriate choice. I do not expect patients to pay substantial additional fees for treatment with uncertain results, particularly when there is no guarantee and they may later have to pay the full cost of another implant. From a risk-management perspective, reconstructive treatment does not seem like a favorable option here.\"",
+    "sourceSections": [
+      "CASE 021 — FICTIONAL PROMPT",
+      "CASE 021 AUTHOR RESPONSE",
+      "CASE 021 POST-REVIEW AUTHOR POSITION",
+      "EVIDENCE REVIEW — SEPARATE FROM THE AUTHOR'S RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "The post-review preference is removal for this case; it does not establish that the implant is hopeless or supply a universal removal indication.",
+      "The response does not establish that Dr. Chi revised his earlier first-year bone-loss beliefs or adopted a reconstructive protocol.",
+      "No defect morphology, actual remaining support, treatment nonresponse, actual patient choice, removal/reimplantation plan or outcome is confirmed.",
+      "His prediction about patient willingness to pay is qualitative judgment; illustrative earlier fees were assistant proposals, not his own fee or verified Seattle market data."
+    ],
+    "evidenceNotes": [
+      "The 2017 World Workshop distinguishes initial remodeling from inflammatory progressive loss; probing depth alone does not establish disease or hopelessness. Source: https://www.efp.org/fileadmin/uploads/efp/Documents/Campaigns/New_Classification/Reports/Consensus_report__Workgroup_4__Berglundh_et_al-2018-Journal_of_Clinical_Periodontology.pdf",
+      "Early loss at 0.5, 1 and 2 mm thresholds predicted later pathology in an observational cohort; 1 mm first-year loss is not assurance against later disease. Source: https://onlinelibrary.wiley.com/doi/10.1111/cid.13000",
+      "EFP 2023 describes nonsurgical therapy for an acceptable, retainable implant, reassessment and selected surgery when needed. This is a treatment pathway, not a promise of cure. Source: https://onlinelibrary.wiley.com/doi/10.1111/jcpe.13823",
+      "Absence of discomfort does not establish resolution of suppuration or progressive loss. If treatment is declined, risk counseling, supportive care, monitoring and escalation remain distinct from pain-free observation.",
+      "A four-implant retrieval histology case report does not supply a denominator for overall treatment success; eventual explantation must not be presented as a universal 0% success rate. Source: https://link.springer.com/article/10.1007/s00784-021-04345-1"
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-022",
+    "number": 22,
+    "version": "2026-10-23.1",
+    "title": "Do I really need a sinus lift?",
+    "scenario": "A 58-year-old patient requests a fixed replacement of #3, extracted two years ago.\n\n\"I want a fixed tooth, but I would prefer fewer surgeries and lower cost. Is a sinus lift necessary?\"",
+    "findings": [
+      "Healthy, nonsmoker; no diabetes or antiresorptive medication history.",
+      "CBCT: approximately 6-7 mm residual height from the crest to the sinus floor and approximately 8 mm width.",
+      "No sinus symptoms or obvious sinus pathology.",
+      "#2 and #4 already have crowns; no mobility; probing depths 2-3 mm.",
+      "Crown margins, underlying tooth structure and abutment prognosis still require evaluation.",
+      "Restorative space, opposing teeth, occlusion, parafunction and achievable primary stability have not been established."
+    ],
+    "question": "What would you check first, and under what conditions would you select sinus augmentation, a short implant, or a bridge? Explain it as you would to the patient.",
+    "authorOriginal": "CASE 022 INITIAL RESPONSE\n크라운을 잘 쓰고 잇는 상황에서 브릿지는 아닌거 같고 6-7mm height에 대해 vertical sinus lift를 진행할꺼야. 임플란트 심으면서 동시에 진행하기 때문에 환자 입장에서는 추가 수술이 아니고 통증도 없을꺼야.\n\nCASE 022 AUTHOR CONTINGENCY ADDENDUM\n그렇지.  implant placement를 미루지. 만약에 sinus lift가 성공하지 못해도 그냥 덮고 다음에 시도해. membrane perforate같은 경우.",
+    "authorParaphrase": "\"Since the existing crowns are functioning well, I would not favor a bridge in this case. With 6-7 mm of residual bone height, I would perform a vertical sinus lift simultaneously with implant placement. From the patient's perspective, this would not involve a separate surgery, and I would expect no pain.\"\n\nContingency addendum:\n\"Yes. If adequate primary stability cannot be achieved, I would postpone implant placement. If I cannot successfully complete the sinus lift—for example, because of membrane perforation—I would close the site and attempt it again later.\"",
+    "sourceSections": [
+      "CASE 022 — FICTIONAL PROMPT",
+      "CASE 022 AUTHOR RESPONSE",
+      "CASE 022 AUTHOR CONTINGENCY ADDENDUM",
+      "EVIDENCE / COMMUNICATION NOTE — SEPARATE FROM THE AUTHOR"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "Vertical sinus lift is the author's term; a specific sinus-lift technique, graft material, implant dimensions and loading schedule have not been specified.",
+      "The contingency addendum permits postponement for inadequate primary stability and closure/retry if the sinus lift cannot be completed; no torque, ISQ, perforation-size or healing-time threshold was supplied.",
+      "The author did not state that every membrane perforation requires abandonment.",
+      "No pain is the author's expectation, not a reported outcome or a validated guarantee.",
+      "The short-implant option has not been explicitly evaluated or rejected by Dr. Chi."
+    ],
+    "evidenceNotes": [
+      "A randomized trial of simultaneous sinus elevation and placement measured postoperative pain in both transcrestal and lateral groups; it does not establish a pain-free guarantee. Source: https://pubmed.ncbi.nlm.nih.gov/29992594/",
+      "Avoiding a separate staged operation and promising no postoperative discomfort are different patient-communication claims. The author has not adopted revised wording."
+    ],
+    "available": true
+  },
+  {
+    "caseId": "drchi-023",
+    "number": 23,
+    "version": "2026-10-23.1",
+    "title": "Food keeps getting stuck next to my new crown.",
+    "scenario": "A 52-year-old patient returns four months after delivery of a full zirconia crown on #30 at the clinician's own office.\n\n\"Ever since I got this crown, meat gets stuck between these teeth. The gum gets sore and sometimes bleeds. I already paid for a crown—why is this happening?\"",
+    "findings": [
+      "Food impaction between #29 and #30.",
+      "Floss passes through that contact with little resistance.",
+      "Localized BOP and a 4 mm probing depth; other nearby sites measure 2-3 mm.",
+      "No spontaneous pain, lingering cold sensitivity, or percussion tenderness.",
+      "#30 crown appears seated; margins appear clinically acceptable.",
+      "#29 has an existing DO composite; its distal contour and integrity require evaluation.",
+      "Bitewing shows no obvious recurrent caries; PA shows no obvious periapical change.",
+      "Contact quality at crown delivery was not documented.",
+      "Occlusal contacts, marginal ridge relationships, and tooth mobility have not yet been evaluated."
+    ],
+    "question": "What would you check first? Under what conditions would you correct the #29 filling versus remake the #30 crown? How would you explain the cause and cost to the patient?",
+    "authorOriginal": "#29 filling 다시할거 같은데? proximal contact가 문제니까. #30 crown이 문제가 있을때만 다시할거 같아. recurrent decay, fracture",
+    "authorParaphrase": "\"I think I would redo the filling on #29, since the issue is the proximal contact. I would remake the crown on #30 only if there were a problem with the crown, such as recurrent decay or fracture.\"",
+    "sourceSections": [
+      "CASE 023 — FICTIONAL PROMPT",
+      "CASE 023 AUTHOR RESPONSE"
+    ],
+    "limitations": [
+      "Synthetic scenario; the author response is a personal clinical perspective, not a validated answer key.",
+      "English paraphrase is an assistant interpretation awaiting Dr. Chi's review.",
+      "No actual patient outcome or measured clinician performance is supplied.",
+      "The response does not confirm that #29's filling is defective, that #30's crown has been fully evaluated, or that recurrent decay or fracture is present.",
+      "The author did not explicitly restrict his preference to cases in which the #29 restoration already requires correction.",
+      "Repair versus complete replacement, restorative material, verification, occlusal examination sequence, inflammation care and follow-up were not specified.",
+      "Fees, cost responsibility, warranty/remake policy and a patient-facing explanation remain unspecified."
+    ],
+    "evidenceNotes": [
+      "Timing after crown delivery does not by itself establish the crown as the sole cause, a delivery error, or a defective adjacent filling.",
+      "The food-impaction study used in constructing the prompt is not proof that occlusion caused this fictional patient's problem or that one corrective option is superior. Source: https://pubmed.ncbi.nlm.nih.gov/38880468/"
+    ],
+    "available": true
+  }
+]
