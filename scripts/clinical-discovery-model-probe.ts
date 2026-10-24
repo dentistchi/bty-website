@@ -3,89 +3,127 @@
  * CLINICAL DISCOVERY — local-model probe (operator-run, read-only).
  *
  * Calls the production router (`respondToDiscovery`) directly, with no database, session or trace.
- * Each request runs twice: authored rules only (model unset), then with the configured model, so a
+ * Each request runs twice: authored rules only (model off), then with the configured model, so a
  * paraphrase the rules cannot interpret is visible next to what the model selected.
  *
  *   CLINICAL_DISCOVERY_LLM_BASE_URL=… CLINICAL_DISCOVERY_LLM_MODEL=… [CLINICAL_DISCOVERY_LLM_KEY=…] \
- *     npx tsx scripts/clinical-discovery-model-probe.ts [--case drchi-001] [--version <pack>] [--json out.json] [--bench N]
+ *     npx tsx scripts/clinical-discovery-model-probe.ts [--suite tuning|held-out|all] [--version <pack>] [--json out.json] [--bench N]
  *
- * --bench N  latency only: one cold call, then N timed calls, against the same request.
- * Prints fact IDs and routing only — never fact answers. The key is never printed.
+ * `expect` is the set of fact-ID suffixes a correct interpretation discloses; [] means nothing may be
+ * disclosed (the doctor is asked to clarify). Extra = disclosed but not asked; missing = asked but not
+ * disclosed. Prints fact IDs and routing only — never fact answers. The key is never printed.
+ *
+ * HELD_OUT was written before any repair and is never used to tune patterns, labels or the prompt.
  */
 import { writeFileSync } from "node:fs";
 import { respondToDiscovery } from "@/lib/bty/clinical-pilot/discovery-router.server";
 import { discoveryPatients } from "@/lib/bty/clinical-pilot/discovery-cases.server";
-import type { DiscoveryChannel, DiscoveryReply } from "@/domain/clinical-pilot/discovery";
+import type { DiscoveryChannel } from "@/domain/clinical-pilot/discovery";
 
-type Probe = { question: string; channel: DiscoveryChannel; after?: { question: string; channel: DiscoveryChannel }[]; expect: string[] };
+type Turn = { question: string; channel: DiscoveryChannel };
+type Probe = Turn & { after?: Turn[]; expect: string[] };
+const P = (question: string, expect: string[], after?: Turn[]): Probe => ({ question, channel: "patient", expect, ...(after ? { after } : {}) });
+const E = (question: string, expect: string[], after?: Turn[]): Probe => ({ question, channel: "exam", expect, ...(after ? { after } : {}) });
+const p = (question: string): Turn => ({ question, channel: "patient" });
+const e = (question: string): Turn => ({ question, channel: "exam" });
 
-/** Case 001 requests (written against the latest pack, variant B). `expect` lists the fact-ID suffixes a correct interpretation selects ([] = none). */
-const CASE001: Probe[] = [
-  // Paraphrases outside the authored patterns.
-  { question: "Does anything you drink make it twinge?", channel: "patient", expect: ["cold"] },
-  { question: "Does it ever ache while you're sleeping?", channel: "patient", expect: ["night"] },
-  { question: "Does it act up all by itself, even when you're not eating?", channel: "patient", expect: ["spontaneous"] },
-  { question: "Are you on any drugs your doctor gave you?", channel: "patient", expect: ["medications"] },
-  { question: "Any illnesses I should know about?", channel: "patient", expect: ["medical-history"] },
-  { question: "Has anyone ever said you gnash your teeth?", channel: "patient", expect: ["bruxism"] },
-  { question: "Let me knock on the tooth with the mirror handle.", channel: "exam", expect: ["percussion"] },
-  { question: "Shine a light through the tooth.", channel: "exam", expect: ["transillumination"] },
-  { question: "Measure the gum depth around it.", channel: "exam", expect: ["probing"] },
-  { question: "Take a picture of the root tip.", channel: "exam", expect: ["pa"] },
-  { question: "Put some ice on the tooth and see how it reacts.", channel: "exam", expect: ["cold-test"] },
-  // Follow-ups whose meaning depends on the previous request.
-  { question: "How long ago was it put in?", channel: "patient", after: [{ question: "Is there a filling in that tooth?", channel: "exam" }], expect: ["restoration-age"] },
-  { question: "Does it hang around afterwards?", channel: "patient", after: [{ question: "Does cold bother it?", channel: "patient" }], expect: ["cold"] },
-  { question: "What about at night?", channel: "patient", after: [{ question: "Does it hurt when you chew?", channel: "patient" }], expect: ["night"] },
-  // Paraphrases of variant B additions.
-  { question: "How bad is it, from one to ten?", channel: "patient", expect: ["pain-severity"] },
-  { question: "Have you changed how you eat because of it?", channel: "patient", expect: ["chewing-avoidance"] },
-  { question: "Do you light up at all?", channel: "patient", expect: ["tobacco"] },
-  { question: "How often do you get your teeth cleaned?", channel: "patient", expect: ["last-visit"] },
-  { question: "Check whether it wobbles.", channel: "exam", expect: ["mobility"] },
-  { question: "Use the pulp tester on it.", channel: "exam", expect: ["ept"] },
-  { question: "Press along the gum beside the roots.", channel: "exam", expect: ["palpation"] },
-  { question: "Compare with the same tooth on the other side.", channel: "exam", expect: ["adjacent-teeth"] },
-  // Deliberately unavailable in the pack: selected, but answered as case information.
-  { question: "Can we get a 3-D scan of the area?", channel: "exam", expect: ["cbct"] },
-  // Must select nothing.
-  { question: "What is their blood pressure?", channel: "exam", expect: [] },
-  { question: "What's the weather like?", channel: "patient", expect: [] },
-  { question: "Which test should I do next?", channel: "exam", expect: [] },
+/** Case 001 variant B. Used while repairing: the first measured set plus same-meaning variants of each reported error. */
+const TUNING: Probe[] = [
+  P("Does anything you drink make it twinge?", ["cold", "heat"]),
+  P("Does it ever ache while you're sleeping?", ["night"]),
+  P("Does it act up all by itself, even when you're not eating?", ["spontaneous"]),
+  P("Are you on any drugs your doctor gave you?", ["medications"]),
+  P("Any illnesses I should know about?", ["medical-history"]),
+  P("Has anyone ever said you gnash your teeth?", ["bruxism"]),
+  E("Let me knock on the tooth with the mirror handle.", ["percussion"]),
+  E("Shine a light through the tooth.", ["transillumination"]),
+  E("Measure the gum depth around it.", ["probing"]),
+  E("Take a picture of the root tip.", ["pa"]),
+  E("Put some ice on the tooth and see how it reacts.", ["cold-test"]),
+  P("How long ago was it put in?", ["restoration-age"], [e("Is there a filling in that tooth?")]),
+  P("Does it hang around afterwards?", ["cold"], [p("Does cold bother it?")]),
+  P("What about at night?", ["night"], [p("Does it hurt when you chew?")]),
+  P("How bad is it, from one to ten?", ["pain-severity"]),
+  P("Have you changed how you eat because of it?", ["chewing-avoidance"]),
+  P("Do you light up at all?", ["tobacco"]),
+  P("How often do you get your teeth cleaned?", ["last-visit"]),
+  E("Check whether it wobbles.", ["mobility"]),
+  E("Use the pulp tester on it.", ["ept"]),
+  E("Press along the gum beside the roots.", ["palpation"]),
+  E("Compare with the same tooth on the other side.", ["adjacent-teeth"]),
+  E("Can we get a 3-D scan of the area?", ["cbct"]),
+  E("What is their blood pressure?", []),
+  P("What's the weather like?", []),
+  E("Which test should I do next?", []),
+  // Same-meaning variants of the reported errors.
+  P("Do drinks bother it at all?", ["cold", "heat"]),
+  P("Do you have any diseases?", ["medical-history"]),
+  P("Does the feeling stay for a while?", ["cold"], [p("Is it sensitive to cold?")]),
+  E("Check the tooth on the opposite side too.", ["adjacent-teeth"]),
+  P("Does it hurt for no reason, without biting?", ["spontaneous"]),
+  P("Has this changed the way you chew?", ["chewing-avoidance"]),
 ];
 
+/** Written before the repair; never used to tune. Same meanings in new words, context shifts, ambiguity. */
+const HELD_OUT: Probe[] = [
+  P("Is it sensitive to iced water?", ["cold"]),
+  P("Do hot or cold drinks set it off?", ["cold", "heat"]),
+  P("Does a sip of coffee bother it?", ["heat"]),
+  P("Have you been diagnosed with anything?", ["medical-history"]),
+  P("Do you chew tobacco?", ["tobacco"]),
+  P("Do you avoid eating on that side?", ["chewing-avoidance"]),
+  P("Is the pain there when you're just sitting still?", ["spontaneous"]),
+  P("Do you favour one side when chewing now?", ["chewing-avoidance"]),
+  E("Check the teeth beside it.", ["adjacent-teeth"]),
+  E("Test the opposite molar as a control.", ["adjacent-teeth"]),
+  E("Check around its edges.", ["margins"], [e("Is there a filling in that tooth?")]),
+  P("Does it linger?", ["cold"], [p("Does cold bother it?")]),
+  P("And hot ones?", ["heat"], [p("Do cold drinks bother it?")]),
+  P("When did it start this time?", ["symptom-duration"], [p("Have you had this before?")]),
+  P("Does it bother you?", []),
+  P("Anything else?", []),
+  E("Check it.", []),
+  P("How about the other one?", []),
+  P("Do you have pets?", []),
+  P("What do you do for work?", []),
+];
+
+const SUITES = { tuning: TUNING, "held-out": HELD_OUT, all: [...TUNING, ...HELD_OUT] } as const;
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };
-const caseId = arg("--case") ?? "drchi-001";
+const suiteName = (arg("--suite") ?? "all") as keyof typeof SUITES;
+const probes = SUITES[suiteName];
+if (!probes) throw new Error(`unknown suite: ${suiteName}`);
 const version = arg("--version");
-const patient = [...discoveryPatients].reverse().find(p => p.caseId === caseId && (!version || p.version === version));
-if (!patient) throw new Error(`unknown case/version: ${caseId} ${version ?? "(latest)"}`);
+const patient = [...discoveryPatients].reverse().find(x => x.caseId === "drchi-001" && (!version || x.version === version));
+if (!patient) throw new Error(`unknown Case 001 pack: ${version}`);
 const model = process.env.CLINICAL_DISCOVERY_LLM_MODEL;
 if (!process.env.CLINICAL_DISCOVERY_LLM_BASE_URL || !model) throw new Error("CLINICAL_DISCOVERY_LLM_BASE_URL and CLINICAL_DISCOVERY_LLM_MODEL are required");
 
 const MODEL_ENV = ["CLINICAL_DISCOVERY_LLM_BASE_URL", "CLINICAL_DISCOVERY_LLM_MODEL", "CLINICAL_DISCOVERY_LLM_KEY"] as const;
 const saved = Object.fromEntries(MODEL_ENV.map(k => [k, process.env[k]]));
-async function rulesOnly<T>(fn: () => Promise<T>) {
+type Context = { question: string; channel: DiscoveryChannel; factIds: string[] }[];
+async function ask(t: Turn, ctx: Context, useModel: boolean) {
+  if (useModel) return respondToDiscovery(t.question, t.channel, patient!, ctx);
   for (const k of MODEL_ENV) delete process.env[k];
-  try { return await fn(); } finally { for (const k of MODEL_ENV) if (saved[k] !== undefined) process.env[k] = saved[k]; }
+  try { return await respondToDiscovery(t.question, t.channel, patient!, ctx); }
+  finally { for (const k of MODEL_ENV) if (saved[k] !== undefined) process.env[k] = saved[k]; }
 }
-const short = (ids: string[]) => ids.map(id => id.slice(caseId.length + 1));
-const context = (p: Probe, reply?: DiscoveryReply[]) => (p.after ?? []).map((a, i) => ({ ...a, factIds: reply?.[i]?.factIds ?? [] }));
+const short = (ids: string[]) => ids.map(id => id.slice(patient!.caseId.length + 1));
 
-async function timed(p: Probe, ctx: ReturnType<typeof context>) {
+async function timed(t: Turn, ctx: Context) {
   const t0 = performance.now();
-  const reply = await respondToDiscovery(p.question, p.channel, patient!, ctx);
+  const reply = await ask(t, ctx, true);
   return { reply, ms: Math.round(performance.now() - t0) };
 }
 
 async function main() {
   const bench = arg("--bench");
   if (bench) {
-    const p = CASE001[0]!;
-    const cold = await timed(p, []);
+    const cold = await timed(probes[0]!, []);
     const warm: number[] = [];
     const outcomes: string[] = [];
     for (let i = 0; i < Number(bench); i++) {
-      const r = await timed(CASE001[i % CASE001.length]!, []);
+      const r = await timed(probes[i % probes.length]!, []);
       warm.push(r.ms);
       outcomes.push(r.reply.routing.fallback ?? r.reply.routing.method);
     }
@@ -95,29 +133,31 @@ async function main() {
     return;
   }
   const rows = [];
-  for (const p of CASE001) {
-    // A follow-up's context is what the router itself recorded for the earlier request.
-    const earlier: DiscoveryReply[] = [];
-    for (const a of p.after ?? []) earlier.push(await respondToDiscovery(a.question, a.channel, patient!, []));
-    const ctx = context(p, earlier);
-    const rules = await rulesOnly(() => respondToDiscovery(p.question, p.channel, patient!, ctx));
-    const { reply, ms } = await timed(p, ctx);
-    const selected = short(reply.factIds);
-    const correct = selected.length === p.expect.length && p.expect.every(id => selected.includes(id));
-    rows.push({ question: p.question, channel: p.channel, after: p.after?.map(a => a.question) ?? [], expect: p.expect,
-      rules: { resolution: rules.resolution, factIds: short(rules.factIds) },
-      model: { ms, method: reply.routing.method, version: reply.routing.version, fallback: reply.routing.fallback ?? null,
-        resolution: reply.resolution, factIds: selected }, correct });
-    console.log([p.channel.padEnd(7), `${ms}ms`.padStart(7), reply.routing.method.padEnd(14), (reply.routing.fallback ?? "-").padEnd(28),
-      `rules=[${short(rules.factIds).join(",")}]`.padEnd(26), `model=[${selected.join(",")}]`.padEnd(30), correct ? "OK " : "BAD", p.question].join(" "));
+  for (const t of probes) {
+    // A follow-up's context is what the router itself (with the model) recorded for the earlier request.
+    const ctx: Context = [];
+    for (const a of t.after ?? []) ctx.push({ ...a, factIds: (await ask(a, [...ctx], true)).factIds });
+    const rules = await ask(t, ctx, false);
+    const { reply, ms } = await timed(t, ctx);
+    const actual = short(reply.factIds);
+    const extra = actual.filter(id => !t.expect.includes(id));
+    const missing = t.expect.filter(id => !actual.includes(id));
+    rows.push({ suite: HELD_OUT.includes(t) ? "held-out" : "tuning", question: t.question, channel: t.channel,
+      after: (t.after ?? []).map(a => a.question), expected: t.expect, rules: short(rules.factIds), actual, extra, missing,
+      method: reply.routing.method, fallback: reply.routing.fallback ?? null, resolution: reply.resolution, ms, correct: !extra.length && !missing.length });
+    console.log([t.channel.padEnd(7), `${ms}ms`.padStart(7), reply.routing.method.padEnd(14), (reply.routing.fallback ?? "-").padEnd(28),
+      `exp=[${t.expect.join(",")}]`.padEnd(30), `got=[${actual.join(",")}]`.padEnd(30),
+      !extra.length && !missing.length ? "OK   " : extra.length ? "EXTRA" : "MISS ", t.question].join(" "));
   }
-  const s = { model, pack: patient!.version, total: rows.length, localModel: rows.filter(r => r.model.method === "local-model").length,
-    fallbacks: rows.filter(r => r.model.fallback).length, correct: rows.filter(r => r.correct).length,
-    rulesMissedButModelCorrect: rows.filter(r => r.correct && r.expect.length && !r.rules.factIds.length).length,
-    maxMs: Math.max(...rows.map(r => r.model.ms)) };
-  console.log(JSON.stringify(s));
+  const tally = (rs: typeof rows) => ({ total: rs.length, correct: rs.filter(r => r.correct).length,
+    withExtraDisclosure: rs.filter(r => r.extra.length).length, extraFacts: rs.reduce((n, r) => n + r.extra.length, 0),
+    withMissing: rs.filter(r => r.missing.length).length, localModel: rs.filter(r => r.method === "local-model").length,
+    fallbacks: rs.filter(r => r.fallback).length, maxMs: Math.max(0, ...rs.map(r => r.ms)) });
+  const summary = { model, pack: patient!.version, suite: suiteName,
+    tuning: tally(rows.filter(r => r.suite === "tuning")), heldOut: tally(rows.filter(r => r.suite === "held-out")) };
+  console.log(JSON.stringify(summary));
   const out = arg("--json");
-  if (out) writeFileSync(out, JSON.stringify({ summary: s, rows }, null, 2));
+  if (out) writeFileSync(out, JSON.stringify({ summary, rows }, null, 2));
 }
 
-main().catch(e => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
+main().catch(err => { console.error(err instanceof Error ? err.message : err); process.exit(1); });
