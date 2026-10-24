@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { discoveryPatients } from "../src/lib/bty/clinical-pilot/discovery-cases.server";
+import { respondToDiscovery } from "../src/lib/bty/clinical-pilot/discovery-router.server";
 import { buildSync } from "esbuild";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -125,5 +127,59 @@ for (const viewport of [{ width: 320, height: 740 }, { width: 390, height: 844 }
     await expect(page.getByText(foodAnswer, { exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Dr. Chi’s recorded approach", exact: true })).toHaveCount(0);
     expect(discoveryTurns(trace!)).toHaveLength(0);
+  });
+}
+
+
+// Regression for the reported Case 003 screenshot, using the real frozen pack
+// and server interpreter in Node. Private case data is never bundled for the UI.
+for (const viewport of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+  test("existing Case 003 accepts short questions at " + viewport.width + "px", async ({ page }) => {
+    const patient = discoveryPatients.find(p => p.caseId === "drchi-003")!;
+    const c = { ...publicCases[2], scenario: patient.chiefComplaint };
+    let trace = startDiscoveryPilot("33333333-3333-4333-8333-333333333333", c, "frozen-case-003-hash", "opened", "2026-10-24T03:00:00Z", false, patient.version);
+    const before = structuredClone(trace);
+    await page.setViewportSize(viewport);
+    await page.route("**/*", route => route.abort());
+    await page.route("https://pilot.test/", route => route.fulfill({ contentType: "text/html", body: html }));
+    await page.route("https://pilot.test/api/bty/clinical-pilot**", async route => {
+      const req = route.request();
+      if (req.method() === "GET") {
+        const data = req.url().includes("caseId=") ? { ok: true, traces: [{ raw_trace: trace }] }
+          : { ok: true, cases: publicCases, userId: "fixture-owner", isAdmin: false };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify(data) });
+        return;
+      }
+      const body = req.postDataJSON();
+      expect(body.operation).toBe("message");
+      expect(body.expectedEventCount).toBe(trace.events.length);
+      const reply = await respondToDiscovery(body.text, body.channel, patient);
+      trace = applyDiscoveryAction(trace, body, body.requestId, new Date().toISOString(), referenceFor(catalog[2] as AuthorCase), reply);
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, trace }) });
+    });
+    await page.goto("https://pilot.test/");
+    await page.addScriptTag({ content: bundle });
+    await page.getByRole("button", { name: /Case 003/ }).click();
+    const composer = page.getByLabel("Your question or examination request");
+    await expect(composer).toBeVisible();
+    await page.getByRole("button", { name: "Examine or test", exact: true }).click();
+    await composer.fill("Root canal done?");
+    await page.getByRole("button", { name: "Request examination", exact: true }).click();
+    await expect(page.getByText("That tooth had root canal treatment years ago and has a crown.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recorded history", { exact: true })).toBeVisible();
+    await expect(page.getByText("Examination result", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Ask patient", exact: true }).click();
+    await composer.fill("Cold sensitivity?");
+    await page.getByRole("button", { name: "Send question", exact: true }).click();
+    await expect(page.getByText("Case information", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Cold-sensitivity history is not specified/)).toBeVisible();
+    await expect(page.getByText(/could not match|Please rephrase/)).toHaveCount(0);
+    await expect(composer).toHaveValue("");
+    expect(trace.caseHash).toBe(before.caseHash);
+    expect(trace.discovery!.packVersion).toBe(before.discovery!.packVersion);
+    expect(trace.events.slice(0, before.events.length)).toEqual(before.events);
+    expect(discoveryTurns(trace).at(-1)!.reply.availableFactIds).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("case003-questions.png"), fullPage: true });
   });
 }

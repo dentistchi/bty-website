@@ -24,10 +24,12 @@ let failMessage: boolean;
 let loseMessageAcknowledgement: boolean;
 let conflictMessage: boolean;
 let rejectMessage: boolean;
+let replyOverride: DiscoveryReply | null;
 const calls: Record<string, any>[] = [];
 const current = () => rows.find(row => row.owner === user)!.trace;
 const field = () => screen.getByLabelText("Your question or examination request") as HTMLTextAreaElement;
 function reply(body: Record<string, any>): DiscoveryReply {
+  if (replyOverride) return { ...replyOverride, channel: body.channel };
   const known = body.channel === "patient" && /hard|hurt|chew/i.test(body.text)
     ? { text: foodAnswer, factIds: ["symptom-trigger"] }
     : body.channel === "exam" && /restoration|visual/i.test(body.text)
@@ -39,7 +41,7 @@ function reply(body: Record<string, any>): DiscoveryReply {
 }
 beforeEach(() => {
   rows = []; user = "owner"; calls.length = 0; failMessage = false; loseMessageAcknowledgement = false;
-  conflictMessage = false; rejectMessage = false; localStorage.clear();
+  conflictMessage = false; rejectMessage = false; replyOverride = null; localStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (!init?.body) return Response.json(String(url).includes("caseId=")
       ? { ok: true, traces: rows.filter(row => row.owner === user).map(row => ({ raw_trace: row.trace })) }
@@ -93,6 +95,25 @@ async function conclude(text = "Suspected structural problem; examine the remain
 }
 
 describe("question-led clinical discovery", () => {
+  it("labels recorded history and missing case information separately from examination results and patient speech", async () => {
+    await begin();
+    replyOverride = { channel: "exam", text: "The tooth had root canal treatment years ago.",
+      factIds: ["treatment-history"], availableFactIds: ["treatment-history"], unavailableFactIds: [],
+      resolution: "answered", responseKind: "history", recognizedTopicIds: ["endodontic-history"],
+      routing: { method: "authored-rules", version: "discovery-intent/v2" } };
+    await ask("Root canal done?", "exam");
+    expect(screen.getByText("Recorded history")).toBeTruthy();
+    expect(screen.queryByText("Examination result")).toBeNull();
+    replyOverride = { channel: "patient", text: "Cold-sensitivity history is not specified in this case.",
+      factIds: [], availableFactIds: [], unavailableFactIds: [], resolution: "unavailable", responseKind: "case-information",
+      recognizedTopicIds: ["cold-history"], unavailableTopicIds: ["cold-history"],
+      routing: { method: "authored-rules", version: "discovery-intent/v2" } };
+    await ask("Cold sensitivity?");
+    const info = screen.getByText("Cold-sensitivity history is not specified in this case.").closest("article")!;
+    expect(info.textContent).toContain("Case information");
+    expect(info.textContent).not.toContain("Patient");
+    expect(discoveryTurns(current()).at(-1)!.reply.availableFactIds).toEqual([]);
+  });
   it("reveals only requested information, records working reasoning, then releases comparison after the final assessment", async () => {
     await begin();
     expect(screen.getByText(opening)).toBeTruthy();
@@ -135,8 +156,10 @@ describe("question-led clinical discovery", () => {
     expect(current().events.at(-1)!.payload.reaction).toMatchObject({ helpful: "partly", revisedPlan: "I would also ask how the bite feels." });
     const firstTrace = current();
     fireEvent.click(screen.getByRole("button", { name: "Start new attempt" }));
-    await waitFor(() => expect(current().traceId).not.toBe(firstTrace.traceId));
-    expect(field().value).toBe("");
+    await waitFor(() => {
+      expect(current().traceId).not.toBe(firstTrace.traceId);
+      expect(field().value).toBe("");
+    });
     expect(discoveryTurns(current())).toHaveLength(0);
     expect(screen.queryByText(foodAnswer)).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dr. Chi’s recorded approach" })).toBeNull();
