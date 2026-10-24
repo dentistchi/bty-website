@@ -233,6 +233,8 @@ async function main() {
     return;
   }
   const showText = process.argv.includes("--show-text");
+  // Recorded so a run can be checked afterwards against other clients of the same model server.
+  const startedAt = new Date().toISOString();
   const rows: Row[] = [];
   for (const t of probes) {
     // A follow-up's context is what the router itself (with the model) recorded for the earlier request.
@@ -250,7 +252,7 @@ async function main() {
       s.correct ? "OK    " : s.extra.length ? "EXTRA " : s.missing.length ? "MISS  " : "ANSWER", t.question].join(" "));
     if (showText) console.log(`        ${reply.text.replace(/\s+/g, " ")}`);
   }
-  const summary = summarize(model, rows, { suite: suiteName });
+  const summary = summarize(model, rows, { suite: suiteName, startedAt, finishedAt: new Date().toISOString() });
   console.log(JSON.stringify(summary));
   if (out) writeFileSync(out, JSON.stringify({ summary, rows }, null, 2));
 }

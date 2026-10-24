@@ -1,0 +1,523 @@
+{
+  "summary": {
+    "model": "gemma3:27b",
+    "pack": "discovery-2026-10-23.1-variant-b",
+    "suite": "held-out-1",
+    "startedAt": "2026-10-24T17:19:52.232Z",
+    "finishedAt": "2026-10-24T17:21:27.206Z",
+    "held-out-1": {
+      "total": 20,
+      "correct": 13,
+      "disclosureCorrect": 13,
+      "answersQuestion": 13,
+      "withExtraDisclosure": 0,
+      "extraFacts": 0,
+      "withMissing": 7,
+      "localModel": 1,
+      "fallbacks": 19,
+      "maxMs": 4014
+    }
+  },
+  "rows": [
+    {
+      "suite": "held-out-1",
+      "question": "Is it sensitive to iced water?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold"
+      ],
+      "rules": [
+        "cold"
+      ],
+      "actual": [
+        "cold"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4014
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Do hot or cold drinks set it off?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold",
+        "heat"
+      ],
+      "rules": [
+        "cold",
+        "heat"
+      ],
+      "actual": [
+        "cold",
+        "heat"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Does a sip of coffee bother it?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "heat"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [
+        "cold"
+      ],
+      "extra": [],
+      "missing": [
+        "heat"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\b(?:hot|heat)\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4005,
+      "note": "Coffee is usually hot, so heat must be answered; iced coffee makes cold a reasonable addition."
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Have you been diagnosed with anything?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "medical-history"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "medical-history"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\bmedical conditions?\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Do you chew tobacco?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "tobacco"
+      ],
+      "rules": [
+        "tobacco"
+      ],
+      "actual": [
+        "tobacco"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4005,
+      "note": "Not smoking or vaping does not answer whether the patient chews tobacco."
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Do you avoid eating on that side?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing-avoidance"
+      ],
+      "actual": [
+        "chewing-avoidance"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Is the pain there when you're just sitting still?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "spontaneous"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "spontaneous"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\b(?:on its own|by itself)\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4004
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Do you favour one side when chewing now?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing-avoidance"
+      ],
+      "actual": [
+        "chewing-avoidance"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Check the teeth beside it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "adjacent-teeth"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\badjacent\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4008
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Test the opposite molar as a control.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "adjacent-teeth"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\b(?:contralateral|other side|opposite)\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4006
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Check around its edges.",
+      "channel": "exam",
+      "after": [
+        "Is there a filling in that tooth?"
+      ],
+      "expected": [
+        "margins"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "margins"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\bmargins?\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Does it linger?",
+      "channel": "patient",
+      "after": [
+        "Does cold bother it?"
+      ],
+      "expected": [
+        "cold"
+      ],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [
+        "cold"
+      ],
+      "answersQuestion": false,
+      "answerFailures": [
+        "\\bcold\\b",
+        "\\b(?:briefly|linger|seconds?)\\b"
+      ],
+      "disclosureCorrect": false,
+      "correct": false,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4003
+    },
+    {
+      "suite": "held-out-1",
+      "question": "And hot ones?",
+      "channel": "patient",
+      "after": [
+        "Do cold drinks bother it?"
+      ],
+      "expected": [
+        "heat"
+      ],
+      "rules": [
+        "heat"
+      ],
+      "actual": [
+        "heat"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "When did it start this time?",
+      "channel": "patient",
+      "after": [
+        "Have you had this before?"
+      ],
+      "expected": [
+        "symptom-duration"
+      ],
+      "rules": [
+        "symptom-duration"
+      ],
+      "actual": [
+        "symptom-duration"
+      ],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "answered",
+      "ms": 4004
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Does it bother you?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 3872
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Anything else?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 3685
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Check it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 3745
+    },
+    {
+      "suite": "held-out-1",
+      "question": "How about the other one?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_timeout",
+      "resolution": "clarify",
+      "ms": 4005
+    },
+    {
+      "suite": "held-out-1",
+      "question": "Do you have pets?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "clarify",
+      "ms": 3752
+    },
+    {
+      "suite": "held-out-1",
+      "question": "What do you do for work?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "accepted": [],
+      "extra": [],
+      "missing": [],
+      "answersQuestion": true,
+      "answerFailures": [],
+      "disclosureCorrect": true,
+      "correct": true,
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 3737
+    }
+  ]
+}

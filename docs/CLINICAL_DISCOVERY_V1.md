@@ -191,9 +191,13 @@ fired, so the existing mismatch guard kept the authored selection
 interpretation results. A wrong or missing selection is not evidence about the
 doctor; the per-turn `routing` keeps the method, model and fallback for review.
 
-These errors were then repaired in Founder-only variant B and selector `selector/2`, and the
-two models were compared on frozen tuning and held-out sets. Both scored 43/52. On held-out, qwen
-was 16/20 and gemma 14/20; qwen stays the default. Per-question results and remaining errors are in
+These errors were then repaired in Founder-only variant B and selector `selector/2`. Corrected
+scoring (accepted alternatives and an answer check) puts that round at qwen 39/52 and gemma 42/52; its
+held-out set had been measured before the repair as well. Round 2 (`selector/3`) requires each model
+selection to cite the question's own words: a request that names no subject asks the doctor to clarify
+(`local_model_ungrounded_selection`). On a new held-out set frozen before that repair, with no other
+client using the model server, qwen scored 19/25 and gemma 20/25. qwen stays the default for latency (median
+1.1 s vs 3.2 s). Per-question results, contention evidence and remaining errors are in
 `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
 
 ### Founder-only access

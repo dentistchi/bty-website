@@ -1,4 +1,4 @@
-# Clinical discovery — local-model selection evaluation (2026-10-24)
+# Clinical discovery — local-model selection evaluation (2026-10-23 / 24)
 
 Case 001 `discovery-2026-10-23.1-variant-b`, measured through the production router
 (`respondToDiscovery`, 4-second limit) on the operator Mac (M5 Max, Ollama 0.40.5). No database,
@@ -70,7 +70,176 @@ Re-scored round 1 (same measurements, corrected expectations, answer check;
 Corrected, round 1 after repair is qwen 39/52 and gemma 42/52, not 43/52 each. The round-1 choice of qwen
 rested partly on the uncorrected held-out score and on a held-out set that had already been seen.
 
-## What changed (Founder-only variant B and selector `selector/2`)
+## Round 2 (2026-10-24): grounded selections, chewing over-matches, answers that answer
+
+### Order of work
+
+1. `f6e6f3e2` (pushed before any round-2 change): round-1 record corrected, expectations and answer
+   checks added, **held-out-2** (25) frozen. The same person wrote held-out-2 and the repair, so it is
+   unseen in results but not blind in authorship.
+2. `7d5693c2`: repair, using only tuning-1 and held-out-1. Two tuning iterations on those sets ran
+   before the commit (`round-2/iteration-0953-contended`; its code differs slightly from `7d5693c2`).
+3. All three sets measured at `7d5693c2` with no code change between runs. held-out-2 was run three
+   times per model; the first two were invalid (below), so the third is the result. No change was made
+   after seeing any held-out-2 result.
+
+### What changed
+
+- **Grounded selections (`selector/3`, all Founder model turns).** For each selected topic the model must
+  copy the words of the question that name it. Evidence that is missing, not in the question, or made only
+  of pointing words (it, this, one, other, else, check, test, look, examine…) makes the router fall back
+  to authored rules, recorded as `local_model_ungrounded_selection`. "Check it." can no longer disclose
+  guessed findings. One evidence item may cover several selections ("hot or cold drinks").
+- **Authored over-matches (variant B only).** `chewing` no longer fires on chewing tobacco or on a preferred
+  chewing side (favour/prefer/avoid/switch, "one/other/which side"); those reach `tobacco` and
+  `chewing-avoidance`. `treatment-goal` no longer fires on "prefer … side".
+- **Answers that did not answer (fictional facts only).** `tobacco` now covers chewing tobacco and nicotine;
+  `last-visit` gives a frequency; `adjacent-teeth` speaks about the same tooth on the other side.
+- **Labels the model reads.** Periapical radiograph (2-D, root tip) vs cone-beam CT (3-D); palpation
+  (pressing on the gum) vs percussion (tapping); margins (edges of the filling); pain severity (biting
+  episodes); tobacco ("lighting up", chewing tobacco).
+- Recorded answers, availability, provenance, variant A and the base pack are unchanged.
+
+### Contention: two runs were invalid
+
+The operator Mac's Ollama is shared with another local application (a Streamlit app using
+`gemma4:31b`). Its `/api/chat` requests (11 s to 5 min each, from Ollama's server log) covered almost
+all of runs 1 and 2: qwen slowed from ~1.1 s to ~2.6 s, and gemma timed out on most turns. Those runs
+measure the machine, not the selector. They are preserved, not used. Run 3 started after five minutes of
+model-server idle CPU, and the log shows **0 s** of other-client requests during it. Round 1 had none
+either. The other application was not stopped or changed.
+
+| Run | Other client busy | Model | tuning-1 | held-out-1 | held-out-2 | Timeouts | Median ms |
+|---|---|---|---|---|---|---|---|
+| iteration-0953-contended | 13–99 s of each window (partial) | qwen3-coder-next | 27/32 | 19/20 | — | 0 | 1098 |
+| iteration-0953-contended | 13–99 s of each window (partial) | gemma3 | 29/32 | 13/20 | — | 17 | 3336 |
+| run-1-1002-contended | ~100% of each window | qwen3-coder-next | 29/32 | 19/20 | 18/25 | 6 | 2575 |
+| run-1-1002-contended | ~100% of each window | gemma3 | 11/32 | 13/20 | 10/25 | 63 | 4004 |
+| run-2-1013-contended | ~100% of each window | qwen3-coder-next | 29/32 | 18/20 | 14/25 | 12 | 2632 |
+| run-2-1013-contended | ~100% of each window | gemma3 | 11/32 | 13/20 | 10/25 | 59 | 4004 |
+| run-3-1045-clean | 0 s | qwen3-coder-next | 30/32 | 19/20 | 19/25 | 0 | 1130 |
+| run-3-1045-clean | 0 s | gemma3 | 28/32 | 17/20 | 20/25 | 3 | 3226 |
+
+### Result (run 3, clean)
+
+| Model | tuning-1 | held-out-1 | **held-out-2** | Over-disclosure rows (by model / by authored rules) | Median / max ms | Model answered |
+|---|---|---|---|---|---|---|
+| qwen3-coder-next:q4_K_M | 30/32 | 19/20 | **19/25** | 6 (2 / 4) | 1130 / 1348 | 59 of 77 |
+| gemma3:27b | 28/32 | 17/20 | **20/25** | 4 (0 / 4) | 3226 / 4007 | 48 of 77 |
+
+Every disclosure row scored correct also passed its answer check. A manual reading of the held-out-2 reply
+text found three replies the patterns accepted but that answer only part of the question: "What about warm
+soup?" (the answer speaks of drinks), "Is it sore when you chew gum?" (hard food), and "Do the same on the
+neighbouring tooth" after percussion (the answer gives cold and biting, not percussion). They are content
+gaps in fictional facts, recorded here and not repaired against held-out-2.
+
+### Remaining errors (held-out-2, not repaired)
+
+| Question | Both / one model | What happened | Cause |
+|---|---|---|---|
+| Look at it. | both | restoration disclosed | authored `restoration` matches "look at". A visual inspection reading may be reasonable; the frozen expectation (clarify) is kept. |
+| Where do you live? | both | location disclosed | authored `location` matches "where" |
+| Which side do you eat on now? | both | location + chewing-avoidance | authored `location` matches "which side" |
+| Do you mostly chew on your left these days? | both | chewing | authored `chewing`: "chew on your left" is not in the side-preference exclusion |
+| Image the apex of that tooth. | qwen | cbct instead of pa | model; the reply only says no CBCT is available |
+| How long does that last? (after cold) | qwen: pain-severity; gemma: clarify | qwen discloses an unasked intensity | model |
+| Follow-ups (linger, hang around, at night, edges, how long) | gemma | clarify instead of answering | gemma's evidence copies the earlier question, so it is ungrounded |
+
+### Model choice
+
+Disclosure accuracy first: on held-out-2 gemma over-disclosed in 4 rows, all from authored rules, and qwen in
+6 (2 from the model). gemma's lead comes largely from falling back to authored rules: its model answered 48
+of 77 turns against qwen's 59, because its follow-up evidence is ungrounded, and its median 3.2 s leaves
+under 1 s of the 4 s limit for a tunnel round trip (one local timeout already). qwen stays the default
+because it answers far more turns within the limit, while each of its two model over-disclosures discloses
+one fact. Neither model is ready to be called accurate on unseen questions: 19–20 of 25.
+
+### Per-question results (run 3, clean, `7d5693c2`)
+
+`✗answer` = the reply text failed the answer check. Fallback in parentheses.
+
+| # | Set | Ch | Question | Previous context | Expected (accepted) | qwen | gemma |
+|---|---|---|---|---|---|---|---|
+| 1 | tuning-1 | patient | Does anything you drink make it twinge? | — | cold, heat (sweets) | cold **−heat** ✗answer 1.1s | cold, heat, sweets 2.1s |
+| 2 | tuning-1 | patient | Does it ever ache while you're sleeping? | — | night | night 1.1s | night 1.4s |
+| 3 | tuning-1 | patient | Does it act up all by itself, even when you're not eating? | — | spontaneous | spontaneous 0.6s | spontaneous 1.3s |
+| 4 | tuning-1 | patient | Are you on any drugs your doctor gave you? | — | medications | medications 0.5s | medications 1.3s |
+| 5 | tuning-1 | patient | Any illnesses I should know about? | — | medical-history | medical-history 1.0s | medical-history 3.2s |
+| 6 | tuning-1 | patient | Has anyone ever said you gnash your teeth? | — | bruxism | bruxism 1.1s | bruxism 3.4s |
+| 7 | tuning-1 | exam | Let me knock on the tooth with the mirror handle. | — | percussion | percussion 1.1s | percussion 3.2s |
+| 8 | tuning-1 | exam | Shine a light through the tooth. | — | transillumination | transillumination 1.1s | transillumination 3.3s |
+| 9 | tuning-1 | exam | Measure the gum depth around it. | — | probing | probing 1.1s | probing 3.1s |
+| 10 | tuning-1 | exam | Take a picture of the root tip. | — | pa | pa 1.1s | pa 3.2s |
+| 11 | tuning-1 | exam | Put some ice on the tooth and see how it reacts. | — | cold-test | cold-test 1.2s | cold-test 3.1s |
+| 12 | tuning-1 | patient | How long ago was it put in? | Is there a filling in that tooth? | restoration-age | restoration-age 1.2s | restoration-age 3.5s |
+| 13 | tuning-1 | patient | Does it hang around afterwards? | Does cold bother it? | cold | cold 1.2s | — **−cold** ✗answer (ungrounded_selection) 3.0s |
+| 14 | tuning-1 | patient | What about at night? | Does it hurt when you chew? | night | night 1.1s | — **−night** ✗answer (ungrounded_selection) 3.2s |
+| 15 | tuning-1 | patient | How bad is it, from one to ten? | — | pain-severity | pain-severity 1.2s | pain-severity 3.3s |
+| 16 | tuning-1 | patient | Have you changed how you eat because of it? | — | chewing-avoidance | chewing-avoidance 1.2s | chewing-avoidance 3.3s |
+| 17 | tuning-1 | patient | Do you light up at all? | — | tobacco | tobacco 1.1s | tobacco 3.3s |
+| 18 | tuning-1 | patient | How often do you get your teeth cleaned? | — | last-visit | last-visit 1.2s | last-visit 3.4s |
+| 19 | tuning-1 | exam | Check whether it wobbles. | — | mobility | mobility 1.1s | mobility 3.2s |
+| 20 | tuning-1 | exam | Use the pulp tester on it. | — | ept | ept 1.1s | — **−ept** ✗answer (ungrounded_selection) 3.1s |
+| 21 | tuning-1 | exam | Press along the gum beside the roots. | — | palpation | palpation 1.2s | palpation 3.3s |
+| 22 | tuning-1 | exam | Compare with the same tooth on the other side. | — | adjacent-teeth | adjacent-teeth 1.2s | adjacent-teeth 3.4s |
+| 23 | tuning-1 | exam | Can we get a 3-D scan of the area? | — | cbct | cbct 1.1s | cbct 3.2s |
+| 24 | tuning-1 | exam | What is their blood pressure? | — | — | — (low_confidence) 0.9s | — 2.7s |
+| 25 | tuning-1 | patient | What's the weather like? | — | — | — (low_confidence) 1.0s | — 2.6s |
+| 26 | tuning-1 | exam | Which test should I do next? | — | — | — 0.0s | — 0.0s |
+| 27 | tuning-1 | patient | Do drinks bother it at all? | — | cold, heat (sweets) | cold **−heat** ✗answer 1.1s | cold, heat, sweets 3.8s |
+| 28 | tuning-1 | patient | Do you have any diseases? | — | medical-history | medical-history 1.2s | medical-history 3.4s |
+| 29 | tuning-1 | patient | Does the feeling stay for a while? | Is it sensitive to cold? | cold | cold 1.2s | — **−cold** ✗answer (ungrounded_selection) 3.4s |
+| 30 | tuning-1 | exam | Check the tooth on the opposite side too. | — | adjacent-teeth | adjacent-teeth 1.2s | adjacent-teeth 3.4s |
+| 31 | tuning-1 | patient | Does it hurt for no reason, without biting? | — | spontaneous | spontaneous 1.2s | spontaneous (ungrounded_selection) 3.5s |
+| 32 | tuning-1 | patient | Has this changed the way you chew? | — | chewing-avoidance | chewing-avoidance (selection_mismatch) 1.3s | chewing-avoidance (selection_mismatch) 3.4s |
+| 33 | held-out-1 | patient | Is it sensitive to iced water? | — | cold | cold 1.1s | cold 3.2s |
+| 34 | held-out-1 | patient | Do hot or cold drinks set it off? | — | cold, heat | cold, heat 1.2s | cold, heat 3.7s |
+| 35 | held-out-1 | patient | Does a sip of coffee bother it? | — | heat (cold) | cold **−heat** ✗answer 1.1s | — **−heat** ✗answer (timeout) 4.0s |
+| 36 | held-out-1 | patient | Have you been diagnosed with anything? | — | medical-history | medical-history 1.2s | medical-history 3.5s |
+| 37 | held-out-1 | patient | Do you chew tobacco? | — | tobacco | tobacco 1.1s | tobacco 3.2s |
+| 38 | held-out-1 | patient | Do you avoid eating on that side? | — | chewing-avoidance | chewing-avoidance 1.2s | chewing-avoidance 3.5s |
+| 39 | held-out-1 | patient | Is the pain there when you're just sitting still? | — | spontaneous | spontaneous 1.2s | spontaneous 3.3s |
+| 40 | held-out-1 | patient | Do you favour one side when chewing now? | — | chewing-avoidance | chewing-avoidance 1.2s | chewing-avoidance 3.5s |
+| 41 | held-out-1 | exam | Check the teeth beside it. | — | adjacent-teeth | adjacent-teeth 1.1s | adjacent-teeth 3.3s |
+| 42 | held-out-1 | exam | Test the opposite molar as a control. | — | adjacent-teeth | adjacent-teeth 1.1s | adjacent-teeth 3.2s |
+| 43 | held-out-1 | exam | Check around its edges. | Is there a filling in that tooth? | margins | margins 1.1s | — **−margins** ✗answer (ungrounded_selection) 3.6s |
+| 44 | held-out-1 | patient | Does it linger? | Does cold bother it? | cold | cold 1.1s | — **−cold** ✗answer (ungrounded_selection) 3.0s |
+| 45 | held-out-1 | patient | And hot ones? | Do cold drinks bother it? | heat | heat 1.1s | heat 3.2s |
+| 46 | held-out-1 | patient | When did it start this time? | Have you had this before? | symptom-duration | symptom-duration 1.2s | symptom-duration (timeout) 4.0s |
+| 47 | held-out-1 | patient | Does it bother you? | — | — | — (low_confidence) 0.9s | — (low_confidence) 2.9s |
+| 48 | held-out-1 | patient | Anything else? | — | — | — (low_confidence) 0.9s | — (low_confidence) 2.6s |
+| 49 | held-out-1 | exam | Check it. | — | — | — (low_confidence) 0.9s | — (low_confidence) 2.6s |
+| 50 | held-out-1 | patient | How about the other one? | — | — | — (low_confidence) 0.9s | — (ungrounded_selection) 3.1s |
+| 51 | held-out-1 | patient | Do you have pets? | — | — | — (low_confidence) 0.9s | — 2.7s |
+| 52 | held-out-1 | patient | What do you do for work? | — | — | — (low_confidence) 0.9s | — (low_confidence) 2.7s |
+| 53 | held-out-2 | exam | Look at it. | — | — | restoration **+restoration** ✗answer (low_confidence) 1.1s | restoration **+restoration** ✗answer (low_confidence) 2.6s |
+| 54 | held-out-2 | exam | Can you test this one? | — | — | — (low_confidence) 1.1s | — (ungrounded_selection) 3.1s |
+| 55 | held-out-2 | patient | What else? | — | — | — (low_confidence) 1.0s | — (low_confidence) 2.7s |
+| 56 | held-out-2 | exam | Examine it for me. | — | — | — (low_confidence) 0.9s | — (ungrounded_selection) 3.0s |
+| 57 | held-out-2 | exam | Get a film of the root end. | — | pa | pa 1.2s | pa 3.3s |
+| 58 | held-out-2 | exam | Image the apex of that tooth. | — | pa | cbct **+cbct** **−pa** ✗answer 1.2s | pa 3.1s |
+| 59 | held-out-2 | patient | Do you use snuff or dip? | — | tobacco | tobacco 1.1s | tobacco 3.3s |
+| 60 | held-out-2 | patient | Any chewing tobacco? | — | tobacco | tobacco 1.1s | tobacco 3.2s |
+| 61 | held-out-2 | patient | Do you mostly chew on your left these days? | — | chewing-avoidance | chewing **+chewing** **−chewing-avoidance** ✗answer (selection_mismatch) 1.3s | chewing **+chewing** **−chewing-avoidance** ✗answer (selection_mismatch) 3.3s |
+| 62 | held-out-2 | patient | Which side do you eat on now? | — | chewing-avoidance | location, chewing-avoidance **+location** (selection_mismatch) 1.2s | location, chewing-avoidance **+location** (selection_mismatch) 3.4s |
+| 63 | held-out-2 | patient | Are you protecting that side when you eat? | — | chewing-avoidance | chewing-avoidance 1.2s | chewing-avoidance 3.5s |
+| 64 | held-out-2 | patient | Does biting into an apple hurt? | — | chewing | chewing 1.2s | chewing (timeout) 4.0s |
+| 65 | held-out-2 | patient | Is it sore when you chew gum? | — | chewing | chewing 1.1s | chewing (selection_mismatch) 3.9s |
+| 66 | held-out-2 | patient | Does iced tea set it off? | — | cold (sweets) | cold 1.1s | cold 3.2s |
+| 67 | held-out-2 | patient | What about warm soup? | — | heat | heat 1.1s | heat (low_confidence) 2.7s |
+| 68 | held-out-2 | patient | How long does that last? | Does cold bother it? | cold | pain-severity **+pain-severity** **−cold** ✗answer 1.2s | — **−cold** ✗answer (ungrounded_selection) 3.1s |
+| 69 | held-out-2 | patient | And sweet things? | Do cold drinks bother it? | sweets | sweets 1.1s | sweets 3.2s |
+| 70 | held-out-2 | exam | Do the same on the neighbouring tooth. | Percuss the tooth. | adjacent-teeth | adjacent-teeth 1.2s | adjacent-teeth (ungrounded_selection) 3.2s |
+| 71 | held-out-2 | exam | What about its edges? | Is there a filling in that tooth? | margins | margins 1.1s | margins 3.1s |
+| 72 | held-out-2 | patient | Is there anything wrong with your general health? | — | medical-history | medical-history 1.1s | medical-history 3.2s |
+| 73 | held-out-2 | patient | Any reactions to penicillin? | — | allergies | allergies 1.2s | allergies 3.2s |
+| 74 | held-out-2 | exam | Feel the tissue over the roots. | — | palpation | palpation 1.2s | palpation 3.2s |
+| 75 | held-out-2 | exam | How firm is it in the socket? | — | mobility | mobility 1.2s | mobility 3.3s |
+| 76 | held-out-2 | patient | Do you like music? | — | — | — (low_confidence) 1.0s | — (low_confidence) 2.7s |
+| 77 | held-out-2 | patient | Where do you live? | — | — | location **+location** ✗answer (low_confidence) 1.0s | location **+location** ✗answer (low_confidence) 2.6s |
+
+
+## Round 1 — what changed (Founder-only variant B and selector `selector/2`)
 
 - Authored over-matches (variant B only; variant A and the base pack are frozen):
   - `chewing` no longer fires on bare "eat", or on negated or changed chewing.
@@ -83,7 +252,7 @@ rested partly on the uncorrected held-out score and on a held-out set that had a
   referring follow-up selects the previous request's topic; an ambiguous request, or one with no
   specific subject, selects nothing, so the doctor is asked to clarify.
 
-## Summary
+## Round 1 — summary (as first reported; see corrections above)
 
 | Model | Run | Set | Correct | Rows with extra disclosure (facts) | Rows with missing | Fallbacks | Max ms |
 |---|---|---|---|---|---|---|---|
@@ -96,7 +265,7 @@ rested partly on the uncorrected held-out score and on a held-out set that had a
 | gemma3:27b | after | tuning | 29/32 | 2 (2) | 1 | 3 | 3479 |
 | gemma3:27b | after | held-out | 14/20 | 6 (6) | 3 | 6 | 3350 |
 
-## Remaining errors after repair
+## Round 1 — remaining errors after repair
 
 | Model | Set | Question | Extra / missing | Cause |
 |---|---|---|---|---|
@@ -118,7 +287,7 @@ rested partly on the uncorrected held-out score and on a held-out set that had a
 The held-out authored over-matches ("chew tobacco", "favour… when chewing") are not repaired here,
 because repairing them would tune on the held-out set. They need a new held-out set.
 
-## Model choice
+## Round 1 — model choice (superseded by round 2)
 
 Both models are 43/52 overall. On the held-out set qwen is 16/20 with 4 over-disclosure rows; gemma is
 14/20 with 6. gemma is better on tuning (29/32 vs 27/32). gemma answers in 2.7–3.5 s against the 4 s
@@ -127,7 +296,7 @@ and do not over-disclose, but the model would then go unused. qwen answers in at
 `qwen3-coder-next:q4_K_M` stays the default. Its worst remaining error is a broad "check it"
 disclosing four exam findings.
 
-## Per-question results
+## Round 1 — per-question results (as first reported)
 
 ### qwen3-coder-next:q4_K_M — after repair
 

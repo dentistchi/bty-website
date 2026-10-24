@@ -23,6 +23,12 @@ Server-side `CLINICAL_DISCOVERY_FOUNDER_USER_IDS` limits the model and variant B
 Everyone else keeps variant A and authored rules. model-check is a connection diagnostic, kept separate
 from accuracy. See `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
 
+Round 2 (same PR): corrected the round-1 record (held-out was run before and after its repair; sweets
+accepted for drinks, cold for coffee; reply text must answer the question), froze held-out-2 in
+`f6e6f3e2` before repairing, then `selector/3` grounded selections, chewing-tobacco and chewing-side
+over-matches and three fictional answers. Clean run (0 s of other-client load): held-out-2 qwen 19/25,
+gemma 20/25; two earlier runs were invalidated by another local Ollama client and are preserved.
+
 Not done here: an HTTPS tunnel publishing the gateway, Worker secrets, merge and
 deploy. Each needs explicit authorization.
 
