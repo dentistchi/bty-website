@@ -1,5 +1,24 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-LOCAL-MODEL — real local model behind an authenticated gateway
+
+Base: `inner-main` `7a461f11`. Connect Clinical Discovery's existing model
+adapter to a real Mac-local Ollama model. Choose the model by measured latency
+under the adapter's 4-second limit, not by size. Verify paraphrases and
+follow-ups through `discovery-router.server.ts` with no database writes. Put an
+authenticated HTTPS-ready gateway in front of the model and add an admin-only,
+write-free Worker check. Add a fuller Case 001 fictional variant for author
+review without changing existing packs or attempts.
+
+Measured: `qwen3-coder-next:q4_K_M` took 0.6–1.1 s through the router and
+gateway. On Case 001 variant B it made 21 local-model selections in 26
+requests, 19 of the 26 matched the expected topics, and every selection was
+under the limit. Wrong selections and fallbacks are simulator results, never
+the doctor's. See `docs/CLINICAL_DISCOVERY_V1.md`.
+
+Not done here: an HTTPS tunnel publishing the gateway, Worker secrets, merge and
+deploy. Each needs explicit authorization.
+
 ## CLINICAL-DISCOVERY-SHORT-QUESTIONS — valid questions and missing context
 
 The live Case 003 screenshot shows `Root canal done?` in Exam mode and

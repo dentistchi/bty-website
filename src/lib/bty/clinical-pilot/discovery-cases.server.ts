@@ -1,5 +1,6 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { case001Variant } from "./case001-variant.server";
+import { case001VariantB } from "./case001-variant-b.server";
 
 /** Server-owned, fictional patient information. Never import into a client component.
  * Decomposed only from catalog scenario/findings; author recommendations are not patient facts.
@@ -324,3 +325,5 @@ export const discoveryPatients: DiscoveryPatient[] = [
 
 // Append new versions; never overwrite a pack that an existing attempt may use.
 discoveryPatients.push(case001Variant(discoveryPatients.find(p => p.caseId === "drchi-001")!));
+// New Case 001 attempts start on variant B; attempts frozen on the base pack or variant A still resolve.
+discoveryPatients.push(case001VariantB(discoveryPatients.at(-1)!));

@@ -1,0 +1,113 @@
+import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
+
+/** Case 001 interview variant B: a fuller fictional encounter for author trial.
+ * Built ON variant A, which stays registered unchanged so attempts already frozen on it keep
+ * resolving. Every fact added or replaced here is a fictional addition awaiting Dr. Chi's review,
+ * never his recorded case context or testimony. Deliberately unknown items (CBCT, dye, crack depth)
+ * stay `available: false`: a missing result is case information, not a gap in the doctor's work.
+ */
+const R = String.raw;
+const PROVENANCE = "fictional-extension-awaiting-review" as const;
+type FictionalFact = DiscoveryFact & { provenance: typeof PROVENANCE };
+
+export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
+  if (variantA.caseId !== "drchi-001" || !variantA.version.endsWith("-variant-a")) throw new Error("CASE001_VARIANT_A_REQUIRED");
+  const fact = (id: string, channel: "patient" | "exam", topic: string, pattern: string, answer: string, available = true): FictionalFact => ({
+    id: `${variantA.caseId}:${id}`, channel, topic, patterns: [pattern], answer, available, provenance: PROVENANCE,
+  });
+  const overrides: FictionalFact[] = [
+    fact("location", "patient", "Location of discomfort",
+      R`\bwhere\b|which (?:tooth|teeth|side)|\blocat(?:e|ion)\b|\bpoint (?:to|at)\b|\bshow me\b`,
+      "It is on the lower right, toward the back. It is the tooth with the big filling."),
+  ];
+  const additions: FictionalFact[] = [
+    // History
+    fact("pain-severity", "patient", "Intensity and duration of each pain episode",
+      R`\bhow (?:bad|severe|strong|intense|painful)\b|\bscale\b|\bout of (?:10|ten)\b|\b(?:intensity|severity)\b|\bhow long does (?:it|the pain|each episode) last\b|\blast(?:s)? (?:long|for)\b`,
+      "When it happens it is sharp, about 6 out of 10, and it is gone within a second or two."),
+    fact("release-pain", "patient", "Pain on biting compared with pain on release",
+      R`\b(?:release|releasing|let go|letting go)\b|\bopen(?:ing)? (?:after|again)\b`,
+      "It is worst right when I let go after biting on something hard."),
+    fact("heat", "patient", "Heat sensitivity history",
+      R`\b(?:hot|heat|warm)\b`,
+      "Hot drinks do not bother it."),
+    fact("sweets", "patient", "Sweet sensitivity history",
+      R`\b(?:sweet|sweets|sugar|sugary|candy)\b`,
+      "Sweets do not bother it."),
+    fact("chewing-avoidance", "patient", "Change in chewing habits",
+      R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on the (?:other|left|right)\b`,
+      "I have started chewing on the left side to avoid it."),
+    fact("pain-relief", "patient", "Pain relief the patient has used",
+      R`\b(?:painkillers?|pain killers?|pain relievers?|ibuprofen|advil|tylenol|acetaminophen|analgesics?)\b|\btaken anything\b|\btake anything for\b`,
+      "I have not needed anything for the pain."),
+    fact("previous-episodes", "patient", "Previous similar episodes",
+      R`\bhappened before\b|\bhad (?:this|that|it) before\b|\bfirst time\b|\bever had (?:this|that|it)\b|\bprevious episodes?\b|\bsimilar (?:pain|problem|episode)\b`,
+      "This is the first time I have had this with that tooth."),
+    fact("last-visit", "patient", "Most recent dental visit",
+      R`\blast (?:dental )?(?:visit|checkup|check-up|cleaning|exam)\b|\blast (?:saw|seen|see) (?:a|the|your) dentist\b|\bregular (?:checkups?|dentist|cleanings?)\b`,
+      "My last checkup and cleaning was about a year ago, and nobody mentioned this tooth."),
+    fact("swelling-history", "patient", "Patient-noticed swelling, bump or bad taste",
+      R`\b(?:swelling|swollen|bad taste|pus|bump|pimple|gum boil)\b`,
+      "I have not noticed any swelling, bump or bad taste."),
+    fact("jaw-symptoms", "patient", "Jaw joint, muscle and headache symptoms",
+      R`\b(?:tmj|tmd|jaw joints?)\b|\bjaw (?:pain|ache|aches|clicking|clicks|popping|pops|locks?|locking|tired|sore|muscles?)\b|\b(?:clicking|popping)\b|\bheadaches?\b`,
+      "My jaw joints do not click or hurt, and I do not get headaches."),
+    fact("treatment-goal", "patient", "Patient goals and preferences for treatment",
+      R`\b(?:prefer|preference|preferences|goals?|expectations?|hoping for)\b|\bwant to (?:keep|save)\b|\bwhat (?:would you|do you) (?:like|want)\b`,
+      "I would like to keep the tooth if that is possible."),
+    fact("tobacco", "patient", "Tobacco use",
+      R`\b(?:smoke|smoking|smoker|cigarettes?|tobacco|vape|vaping|nicotine)\b`,
+      "I do not smoke or vape."),
+    // Examination
+    fact("palpation", "exam", "Buccal and lingual palpation",
+      R`\bpalpat(?:e|ion)\b|\bvestibul(?:e|ar)\b|\bpress on the gum\b`,
+      "There is no tenderness to buccal or lingual palpation."),
+    fact("mobility", "exam", "Tooth mobility",
+      R`\b(?:mobility|mobile|loose|looseness|wiggle|wiggles)\b`,
+      "Mobility is within normal limits."),
+    fact("soft-tissue", "exam", "Swelling and sinus tract examination",
+      R`\b(?:swelling|swollen|sinus tract|fistula|drainage|soft tissue)\b`,
+      "There is no swelling or sinus tract."),
+    fact("ept", "exam", "Electric pulp test response",
+      R`\bept\b|\belectric(?:al)? pulp\b|\belectric(?:al)? (?:test|testing)\b`,
+      "The tooth responds to electric pulp testing within the range of the adjacent teeth."),
+    fact("heat-test", "exam", "Heat test response",
+      R`\b(?:heat|hot) (?:test|testing)\b|\bwarm gutta\b`,
+      "Heat does not provoke a response different from the adjacent teeth."),
+    fact("bitewing", "exam", "Bitewing imaging",
+      R`\b(?:bitewing|bitewings|bw|bwx|recurrent caries|recurrent decay)\b`,
+      "The bitewing shows the large MOD restoration with no obvious recurrent caries. Interproximal bone levels appear normal."),
+    fact("margins", "exam", "Restoration margins",
+      R`\b(?:margins?|explorer|marginal integrity|open margin|leakage)\b`,
+      "The restoration margins are intact to an explorer, without obvious recurrent caries."),
+    fact("wear", "exam", "Tooth wear",
+      R`\b(?:wear|facets?|attrition|abfraction)\b`,
+      "Moderate wear facets are present on the molars and canines."),
+    fact("gingiva", "exam", "Gingival condition around the tooth",
+      R`\b(?:gingiva|recession)\b|\bgingival (?:health|tissue|condition|inflammation)\b|\bgum (?:health|tissue|condition|recession)\b`,
+      "The gingiva around the tooth is healthy, without recession."),
+    fact("muscles-tmj", "exam", "Masticatory muscle and TMJ examination",
+      R`\b(?:masseter|temporalis)\b|\bmuscle palpation\b|\btmj (?:exam|examination|palpation)\b|\brange of motion\b|\b(?:mouth|maximum) opening\b|\bdeviation\b`,
+      "There is no masseter, temporalis or TMJ tenderness. Opening is about 45 mm without deviation."),
+    fact("adjacent-teeth", "exam", "Adjacent and control teeth",
+      R`\b(?:adjacent|neighbou?ring|contralateral|control tooth|control teeth)\b|\bnext to it\b|\bother teeth\b`,
+      "The adjacent teeth have small restorations, respond normally to cold and are not tender to biting."),
+    fact("cbct", "exam", "Cone-beam CT",
+      R`\b(?:cbct|cone[- ]beam)\b|\b3d (?:scan|image|imaging)\b`,
+      "No cone-beam CT is available for this visit.", false),
+    fact("crack-dye", "exam", "Crack dye staining",
+      R`\bmethylene blue\b|\bdye\b|\bstain(?:ing)? (?:the |a )?crack\b`,
+      "Crack dye staining has not been performed at this visit.", false),
+  ];
+  const replacements = new Map(overrides.map(f => [f.id, f]));
+  const ids = new Set(variantA.facts.map(f => f.id));
+  for (const f of additions) if (ids.has(f.id)) throw new Error(`CASE001_VARIANT_B_DUPLICATE:${f.id}`);
+  return {
+    ...variantA,
+    version: variantA.version.replace(/-variant-a$/u, "-variant-b"),
+    facts: [
+      ...variantA.facts.map(f => replacements.get(f.id) ?? { ...f, patterns: [...f.patterns] }),
+      ...additions,
+    ],
+  };
+}

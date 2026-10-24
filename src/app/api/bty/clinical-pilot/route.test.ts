@@ -357,3 +357,51 @@ describe("authenticated question-led clinical discovery API", () => {
     expect(state.rows.find(row => row.trace_id === legacyId)!.raw_trace.discovery).toBeUndefined();
   });
 });
+
+describe("GET ?view=model-check — Worker → gateway → model connection check", () => {
+  const check = () => get("?view=model-check");
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("is platform-admin only", async () => {
+    expect((await check()).status).toBe(403);
+    state.user = null;
+    expect((await check()).status).toBe(401);
+  });
+
+  it("reports an unconfigured model as a fallback and writes nothing", async () => {
+    state.admin = true;
+    const body = await (await check()).json();
+    expect(body.ok).toBe(true);
+    expect(body.check).toMatchObject({ configured: false, host: null, model: null, keyConfigured: false, localModelReached: false });
+    expect(body.check.pack).toMatch(/-variant-b$/);
+    for (const r of body.check.results) expect(r).toMatchObject({ method: "authored-rules", fallback: "local_model_not_configured" });
+    expect(state.rows).toEqual([]);
+  });
+
+  it("reaches the configured model with the key, returns fact IDs only and writes nothing", async () => {
+    state.admin = true;
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "probe-secret");
+    const calls: { url: string; auth: string | null }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, auth: new Headers(init.headers).get("authorization") });
+      const { messages } = JSON.parse(String(init.body));
+      const { question, topics } = JSON.parse(messages[1].content);
+      const want = ({ "Use the pulp tester on it.": "ept", "Are you on any drugs your doctor gave you?": "medications",
+        "Is there a filling in that tooth?": "restoration", "How long ago was it put in?": "restoration-age" } as Record<string, string>)[question];
+      const ids = topics.filter((t: { id: string }) => want && t.id === `drchi-001:${want}`).map((t: { id: string }) => t.id);
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: ids.length ? 0.95 : 0.9 }) } }] }));
+    }));
+    const res = await check();
+    const body = await res.json();
+    expect(calls.every(c => c.url === "https://gateway.test/v1/chat/completions" && c.auth === "Bearer probe-secret")).toBe(true);
+    expect(body.check).toMatchObject({ configured: true, host: "gateway.test", model: "probe-model", keyConfigured: true, localModelReached: true });
+    expect(body.check.results.map((r: { method: string; matchesExpected: boolean }) => [r.method, r.matchesExpected]))
+      .toEqual([["local-model", true], ["local-model", true], ["local-model", true], ["local-model", true]]);
+    const text = JSON.stringify(body);
+    expect(text).not.toContain("probe-secret");
+    expect(text).not.toContain("electric pulp testing within the range");
+    expect(state.rows).toEqual([]);
+  });
+});
