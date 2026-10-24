@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import catalog from "@/domain/clinical-pilot/catalog.json";
-import { applyPilotAction, hasRequest, PILOT_SCHEMA, publicCase, referenceFor, startPilot,
-  type AuthorCase, type PilotAction, type PilotTrace } from "@/domain/clinical-pilot/pilot";
+import { applyPilotAction, hasRequest, PILOT_SCHEMA, publicCase, referenceFor,
+  type AuthorCase, type PilotAction, type PilotTrace, type PilotCase } from "@/domain/clinical-pilot/pilot";
+import { applyDiscoveryAction, discoveryTurns, isDiscoveryTrace, startDiscoveryPilot } from "@/domain/clinical-pilot/discovery";
+import { discoveryPatients } from "./discovery-cases.server";
+import { respondToDiscovery } from "./discovery-router.server";
 
 // Append versions; never replace an entry referenced by an in-flight or historical trace.
 const allVersions = catalog as AuthorCase[];
@@ -15,6 +18,17 @@ export function requireCase(id: string, version?: string) {
   const c = version ? versions.get(`${id}@${version}`) : cases.get(id);
   if (!c || !c.available) throw Error("INVALID_CASE");
   return c;
+}
+function patientFor(id: string, version?: string) {
+  const p = [...discoveryPatients].reverse().find(p => p.caseId === id && (!version || p.version === version));
+  if (!p) throw Error("INVALID_CASE");
+  return p;
+}
+/** This projection is the API boundary, not merely a UI concealment. */
+export function publicDiscoveryCase(c: AuthorCase): PilotCase {
+  const patient = patientFor(c.caseId);
+  return { caseId: c.caseId, number: c.number, version: c.version, title: `Patient encounter ${String(c.number).padStart(3, "0")}`,
+    scenario: patient.chiefComplaint, findings: [], question: "Meet your patient. Decide what to ask and examine.", available: c.available };
 }
 type Stored = { trace_id: string; raw_trace: PilotTrace; status: string; updated_at: string };
 function scope(db: SupabaseClient, userId: string) {
@@ -33,6 +47,12 @@ async function priorSubmission(db: SupabaseClient, userId: string, caseId: strin
   if (result.error) throw Error("LOAD_FAILED");
   return !!result.data?.length;
 }
+async function priorWrittenContext(db: SupabaseClient, userId: string, caseId: string, exclude: string) {
+  const result = await scope(db, userId).eq("case_id", caseId).neq("trace_id", exclude)
+    .eq("raw_trace->events->0->payload->>mode", "written-case").limit(1);
+  if (result.error) throw Error("LOAD_FAILED");
+  return !!result.data?.length;
+}
 export async function createPilot(db: SupabaseClient, userId: string, input: { traceId: string; caseId: string; caseVersion: string; requestId: string }) {
   const c = requireCase(input.caseId, input.caseVersion);
   const old = await scope(db, userId).eq("trace_id", input.traceId).maybeSingle();
@@ -43,17 +63,24 @@ export async function createPilot(db: SupabaseClient, userId: string, input: { t
     return t;
   }
   const prior = await priorSubmission(db, userId, c.caseId, input.traceId);
+  const priorContext = await priorWrittenContext(db, userId, c.caseId, input.traceId);
   const at = new Date().toISOString();
-  const snapshot = publicCase(c);
-  const t = startPilot(input.traceId, snapshot, hash(snapshot), input.requestId, at, prior);
+  const patient = patientFor(c.caseId);
+  const snapshot = publicDiscoveryCase(c);
+  const t = startDiscoveryPilot(input.traceId, snapshot, hash({ case: publicCase(c), patient }), input.requestId, at, prior, patient.version, priorContext);
+  if (patient.facts.some(f => f.provenance)) {
+    t.discovery!.scenarioProvenance = "fictional-extension-awaiting-review";
+    t.events[0].payload.scenarioProvenance = "fictional-extension-awaiting-review";
+  }
   const result = await db.from(table).insert({ trace_id: t.traceId, user_id: userId, case_id: c.caseId, case_version: c.version,
     trace_schema_version: PILOT_SCHEMA, trace_role: "learner", raw_trace: t, derived_metrics: {}, status: "active",
-    source_product: "BTY Clinical Cases Author Pilot", content_provenance: { caseHash: t.caseHash, source: "Dr. Chi author capture", sourceSections: c.sourceSections, referenceReviewStatus: "pending" },
+    source_product: "BTY Clinical Cases Author Pilot", content_provenance: { caseHash: t.caseHash, interactionVersion: t.discovery!.interactionVersion, packVersion: patient.version,
+      scenarioProvenance: t.discovery!.scenarioProvenance ?? "recorded-case-context", patientFacts: "fixed fictional patient context; extensions are separately attributed, not Dr. Chi testimony", source: "Dr. Chi author capture with separately versioned interview context", sourceSections: c.sourceSections, referenceReviewStatus: "pending" },
     started_at: at, completed_at: null, updated_at: at }).select("trace_id").maybeSingle();
   if (result.error || !result.data) throw Error(result.error?.code === "23505" ? "CONFLICT" : "SAVE_FAILED");
   return t;
 }
-export async function mutatePilot(db: SupabaseClient, userId: string, traceId: string, requestId: string, action: PilotAction) {
+export async function mutatePilot(db: SupabaseClient, userId: string, traceId: string, requestId: string, action: PilotAction, expectedEventCount?: number) {
   const old = await scope(db, userId).eq("trace_id", traceId).maybeSingle();
   if (old.error) throw Error("LOAD_FAILED");
   if (!old.data) throw Error("NOT_FOUND");
@@ -61,12 +88,32 @@ export async function mutatePilot(db: SupabaseClient, userId: string, traceId: s
   if (hasRequest(row.raw_trace, requestId)) return row.raw_trace;
   const c = requireCase(row.raw_trace.caseId, row.raw_trace.caseVersion);
   const at = new Date(Math.max(Date.now(), Date.parse(row.updated_at) + 1)).toISOString();
-  const prior = action.operation === "submit" && await priorSubmission(db, userId, row.raw_trace.caseId, traceId);
-  const t = applyPilotAction(prior ? { ...row.raw_trace, priorReferenceExposure: "prior_submission" } : row.raw_trace, action, requestId, at, referenceFor(c));
+  const submitting = action.operation === "submit" || action.operation === "conclude";
+  const prior = submitting && await priorSubmission(db, userId, row.raw_trace.caseId, traceId);
+  const previous = prior ? { ...row.raw_trace, priorReferenceExposure: "prior_submission" as const } : row.raw_trace;
+  let t: PilotTrace;
+  if (action.operation === "message" || action.operation === "decision" || action.operation === "conclude") {
+    if (!isDiscoveryTrace(previous)) throw Error("WRONG_FLOW");
+    if (previous.phase !== "draft") throw Error("IMMUTABLE");
+    // CAS alone cannot detect a client that was already stale before this read.
+    // Do not attribute another tab's newly obtained information to this decision.
+    if (expectedEventCount !== previous.events.length) throw Error("CONFLICT");
+    const patient = patientFor(c.caseId, previous.discovery!.packVersion);
+    if (hash({ case: publicCase(c), patient }) !== previous.caseHash) throw Error("CASE_VERSION_CHANGED");
+    const priorContext = action.operation === "conclude" && await priorWrittenContext(db, userId, c.caseId, traceId);
+    const current = priorContext ? { ...previous, discovery: { ...previous.discovery!, priorCaseContextExposure: "prior-written-case" as const } } : previous;
+    const reply = action.operation === "message" ? await respondToDiscovery(action.text, action.channel, patient,
+      discoveryTurns(previous).slice(-4).map(turn => ({ question: turn.question, channel: turn.channel, factIds: turn.reply.factIds }))) : undefined;
+    const reference = referenceFor(c);
+    if (action.operation === "conclude") reference.interviewContext = { packVersion: patient.version,
+      facts: patient.facts.map(f => ({ factId: f.id, channel: f.channel, label: f.topic, answer: f.answer, available: f.available !== false,
+        provenance: f.provenance ?? "recorded-case-context" })) };
+    t = applyDiscoveryAction(current, action, requestId, at, reference, reply);
+  } else t = applyPilotAction(previous, action, requestId, at, referenceFor(c));
   // Optimistic concurrency: preserve the previous raw-event prefix, including across tabs.
   const result = await db.from(table).update({ raw_trace: t, status: t.phase === "completed" ? "completed" : "active",
     completed_at: t.phase === "completed" ? at : null, updated_at: at,
-    derived_metrics: { method: "side-by-side-author-reference/v1", referenceVersion: c.version, medicalAccuracyScore: null } })
+    derived_metrics: { method: isDiscoveryTrace(t) ? "question-led-discovery/v1" : "side-by-side-author-reference/v1", referenceVersion: c.version, medicalAccuracyScore: null } })
     .eq("trace_id", traceId).eq("user_id", userId).eq("trace_schema_version", PILOT_SCHEMA).eq("trace_role", "learner")
     .eq("status", "active").eq("updated_at", row.updated_at).select("trace_id").maybeSingle();
   if (result.error) throw Error("SAVE_FAILED");

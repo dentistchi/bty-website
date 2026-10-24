@@ -35,7 +35,7 @@ describe("PracticeLanding", () => {
     ]);
     expect(doors[0].textContent).toContain("Practice situations");
     expect(doors[1].textContent).toContain("Clinical cases");
-    expect(doors[1].textContent).toContain("Evaluate a case, compare approaches, and share your reasoning.");
+    expect(doors[1].textContent).toContain("Interview the patient, choose examinations, and build your clinical assessment.");
     expect(doors[2].textContent).toContain("Action plans");
     expect(doors[3].textContent).toContain("Live sessions");
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
@@ -51,7 +51,7 @@ describe("PracticeLanding", () => {
       render(<PracticeLanding {...base} locale={locale} />);
       const entry = screen.getByTestId("practice-clinical-entry");
       expect(entry.textContent).toContain(title);
-      if (locale === "ko") expect(entry.textContent).toContain("사례를 평가하고 접근 방식을 비교하며 판단을 기록합니다.");
+      if (locale === "ko") expect(entry.textContent).toContain("환자에게 질문하고 검사를 선택하며 임상 판단을 발전시킵니다.");
       fireEvent.click(entry);
       expect(screen.queryByTestId("practice-landing")).toBeNull();
       expect(within(screen.getByTestId("practice-clinical")).getByText("How would you approach this patient?")).toBeTruthy();

@@ -1,5 +1,8 @@
 # Clinical Cases author pilot V1
 
+Historical written-capture flow. New attempts use the question-led interview in
+[`CLINICAL_DISCOVERY_V1.md`](CLINICAL_DISCOVERY_V1.md); existing written records remain readable.
+
 Practice now offers a library of 23 fictional cases alongside the existing interview
 simulator. The written-case flow collects evaluation, working diagnosis, treatment
 plan and rationale, commits the initial response, then releases a side-by-side author
