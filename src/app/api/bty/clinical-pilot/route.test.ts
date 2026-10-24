@@ -81,6 +81,27 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("authenticated question-led clinical discovery API", () => {
+  it("continues an existing Case 003 without changing its patient pack when ordinary short questions are recognized", async () => {
+    const source = catalog.find(row => row.caseId === "drchi-003")!;
+    await post("start", { caseId: source.caseId, caseVersion: source.version });
+    const before = structuredClone(trace());
+    const history = await (await message("Root canal done?", "exam")).json();
+    expect(history.ok).toBe(true);
+    expect(discoveryTurns(history.trace).at(-1)!.reply).toMatchObject({
+      channel: "exam", responseKind: "history", resolution: "answered", availableFactIds: ["drchi-003:treatment-history"],
+    });
+    const response = await (await message("Cold sensitivity?", "patient")).json();
+    const cold = discoveryTurns(response.trace).at(-1)!.reply;
+    expect(cold).toMatchObject({ responseKind: "case-information", resolution: "unavailable", factIds: [],
+      recognizedTopicIds: ["cold-history"], unavailableTopicIds: ["cold-history"] });
+    expect(cold.text).not.toMatch(/no cold sensitivity|no response to cold|please rephrase/i);
+    expect(response.trace.caseHash).toBe(before.caseHash);
+    expect(response.trace.discovery.packVersion).toBe(before.discovery!.packVersion);
+    expect(response.trace.events.slice(0, before.events.length)).toEqual(before.events);
+    expect(JSON.stringify(response)).not.toContain(source.authorOriginal);
+    await post("decision", { text: "Prior RCT is known; cold history remains unspecified in the case." });
+    expect(trace().events.at(-1)!.payload.informationAvailable).toEqual(["drchi-003:treatment-history"]);
+  });
   it("fails closed until the pilot is enabled and the server database transport is available", async () => {
     vi.stubEnv("CLINICAL_AUTHOR_PILOT_ENABLED", "0");
     expect((await start()).status).toBe(503);

@@ -1,5 +1,34 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-SHORT-QUESTIONS — valid questions and missing context
+
+The live Case 003 screenshot shows `Root canal done?` in Exam mode and
+`Cold sensitivity?` in Patient mode both rejected as unmatched. Reproduction also
+found Case 012 incorrectly disclosing inferior-alveolar-canal imaging for the
+root-canal-history question. Fix the interpretation boundary without changing
+frozen patient packs or inventing cold symptoms/test results.
+
+Recognize ordinary history questions in either input mode, label responses by
+their source, and distinguish known-but-unsupplied history from an interpretation
+failure. Preserve the selected mode, literal questions, raw event prefix, case
+version/hash, and distinction between requested topics and acquired facts.
+Missing-context intent IDs must never be clinical fact IDs or negative findings.
+Keep explicit examinations separate, including mixed history/examination turns.
+Retain strict local-model selection validation and private server-owned answers.
+
+The repair covers common endodontic history, cold history, allergies, medications
+and symptom onset across existing packs. It does not configure a live model or
+fill omitted patient truth. See `docs/CLINICAL_DISCOVERY_V1.md` for limits and
+verification. No production writes, migration, seed or flag changes are required.
+
+Observed repair evidence: TypeScript exit 0, related 22 files / 240 tests passed,
+10 isolated browser tests passed, and a fresh Cloudflare build plus artifact guard
+passed. The fresh `7cc7b3ed` baseline and repair each had 44 failed files / 151 failed
+tests; exact lists differ in the Clinical UI restart readiness assertion and the
+unchanged Center consent readiness test. See the discovery document for the limits.
+No frozen pack, patient truth, dependency, migration, production flag or stored
+record changed. The repair is prepared for review; deployment is a separate step.
+
 ## CLINICAL-DISCOVERY-V1 — corrected interaction contract
 
 The user clarified that the skill to capture is discovering information: deciding

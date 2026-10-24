@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ClinicalReasoningTrainer } from "./ClinicalReasoningTrainer";
 import { ClinicalDiscoveryAttempt } from "./ClinicalDiscoveryAttempt";
-import { discoveryTurns, initialAssessment, isDiscoveryTrace } from "@/domain/clinical-pilot/discovery";
+import { discoveryReplyLabel, discoveryTurns, initialAssessment, isDiscoveryTrace, type DiscoveryReply } from "@/domain/clinical-pilot/discovery";
 import { blankAnswers, initialAnswers, latestAnswers, releasedReference, responseFields,
   type Answers, type PilotCase, type PilotTrace, type Reaction } from "@/domain/clinical-pilot/pilot";
 
@@ -229,7 +229,9 @@ function ResponseReview() {
           <ol className="space-y-3">{row.raw_trace.events.filter(e => ["discovery_turn", "working_assessment", "assessment_submitted"].includes(e.type)).map(e => <li key={e.sequence} className="rounded-xl border p-3 text-sm">
             <p className="text-xs text-slate-500">Event {e.sequence} · {e.at}</p>
             {e.type === "discovery_turn" ? <><p className="mt-2 font-semibold">{String(e.payload.channel) === "exam" ? "Examination request" : "Patient question"}</p><p className="whitespace-pre-wrap break-words">{String(e.payload.question)}</p>
+              <p className="mt-2 font-semibold">{discoveryReplyLabel(e.payload.reply as DiscoveryReply)}</p>
               <p className="mt-2 whitespace-pre-wrap break-words">{String((e.payload.reply as { text: string }).text)}</p>
+              {!!(e.payload.reply as DiscoveryReply).recognizedTopicIds?.length && <p className="mt-2 text-xs">Recognized topics: {(e.payload.reply as DiscoveryReply).recognizedTopicIds!.join(", ")}{(e.payload.reply as DiscoveryReply).unavailableTopicIds?.length ? ` · not supplied: ${(e.payload.reply as DiscoveryReply).unavailableTopicIds!.join(", ")}` : ""}</p>}
               {!!(e.payload.reply as { fictionalExtensionFactIds?: string[] }).fictionalExtensionFactIds?.length && <p className="mt-2 text-xs text-amber-800">Includes fictional practice details awaiting author review</p>}
               <p className="mt-2 text-xs">{(e.payload.reply as { resolution: string }).resolution} · information available beforehand: {(e.payload.informationBefore as string[]).join(", ") || "opening only"}</p></>
               : <><p className="mt-2 font-semibold">{e.type === "working_assessment" ? "Working assessment" : "Submitted assessment"}</p><p className="whitespace-pre-wrap break-words">{String(e.payload.text)}</p><p className="mt-2 text-xs">Information available: {(e.payload.informationAvailable as string[]).join(", ") || "opening only"}</p></>}

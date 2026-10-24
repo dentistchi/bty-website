@@ -10,7 +10,18 @@ export type DiscoveryReply = {
   resolution: "answered" | "unavailable" | "clarify";
   routing: { method: "authored-rules" | "local-model"; version: string; fallback?: string };
   fictionalExtensionFactIds?: string[];
+  responseKind?: "history" | "examination" | "case-information" | "clarification" | "mixed";
+  recognizedTopicIds?: string[];
+  unavailableTopicIds?: string[];
 };
+/** Missing simulation context and interpretation errors are not patient statements. */
+export function discoveryReplyLabel(reply: DiscoveryReply): string {
+  if (reply.resolution === "clarify") return "Simulator";
+  if (reply.responseKind === "case-information" || reply.resolution === "unavailable") return "Case information";
+  if (reply.responseKind === "mixed") return "History and examination";
+  if (reply.responseKind === "history" && reply.channel === "exam") return "Recorded history";
+  return reply.channel === "patient" ? "Patient" : "Examination result";
+}
 export const isDiscoveryTrace = (t: PilotTrace) => t.discovery?.interactionVersion === DISCOVERY_INTERACTION_VERSION;
 export function startDiscoveryPilot(traceId: string, c: PilotCase, caseHash: string, requestId: string, at: string, prior: boolean, packVersion: string, priorContext = false): PilotTrace {
   const t = startPilot(traceId, c, caseHash, requestId, at, prior);
