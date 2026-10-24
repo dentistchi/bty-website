@@ -1,5 +1,6 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { case001Variant } from "./case001-variant.server";
+import { case001VariantB } from "./case001-variant-b.server";
 
 /** Server-owned, fictional patient information. Never import into a client component.
  * Decomposed only from catalog scenario/findings; author recommendations are not patient facts.
@@ -324,3 +325,8 @@ export const discoveryPatients: DiscoveryPatient[] = [
 
 // Append new versions; never overwrite a pack that an existing attempt may use.
 discoveryPatients.push(case001Variant(discoveryPatients.find(p => p.caseId === "drchi-001")!));
+// Variant B is a Founder-only preview: only allowlisted users start on it. Everyone else keeps
+// starting on variant A, and attempts frozen on any pack still resolve by version.
+const case001B = case001VariantB(discoveryPatients.at(-1)!);
+discoveryPatients.push(case001B);
+export const founderPreviewPackVersions: ReadonlySet<string> = new Set([`${case001B.caseId}@${case001B.version}`]);

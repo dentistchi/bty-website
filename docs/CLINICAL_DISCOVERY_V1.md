@@ -156,6 +156,102 @@ is desired. No gateway, credentials or live local model were configured/validate
 by this implementation. Mock provider tests are not live model quality evidence.
 Official endpoint contract: https://docs.ollama.com/api/openai-compatibility
 
+## Local model connection — measured 2026-10-24
+
+Measured on the operator Mac (Apple M5 Max, 128 GB, Ollama 0.40.5) through the
+unchanged production router and its 4-second limit, with
+`scripts/clinical-discovery-model-probe.ts` (no database, session or trace).
+
+| Model | Warm latency (router) | Outcome |
+| --- | --- | --- |
+| `qwen3-coder-next:q4_K_M` (79.7B MoE, 51.7 GB) | 0.6–1.1 s | Valid selections. Chosen. |
+| `gemma3:27b` | 1.3–3.4 s | Valid. Rose to 3.4 s with variant B's topic list. |
+| `qwen2.5-coder:7b`, `bty-assist-m2` | 0.5–0.9 s | Valid JSON. Frequent multi-topic over-selection. |
+| `gemma4:31b` | ≥ 4.0 s loaded | Timed out every call. |
+| `deepseek-r1:8b`, `qwen3.5:9b`, `gemma4:e4b`, `gpt-3.5-turbo` (local), `gpt-oss:120b` | 2.2–3.6 s | Mostly `local_model_invalid_response`. |
+
+Large models need several seconds just to load. They are measured only after preloading; the
+gateway keeps its model resident. Thinking models did not return the JSON object within the
+adapter's 256-token limit.
+
+First measurement, before the selection repair. Case 001 variant B, `qwen3-coder-next`, 26 requests, both directly and through the
+authenticated gateway: 21 local-model selections, 19 matched the expected
+topics, and 15 were requests the authored patterns could not interpret at all.
+Every request finished in ≤ 1.07 s. Observed wrong selections:
+
+- "anything you drink" selected chewing.
+- "illnesses" selected medical history plus medications and allergies.
+- "does it hang around afterwards" (after cold) and "do you light up" both selected spontaneous pain.
+- "compare with the other side" also selected the restoration.
+
+There were two authored over-matches. On "not eating" and "how you eat", the `chewing` pattern
+fired, so the existing mismatch guard kept the authored selection
+(`local_model_selection_mismatch`). Off-topic requests fell back with
+`local_model_low_confidence` and disclosed nothing. These are simulator
+interpretation results. A wrong or missing selection is not evidence about the
+doctor; the per-turn `routing` keeps the method, model and fallback for review.
+
+These errors were then repaired in Founder-only variant B and selector `selector/2`. Corrected
+scoring (accepted alternatives and an answer check) puts that round at qwen 39/52 and gemma 42/52; its
+held-out set had been measured before the repair as well. Round 2 (`selector/3`) requires each model
+selection to cite the question's own words: a request that names no subject asks the doctor to clarify
+(`local_model_ungrounded_selection`). On a new held-out set frozen before that repair, with no other
+client using the model server, qwen scored 19/25 and gemma 20/25. qwen stays the default for latency (median
+1.1 s vs 3.2 s). Per-question results, contention evidence and remaining errors are in
+`docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
+
+### Founder-only access
+
+The model and Case 001 variant B are decided on the server per request. Only user ids listed in
+`CLINICAL_DISCOVERY_FOUNDER_USER_IDS` (comma-separated; unset means nobody) start on variant B and
+receive model selections. Everyone else starts on variant A with authored rules, exactly as before. Their
+turns record `local_model_not_enabled` when a model is configured, and `local_model_not_configured`
+otherwise. An attempt keeps the pack it started on. If the Founder is later removed, an attempt already on
+variant B keeps resolving, with rules only.
+
+### Gateway
+
+`scripts/clinical-discovery-gateway.mjs` listens on `127.0.0.1:8788` only. It
+requires `Authorization: Bearer <key>` (constant-time, else 401), accepts only
+`POST /v1/chat/completions` (else 404) and only the configured model (else 400).
+It forwards just the adapter's fields with `max_tokens` capped. Requests and
+responses are size-limited, concurrency and per-minute volume are capped, and
+bodies are never logged. The key lives in a 0600 file outside the repository.
+The Worker uses:
+
+- `CLINICAL_DISCOVERY_LLM_BASE_URL` = `https://<tunnel host>/v1`
+- `CLINICAL_DISCOVERY_LLM_MODEL` = `qwen3-coder-next:q4_K_M`
+- `CLINICAL_DISCOVERY_LLM_KEY` = the gateway key (Worker secret)
+
+Publishing the gateway over HTTPS (a Cloudflare Tunnel to `127.0.0.1:8788`) is
+an operator step that exposes the Mac. It was not started here. The
+Mac must stay awake, with Ollama and the gateway running. When it is
+unreachable, every turn falls back to authored rules and records the reason.
+
+### Worker → gateway → model check
+
+`GET /api/bty/clinical-pilot?view=model-check` is restricted to platform
+admins on the Founder allowlist. It is a **connection diagnostic** (`scope:
+"connection-diagnostic"`, `accuracyEvaluated: false`). `connection` is `reached`
+when at least one request got a valid model answer, and `not_reached` or
+`not_configured` otherwise. Reaching the model says nothing about selection
+accuracy, which is measured only by the probe sets. It runs four fixed Case 001 requests through the production router
+inside the Worker, including one follow-up and one off-topic request. It
+returns the configuration presence (host, model, whether a key is set) and,
+for each request, the latency, method, fallback and fact IDs. It never returns
+patient answers or the key, and creates no attempt or database row.
+
+### Case 001 variant B
+
+`discovery-2026-10-23.1-variant-b` is appended after the original pack and
+variant A, which both remain registered unchanged. Attempts frozen on them keep
+resolving by `packVersion`. Only Founder-allowlisted users start new Case 001 attempts on variant B.
+Every reply that uses an addition shows "Fictional practice detail · awaiting Dr. Chi's review". It
+adds 25 history and examination facts and replaces the location answer; each
+of these 26 facts is labeled `fictional-extension-awaiting-review`. Cone-beam
+CT, dye staining and crack depth deliberately stay unavailable case
+information. None of this is Dr. Chi's recorded case context.
+
 ## Verification boundaries
 
 Use isolated unit/API tests and public browser fixtures with
