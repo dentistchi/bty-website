@@ -365,7 +365,7 @@ describe("Founder-only preview: local model and Case 001 variant B", () => {
   const modelFetch = () => vi.fn(async (_url: string, init: RequestInit) => {
     const { topics } = JSON.parse(JSON.parse(String(init.body)).messages[1].content);
     const ids = topics.filter((t: { id: string }) => t.id === "drchi-001:ept").map((t: { id: string }) => t.id);
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: 0.95 }) } }] }));
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, evidence: ids.map(() => "pulp tester"), confidence: 0.95 }) } }] }));
   });
   const configure = () => {
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
@@ -451,7 +451,8 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
       const want = ({ "Use the pulp tester on it.": "ept", "Are you on any drugs your doctor gave you?": "medications",
         "Is there a filling in that tooth?": "restoration", "How long ago was it put in?": "restoration-age" } as Record<string, string>)[question];
       const ids = topics.filter((t: { id: string }) => want && t.id === `drchi-001:${want}`).map((t: { id: string }) => t.id);
-      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: 0.95 }) } }] }));
+      const evidence = ({ ept: "pulp tester", medications: "drugs your doctor gave you", restoration: "filling", "restoration-age": "how long ago" } as Record<string, string>)[want ?? ""];
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, evidence: ids.map(() => evidence), confidence: 0.95 }) } }] }));
     }));
     const body = await (await check()).json();
     expect(calls.length).toBeGreaterThan(0);

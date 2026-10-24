@@ -9,7 +9,7 @@ type RequestContext = readonly { question: string; channel: DiscoveryChannel; fa
 
 const ROUTER_VERSION = "discovery-intent/v2";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
-const SELECTOR_VERSION = "selector/2";
+const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
 const MODEL_TIMEOUT_MS = 4000;
 const MAX_MODEL_RESPONSE_BYTES = 32000;
@@ -21,12 +21,29 @@ const SELECTOR_INSTRUCTIONS = [
   "Disclosing a topic reveals its information to the doctor, so select the fewest topics that answer exactly what was asked:",
   "- Select a topic only when the question asks for that topic's subject. Never add a topic because it is related, useful, or often asked next.",
   "- A general word selects only the general topic. Illness or health selects general medical history, not medicines or allergies. Comparing with other teeth selects the comparison topic, not findings of the tooth itself.",
-  "- If the question plainly asks about several subjects, select each one.",
+  "- If the question plainly asks about several subjects, select each one. A question about a whole category (for example anything the patient drinks) covers each topic in that category.",
   "- A follow-up that refers back (it, that, the feeling, afterwards, does it stay or last) without naming a new subject asks about a topic recognized in the most recent previous request. Select that topic when it fits; otherwise select none.",
   "- If the question could mean different topics and does not say which, or names no specific subject, question or test, select no IDs so the doctor is asked to clarify.",
   "- For an unrelated request select no IDs.",
-  "Return only JSON with selectedFactIds (an array of at most 4 supplied IDs) and confidence (a number from 0 to 1).",
+  "- For each selected ID, copy into evidence the shortest exact words of the question that name that topic's subject. For a follow-up, the evidence is the words that ask something about the earlier topic (for example about its timing or how it changes). Words such as it, this, that, one, other, else, check, test, look or examine name no subject; if only such words connect a topic to the question, do not select it.",
+  "Return only JSON with selectedFactIds (an array of at most 4 supplied IDs), evidence (an array of the same length; each item is the exact words copied from the question for that ID) and confidence (a number from 0 to 1).",
 ].join("\n");
+
+// Words that point at something without naming it. A selection whose evidence is only these words
+// ("check it", "the other one") is a guess about an unnamed subject, so the doctor is asked to clarify.
+const NON_SUBJECT_WORDS = new Set(("a an the it its this that these those one ones other another else anything something everything thing things "
+  + "more too also and or please me my you your i we us for to at on in of with about how what which whether is are was be do does did can could "
+  + "would will should let lets there any now again ok okay then so just some check test look see examine exam evaluate assess inspect "
+  + "tell show bother bothers bothering").split(" "));
+const words = (text: string) => text.toLowerCase().match(/[a-z0-9]+(?:['-][a-z0-9]+)*/gu) ?? [];
+
+/** Evidence must be words copied from the question that include at least one subject word. */
+function grounded(evidence: unknown, question: string) {
+  if (typeof evidence !== "string" || evidence.length > 200) return false;
+  const quoted = words(evidence);
+  return quoted.length > 0 && ` ${words(question).join(" ")} `.includes(` ${quoted.join(" ")} `)
+    && quoted.some(word => !NON_SUBJECT_WORDS.has(word.replace(/'s$/u, "")));
+}
 
 class ModelFailure extends Error {
   constructor(readonly reason: string) { super(reason); }
@@ -165,11 +182,11 @@ async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choi
         catch (error) { if (error instanceof ModelFailure) throw error; throw new ModelFailure("local_model_invalid_response"); }
         const content = (envelope as { choices?: { message?: { content?: unknown } }[] })?.choices?.[0]?.message?.content;
         if (typeof content !== "string") throw new ModelFailure("local_model_invalid_response");
-        let selection: { selectedFactIds?: unknown; confidence?: unknown };
+        let selection: { selectedFactIds?: unknown; evidence?: unknown; confidence?: unknown };
         try { selection = JSON.parse(content.replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/iu, "$1")); }
         catch { throw new ModelFailure("local_model_invalid_response"); }
         if (!selection || typeof selection !== "object" || Array.isArray(selection)
-          || Object.keys(selection).some(key => key !== "selectedFactIds" && key !== "confidence")
+          || Object.keys(selection).some(key => key !== "selectedFactIds" && key !== "evidence" && key !== "confidence")
           || !Array.isArray(selection.selectedFactIds) || selection.selectedFactIds.length > MAX_FACTS_PER_TURN
           || selection.selectedFactIds.some(id => typeof id !== "string" || !facts.some(fact => fact.id === id))
           || new Set(selection.selectedFactIds).size !== selection.selectedFactIds.length) {
@@ -177,7 +194,13 @@ async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choi
         }
         if (typeof selection.confidence !== "number" || !Number.isFinite(selection.confidence)
           || selection.confidence < 0.8 || selection.confidence > 1) throw new ModelFailure("local_model_low_confidence");
-        return selection.selectedFactIds as string[];
+        const ids = selection.selectedFactIds as string[];
+        const evidence = Array.isArray(selection.evidence) ? selection.evidence : [];
+        // One evidence item may cover every selection ("hot or cold drinks"); otherwise one per selection.
+        if (ids.length && ((evidence.length !== ids.length && evidence.length !== 1) || evidence.some(item => !grounded(item, text)))) {
+          throw new ModelFailure("local_model_ungrounded_selection");
+        }
+        return ids;
       })(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => { reject(new ModelFailure("local_model_timeout")); controller.abort(); }, MODEL_TIMEOUT_MS);

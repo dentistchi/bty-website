@@ -118,7 +118,7 @@ describe("optional local intent selection", () => {
   it("lets the model recognize an unsupplied history topic without manufacturing a fact ID", async () => {
     configureModel();
     const incomplete = { ...patient, facts: patient.facts.filter(fact => fact.id !== "cold-history") };
-    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["intent:cold-history"], confidence: 0.95 }));
+    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["intent:cold-history"], evidence: ["frosty beverages"], confidence: 0.95 }));
     const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", incomplete, [], MODEL);
     expect(result).toMatchObject({ resolution: "unavailable", responseKind: "case-information", factIds: [], availableFactIds: [],
       recognizedTopicIds: ["cold-history"], unavailableTopicIds: ["cold-history"], routing: { method: "local-model" } });
@@ -132,7 +132,7 @@ describe("optional local intent selection", () => {
     configureModel();
     const prior = { id: "prior-endo", channel: "patient" as const, topic: "Prior endodontic treatment", patterns: ["root canal"], answer: "Prior root canal treatment is recorded." };
     const p = { ...patient, facts: [...patient.facts, prior] };
-    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: [prior.id], confidence: 0.95 }));
+    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: [prior.id], evidence: ["prior endotherapy"], confidence: 0.95 }));
     const result = await respondToDiscovery("Any prior endotherapy?", "exam", p, [], MODEL);
     expect(result).toMatchObject({ channel: "exam", responseKind: "history", text: prior.answer, factIds: [prior.id], routing: { method: "local-model" } });
   });
@@ -147,7 +147,7 @@ describe("optional local intent selection", () => {
   it("sends only topic metadata and the question; patient answers remain server-owned", async () => {
     configureModel();
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "explicit-local-key");
-    const mock = vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95 }));
+    const mock = vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], evidence: ["frosty beverages"], confidence: 0.95 }));
     const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
     expect(result).toMatchObject({ factIds: ["cold-history"], text: patient.facts[0].answer, routing: { method: "local-model" } });
     expect(mock.mock.calls[0][0]).toBe("http://127.0.0.1:11434/v1/chat/completions");
@@ -164,7 +164,7 @@ describe("optional local intent selection", () => {
 
   it("does not let a valid but unrelated model topic replace an explicit authored match", async () => {
     configureModel();
-    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["bite-history"], confidence: 0.99 }));
+    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["bite-history"], evidence: ["cold"], confidence: 0.99 }));
     const result = await respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL);
     expect(result.factIds).toEqual(["cold-history"]);
     expect(result.text).not.toContain(patient.facts[1].answer);
@@ -231,7 +231,7 @@ describe("optional local intent selection", () => {
 
 it("uses prior requested topics for a local-model follow-up without sending prior answers", async () => {
   configureModel();
-  vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95 }));
+  vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], evidence: ["how long does it last"], confidence: 0.95 }));
   const r = await respondToDiscovery("How long does it last?", "patient", patient, [
     { question: "Do cold drinks bother you?", channel: "patient", factIds: ["cold-history"] },
   ], MODEL);
@@ -250,4 +250,42 @@ it("keeps authored rules for a caller that has not enabled the model, even when 
   expect(fetch).not.toHaveBeenCalled();
   expect(r.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_not_enabled" });
   expect(r.factIds).toEqual([]);
+});
+
+describe("model selections must be grounded in the question's own words (selector/3)", () => {
+  it.each([
+    ["no evidence", { selectedFactIds: ["cold-history"], confidence: 0.95 }],
+    ["evidence the question does not contain", { selectedFactIds: ["cold-history"], evidence: ["cold drinks"], confidence: 0.95 }],
+    ["evidence that names no subject", { selectedFactIds: ["cold-history"], evidence: ["it"], confidence: 0.95 }],
+    ["more evidence items than selections", { selectedFactIds: ["cold-history"], evidence: ["frosty beverages", "trigger"], confidence: 0.95 }],
+    ["evidence that is not text", { selectedFactIds: ["cold-history"], evidence: [7], confidence: 0.95 }],
+  ])("falls back to authored rules on %s", async (_label, selection) => {
+    configureModel();
+    vi.mocked(fetch).mockResolvedValue(completion(selection));
+    const r = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
+    expect(r).toMatchObject({ factIds: [], resolution: "clarify", routing: { method: "authored-rules", fallback: "local_model_ungrounded_selection" } });
+  });
+
+  it("asks a doctor to clarify a request that names no subject, instead of disclosing what the model guessed", async () => {
+    configureModel();
+    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-test"], evidence: ["check it"], confidence: 0.95 }));
+    const r = await respondToDiscovery("Check it.", "exam", patient, [], MODEL);
+    expect(r).toMatchObject({ factIds: [], resolution: "clarify", routing: { fallback: "local_model_ungrounded_selection" } });
+  });
+
+  it("accepts evidence copied with different case and spacing, one item shared by several selections, and an empty selection without evidence", async () => {
+    configureModel();
+    vi.mocked(fetch).mockResolvedValueOnce(completion({ selectedFactIds: ["cold-history"], evidence: ["Frosty   BEVERAGES"], confidence: 0.95 }));
+    expect((await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL)).factIds).toEqual(["cold-history"]);
+    vi.mocked(fetch).mockResolvedValueOnce(completion({ selectedFactIds: ["cold-history", "bite-history"], evidence: ["frosty beverages"], confidence: 0.95 }));
+    expect((await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL)).routing).toMatchObject({ method: "local-model" });
+    vi.mocked(fetch).mockResolvedValueOnce(completion({ selectedFactIds: [], confidence: 0.95 }));
+    expect((await respondToDiscovery("What's the weather like?", "patient", patient, [], MODEL)).routing).toMatchObject({ method: "local-model" });
+  });
+
+  it("records the selector version that required evidence", async () => {
+    configureModel();
+    vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], evidence: ["frosty beverages"], confidence: 0.95 }));
+    expect((await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL)).routing.version).toMatch(/\+selector\/3:/u);
+  });
 });

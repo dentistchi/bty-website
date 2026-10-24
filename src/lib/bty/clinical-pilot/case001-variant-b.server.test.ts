@@ -44,15 +44,45 @@ describe("Case 001 variant B — a fuller fictional encounter, appended", () => 
     ["Does it hurt for no reason, without biting?", ["drchi-001:spontaneous"]],
     ["Have you changed how you eat because of it?", ["drchi-001:chewing-avoidance"]],
     ["Has this changed the way you chew?", ["drchi-001:chewing-avoidance"]],
+    // Round 2: chewing tobacco and a preferred chewing side are not pain on chewing.
+    ["Do you chew tobacco?", ["drchi-001:tobacco"]],
+    ["Do you favour one side when chewing now?", ["drchi-001:chewing-avoidance"]],
+    ["Do you prefer the left side for chewing?", ["drchi-001:chewing-avoidance"]],
     // Pain on chewing is still recognized.
     ["Does it hurt when you chew?", ["drchi-001:chewing"]],
     ["Does it hurt when you eat?", ["drchi-001:chewing"]],
+    ["Does chewing hurt on that tooth?", ["drchi-001:chewing"]],
   ] as const)("authored rules: %s", async (question, ids) => {
     expect((await respondToDiscovery(question, "patient", variantB!)).factIds).toEqual(ids);
   });
 
+  it.each([
+    // The words shown must answer the question, not only carry a plausible fact ID.
+    ["Do you chew tobacco?", /\bchew tobacco\b/u],
+    ["How often do you get your teeth cleaned?", /\bonce a year\b/u],
+  ] as const)("the answer to %s addresses what was asked", async (question, words) => {
+    // The second question reaches its fact through the model; ask for the fact directly here.
+    const fact = variantB!.facts.find(f => f.id === (question.includes("tobacco") ? "drchi-001:tobacco" : "drchi-001:last-visit"))!;
+    expect(fact.answer).toMatch(words);
+    expect(fact.topic).toMatch(question.includes("tobacco") ? /chewing tobacco/u : /how often/u);
+  });
+
+  it("answers a comparison with the opposite tooth about that tooth", async () => {
+    const r = await respondToDiscovery("Compare with the contralateral tooth", "exam", variantB!);
+    expect(r.factIds).toEqual(["drchi-001:adjacent-teeth"]);
+    expect(r.text).toMatch(/\bsame tooth on the other side\b/u);
+  });
+
+  it("keeps every authored pattern compilable and under the router's 500-character limit", () => {
+    for (const f of variantB!.facts) for (const pattern of f.patterns) {
+      expect(pattern.length, f.id).toBeLessThanOrEqual(500);
+      expect(() => new RegExp(pattern, "iu"), f.id).not.toThrow();
+    }
+  });
+
   it("leaves the over-match in variant A untouched: frozen attempts keep their original interpretation", async () => {
     expect((await respondToDiscovery("Have you changed how you eat because of it?", "patient", variantA!)).factIds).toEqual(["drchi-001:chewing"]);
+    expect((await respondToDiscovery("Do you favour one side when chewing now?", "patient", variantA!)).factIds).toEqual(["drchi-001:chewing"]);
   });
 
   it("refuses to build on anything but variant A", () => {

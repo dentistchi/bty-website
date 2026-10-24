@@ -43,9 +43,9 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
     fact("previous-episodes", "patient", "Previous similar episodes",
       R`\bhappened before\b|\bhad (?:this|that|it) before\b|\bfirst time\b|\bever had (?:this|that|it)\b|\bprevious episodes?\b|\bsimilar (?:pain|problem|episode)\b`,
       "This is the first time I have had this with that tooth."),
-    fact("last-visit", "patient", "Most recent dental visit",
+    fact("last-visit", "patient", "Dental checkups and cleanings (how often, and the most recent visit)",
       R`\blast (?:dental )?(?:visit|checkup|check-up|cleaning|exam)\b|\blast (?:saw|seen|see) (?:a|the|your) dentist\b|\bregular (?:checkups?|dentist|cleanings?)\b`,
-      "My last checkup and cleaning was about a year ago, and nobody mentioned this tooth."),
+      "I have a checkup and cleaning about once a year. The last one was about a year ago, and nobody mentioned this tooth."),
     fact("swelling-history", "patient", "Patient-noticed swelling, bump or bad taste",
       R`\b(?:swelling|swollen|bad taste|pus|bump|pimple|gum boil)\b`,
       "I have not noticed any swelling, bump or bad taste."),
@@ -53,13 +53,14 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
       R`\b(?:tmj|tmd|jaw joints?)\b|\bjaw (?:pain|ache|aches|clicking|clicks|popping|pops|locks?|locking|tired|sore|muscles?)\b|\b(?:clicking|popping)\b|\bheadaches?\b`,
       "My jaw joints do not click or hurt, and I do not get headaches."),
     fact("treatment-goal", "patient", "Patient goals and preferences for treatment",
-      R`\b(?:prefer|preference|preferences|goals?|expectations?|hoping for)\b|\bwant to (?:keep|save)\b|\bwhat (?:would you|do you) (?:like|want)\b`,
+      // A preferred chewing side is a chewing habit, not a treatment preference.
+      R`^(?![\s\S]*\b(?:side|left|right)\b)[\s\S]*\b(?:prefer|preference|preferences|goals?|expectations?|hoping for)\b|\bwant to (?:keep|save)\b|\bwhat (?:would you|do you) (?:like|want)\b`,
       "I would like to keep the tooth if that is possible."),
     fact("tobacco", "patient", "Tobacco use",
       R`\b(?:smoke|smoking|smoker|cigarettes?|tobacco|vape|vaping|nicotine)\b`,
-      "I do not smoke or vape."),
+      "I do not smoke, vape, chew tobacco or use any other nicotine."),
     // Examination
-    fact("palpation", "exam", "Buccal and lingual palpation",
+    fact("palpation", "exam", "Buccal and lingual palpation (pressing on the gum beside the tooth)",
       R`\bpalpat(?:e|ion)\b|\bvestibul(?:e|ar)\b|\bpress on the gum\b`,
       "There is no tenderness to buccal or lingual palpation."),
     fact("mobility", "exam", "Tooth mobility",
@@ -91,7 +92,7 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
       "There is no masseter, temporalis or TMJ tenderness. Opening is about 45 mm without deviation."),
     fact("adjacent-teeth", "exam", "Adjacent and control teeth",
       R`\b(?:adjacent|neighbou?ring|contralateral|control tooth|control teeth)\b|\bnext to it\b|\bother teeth\b`,
-      "The adjacent teeth have small restorations, respond normally to cold and are not tender to biting."),
+      "The adjacent teeth and the same tooth on the other side have small restorations, respond normally to cold and are not tender to biting."),
     fact("cbct", "exam", "Cone-beam CT",
       R`\b(?:cbct|cone[- ]beam)\b|\b3d (?:scan|image|imaging)\b`,
       "No cone-beam CT is available for this visit.", false),
@@ -109,14 +110,15 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
   // Interpretation only: the topic label the model reads and the authored pattern. The answer,
   // availability and provenance stay exactly as recorded (recorded facts stay Dr. Chi's context).
   const reinterpretation: Record<string, { topic?: string; pattern?: string }> = {
-    // "eat" alone and negated or changed chewing ("not eating", "without biting", "changed the way you
-    // chew") are not questions about pain on chewing.
+    // "eat" alone, negated or changed chewing ("not eating", "without biting", "changed the way you
+    // chew"), a preferred chewing side ("favour one side") and chewing tobacco are not questions about
+    // pain on chewing.
     chewing: { topic: "Pain when biting or chewing food",
-      pattern: R`^(?![\s\S]*\b(?:without|not|no|never|changed?|the way)\b[\s\S]{0,25}\b(?:chew|chewing|bite|biting|eat|eating)\b)[\s\S]*(?:\b(?:chew|chewing|biting|bite down|hard food|sharp|intermittent)\b|\bwhen (?:you |i )?eat(?:ing)?\b|what (?:triggers|causes|brings on)|what.*pain (?:like|feel)|\bbite\b.*\b(?:hurt|pain)\b|\b(?:hurt|pain)\b.*\bbite\b)` },
+      pattern: R`^(?![\s\S]*\b(?:without|not|no|never|changed?|the way)\b[\s\S]{0,25}\b(?:chew|chewing|bite|biting|eat|eating)\b)(?![\s\S]*\b(?:tobacco|favou?r\w*|prefer\w*|avoid\w*|switch\w*)\b)(?![\s\S]*\b(?:one|other|which|either|that|this) side\b)[\s\S]*(?:\b(?:chew|chewing|biting|bite down|hard food|sharp|intermittent)\b|\bwhen (?:you |i )?eat(?:ing)?\b|what (?:triggers|causes|brings on)|what.*pain (?:like|feel)|\bbite\b.*\b(?:hurt|pain)\b|\b(?:hurt|pain)\b.*\bbite\b)` },
     spontaneous: { topic: "Pain that starts on its own, without any trigger",
       pattern: R`\bspontaneous\b|unprovoked|\bon its own\b|\bby itself\b|out of (?:the )?blue|\bfor no reason\b|\bwithout (?:biting|eating|chewing|a trigger|any trigger)\b|\bnot (?:eating|chewing|biting)\b` },
-    "chewing-avoidance": { topic: "Change in chewing habits because of the tooth",
-      pattern: R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on the (?:other|left|right)\b|\bchanged? (?:how|the way) (?:you |i )?(?:eat|chew)\b` },
+    "chewing-avoidance": { topic: "Change in chewing habits because of the tooth (avoiding it, or favouring one side)",
+      pattern: R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on the (?:other|left|right)\b|\bchanged? (?:how|the way) (?:you |i )?(?:eat|chew)\b|\b(?:favou?r\w*|prefer\w*)\b[\s\S]{0,30}\b(?:side|left|right)\b|\b(?:one|which|either) side\b[\s\S]{0,30}\b(?:chew\w*|eat\w*|bit\w*)\b` },
     cold: { topic: "Cold sensitivity (cold food or drinks)" },
     heat: { topic: "Heat sensitivity (hot food or drinks)" },
     sweets: { topic: "Sweet sensitivity (sugary food or drinks)" },
@@ -124,9 +126,14 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
     "medical-history": { topic: "General medical conditions or illnesses" },
     medications: { topic: "Medicines the patient takes regularly" },
     allergies: { topic: "Allergies or reactions to drugs or materials" },
-    tobacco: { topic: "Smoking, vaping or other tobacco use" },
+    tobacco: { topic: "Smoking (lighting up), vaping, chewing tobacco or other nicotine use" },
+    "pain-severity": { topic: "How severe each biting-pain episode is, and how long that pain lasts" },
+    pa: { topic: "Periapical radiograph (2-D x-ray of the tooth and its root tip)" },
+    cbct: { topic: "Cone-beam CT (3-D scan)" },
+    margins: { topic: "Restoration margins (the edges of the filling)" },
+    percussion: { topic: "Percussion (tapping on the tooth)" },
     restoration: { topic: "Existing restoration on the tooth (presence and type)" },
-    "adjacent-teeth": { topic: "Comparison with adjacent and control teeth" },
+    "adjacent-teeth": { topic: "Comparison with adjacent and contralateral control teeth" },
   };
   for (const [suffix, change] of Object.entries(reinterpretation)) {
     const i = facts.findIndex(f => f.id === `${variantA.caseId}:${suffix}`);
