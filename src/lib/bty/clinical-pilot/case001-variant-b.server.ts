@@ -17,7 +17,7 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
   });
   const overrides: FictionalFact[] = [
     fact("location", "patient", "Location of discomfort",
-      R`\bwhere\b|which (?:tooth|teeth|side)|\blocat(?:e|ion)\b|\bpoint (?:to|at)\b|\bshow me\b`,
+      R`\bwhere\b.{0,45}\b(?:hurt\w*|pain|ache\w*|discomfort|sensitive|sensitivity|problem|tooth|teeth)\b|\bwhere (?:is|does) it\b|\bwhich (?:tooth|teeth)\b|\bwhich side\b.{0,35}\b(?:hurt\w*|pain|ache\w*|discomfort|bother\w*)\b|\b(?:location of|locate|point (?:to|at)|show me)\b.{0,30}\b(?:pain|discomfort|problem|tooth|teeth|it)\b`,
       "It is on the lower right, toward the back. It is the tooth with the big filling."),
   ];
   const additions: FictionalFact[] = [
@@ -118,7 +118,7 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
     spontaneous: { topic: "Pain that starts on its own, without any trigger",
       pattern: R`\bspontaneous\b|unprovoked|\bon its own\b|\bby itself\b|out of (?:the )?blue|\bfor no reason\b|\bwithout (?:biting|eating|chewing|a trigger|any trigger)\b|\bnot (?:eating|chewing|biting)\b` },
     "chewing-avoidance": { topic: "Change in chewing habits because of the tooth (avoiding it, or favouring one side)",
-      pattern: R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on the (?:other|left|right)\b|\bchanged? (?:how|the way) (?:you |i )?(?:eat|chew)\b|\b(?:favou?r\w*|prefer\w*)\b[\s\S]{0,30}\b(?:side|left|right)\b|\b(?:one|which|either) side\b[\s\S]{0,30}\b(?:chew\w*|eat\w*|bit\w*)\b` },
+      pattern: R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on (?:the|your|my) (?:other|left|right)\b|\bchanged? (?:how|the way) (?:you |i )?(?:eat|chew)\b|\b(?:favou?r\w*|prefer\w*)\b.{0,30}\b(?:side|left|right)\b|\b(?:one|which|either) side\b.{0,30}\b(?:chew\w*|eat\w*|bit\w*)\b` },
     cold: { topic: "Cold sensitivity (cold food or drinks)" },
     heat: { topic: "Heat sensitivity (hot food or drinks)" },
     sweets: { topic: "Sweet sensitivity (sugary food or drinks)" },
@@ -132,7 +132,8 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
     cbct: { topic: "Cone-beam CT (3-D scan)" },
     margins: { topic: "Restoration margins (the edges of the filling)" },
     percussion: { topic: "Percussion (tapping on the tooth)" },
-    restoration: { topic: "Existing restoration on the tooth (presence and type)" },
+    restoration: { topic: "Existing restoration on the tooth (presence and type)",
+      pattern: R`\b(?:restorations?|fillings?|mod)\b|\bvisual(?:ly)? (?:inspect(?:ion)?|exam(?:ination)?)(?: of)?(?: the| this| that)?(?: tooth| teeth)?\s*$|\binspect visually\s*$` },
     "adjacent-teeth": { topic: "Comparison with adjacent and contralateral control teeth" },
   };
   for (const [suffix, change] of Object.entries(reinterpretation)) {

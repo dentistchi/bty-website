@@ -7,7 +7,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v2";
+const ROUTER_VERSION = "discovery-intent/v3";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -106,10 +106,23 @@ function isBroadOpening(text: string) {
 }
 
 function ruleFacts(text: string, channel: DiscoveryChannel, patient: DiscoveryPatient) {
-  return patient.facts.filter(fact => fact.channel === channel && fact.patterns.some(pattern => {
-    // Patterns are static, case-authored regular-expression sources, never user input.
-    if (!pattern || pattern.length > 500) return false;
-    try { return new RegExp(pattern, "iu").test(text); } catch { return false; }
+  // Variant B is the unpublished Founder draft. Keep historical packs' matching intact.
+  // Independent questions must not negate one another (e.g. tobacco followed by chewing pain).
+  const preview = patient.caseId === "drchi-001" && patient.version.endsWith("-variant-b");
+  const clauses = preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa)\b)/iu).filter(clause => clause.trim()) : [text];
+  return patient.facts.filter(fact => fact.channel === channel && clauses.some(clause => {
+    if (preview) {
+      const pain = /\b(?:hurt\w*|pain\w*|ache\w*|sore\w*|tender\w*)\b/iu.test(clause);
+      const explicitHabit = /\b(?:avoid\w*|favou?r\w*|prefer\w*|switch\w*|changed?)\b/iu.test(clause);
+      const sideUse = /\b(?:one|which|either|other) side\b|\b(?:chew\w*|eat\w*) on (?:the|your|my) (?:left|right)\b/iu.test(clause);
+      if (fact.id.endsWith(":chewing") && !pain && (sideUse || explicitHabit)) return false;
+      if (fact.id.endsWith(":chewing-avoidance") && pain && !explicitHabit) return false;
+    }
+    return fact.patterns.some(pattern => {
+      // Patterns are static, case-authored regular-expression sources, never user input.
+      if (!pattern || pattern.length > 500) return false;
+      try { return new RegExp(pattern, "iu").test(clause); } catch { return false; }
+    });
   }));
 }
 

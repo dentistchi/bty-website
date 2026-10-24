@@ -23,7 +23,9 @@
  * Set history (see docs/CLINICAL_DISCOVERY_MODEL_EVAL.md):
  * - tuning-1 and held-out-1 were frozen in 2eb5037e. held-out-1 was measured before AND after the round-1
  *   repair and its results were seen during that repair, so it is no longer unseen; round 2 tunes on it.
- * - held-out-2 was frozen before the round-2 repair, is never used to tune, and is run once after it.
+ * - held-out-2 was frozen before round 2 and measured three times without intervening code changes.
+ *   The first two runs had shared-server contention; all measurements are preserved. Its exposed
+ *   failures now inform round-3 regression repair, so it is no longer an unseen acceptance set.
  * - The expectations and answer checks of the first two sets were corrected when held-out-2 was frozen;
  *   `--rescore` re-scores the preserved round-1 measurements with them without re-running a model.
  */

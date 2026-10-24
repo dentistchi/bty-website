@@ -1,5 +1,36 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-PREVIEW-BOUNDARIES — 2026-10-24
+
+Follow-up to PR #79 round 2 (`e88bead9`). Repair the known variant-B authored
+location, restoration and chewing-side over-matches, including mixed questions.
+Keep base/variant A matching and all patient answers, availability and provenance
+unchanged. Record the changed interpreter as `discovery-intent/v3`; selector/3
+and its measured results are not new model-quality evidence.
+
+Bound the loopback gateway's upstream response while reading UTF-8 bytes, validate
+positive integer token budgets, bound request-body receipt and cancel upstream work
+when its client disconnects. Importing transport helpers must not start the model
+or listener. Verify these boundaries without sockets or external model calls.
+
+The exposed held-out-2 failures now inform regression repair. Preserve the original
+measurement files and scores as historical results; do not call this set unseen or
+claim a new live-model score. Contended runs remain evidence of shared-Mac runtime
+latency, even when excluded from an isolated selector comparison. Do not require a
+new benchmark cycle merely to repair a known bug. Founder-only trial is the next
+product stage after operator review and the separately authorized connection work.
+
+No tunnel, Worker secret, merge, deployment or learner record write is authorized
+by this local repair.
+
+Observed local checks: actual Node-20 install; types exit 0; 314 focused tests and
+10 isolated browser tests passed. Full comparison against unmodified `e88bead9`:
+49 files / 159 tests failing before, 46 / 156 after, no added failed assertions;
+three unchanged UI failures passed only in the repair run. The full suite is not
+green and no live local-model score has been remeasured.
+Fresh Cloudflare build passed with loopback placeholders; the 81 sampled private
+answer markers had zero matches in 739 public text assets (limited scan).
+
 ## CLINICAL-DISCOVERY-LOCAL-MODEL — real local model behind an authenticated gateway
 
 Base: `inner-main` `7a461f11`. Connect Clinical Discovery's existing model

@@ -5,7 +5,7 @@ import { case001VariantB } from "./case001-variant-b.server";
 import { respondToDiscovery } from "./discovery-router.server";
 
 beforeEach(() => { vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", ""); vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", ""); });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 const versions = discoveryPatients.filter(p => p.caseId === "drchi-001");
 const [base, variantA, variantB] = versions;
@@ -54,6 +54,45 @@ describe("Case 001 variant B — a fuller fictional encounter, appended", () => 
     ["Does chewing hurt on that tooth?", ["drchi-001:chewing"]],
   ] as const)("authored rules: %s", async (question, ids) => {
     expect((await respondToDiscovery(question, "patient", variantB!)).factIds).toEqual(ids);
+  });
+
+  it.each([
+    ["Where do you live?", "patient", []],
+    ["Where do you work?", "patient", []],
+    ["Which side do you eat on now?", "patient", ["chewing-avoidance"]],
+    ["Do you mostly chew on your left these days?", "patient", ["chewing-avoidance"]],
+    ["Does it hurt when you chew on your left?", "patient", ["chewing"]],
+    ["Where does it hurt?", "patient", ["location"]],
+    ["Which side hurts?", "patient", ["location"]],
+    ["Can you point to it?", "patient", ["location"]],
+    ["Look at it.", "exam", []],
+    ["Look at the filling.", "exam", ["restoration"]],
+    ["Visually inspect the tooth.", "exam", ["restoration"]],
+    ["Examine the tooth for mobility.", "exam", ["mobility"]],
+    ["Examine tooth mobility.", "exam", ["mobility"]],
+    ["Visual exam and EPT", "exam", ["restoration", "ept"]],
+    ["Visually inspect the tooth and check mobility", "exam", ["restoration", "mobility"]],
+    ["Does it hurt without eating and chewing?", "patient", ["spontaneous"]],
+    ["Where does it hurt? Which side do you eat on now?", "patient", ["location", "chewing-avoidance"]],
+    ["Do you chew tobacco? Does chewing hurt?", "patient", ["chewing", "tobacco"]],
+  ] as const)("keeps the requested subject in %s", async (question, channel, suffixes) => {
+    const r = await respondToDiscovery(question, channel, variantB!);
+    expect(r.factIds).toEqual(suffixes.map(id => `drchi-001:${id}`));
+    if (!suffixes.length) expect(r.resolution).toBe("clarify");
+  });
+
+  it.each([
+    ["Where do you live?", "patient", []],
+    ["Look at it.", "exam", []],
+    ["Which side do you eat on now?", "patient", ["chewing-avoidance"]],
+    ["Do you mostly chew on your left these days?", "patient", ["chewing-avoidance"]],
+  ] as const)("keeps the same disclosure boundary when the model is unavailable: %s", async (question, channel, suffixes) => {
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "http://model.invalid/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "fixture-model");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("unavailable", { status: 503 })));
+    const r = await respondToDiscovery(question, channel, variantB!, [], { allowModel: true });
+    expect(r.factIds).toEqual(suffixes.map(id => `drchi-001:${id}`));
+    expect(r.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_http_error" });
   });
 
   it.each([
