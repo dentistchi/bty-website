@@ -4,6 +4,7 @@ import { requireUser, requirePlatformAdmin, isActivePlatformAdmin } from "@/lib/
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { authorCases, createPilot, mutatePilot, publicDiscoveryCase, readOwnPilot, reviewPilots } from "@/lib/bty/clinical-pilot/service.server";
 import { checkDiscoveryModel } from "@/lib/bty/clinical-pilot/model-check.server";
+import { isClinicalFounder } from "@/lib/bty/clinical-pilot/founder-preview.server";
 
 const text = z.string().max(10000);
 const identity = { traceId: z.string().uuid(), requestId: z.string().uuid() };
@@ -30,8 +31,11 @@ export async function GET(r: NextRequest) {
   const a = view === "review" || view === "model-check" ? await requirePlatformAdmin(r) : await requireUser(r);
   if (!a.ok) return reply({ ok: false, error: "ACCESS_REQUIRED" }, a.status);
   if (process.env.CLINICAL_AUTHOR_PILOT_ENABLED !== "1") return reply({ ok: false, error: "PILOT_NOT_ENABLED" }, 503);
-  // Read-only connection check; it creates no attempt and never touches the database.
-  if (view === "model-check") return reply({ ok: true, check: await checkDiscoveryModel() });
+  // Read-only connection diagnostic, Founder only; it creates no attempt and never touches the database.
+  if (view === "model-check") {
+    if (!isClinicalFounder(a.user.id)) return reply({ ok: false, error: "ACCESS_REQUIRED" }, 403);
+    return reply({ ok: true, check: await checkDiscoveryModel() });
+  }
   const db = getSupabaseAdmin();
   if (!db) return reply({ ok: false, error: "UNAVAILABLE" }, 503);
   try {

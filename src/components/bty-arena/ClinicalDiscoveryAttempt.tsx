@@ -209,7 +209,7 @@ export function ClinicalDiscoveryAttempt({ c, userId, onBack, onWrittenHistory }
         <article className="mr-6 rounded-2xl bg-teal-50 p-3"><p className="mb-1 text-xs font-semibold text-teal-800">Patient</p><p className="whitespace-pre-wrap break-words text-sm">{shown.scenario}</p></article>
         {turns.map(turn => <div key={turn.sequence} className="space-y-2">
           <article className="ml-6 rounded-2xl bg-slate-100 p-3"><p className="mb-1 text-xs font-semibold text-slate-600">You · {turn.channel === "patient" ? "Question" : "Examination request"}</p><p className="whitespace-pre-wrap break-words text-sm">{turn.question}</p></article>
-          <article className={turn.channel === "patient" && turn.reply.resolution === "answered" && turn.reply.responseKind !== "case-information" ? "mr-6 rounded-2xl bg-teal-50 p-3" : "mr-6 rounded-2xl border border-slate-200 p-3"}><p className="mb-1 text-xs font-semibold text-teal-800">{discoveryReplyLabel(turn.reply)}</p><p className="whitespace-pre-wrap break-words text-sm">{turn.reply.text}</p></article>
+          <article className={turn.channel === "patient" && turn.reply.resolution === "answered" && turn.reply.responseKind !== "case-information" ? "mr-6 rounded-2xl bg-teal-50 p-3" : "mr-6 rounded-2xl border border-slate-200 p-3"}><p className="mb-1 text-xs font-semibold text-teal-800">{discoveryReplyLabel(turn.reply)}</p><p className="whitespace-pre-wrap break-words text-sm">{turn.reply.text}</p>{!!turn.reply.fictionalExtensionFactIds?.length && <p className="mt-2 text-xs text-amber-800">Fictional practice detail · awaiting Dr. Chi&apos;s review</p>}</article>
         </div>)}
         <div ref={logEnd} />
       </div>

@@ -102,12 +102,36 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
   const replacements = new Map(overrides.map(f => [f.id, f]));
   const ids = new Set(variantA.facts.map(f => f.id));
   for (const f of additions) if (ids.has(f.id)) throw new Error(`CASE001_VARIANT_B_DUPLICATE:${f.id}`);
-  return {
-    ...variantA,
-    version: variantA.version.replace(/-variant-a$/u, "-variant-b"),
-    facts: [
-      ...variantA.facts.map(f => replacements.get(f.id) ?? { ...f, patterns: [...f.patterns] }),
-      ...additions,
-    ],
+  const facts = [
+    ...variantA.facts.map(f => replacements.get(f.id) ?? { ...f, patterns: [...f.patterns] }),
+    ...additions,
+  ];
+  // Interpretation only: the topic label the model reads and the authored pattern. The answer,
+  // availability and provenance stay exactly as recorded (recorded facts stay Dr. Chi's context).
+  const reinterpretation: Record<string, { topic?: string; pattern?: string }> = {
+    // "eat" alone and negated or changed chewing ("not eating", "without biting", "changed the way you
+    // chew") are not questions about pain on chewing.
+    chewing: { topic: "Pain when biting or chewing food",
+      pattern: R`^(?![\s\S]*\b(?:without|not|no|never|changed?|the way)\b[\s\S]{0,25}\b(?:chew|chewing|bite|biting|eat|eating)\b)[\s\S]*(?:\b(?:chew|chewing|biting|bite down|hard food|sharp|intermittent)\b|\bwhen (?:you |i )?eat(?:ing)?\b|what (?:triggers|causes|brings on)|what.*pain (?:like|feel)|\bbite\b.*\b(?:hurt|pain)\b|\b(?:hurt|pain)\b.*\bbite\b)` },
+    spontaneous: { topic: "Pain that starts on its own, without any trigger",
+      pattern: R`\bspontaneous\b|unprovoked|\bon its own\b|\bby itself\b|out of (?:the )?blue|\bfor no reason\b|\bwithout (?:biting|eating|chewing|a trigger|any trigger)\b|\bnot (?:eating|chewing|biting)\b` },
+    "chewing-avoidance": { topic: "Change in chewing habits because of the tooth",
+      pattern: R`\b(?:avoid|avoiding)\b|\bother side\b|\bswitch(?:ed)? sides?\b|\bchew(?:ing)? on the (?:other|left|right)\b|\bchanged? (?:how|the way) (?:you |i )?(?:eat|chew)\b` },
+    cold: { topic: "Cold sensitivity (cold food or drinks)" },
+    heat: { topic: "Heat sensitivity (hot food or drinks)" },
+    sweets: { topic: "Sweet sensitivity (sugary food or drinks)" },
+    "symptom-duration": { topic: "When the discomfort first started" },
+    "medical-history": { topic: "General medical conditions or illnesses" },
+    medications: { topic: "Medicines the patient takes regularly" },
+    allergies: { topic: "Allergies or reactions to drugs or materials" },
+    tobacco: { topic: "Smoking, vaping or other tobacco use" },
+    restoration: { topic: "Existing restoration on the tooth (presence and type)" },
+    "adjacent-teeth": { topic: "Comparison with adjacent and control teeth" },
   };
+  for (const [suffix, change] of Object.entries(reinterpretation)) {
+    const i = facts.findIndex(f => f.id === `${variantA.caseId}:${suffix}`);
+    if (i < 0) throw new Error(`CASE001_VARIANT_B_UNKNOWN:${suffix}`);
+    facts[i] = { ...facts[i]!, ...(change.topic ? { topic: change.topic } : {}), ...(change.pattern ? { patterns: [change.pattern] } : {}) };
+  }
+  return { ...variantA, version: variantA.version.replace(/-variant-a$/u, "-variant-b"), facts };
 }

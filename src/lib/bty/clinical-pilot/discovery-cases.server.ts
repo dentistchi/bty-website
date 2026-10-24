@@ -325,5 +325,8 @@ export const discoveryPatients: DiscoveryPatient[] = [
 
 // Append new versions; never overwrite a pack that an existing attempt may use.
 discoveryPatients.push(case001Variant(discoveryPatients.find(p => p.caseId === "drchi-001")!));
-// New Case 001 attempts start on variant B; attempts frozen on the base pack or variant A still resolve.
-discoveryPatients.push(case001VariantB(discoveryPatients.at(-1)!));
+// Variant B is a Founder-only preview: only allowlisted users start on it. Everyone else keeps
+// starting on variant A, and attempts frozen on any pack still resolve by version.
+const case001B = case001VariantB(discoveryPatients.at(-1)!);
+discoveryPatients.push(case001B);
+export const founderPreviewPackVersions: ReadonlySet<string> = new Set([`${case001B.caseId}@${case001B.version}`]);

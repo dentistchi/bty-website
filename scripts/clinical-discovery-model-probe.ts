@@ -3,7 +3,7 @@
  * CLINICAL DISCOVERY — local-model probe (operator-run, read-only).
  *
  * Calls the production router (`respondToDiscovery`) directly, with no database, session or trace.
- * Each request runs twice: authored rules only (model off), then with the configured model, so a
+ * Each request runs twice: authored rules only (allowModel false), then with the model, so a
  * paraphrase the rules cannot interpret is visible next to what the model selected.
  *
  *   CLINICAL_DISCOVERY_LLM_BASE_URL=… CLINICAL_DISCOVERY_LLM_MODEL=… [CLINICAL_DISCOVERY_LLM_KEY=…] \
@@ -99,15 +99,8 @@ if (!patient) throw new Error(`unknown Case 001 pack: ${version}`);
 const model = process.env.CLINICAL_DISCOVERY_LLM_MODEL;
 if (!process.env.CLINICAL_DISCOVERY_LLM_BASE_URL || !model) throw new Error("CLINICAL_DISCOVERY_LLM_BASE_URL and CLINICAL_DISCOVERY_LLM_MODEL are required");
 
-const MODEL_ENV = ["CLINICAL_DISCOVERY_LLM_BASE_URL", "CLINICAL_DISCOVERY_LLM_MODEL", "CLINICAL_DISCOVERY_LLM_KEY"] as const;
-const saved = Object.fromEntries(MODEL_ENV.map(k => [k, process.env[k]]));
 type Context = { question: string; channel: DiscoveryChannel; factIds: string[] }[];
-async function ask(t: Turn, ctx: Context, useModel: boolean) {
-  if (useModel) return respondToDiscovery(t.question, t.channel, patient!, ctx);
-  for (const k of MODEL_ENV) delete process.env[k];
-  try { return await respondToDiscovery(t.question, t.channel, patient!, ctx); }
-  finally { for (const k of MODEL_ENV) if (saved[k] !== undefined) process.env[k] = saved[k]; }
-}
+const ask = (t: Turn, ctx: Context, useModel: boolean) => respondToDiscovery(t.question, t.channel, patient!, ctx, { allowModel: useModel });
 const short = (ids: string[]) => ids.map(id => id.slice(patient!.caseId.length + 1));
 
 async function timed(t: Turn, ctx: Context) {

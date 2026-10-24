@@ -19,14 +19,40 @@ describe("Case 001 variant B — a fuller fictional encounter, appended", () => 
     expect(base!.facts.some(f => f.provenance)).toBe(false);
   });
 
-  it("keeps every variant A fact, and labels every addition or replacement as awaiting Dr. Chi's review", () => {
+  it("keeps every variant A fact, and labels every new or re-answered fact as awaiting Dr. Chi's review", () => {
     const a = new Map(variantA!.facts.map(f => [f.id, f]));
     expect(variantB!.facts.slice(0, a.size).map(f => f.id)).toEqual([...a.keys()]);
-    const changed = variantB!.facts.filter(f => JSON.stringify(f) !== JSON.stringify(a.get(f.id)));
-    expect(changed.map(f => f.id)).toContain("drchi-001:location");
-    expect(changed.length).toBeGreaterThan(20);
-    for (const f of changed) expect(f.provenance).toBe("fictional-extension-awaiting-review");
+    const content = (f: { answer: string; available?: boolean; provenance?: string; channel: string }) =>
+      JSON.stringify([f.answer, f.available, f.provenance, f.channel]);
+    // New facts, or facts whose answer changed, are fictional additions.
+    const reAnswered = variantB!.facts.filter(f => !a.has(f.id) || content(f) !== content(a.get(f.id)!));
+    expect(reAnswered.map(f => f.id)).toContain("drchi-001:location");
+    expect(reAnswered).toHaveLength(26);
+    for (const f of reAnswered) expect(f.provenance).toBe("fictional-extension-awaiting-review");
+    // Recorded facts may only be reinterpreted (topic label / pattern); their answer and provenance stay recorded.
+    for (const id of ["chewing", "spontaneous", "cold"]) {
+      const before = a.get(`drchi-001:${id}`)!, after = variantB!.facts.find(f => f.id === `drchi-001:${id}`)!;
+      expect(before.provenance).toBeUndefined();
+      expect(content(after)).toBe(content(before));
+    }
     expect(new Set(variantB!.facts.map(f => f.id)).size).toBe(variantB!.facts.length);
+  });
+
+  it.each([
+    // The two reported authored over-matches, and same-meaning variants.
+    ["Does it act up all by itself, even when you're not eating?", ["drchi-001:spontaneous"]],
+    ["Does it hurt for no reason, without biting?", ["drchi-001:spontaneous"]],
+    ["Have you changed how you eat because of it?", ["drchi-001:chewing-avoidance"]],
+    ["Has this changed the way you chew?", ["drchi-001:chewing-avoidance"]],
+    // Pain on chewing is still recognized.
+    ["Does it hurt when you chew?", ["drchi-001:chewing"]],
+    ["Does it hurt when you eat?", ["drchi-001:chewing"]],
+  ] as const)("authored rules: %s", async (question, ids) => {
+    expect((await respondToDiscovery(question, "patient", variantB!)).factIds).toEqual(ids);
+  });
+
+  it("leaves the over-match in variant A untouched: frozen attempts keep their original interpretation", async () => {
+    expect((await respondToDiscovery("Have you changed how you eat because of it?", "patient", variantA!)).factIds).toEqual(["drchi-001:chewing"]);
   });
 
   it("refuses to build on anything but variant A", () => {

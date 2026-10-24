@@ -16,6 +16,13 @@ requests, 19 of the 26 matched the expected topics, and every selection was
 under the limit. Wrong selections and fallbacks are simulator results, never
 the doctor's. See `docs/CLINICAL_DISCOVERY_V1.md`.
 
+Repair (same branch, PR #79): fixed the five reported wrong selections and the two authored
+over-matches in Founder-only variant B and selector `selector/2`. Compared qwen and gemma on
+frozen tuning (32) and held-out (20) sets. Both scored 43/52; held-out was qwen 16/20 and gemma 14/20.
+Server-side `CLINICAL_DISCOVERY_FOUNDER_USER_IDS` limits the model and variant B to the Founder.
+Everyone else keeps variant A and authored rules. model-check is a connection diagnostic, kept separate
+from accuracy. See `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
+
 Not done here: an HTTPS tunnel publishing the gateway, Worker secrets, merge and
 deploy. Each needs explicit authorization.
 

@@ -76,6 +76,8 @@ beforeEach(() => {
   vi.stubEnv("CLINICAL_AUTHOR_PILOT_ENABLED", "1");
   vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "");
   vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "");
+  vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "");
+  vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "");
   state.user = "owner"; state.admin = false; state.unavailable = false; state.failWrite = false; state.race = false; state.rows = [];
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -358,21 +360,79 @@ describe("authenticated question-led clinical discovery API", () => {
   });
 });
 
-describe("GET ?view=model-check — Worker → gateway → model connection check", () => {
+describe("Founder-only preview: local model and Case 001 variant B", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+  const modelFetch = () => vi.fn(async (_url: string, init: RequestInit) => {
+    const { topics } = JSON.parse(JSON.parse(String(init.body)).messages[1].content);
+    const ids = topics.filter((t: { id: string }) => t.id === "drchi-001:ept").map((t: { id: string }) => t.id);
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: 0.95 }) } }] }));
+  });
+  const configure = () => {
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "probe-secret");
+  };
+
+  it("a user not on the allowlist keeps variant A and authored rules, even with a model configured", async () => {
+    configure();
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "founder-id");
+    const fetchSpy = modelFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    await start();
+    expect(trace().discovery!.packVersion).toMatch(/-variant-a$/);
+    await message("Use the pulp tester on it.", "exam");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    const reply = discoveryTurns(trace()).at(-1)!.reply;
+    expect(reply.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_not_enabled" });
+  });
+
+  it("the allowlisted Founder starts on variant B and gets model selections", async () => {
+    configure();
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", " Owner , founder-id");
+    vi.stubGlobal("fetch", modelFetch());
+    await start();
+    expect(trace().discovery!.packVersion).toMatch(/-variant-b$/);
+    expect(trace().discovery!.scenarioProvenance).toBe("fictional-extension-awaiting-review");
+    await message("Use the pulp tester on it.", "exam");
+    const reply = discoveryTurns(trace()).at(-1)!.reply;
+    expect(reply.routing.method).toBe("local-model");
+    expect(reply.factIds).toEqual(["drchi-001:ept"]);
+    expect(reply.fictionalExtensionFactIds).toEqual(["drchi-001:ept"]);
+  });
+
+  it("an attempt already frozen on variant B keeps resolving after the Founder is removed, on rules only", async () => {
+    configure();
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+    const fetchSpy = modelFetch();
+    vi.stubGlobal("fetch", fetchSpy);
+    await start();
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "");
+    expect((await message("EPT please", "exam")).status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(discoveryTurns(trace()).at(-1)!.reply.factIds).toEqual(["drchi-001:ept"]);
+  });
+});
+
+describe("GET ?view=model-check — connection diagnostic, Founder only", () => {
   const check = () => get("?view=model-check");
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  it("is platform-admin only", async () => {
+  it("requires a platform admin who is also on the Founder allowlist", async () => {
     expect((await check()).status).toBe(403);
     state.user = null;
     expect((await check()).status).toBe(401);
+    state.user = "owner"; state.admin = true;
+    expect((await check()).status).toBe(403);
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+    expect((await check()).status).toBe(200);
   });
 
-  it("reports an unconfigured model as a fallback and writes nothing", async () => {
+  it("reports an unconfigured model as not configured and writes nothing", async () => {
     state.admin = true;
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
     const body = await (await check()).json();
-    expect(body.ok).toBe(true);
-    expect(body.check).toMatchObject({ configured: false, host: null, model: null, keyConfigured: false, localModelReached: false });
+    expect(body.check).toMatchObject({ scope: "connection-diagnostic", accuracyEvaluated: false, connection: "not_configured",
+      configured: false, host: null, model: null, keyConfigured: false, validModelAnswers: 0 });
     expect(body.check.pack).toMatch(/-variant-b$/);
     for (const r of body.check.results) expect(r).toMatchObject({ method: "authored-rules", fallback: "local_model_not_configured" });
     expect(state.rows).toEqual([]);
@@ -380,28 +440,39 @@ describe("GET ?view=model-check — Worker → gateway → model connection chec
 
   it("reaches the configured model with the key, returns fact IDs only and writes nothing", async () => {
     state.admin = true;
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "probe-secret");
     const calls: { url: string; auth: string | null }[] = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
       calls.push({ url, auth: new Headers(init.headers).get("authorization") });
-      const { messages } = JSON.parse(String(init.body));
-      const { question, topics } = JSON.parse(messages[1].content);
+      const { question, topics } = JSON.parse(JSON.parse(String(init.body)).messages[1].content);
       const want = ({ "Use the pulp tester on it.": "ept", "Are you on any drugs your doctor gave you?": "medications",
         "Is there a filling in that tooth?": "restoration", "How long ago was it put in?": "restoration-age" } as Record<string, string>)[question];
       const ids = topics.filter((t: { id: string }) => want && t.id === `drchi-001:${want}`).map((t: { id: string }) => t.id);
-      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: ids.length ? 0.95 : 0.9 }) } }] }));
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, confidence: 0.95 }) } }] }));
     }));
-    const res = await check();
-    const body = await res.json();
+    const body = await (await check()).json();
+    expect(calls.length).toBeGreaterThan(0);
     expect(calls.every(c => c.url === "https://gateway.test/v1/chat/completions" && c.auth === "Bearer probe-secret")).toBe(true);
-    expect(body.check).toMatchObject({ configured: true, host: "gateway.test", model: "probe-model", keyConfigured: true, localModelReached: true });
-    expect(body.check.results.map((r: { method: string; matchesExpected: boolean }) => [r.method, r.matchesExpected]))
-      .toEqual([["local-model", true], ["local-model", true], ["local-model", true], ["local-model", true]]);
+    expect(body.check).toMatchObject({ connection: "reached", accuracyEvaluated: false, validModelAnswers: 4, host: "gateway.test", keyConfigured: true });
+    expect(body.check.results.map((r: { factIds: string[] }) => r.factIds)).toEqual([["ept"], ["medications"], ["restoration-age"], []]);
     const text = JSON.stringify(body);
     expect(text).not.toContain("probe-secret");
     expect(text).not.toContain("electric pulp testing within the range");
+    expect(state.rows).toEqual([]);
+  });
+
+  it("an unreachable gateway is not_reached, never a doctor's result", async () => {
+    state.admin = true;
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 401 })));
+    const body = await (await check()).json();
+    expect(body.check).toMatchObject({ connection: "not_reached", validModelAnswers: 0 });
+    expect(body.check.results.every((r: { fallback: string }) => r.fallback === "local_model_http_error")).toBe(true);
     expect(state.rows).toEqual([]);
   });
 });

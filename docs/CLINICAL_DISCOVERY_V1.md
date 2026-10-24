@@ -174,7 +174,7 @@ Large models need several seconds just to load. They are measured only after pre
 gateway keeps its model resident. Thinking models did not return the JSON object within the
 adapter's 256-token limit.
 
-Case 001 variant B, `qwen3-coder-next`, 26 requests, both directly and through the
+First measurement, before the selection repair. Case 001 variant B, `qwen3-coder-next`, 26 requests, both directly and through the
 authenticated gateway: 21 local-model selections, 19 matched the expected
 topics, and 15 were requests the authored patterns could not interpret at all.
 Every request finished in ≤ 1.07 s. Observed wrong selections:
@@ -190,6 +190,20 @@ fired, so the existing mismatch guard kept the authored selection
 `local_model_low_confidence` and disclosed nothing. These are simulator
 interpretation results. A wrong or missing selection is not evidence about the
 doctor; the per-turn `routing` keeps the method, model and fallback for review.
+
+These errors were then repaired in Founder-only variant B and selector `selector/2`, and the
+two models were compared on frozen tuning and held-out sets. Both scored 43/52. On held-out, qwen
+was 16/20 and gemma 14/20; qwen stays the default. Per-question results and remaining errors are in
+`docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
+
+### Founder-only access
+
+The model and Case 001 variant B are decided on the server per request. Only user ids listed in
+`CLINICAL_DISCOVERY_FOUNDER_USER_IDS` (comma-separated; unset means nobody) start on variant B and
+receive model selections. Everyone else starts on variant A with authored rules, exactly as before. Their
+turns record `local_model_not_enabled` when a model is configured, and `local_model_not_configured`
+otherwise. An attempt keeps the pack it started on. If the Founder is later removed, an attempt already on
+variant B keeps resolving, with rules only.
 
 ### Gateway
 
@@ -213,7 +227,11 @@ unreachable, every turn falls back to authored rules and records the reason.
 ### Worker → gateway → model check
 
 `GET /api/bty/clinical-pilot?view=model-check` is restricted to platform
-admins. It runs four fixed Case 001 requests through the production router
+admins on the Founder allowlist. It is a **connection diagnostic** (`scope:
+"connection-diagnostic"`, `accuracyEvaluated: false`). `connection` is `reached`
+when at least one request got a valid model answer, and `not_reached` or
+`not_configured` otherwise. Reaching the model says nothing about selection
+accuracy, which is measured only by the probe sets. It runs four fixed Case 001 requests through the production router
 inside the Worker, including one follow-up and one off-topic request. It
 returns the configuration presence (host, model, whether a key is set) and,
 for each request, the latency, method, fallback and fact IDs. It never returns
@@ -223,7 +241,8 @@ patient answers or the key, and creates no attempt or database row.
 
 `discovery-2026-10-23.1-variant-b` is appended after the original pack and
 variant A, which both remain registered unchanged. Attempts frozen on them keep
-resolving by `packVersion`, and new Case 001 attempts start on variant B. It
+resolving by `packVersion`. Only Founder-allowlisted users start new Case 001 attempts on variant B.
+Every reply that uses an addition shows "Fictional practice detail · awaiting Dr. Chi's review". It
 adds 25 history and examination facts and replaces the location answer; each
 of these 26 facts is labeled `fictional-extension-awaiting-review`. Cone-beam
 CT, dye staining and crack depth deliberately stay unavailable case

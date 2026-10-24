@@ -111,12 +111,15 @@ describe("authored question discovery", () => {
   });
 });
 
+// The service enables the model per user; these tests exercise the selector itself.
+const MODEL = { allowModel: true };
+
 describe("optional local intent selection", () => {
   it("lets the model recognize an unsupplied history topic without manufacturing a fact ID", async () => {
     configureModel();
     const incomplete = { ...patient, facts: patient.facts.filter(fact => fact.id !== "cold-history") };
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["intent:cold-history"], confidence: 0.95 }));
-    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", incomplete);
+    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", incomplete, [], MODEL);
     expect(result).toMatchObject({ resolution: "unavailable", responseKind: "case-information", factIds: [], availableFactIds: [],
       recognizedTopicIds: ["cold-history"], unavailableTopicIds: ["cold-history"], routing: { method: "local-model" } });
     const payload = JSON.parse(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]!.body)).messages[1].content);
@@ -130,14 +133,14 @@ describe("optional local intent selection", () => {
     const prior = { id: "prior-endo", channel: "patient" as const, topic: "Prior endodontic treatment", patterns: ["root canal"], answer: "Prior root canal treatment is recorded." };
     const p = { ...patient, facts: [...patient.facts, prior] };
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: [prior.id], confidence: 0.95 }));
-    const result = await respondToDiscovery("Any prior endotherapy?", "exam", p);
+    const result = await respondToDiscovery("Any prior endotherapy?", "exam", p, [], MODEL);
     expect(result).toMatchObject({ channel: "exam", responseKind: "history", text: prior.answer, factIds: [prior.id], routing: { method: "local-model" } });
   });
 
   it("does not accept arbitrary virtual intents from a provider", async () => {
     configureModel();
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["intent:hidden-diagnosis"], confidence: 0.99 }));
-    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient);
+    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
     expect(result.factIds).toEqual([]);
     expect(result.routing.fallback).toBe("local_model_invalid_selection");
   });
@@ -145,7 +148,7 @@ describe("optional local intent selection", () => {
     configureModel();
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "explicit-local-key");
     const mock = vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95 }));
-    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient);
+    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
     expect(result).toMatchObject({ factIds: ["cold-history"], text: patient.facts[0].answer, routing: { method: "local-model" } });
     expect(mock.mock.calls[0][0]).toBe("http://127.0.0.1:11434/v1/chat/completions");
     const init = mock.mock.calls[0][1]!;
@@ -162,7 +165,7 @@ describe("optional local intent selection", () => {
   it("does not let a valid but unrelated model topic replace an explicit authored match", async () => {
     configureModel();
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["bite-history"], confidence: 0.99 }));
-    const result = await respondToDiscovery("Does cold bother you?", "patient", patient);
+    const result = await respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL);
     expect(result.factIds).toEqual(["cold-history"]);
     expect(result.text).not.toContain(patient.facts[1].answer);
     expect(result.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_selection_mismatch" });
@@ -171,7 +174,7 @@ describe("optional local intent selection", () => {
   it.each([{ ids: ["invented-fact"] }, { ids: ["cold-test"] }, { ids: ["cold-history", "cold-history"] }, { ids: ["a", "b", "c", "d", "e"] }])("rejects invalid, cross-channel, duplicate, or oversized model selections: $ids", async ({ ids }) => {
     configureModel();
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ids, confidence: 0.99 }));
-    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient);
+    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
     expect(result.factIds).toEqual([]);
     expect(result.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_invalid_selection" });
   });
@@ -179,7 +182,7 @@ describe("optional local intent selection", () => {
   it("ignores generated prose instead of presenting it as patient truth", async () => {
     configureModel();
     vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95, answer: "Invented patient history." }));
-    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient);
+    const result = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient, [], MODEL);
     expect(result.factIds).toEqual([]);
     expect(result.text).not.toContain("Invented patient history");
     expect(result.routing.fallback).toBe("local_model_invalid_selection");
@@ -188,15 +191,15 @@ describe("optional local intent selection", () => {
   it("uses authored-rule fallback for low confidence and provider errors", async () => {
     configureModel();
     vi.mocked(fetch).mockResolvedValueOnce(completion({ selectedFactIds: ["cold-history"], confidence: 0.2 }));
-    const uncertain = await respondToDiscovery("Does cold bother you?", "patient", patient);
+    const uncertain = await respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL);
     expect(uncertain.factIds).toEqual(["cold-history"]);
     expect(uncertain.routing.fallback).toBe("local_model_low_confidence");
     vi.mocked(fetch).mockResolvedValueOnce(new Response("provider failure", { status: 503 }));
-    const failed = await respondToDiscovery("Does cold bother you?", "patient", patient);
+    const failed = await respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL);
     expect(failed.factIds).toEqual(["cold-history"]);
     expect(failed.routing.fallback).toBe("local_model_http_error");
     vi.mocked(fetch).mockRejectedValueOnce(new Error("private endpoint detail"));
-    const disconnected = await respondToDiscovery("Any allergies?", "patient", patient);
+    const disconnected = await respondToDiscovery("Any allergies?", "patient", patient, [], MODEL);
     expect(disconnected.factIds).toEqual([]);
     expect(disconnected.routing.fallback).toBe("local_model_unavailable");
     expect(disconnected.text).not.toContain("private endpoint detail");
@@ -205,7 +208,7 @@ describe("optional local intent selection", () => {
   it("bounds a hanging provider and falls back without fabricating an answer", async () => {
     configureModel(); vi.useFakeTimers();
     vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
-    const pending = respondToDiscovery("Does cold bother you?", "patient", patient);
+    const pending = respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL);
     await vi.advanceTimersByTimeAsync(4001);
     const result = await pending;
     expect(result.factIds).toEqual(["cold-history"]);
@@ -217,10 +220,10 @@ describe("optional local intent selection", () => {
   it("rejects malformed provider JSON and unsafe endpoint configuration", async () => {
     configureModel();
     vi.mocked(fetch).mockResolvedValue(new Response("not json"));
-    expect((await respondToDiscovery("Any allergies?", "patient", patient)).routing.fallback).toBe("local_model_invalid_response");
+    expect((await respondToDiscovery("Any allergies?", "patient", patient, [], MODEL)).routing.fallback).toBe("local_model_invalid_response");
     vi.mocked(fetch).mockClear();
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://user:password@example.test/v1");
-    expect((await respondToDiscovery("Does cold bother you?", "patient", patient)).routing.fallback).toBe("local_model_invalid_configuration");
+    expect((await respondToDiscovery("Does cold bother you?", "patient", patient, [], MODEL)).routing.fallback).toBe("local_model_invalid_configuration");
     expect(fetch).not.toHaveBeenCalled();
   });
 });
@@ -231,11 +234,20 @@ it("uses prior requested topics for a local-model follow-up without sending prio
   vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95 }));
   const r = await respondToDiscovery("How long does it last?", "patient", patient, [
     { question: "Do cold drinks bother you?", channel: "patient", factIds: ["cold-history"] },
-  ]);
+  ], MODEL);
   expect(r.factIds).toEqual(["cold-history"]);
   const call = vi.mocked(fetch).mock.calls[0];
   const body = String(call[1]?.body);
   expect(body).toContain("Do cold drinks bother you?");
   expect(body).not.toContain(patient.facts[0].answer);
   expect(body).not.toContain("Fixture test finding");
+});
+
+it("keeps authored rules for a caller that has not enabled the model, even when one is configured", async () => {
+  configureModel();
+  vi.mocked(fetch).mockResolvedValue(completion({ selectedFactIds: ["cold-history"], confidence: 0.95 }));
+  const r = await respondToDiscovery("Do frosty beverages trigger it?", "patient", patient);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(r.routing).toMatchObject({ method: "authored-rules", fallback: "local_model_not_enabled" });
+  expect(r.factIds).toEqual([]);
 });
