@@ -28,10 +28,11 @@ const fail = (e: unknown) => {
 };
 export async function GET(r: NextRequest) {
   const view = r.nextUrl.searchParams.get("view");
-  const a = view === "review" || view === "model-check" ? await requirePlatformAdmin(r) : await requireUser(r);
+  const a = view === "review" ? await requirePlatformAdmin(r) : await requireUser(r);
   if (!a.ok) return reply({ ok: false, error: "ACCESS_REQUIRED" }, a.status);
   if (process.env.CLINICAL_AUTHOR_PILOT_ENABLED !== "1") return reply({ ok: false, error: "PILOT_NOT_ENABLED" }, 503);
-  // Read-only connection diagnostic, Founder only; it creates no attempt and never touches the database.
+  // Founder access is sufficient for this connection diagnostic; response review remains admin-only.
+  // It creates no attempt and returns before initializing the application database.
   if (view === "model-check") {
     if (!isClinicalFounder(a.user.id)) return reply({ ok: false, error: "ACCESS_REQUIRED" }, 403);
     return reply({ ok: true, check: await checkDiscoveryModel() });

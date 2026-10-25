@@ -230,8 +230,10 @@ unreachable, every turn falls back to authored rules and records the reason.
 
 ### Worker → gateway → model check
 
-`GET /api/bty/clinical-pilot?view=model-check` is restricted to platform
-admins on the Founder allowlist. It is a **connection diagnostic** (`scope:
+`GET /api/bty/clinical-pilot?view=model-check` requires an authenticated user
+on the exact Founder user-ID allowlist. A Teams Founder does not need a separate
+Google login or a platform-admin grant for this check. Response review and export
+retain their platform-admin restriction. It is a **connection diagnostic** (`scope:
 "connection-diagnostic"`, `accuracyEvaluated: false`). `connection` is `reached`
 when at least one request got a valid model answer, and `not_reached` or
 `not_configured` otherwise. Reaching the model says nothing about selection

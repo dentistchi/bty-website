@@ -1,5 +1,22 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-FOUNDER-DIAGNOSTIC — 2026-10-25
+
+The authenticated Teams Founder is not a platform admin. Permit the connection-only
+`GET ?view=model-check` through `requireUser` followed by the exact server-side
+Founder user-ID allowlist. Keep response review/export behind `requirePlatformAdmin`.
+Do not grant global admin authority or require a separate Google identity to run
+this diagnostic. Preserve the pilot flag, private/no-store response, fixed probes,
+redacted output, and return before initializing the application database.
+
+Reproduction: five diagnostic assertions fail on the unmodified route with the
+new non-admin-Founder expectations (24 pass). After the auth-selector repair,
+25 focused files / 348 tests pass; TypeScript exits 0. These checks use mocked
+auth, database and model transports, with no service credentials or live model.
+The full unrelated suite and browser UI tests are not rerun for this API-only
+change. No production source publication, learner record, migration, seed,
+identity-link mutation or admin grant is part of local verification.
+
 ## CLINICAL-DISCOVERY-CONTEXT-AND-IMAGING — 2026-10-24
 
 Follow-up to the operator-reported live check of PR #79 `2ce05538`. Record that
