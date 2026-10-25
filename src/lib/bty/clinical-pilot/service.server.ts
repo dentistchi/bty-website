@@ -4,7 +4,8 @@ import catalog from "@/domain/clinical-pilot/catalog.json";
 import { applyPilotAction, hasRequest, PILOT_SCHEMA, publicCase, referenceFor,
   type AuthorCase, type PilotAction, type PilotTrace, type PilotCase } from "@/domain/clinical-pilot/pilot";
 import { applyDiscoveryAction, discoveryTurns, isDiscoveryTrace, startDiscoveryPilot } from "@/domain/clinical-pilot/discovery";
-import { discoveryPatients } from "./discovery-cases.server";
+import { discoveryPatients, founderPreviewPackVersions } from "./discovery-cases.server";
+import { isClinicalFounder } from "./founder-preview.server";
 import { respondToDiscovery } from "./discovery-router.server";
 
 // Append versions; never replace an entry referenced by an in-flight or historical trace.
@@ -19,8 +20,11 @@ export function requireCase(id: string, version?: string) {
   if (!c || !c.available) throw Error("INVALID_CASE");
   return c;
 }
-function patientFor(id: string, version?: string) {
-  const p = [...discoveryPatients].reverse().find(p => p.caseId === id && (!version || p.version === version));
+/** A frozen attempt resolves its own pack by version. A new attempt takes the latest pack open to this
+ * user: Founder-preview packs are skipped for everyone not on the allowlist. */
+function patientFor(id: string, version?: string, founder = false) {
+  const p = [...discoveryPatients].reverse().find(p => p.caseId === id && (version ? p.version === version
+    : founder || !founderPreviewPackVersions.has(`${p.caseId}@${p.version}`)));
   if (!p) throw Error("INVALID_CASE");
   return p;
 }
@@ -65,7 +69,7 @@ export async function createPilot(db: SupabaseClient, userId: string, input: { t
   const prior = await priorSubmission(db, userId, c.caseId, input.traceId);
   const priorContext = await priorWrittenContext(db, userId, c.caseId, input.traceId);
   const at = new Date().toISOString();
-  const patient = patientFor(c.caseId);
+  const patient = patientFor(c.caseId, undefined, isClinicalFounder(userId));
   const snapshot = publicDiscoveryCase(c);
   const t = startDiscoveryPilot(input.traceId, snapshot, hash({ case: publicCase(c), patient }), input.requestId, at, prior, patient.version, priorContext);
   if (patient.facts.some(f => f.provenance)) {
@@ -103,7 +107,8 @@ export async function mutatePilot(db: SupabaseClient, userId: string, traceId: s
     const priorContext = action.operation === "conclude" && await priorWrittenContext(db, userId, c.caseId, traceId);
     const current = priorContext ? { ...previous, discovery: { ...previous.discovery!, priorCaseContextExposure: "prior-written-case" as const } } : previous;
     const reply = action.operation === "message" ? await respondToDiscovery(action.text, action.channel, patient,
-      discoveryTurns(previous).slice(-4).map(turn => ({ question: turn.question, channel: turn.channel, factIds: turn.reply.factIds }))) : undefined;
+      discoveryTurns(previous).slice(-4).map(turn => ({ question: turn.question, channel: turn.channel, factIds: turn.reply.factIds })),
+      { allowModel: isClinicalFounder(userId) }) : undefined;
     const reference = referenceFor(c);
     if (action.operation === "conclude") reference.interviewContext = { packVersion: patient.version,
       facts: patient.facts.map(f => ({ factId: f.id, channel: f.channel, label: f.topic, answer: f.answer, available: f.available !== false,

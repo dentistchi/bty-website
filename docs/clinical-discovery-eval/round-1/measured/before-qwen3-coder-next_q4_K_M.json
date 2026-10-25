@@ -1,0 +1,1166 @@
+{
+  "summary": {
+    "model": "qwen3-coder-next:q4_K_M",
+    "pack": "discovery-2026-10-23.1-variant-b",
+    "suite": "all",
+    "tuning": {
+      "total": 32,
+      "correct": 21,
+      "withExtraDisclosure": 11,
+      "extraFacts": 13,
+      "withMissing": 8,
+      "localModel": 25,
+      "fallbacks": 6,
+      "maxMs": 1079
+    },
+    "heldOut": {
+      "total": 20,
+      "correct": 12,
+      "withExtraDisclosure": 8,
+      "extraFacts": 13,
+      "withMissing": 3,
+      "localModel": 14,
+      "fallbacks": 6,
+      "maxMs": 1052
+    }
+  },
+  "rows": [
+    {
+      "suite": "tuning",
+      "question": "Does anything you drink make it twinge?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold",
+        "heat"
+      ],
+      "rules": [],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "cold",
+        "heat"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 705,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Does it ever ache while you're sleeping?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "night"
+      ],
+      "rules": [],
+      "actual": [
+        "night"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 375,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Does it act up all by itself, even when you're not eating?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "spontaneous"
+      ],
+      "rules": [
+        "chewing"
+      ],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "spontaneous"
+      ],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 370,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Are you on any drugs your doctor gave you?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "medications"
+      ],
+      "rules": [],
+      "actual": [
+        "medications"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 350,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Any illnesses I should know about?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "medical-history"
+      ],
+      "rules": [],
+      "actual": [
+        "medical-history",
+        "medications",
+        "allergies"
+      ],
+      "extra": [
+        "medications",
+        "allergies"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 602,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Has anyone ever said you gnash your teeth?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "bruxism"
+      ],
+      "rules": [],
+      "actual": [
+        "bruxism"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 287,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Let me knock on the tooth with the mirror handle.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "percussion"
+      ],
+      "rules": [],
+      "actual": [
+        "percussion"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 355,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Shine a light through the tooth.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "transillumination"
+      ],
+      "rules": [],
+      "actual": [
+        "transillumination"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 351,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Measure the gum depth around it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "probing"
+      ],
+      "rules": [],
+      "actual": [
+        "probing"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 342,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Take a picture of the root tip.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "pa"
+      ],
+      "rules": [],
+      "actual": [
+        "pa"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 341,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Put some ice on the tooth and see how it reacts.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "cold-test"
+      ],
+      "rules": [],
+      "actual": [
+        "cold-test"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 354,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "How long ago was it put in?",
+      "channel": "patient",
+      "after": [
+        "Is there a filling in that tooth?"
+      ],
+      "expected": [
+        "restoration-age"
+      ],
+      "rules": [],
+      "actual": [
+        "restoration-age"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 365,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Does it hang around afterwards?",
+      "channel": "patient",
+      "after": [
+        "Does cold bother it?"
+      ],
+      "expected": [
+        "cold"
+      ],
+      "rules": [],
+      "actual": [
+        "spontaneous"
+      ],
+      "extra": [
+        "spontaneous"
+      ],
+      "missing": [
+        "cold"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 365,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "What about at night?",
+      "channel": "patient",
+      "after": [
+        "Does it hurt when you chew?"
+      ],
+      "expected": [
+        "night"
+      ],
+      "rules": [],
+      "actual": [
+        "night"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 340,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "How bad is it, from one to ten?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "pain-severity"
+      ],
+      "rules": [
+        "pain-severity"
+      ],
+      "actual": [
+        "pain-severity"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 288,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Have you changed how you eat because of it?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing"
+      ],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "chewing-avoidance"
+      ],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 381,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Do you light up at all?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "tobacco"
+      ],
+      "rules": [],
+      "actual": [
+        "spontaneous"
+      ],
+      "extra": [
+        "spontaneous"
+      ],
+      "missing": [
+        "tobacco"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 288,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "How often do you get your teeth cleaned?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "last-visit"
+      ],
+      "rules": [],
+      "actual": [
+        "last-visit"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 351,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Check whether it wobbles.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "mobility"
+      ],
+      "rules": [],
+      "actual": [
+        "mobility"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 348,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Use the pulp tester on it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "ept"
+      ],
+      "rules": [],
+      "actual": [
+        "ept"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 329,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Press along the gum beside the roots.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "palpation"
+      ],
+      "rules": [],
+      "actual": [
+        "palpation"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 359,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Compare with the same tooth on the other side.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [
+        "restoration",
+        "adjacent-teeth"
+      ],
+      "extra": [
+        "restoration"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 492,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Can we get a 3-D scan of the area?",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "cbct"
+      ],
+      "rules": [],
+      "actual": [
+        "cbct"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "unavailable",
+      "ms": 356,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "What is their blood pressure?",
+      "channel": "exam",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 171,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "What's the weather like?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 170,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Which test should I do next?",
+      "channel": "exam",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": null,
+      "resolution": "clarify",
+      "ms": 0,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Do drinks bother it at all?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold",
+        "heat"
+      ],
+      "rules": [],
+      "actual": [
+        "chewing",
+        "cold",
+        "heat",
+        "sweets"
+      ],
+      "extra": [
+        "chewing",
+        "sweets"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 1079,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Do you have any diseases?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "medical-history"
+      ],
+      "rules": [],
+      "actual": [
+        "medical-history"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 761,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Does the feeling stay for a while?",
+      "channel": "patient",
+      "after": [
+        "Is it sensitive to cold?"
+      ],
+      "expected": [
+        "cold"
+      ],
+      "rules": [],
+      "actual": [
+        "symptom-duration"
+      ],
+      "extra": [
+        "symptom-duration"
+      ],
+      "missing": [
+        "cold"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 786,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Check the tooth on the opposite side too.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [
+        "adjacent-teeth"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 794,
+      "correct": true
+    },
+    {
+      "suite": "tuning",
+      "question": "Does it hurt for no reason, without biting?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "spontaneous"
+      ],
+      "rules": [
+        "chewing"
+      ],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "spontaneous"
+      ],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 786,
+      "correct": false
+    },
+    {
+      "suite": "tuning",
+      "question": "Has this changed the way you chew?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing"
+      ],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "chewing-avoidance"
+      ],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 927,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Is it sensitive to iced water?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold"
+      ],
+      "rules": [
+        "cold"
+      ],
+      "actual": [
+        "cold"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 731,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Do hot or cold drinks set it off?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "cold",
+        "heat"
+      ],
+      "rules": [
+        "cold",
+        "heat"
+      ],
+      "actual": [
+        "cold",
+        "heat"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 859,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Does a sip of coffee bother it?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "heat"
+      ],
+      "rules": [],
+      "actual": [
+        "cold"
+      ],
+      "extra": [
+        "cold"
+      ],
+      "missing": [
+        "heat"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 738,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Have you been diagnosed with anything?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "medical-history"
+      ],
+      "rules": [],
+      "actual": [
+        "medical-history"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 760,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Do you chew tobacco?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "tobacco"
+      ],
+      "rules": [
+        "chewing",
+        "tobacco"
+      ],
+      "actual": [
+        "chewing",
+        "tobacco"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 755,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Do you avoid eating on that side?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing",
+        "chewing-avoidance"
+      ],
+      "actual": [
+        "chewing",
+        "chewing-avoidance"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_selection_mismatch",
+      "resolution": "answered",
+      "ms": 810,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Is the pain there when you're just sitting still?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "spontaneous"
+      ],
+      "rules": [],
+      "actual": [
+        "spontaneous"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 789,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Do you favour one side when chewing now?",
+      "channel": "patient",
+      "after": [],
+      "expected": [
+        "chewing-avoidance"
+      ],
+      "rules": [
+        "chewing"
+      ],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "chewing-avoidance"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 770,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Check the teeth beside it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [
+        "adjacent-teeth"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 800,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Test the opposite molar as a control.",
+      "channel": "exam",
+      "after": [],
+      "expected": [
+        "adjacent-teeth"
+      ],
+      "rules": [],
+      "actual": [
+        "adjacent-teeth"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 780,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Check around its edges.",
+      "channel": "exam",
+      "after": [
+        "Is there a filling in that tooth?"
+      ],
+      "expected": [
+        "margins"
+      ],
+      "rules": [],
+      "actual": [
+        "restoration",
+        "margins"
+      ],
+      "extra": [
+        "restoration"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 894,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Does it linger?",
+      "channel": "patient",
+      "after": [
+        "Does cold bother it?"
+      ],
+      "expected": [
+        "cold"
+      ],
+      "rules": [],
+      "actual": [
+        "chewing"
+      ],
+      "extra": [
+        "chewing"
+      ],
+      "missing": [
+        "cold"
+      ],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 773,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "And hot ones?",
+      "channel": "patient",
+      "after": [
+        "Do cold drinks bother it?"
+      ],
+      "expected": [
+        "heat"
+      ],
+      "rules": [
+        "heat"
+      ],
+      "actual": [
+        "heat"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 773,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "When did it start this time?",
+      "channel": "patient",
+      "after": [
+        "Have you had this before?"
+      ],
+      "expected": [
+        "symptom-duration"
+      ],
+      "rules": [
+        "symptom-duration"
+      ],
+      "actual": [
+        "symptom-duration"
+      ],
+      "extra": [],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 804,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Does it bother you?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [
+        "chewing",
+        "pain-severity",
+        "release-pain"
+      ],
+      "extra": [
+        "chewing",
+        "pain-severity",
+        "release-pain"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 1052,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "Anything else?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 602,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Check it.",
+      "channel": "exam",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [
+        "restoration",
+        "percussion",
+        "pa",
+        "bite-test"
+      ],
+      "extra": [
+        "restoration",
+        "percussion",
+        "pa",
+        "bite-test"
+      ],
+      "missing": [],
+      "method": "local-model",
+      "fallback": null,
+      "resolution": "answered",
+      "ms": 1008,
+      "correct": false
+    },
+    {
+      "suite": "held-out",
+      "question": "How about the other one?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 602,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "Do you have pets?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 603,
+      "correct": true
+    },
+    {
+      "suite": "held-out",
+      "question": "What do you do for work?",
+      "channel": "patient",
+      "after": [],
+      "expected": [],
+      "rules": [],
+      "actual": [],
+      "extra": [],
+      "missing": [],
+      "method": "authored-rules",
+      "fallback": "local_model_low_confidence",
+      "resolution": "clarify",
+      "ms": 599,
+      "correct": true
+    }
+  ]
+}

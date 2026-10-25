@@ -1,5 +1,92 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-CONTEXT-AND-IMAGING — 2026-10-24
+
+Follow-up to the operator-reported live check of PR #79 `2ce05538`. Record that
+report with provenance; its private Mac scripts/results have not been read here.
+Repair the remaining apex-to-CBCT and cold-persistence-to-severity paths without
+changing selector/3 or inventing patient facts. In Founder-only Case 001 variant B,
+unspecified apical film/image uses the explicit PA convention; CBCT/3-D stays
+separate. A pure persistence follow-up may repeat only the immediately prior,
+single available cold-history fact, with an authored-context version marker.
+Other contexts keep normal interpretation; original packs/variant A stay unchanged.
+
+Router version: `discovery-intent/v4`. No new model-quality score, live model run,
+tunnel, Worker secret, database write, merge or deployment is part of this repair.
+See `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md` for the reported live check, regression
+evidence and bounded-context limitations.
+
+Observed local checks: TypeScript exit 0; 25 focused files / 342 tests passed.
+The complete final full run has 46 files / 156 tests failing, exactly the same
+normalized failed assertions as the preceding observed `2ce05538` run; the 28
+new tests pass. The earlier baseline was reused rather than freshly rerun.
+Ten isolated browser tests and a fresh Cloudflare build passed. Artifact guard:
+3,621 JS files, zero unsafe matches, 2/2 safe implementations. Sample marker scan:
+81 markers, zero matches in 739 public text assets; this is not exhaustive proof.
+
+## CLINICAL-DISCOVERY-PREVIEW-BOUNDARIES — 2026-10-24
+
+Follow-up to PR #79 round 2 (`e88bead9`). Repair the known variant-B authored
+location, restoration and chewing-side over-matches, including mixed questions.
+Keep base/variant A matching and all patient answers, availability and provenance
+unchanged. Record the changed interpreter as `discovery-intent/v3`; selector/3
+and its measured results are not new model-quality evidence.
+
+Bound the loopback gateway's upstream response while reading UTF-8 bytes, validate
+positive integer token budgets, bound request-body receipt and cancel upstream work
+when its client disconnects. Importing transport helpers must not start the model
+or listener. Verify these boundaries without sockets or external model calls.
+
+The exposed held-out-2 failures now inform regression repair. Preserve the original
+measurement files and scores as historical results; do not call this set unseen or
+claim a new live-model score. Contended runs remain evidence of shared-Mac runtime
+latency, even when excluded from an isolated selector comparison. Do not require a
+new benchmark cycle merely to repair a known bug. Founder-only trial is the next
+product stage after operator review and the separately authorized connection work.
+
+No tunnel, Worker secret, merge, deployment or learner record write is authorized
+by this local repair.
+
+Observed local checks: actual Node-20 install; types exit 0; 314 focused tests and
+10 isolated browser tests passed. Full comparison against unmodified `e88bead9`:
+49 files / 159 tests failing before, 46 / 156 after, no added failed assertions;
+three unchanged UI failures passed only in the repair run. The full suite is not
+green and no live local-model score has been remeasured.
+Fresh Cloudflare build passed with loopback placeholders; the 81 sampled private
+answer markers had zero matches in 739 public text assets (limited scan).
+
+## CLINICAL-DISCOVERY-LOCAL-MODEL — real local model behind an authenticated gateway
+
+Base: `inner-main` `7a461f11`. Connect Clinical Discovery's existing model
+adapter to a real Mac-local Ollama model. Choose the model by measured latency
+under the adapter's 4-second limit, not by size. Verify paraphrases and
+follow-ups through `discovery-router.server.ts` with no database writes. Put an
+authenticated HTTPS-ready gateway in front of the model and add an admin-only,
+write-free Worker check. Add a fuller Case 001 fictional variant for author
+review without changing existing packs or attempts.
+
+Measured: `qwen3-coder-next:q4_K_M` took 0.6–1.1 s through the router and
+gateway. On Case 001 variant B it made 21 local-model selections in 26
+requests, 19 of the 26 matched the expected topics, and every selection was
+under the limit. Wrong selections and fallbacks are simulator results, never
+the doctor's. See `docs/CLINICAL_DISCOVERY_V1.md`.
+
+Repair (same branch, PR #79): fixed the five reported wrong selections and the two authored
+over-matches in Founder-only variant B and selector `selector/2`. Compared qwen and gemma on
+frozen tuning (32) and held-out (20) sets. Both scored 43/52; held-out was qwen 16/20 and gemma 14/20.
+Server-side `CLINICAL_DISCOVERY_FOUNDER_USER_IDS` limits the model and variant B to the Founder.
+Everyone else keeps variant A and authored rules. model-check is a connection diagnostic, kept separate
+from accuracy. See `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md`.
+
+Round 2 (same PR): corrected the round-1 record (held-out was run before and after its repair; sweets
+accepted for drinks, cold for coffee; reply text must answer the question), froze held-out-2 in
+`f6e6f3e2` before repairing, then `selector/3` grounded selections, chewing-tobacco and chewing-side
+over-matches and three fictional answers. Clean run (0 s of other-client load): held-out-2 qwen 19/25,
+gemma 20/25; two earlier runs were invalidated by another local Ollama client and are preserved.
+
+Not done here: an HTTPS tunnel publishing the gateway, Worker secrets, merge and
+deploy. Each needs explicit authorization.
+
 ## CLINICAL-DISCOVERY-SHORT-QUESTIONS — valid questions and missing context
 
 The live Case 003 screenshot shows `Root canal done?` in Exam mode and
