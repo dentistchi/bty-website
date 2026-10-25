@@ -8,13 +8,15 @@ import { discoveryTurns, initialAssessment } from "@/domain/clinical-pilot/disco
 // This double executes the real route, service, domain transitions and authored router.
 // It has no remote connection. Auth and the database transport are replaced at the boundary.
 const state = vi.hoisted(() => ({ user: "owner" as string | null, admin: false, unavailable: false,
-  failWrite: false, race: false, rows: [] as Record<string, any>[] }));
+  failWrite: false, race: false, dbCalls: 0, rows: [] as Record<string, any>[] }));
 vi.mock("@/lib/authz", () => ({
   requireUser: async () => state.user ? { ok: true, user: { id: state.user } } : { ok: false, status: 401 },
   requirePlatformAdmin: async () => state.user && state.admin ? { ok: true, user: { id: state.user } } : { ok: false, status: state.user ? 403 : 401 },
   isActivePlatformAdmin: async () => state.admin,
 }));
-vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => state.unavailable ? null : { from: () => {
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => {
+  state.dbCalls++;
+  return state.unavailable ? null : { from: () => {
   let mode = "read", values: Record<string, any> = {}, max = Infinity;
   let sort: { key: string; ascending: boolean } | undefined;
   const filters: ((r: Record<string, any>) => boolean)[] = [];
@@ -51,7 +53,8 @@ vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => state.unavailab
     then: (resolve: (x: unknown) => unknown) => Promise.resolve(execute()).then(resolve),
   };
   return q;
-} } }));
+  } };
+} }));
 
 const c = catalog[0] as AuthorCase;
 const id = "11111111-1111-4111-8111-111111111111";
@@ -78,7 +81,7 @@ beforeEach(() => {
   vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "");
   vi.stubEnv("CLINICAL_DISCOVERY_LLM_KEY", "");
   vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "");
-  state.user = "owner"; state.admin = false; state.unavailable = false; state.failWrite = false; state.race = false; state.rows = [];
+  state.user = "owner"; state.admin = false; state.unavailable = false; state.failWrite = false; state.race = false; state.dbCalls = 0; state.rows = [];
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -417,29 +420,66 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
   const check = () => get("?view=model-check");
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  it("requires a platform admin who is also on the Founder allowlist", async () => {
-    expect((await check()).status).toBe(403);
-    state.user = null;
-    expect((await check()).status).toBe(401);
-    state.user = "owner"; state.admin = true;
-    expect((await check()).status).toBe(403);
+  it("lets an authenticated non-admin Founder check the model without granting response review or initializing the app database", async () => {
     vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
-    expect((await check()).status).toBe(200);
+    state.unavailable = true;
+    const response = await check();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect((await response.json()).check.connection).toBe("not_configured");
+    expect((await get("?view=review")).status).toBe(403);
+    expect(state.dbCalls).toBe(0);
+    expect(state.rows).toEqual([]);
+  });
+
+  it.each([
+    { user: null, admin: false, founders: "owner", status: 401 },
+    { user: "owner", admin: false, founders: "", status: 403 },
+    { user: "owner", admin: false, founders: "other", status: 403 },
+    { user: "owner", admin: true, founders: "", status: 403 },
+    { user: "owner", admin: true, founders: "other", status: 403 },
+  ])("denies model access before inference or app database access: $user, admin=$admin, founders=$founders", async ({ user, admin, founders, status }) => {
+    state.user = user; state.admin = admin;
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", founders);
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const response = await check();
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ ok: false, error: "ACCESS_REQUIRED" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(state.dbCalls).toBe(0);
+    expect(state.rows).toEqual([]);
+  });
+
+  it("keeps the pilot flag gate for a non-admin Founder without inference or app database access", async () => {
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+    vi.stubEnv("CLINICAL_AUTHOR_PILOT_ENABLED", "0");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
+    vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const response = await check();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, error: "PILOT_NOT_ENABLED" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(state.dbCalls).toBe(0);
+    expect(state.rows).toEqual([]);
   });
 
   it("reports an unconfigured model as not configured and writes nothing", async () => {
-    state.admin = true;
     vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
     const body = await (await check()).json();
     expect(body.check).toMatchObject({ scope: "connection-diagnostic", accuracyEvaluated: false, connection: "not_configured",
       configured: false, host: null, model: null, keyConfigured: false, validModelAnswers: 0 });
     expect(body.check.pack).toMatch(/-variant-b$/);
     for (const r of body.check.results) expect(r).toMatchObject({ method: "authored-rules", fallback: "local_model_not_configured" });
+    expect(state.dbCalls).toBe(0);
     expect(state.rows).toEqual([]);
   });
 
   it("reaches the configured model with the key, returns fact IDs only and writes nothing", async () => {
-    state.admin = true;
     vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
@@ -455,18 +495,18 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
       return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ selectedFactIds: ids, evidence: ids.map(() => evidence), confidence: 0.95 }) } }] }));
     }));
     const body = await (await check()).json();
-    expect(calls.length).toBeGreaterThan(0);
+    expect(calls).toHaveLength(5);
     expect(calls.every(c => c.url === "https://gateway.test/v1/chat/completions" && c.auth === "Bearer probe-secret")).toBe(true);
     expect(body.check).toMatchObject({ connection: "reached", accuracyEvaluated: false, validModelAnswers: 4, host: "gateway.test", keyConfigured: true });
     expect(body.check.results.map((r: { factIds: string[] }) => r.factIds)).toEqual([["ept"], ["medications"], ["restoration-age"], []]);
     const text = JSON.stringify(body);
     expect(text).not.toContain("probe-secret");
     expect(text).not.toContain("electric pulp testing within the range");
+    expect(state.dbCalls).toBe(0);
     expect(state.rows).toEqual([]);
   });
 
   it("an unreachable gateway is not_reached, never a doctor's result", async () => {
-    state.admin = true;
     vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_BASE_URL", "https://gateway.test/v1");
     vi.stubEnv("CLINICAL_DISCOVERY_LLM_MODEL", "probe-model");
@@ -474,6 +514,7 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
     const body = await (await check()).json();
     expect(body.check).toMatchObject({ connection: "not_reached", validModelAnswers: 0 });
     expect(body.check.results.every((r: { fallback: string }) => r.fallback === "local_model_http_error")).toBe(true);
+    expect(state.dbCalls).toBe(0);
     expect(state.rows).toEqual([]);
   });
 });
