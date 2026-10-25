@@ -1,5 +1,29 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-CONTEXT-AND-IMAGING — 2026-10-24
+
+Follow-up to the operator-reported live check of PR #79 `2ce05538`. Record that
+report with provenance; its private Mac scripts/results have not been read here.
+Repair the remaining apex-to-CBCT and cold-persistence-to-severity paths without
+changing selector/3 or inventing patient facts. In Founder-only Case 001 variant B,
+unspecified apical film/image uses the explicit PA convention; CBCT/3-D stays
+separate. A pure persistence follow-up may repeat only the immediately prior,
+single available cold-history fact, with an authored-context version marker.
+Other contexts keep normal interpretation; original packs/variant A stay unchanged.
+
+Router version: `discovery-intent/v4`. No new model-quality score, live model run,
+tunnel, Worker secret, database write, merge or deployment is part of this repair.
+See `docs/CLINICAL_DISCOVERY_MODEL_EVAL.md` for the reported live check, regression
+evidence and bounded-context limitations.
+
+Observed local checks: TypeScript exit 0; 25 focused files / 342 tests passed.
+The complete final full run has 46 files / 156 tests failing, exactly the same
+normalized failed assertions as the preceding observed `2ce05538` run; the 28
+new tests pass. The earlier baseline was reused rather than freshly rerun.
+Ten isolated browser tests and a fresh Cloudflare build passed. Artifact guard:
+3,621 JS files, zero unsafe matches, 2/2 safe implementations. Sample marker scan:
+81 markers, zero matches in 739 public text assets; this is not exhaustive proof.
+
 ## CLINICAL-DISCOVERY-PREVIEW-BOUNDARIES — 2026-10-24
 
 Follow-up to PR #79 round 2 (`e88bead9`). Repair the known variant-B authored

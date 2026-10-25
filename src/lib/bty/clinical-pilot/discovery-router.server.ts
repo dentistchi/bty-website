@@ -7,7 +7,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v3";
+const ROUTER_VERSION = "discovery-intent/v4";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -105,11 +105,25 @@ function isBroadOpening(text: string) {
   return /^(?:(?:hi|hello|okay|ok)[, ]+)?(?:what brings you (?:in|here|to the office|to see me)(?: today)?|what(?:'s| is) (?:wrong|the problem|bothering you)|tell me (?:what(?:'s| is) wrong|what brings you (?:in|here)|about (?:your problem|the problem|your concern))|how can i help(?: you)?(?: today)?)$/u.test(question);
 }
 
+/** Resolve only a pure persistence follow-up to the immediately preceding cold-history reply.
+ * Repeating this fixed, already-disclosed fact adds no unseen information. Other contexts keep
+ * the ordinary interpreter; this is not a general pronoun resolver or a model selection.
+ */
+function coldPersistenceFollowup(question: string, patient: DiscoveryPatient, context: RequestContext): Fact | undefined {
+  if (patient.caseId !== "drchi-001" || !patient.version.endsWith("-variant-b")) return;
+  const followup = /^(?:(?:and|so)\s+)?(?:how long (?:does|did) (?:it|that|this) last|does (?:it|that|this|the feeling) (?:linger|last|stay|hang around)(?: (?:for a while|afterwards|afterward))?)[?.!\s]*$/iu;
+  if (!followup.test(question)) return;
+  const last = context.at(-1);
+  if (last?.factIds.length !== 1) return;
+  return patient.facts.find(fact => fact.id === last.factIds[0] && fact.id === `${patient.caseId}:cold`
+    && fact.channel === "patient" && fact.available !== false);
+}
+
 function ruleFacts(text: string, channel: DiscoveryChannel, patient: DiscoveryPatient) {
   // Variant B is the unpublished Founder draft. Keep historical packs' matching intact.
   // Independent questions must not negate one another (e.g. tobacco followed by chewing pain).
   const preview = patient.caseId === "drchi-001" && patient.version.endsWith("-variant-b");
-  const clauses = preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa)\b)/iu).filter(clause => clause.trim()) : [text];
+  const clauses = preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:(?:a|an|the)\s+)?(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa|periapical|cone[- ]beam)\b)/iu).filter(clause => clause.trim()) : [text];
   return patient.facts.filter(fact => fact.channel === channel && clauses.some(clause => {
     if (preview) {
       const pain = /\b(?:hurt\w*|pain\w*|ache\w*|sore\w*|tender\w*)\b/iu.test(clause);
@@ -243,6 +257,10 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   const scopedPatient = { ...patient, facts: patient.facts.filter(fact => (!requestedTeeth.length || !fact.toothNumbers
     || fact.toothNumbers.some(number => requestedTeeth.includes(number)))
     && (!endodonticQuestion || anatomyRequested || !/\b(?:panoram(?:ic|a)|alveolar|nerve|third[- ]molar)\b/iu.test(fact.topic))) };
+  const repeated = coldPersistenceFollowup(question, scopedPatient, context);
+  if (repeated) return disclose(channel, [{ id: repeated.id, topic: repeated.topic, channel: repeated.channel, facts: [repeated] }],
+    { method: "authored-rules", version: `${ROUTER_VERSION}+context-persistence/v1` }, scopedPatient,
+    historyIntents.filter(intent => intent.id === "cold-history"));
   // Interpret recognized history before channel-specific keywords. "Root canal done?"
   // must not accidentally match an inferior alveolar canal examination.
   const recognized = [...new Map([question, ...question.split(/[?;.!]+|\b(?:also|and|plus)\b/iu)]

@@ -1,5 +1,63 @@
 # Clinical discovery — local-model selection evaluation (2026-10-23 / 24)
 
+## Operator-reported round-3 live check and bounded follow-up repair
+
+The operator reported a Mac check at `2ce05538`: the worktree fast-forwarded
+without local changes, only the Clinical Discovery gateway was restarted, and
+Ollama/Streamlit PIDs were preserved. The reported 41-second check window had
+no other-client model requests. This is the operator's report, not a model run
+independently observed in this environment. The source script/results remain on
+that Mac as `r3check.ts` / `r3check.json`; they were not attached or read here.
+
+Reported results, regression checks rather than a new benchmark:
+
+- Known location/restoration/chewing-side over-matches passed through the gateway;
+  six existing follow-up checks were correct at about 1.0–1.1 seconds.
+- Two model choices remained wrong: apex imaging selected CBCT and the cold
+  persistence follow-up selected pain severity.
+- Fifteen failure-injection cases (three questions across five transport failure
+  modes) returned exactly the authored-only IDs and text. The separate non-Founder
+  check did not enable model use. The hanging response stopped at four seconds.
+- The reported disconnect probe ended its long Ollama request after about 0.4
+  seconds and the next request succeeded; this is evidence for the gateway's
+  cancellation path, not an answer-accuracy score.
+- No DB write, HTTPS tunnel, Worker secret, merge or deployment was reported.
+
+The follow-up repair uses `discovery-intent/v4` with selector/3 unchanged:
+
+- Case 001 variant B interprets an unspecified film/image of the apex or root
+  tip/end as a PA request. This is an authored simulator convention, not logical
+  certainty about a clinician's intended imaging modality. Explicit CBCT/3-D
+  wording does not imply an additional PA; explicitly requesting both retains both.
+- A pure cold-persistence follow-up can repeat only the immediately preceding
+  single, available patient-history `cold` fact. It does not search older turns,
+  convert cold-test findings into history, or resolve new-subject/mixed requests.
+  The route is `authored-rules` plus `context-persistence/v1`, not a local-model
+  success or fallback. It discloses no previously unseen fact.
+- Other contexts retain the existing interpreter. This is a bounded cold-history
+  repair, not a general pronoun resolver or a guarantee that all model choices
+  are semantically correct. No patient answer or historical pack was changed.
+
+The exact failure paths and boundaries have 28 new regressions; ten assertions
+in the initial 24-case reproduction failed before the repair. The focused scope
+now passes 342 tests. Live inference
+has not been rerun on this follow-up head; historical model scores are unchanged.
+
+Local verification used the existing actual Node-20 installation and unchanged
+lockfile/dependencies from the preceding repair. TypeScript passed. The final full
+run (`vitest run --maxWorkers=2 --minWorkers=1`) had 46 failed files / 156 failed
+tests, 15,577 total, 15,012 passed and 409 skipped. Its exact normalized failed
+file and assertion lists match the already-observed `2ce05538` run (46/156,
+15,549 total). That baseline was reused, not freshly rerun; all 28 new tests pass.
+The full suite remains red. Superseded in-progress runs were interrupted after
+review found imaging-scope edges; only the final complete run is used here.
+Ten isolated public browser tests passed (320/390/1280 px), with global setup and
+the app server disabled. Fresh `npm run cf:build` passed with loopback public
+placeholders and no production credentials. Artifact guard: 3,621 JavaScript
+files, zero unsafe matches, 2/2 safe middleware implementations. In 739 public
+text assets, 81 sampled author/fictional-answer markers had zero matches; this is
+limited sample evidence, not an exhaustive proof of private-information isolation.
+
 ## Round-3 interpretation and transport repair
 
 After the round-2 measurements below, the known held-out-2 authored over-matches

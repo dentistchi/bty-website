@@ -128,8 +128,11 @@ export function case001VariantB(variantA: DiscoveryPatient): DiscoveryPatient {
     allergies: { topic: "Allergies or reactions to drugs or materials" },
     tobacco: { topic: "Smoking (lighting up), vaping, chewing tobacco or other nicotine use" },
     "pain-severity": { topic: "How severe each biting-pain episode is, and how long that pain lasts" },
-    pa: { topic: "Periapical radiograph (2-D x-ray of the tooth and its root tip)" },
-    cbct: { topic: "Cone-beam CT (3-D scan)" },
+    // In this simulator an unspecified film/image of the root end is a PA request.
+    // Explicit CBCT/3-D wording never implies an additional PA; named PA+CBCT still requests both.
+    pa: { topic: "Periapical radiograph (2-D x-ray of the tooth and its root tip)",
+      pattern: R`\bpa\b|^(?![\s\S]*\b(?:cbct|cone[- ]beam|3[- ]?d|three[- ]dimensional)\b)[\s\S]*(?:\b(?:periapical|radiograph|x[- ]?ray)\b|\b(?:image|imaging|film|picture)\b.{0,45}\b(?:apex|root (?:tip|end))\b)` },
+    cbct: { topic: "Cone-beam CT (3-D scan)", pattern: R`\b(?:cbct|cone[- ]beam)\b|\b(?:3[- ]?d|three[- ]dimensional) (?:scan|image|imaging|view)\b` },
     margins: { topic: "Restoration margins (the edges of the filling)" },
     percussion: { topic: "Percussion (tapping on the tooth)" },
     restoration: { topic: "Existing restoration on the tooth (presence and type)",
