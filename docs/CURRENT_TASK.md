@@ -1,5 +1,26 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-WORKER-TRANSPORT — 2026-10-25
+
+The post-deploy Founder GET on `bc89591b` confirmed both domains' source identity
+and authenticated the existing Teams user, but all four reported probes returned
+`local_model_unavailable` in 0 ms with no valid model answers. The model being
+unloaded is a separate operational concern, not the explanation established here.
+
+Actual workerd reproduces a Request-construction TypeError for `redirect: "error"`
+before any outbound request. Use `redirect: "manual"` in the Worker router and
+retain the existing non-2xx guard to reject redirects without forwarding the
+Bearer key. Preserve the four-second deadline, selector, patient packs, Founder
+gate and Node gateway; Node supports its existing redirect mode.
+
+Six new actual-workerd regression cases fail on the old router. With the repair,
+26 related files / 354 tests pass, including native Worker fetch to a synthetic
+model and refusal of 301/302/303/307/308 without any off-host request. All test
+outbound traffic is intercepted locally; no real gateway, key or learner record
+is used. No new live-model accuracy score or production source publication is
+claimed by this local repair. Full repository and browser UI suites are not rerun
+for this transport-only change.
+
 ## CLINICAL-DISCOVERY-FOUNDER-DIAGNOSTIC — 2026-10-25
 
 The authenticated Teams Founder is not a platform admin. Permit the connection-only

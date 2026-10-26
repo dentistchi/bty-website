@@ -243,6 +243,24 @@ returns the configuration presence (host, model, whether a key is set) and,
 for each request, the latency, method, fallback and fact IDs. It never returns
 patient answers or the key, and creates no attempt or database row.
 
+#### Worker transport compatibility
+
+The live check on `bc89591b` reached the Founder diagnostic, but all four reported
+probes immediately returned `local_model_unavailable` (0 ms). Actual workerd
+reproduced the failure before any outbound request: Cloudflare Workers does not
+implement `redirect: "error"`, unlike Node. See the official
+[Request runtime documentation](https://developers.cloudflare.com/workers/runtime-apis/request/#properties).
+
+The Worker router uses `redirect: "manual"` and rejects non-2xx responses, including
+redirects, without following their Location or forwarding the Bearer key. Its
+four-second deadline and response validation remain in place. A regression test
+bundles the real router into workerd with locally intercepted outbound traffic;
+it covers a successful model selection and refusal of 301/302/303/307/308.
+The Node gateway keeps its existing redirect policy. A model that takes 14 seconds
+to reload is a separate readiness issue; this repair does not change model warming
+or extend the learner deadline. Real Worker-to-Mac verification is still required
+after publishing this repair, and is not an accuracy benchmark.
+
 ### Case 001 variant B
 
 `discovery-2026-10-23.1-variant-b` is appended after the original pack and

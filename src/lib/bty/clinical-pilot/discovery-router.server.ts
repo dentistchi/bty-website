@@ -190,7 +190,9 @@ async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choi
     return await Promise.race([
       (async () => {
         const response = await fetch(config.endpoint, {
-          method: "POST", cache: "no-store", redirect: "error", signal: controller.signal,
+          // Workers rejects redirect:"error" before sending. Manual keeps redirects visible to
+          // the non-2xx guard below and never forwards the Bearer key to a redirect destination.
+          method: "POST", cache: "no-store", redirect: "manual", signal: controller.signal,
           headers: { "Content-Type": "application/json", Accept: "application/json", ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}) },
           body: JSON.stringify({
             model: config.model, stream: false, temperature: 0, max_tokens: 256,
