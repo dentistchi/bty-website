@@ -14,7 +14,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 /* The browser Supabase client is null in this environment; the session re-read is mocked. */
-const H = vi.hoisted(() => ({ getSession: vi.fn(async () => ({ data: { session: null }, error: null })) }));
+const H = vi.hoisted(() => ({ openSourceLink: vi.fn(async (_url: string) => true), getSession: vi.fn(async () => ({ data: { session: null }, error: null })) }));
+vi.mock("@/lib/bty/teams/openSourceLink", () => ({ openSourceLink: H.openSourceLink }));
 vi.mock("@/lib/supabase", () => ({ supabase: { auth: { getSession: H.getSession } } }));
 
 import TrackingSent from "./TrackingSent";
@@ -23,6 +24,7 @@ import { summariseAnnouncement, funnelIsComplete } from "@/domain/announcement/t
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  H.openSourceLink.mockClear();
   vi.unstubAllGlobals();
 });
 
@@ -82,10 +84,10 @@ describe("★ 1. the Host sees their own tracked announcement", () => {
 
   it("★ 14. Open in Teams uses the stored source_url, and opens safely", async () => {
     await renderSent([REAL]);
-    const link = (await screen.findByTestId("tracking-source-link")) as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe(REAL.sourceUrl);
-    expect(link.getAttribute("rel")).toContain("noopener");
-    expect(link.getAttribute("target")).toBe("_blank");
+    const link = await screen.findByTestId("tracking-source-link");
+    expect(link.tagName).toBe("BUTTON");
+    fireEvent.click(link);
+    await waitFor(() => expect(H.openSourceLink).toHaveBeenCalledWith(REAL.sourceUrl));
   });
 
   it("the surface asks the OWNER-SCOPED route and nothing else", async () => {

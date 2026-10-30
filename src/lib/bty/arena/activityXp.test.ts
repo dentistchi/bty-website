@@ -2,13 +2,17 @@
  * Unit tests for activity XP recording (Foundry/Center).
  * Uses mocked Supabase; no business/XP logic change.
  */
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Hermetic: keep recordActivityXp off the real DB. getActiveLeague + admin client
 // are stubbed so the test never opens a network/DB connection.
 vi.mock("./activeLeague", () => ({ getActiveLeague: vi.fn(async () => null) }));
-vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: vi.fn(() => null) }));
+const privateWriter = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => privateWriter.client }));
+beforeEach(() => {
+  privateWriter.client = { rpc: vi.fn(async () => ({ data: null, error: null })) };
+});
 vi.mock("./applyCoreXp", () => ({
   applySeasonalXpToCore: vi.fn(async () => ({ coreGain: 0, newCoreTotal: 0 })),
 }));
@@ -105,6 +109,11 @@ describe("activityXp", () => {
   describe("recordActivityXp — atomic weekly_xp increment", () => {
     function atomicMock() {
       const rpcCalls: Array<{ fn: string; args: unknown }> = [];
+      const userRpcCalls: Array<{ fn: string; args: unknown }> = [];
+      privateWriter.client = { rpc: (fn: string, args?: unknown) => {
+        rpcCalls.push({ fn, args });
+        return Promise.resolve({ data: null, error: null });
+      } };
       const weeklyXpDirectWrites: string[] = [];
       const make = (table: string) => {
         const node: Record<string, unknown> = {};
@@ -129,15 +138,16 @@ describe("activityXp", () => {
       const supabase = {
         from: (t: string) => make(t),
         rpc: (fn: string, args?: unknown) => {
-          rpcCalls.push({ fn, args });
+          userRpcCalls.push({ fn, args });
+          if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
           return Promise.resolve({ data: null, error: null });
         },
       } as unknown as SupabaseClient;
-      return { supabase, rpcCalls, weeklyXpDirectWrites };
+      return { supabase, rpcCalls, userRpcCalls, weeklyXpDirectWrites };
     }
 
     it("calls increment_weekly_xp RPC with the capped delta and no direct weekly_xp write", async () => {
-      const { supabase, rpcCalls, weeklyXpDirectWrites } = atomicMock();
+      const { supabase, rpcCalls, userRpcCalls, weeklyXpDirectWrites } = atomicMock();
       const result = await recordActivityXp(supabase, "user-1", "MENTOR_MESSAGE");
 
       expect(result).toEqual({ ok: true, xp: 5 });
@@ -146,11 +156,12 @@ describe("activityXp", () => {
       expect(incr?.args).toEqual({ p_user_id: "user-1", p_league_id: null, p_delta: 5 });
       // The read-modify-write path is gone: no weekly_xp update/insert/delete.
       expect(weeklyXpDirectWrites).toEqual([]);
+      expect(userRpcCalls.some(call => call.fn === "increment_weekly_xp")).toBe(false);
     });
 
     it("returns ok false when the increment RPC errors", async () => {
       const { supabase } = atomicMock();
-      (supabase as unknown as { rpc: unknown }).rpc = (fn: string) =>
+      (privateWriter.client as { rpc: unknown }).rpc = (fn: string) =>
         fn === "increment_weekly_xp"
           ? Promise.resolve({ data: null, error: { message: "rpc_failed" } })
           : Promise.resolve({ data: null, error: null });

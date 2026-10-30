@@ -1,5 +1,39 @@
 # Active application task contract
 
+## APP-PRELAUNCH-RELIABILITY — 2026-10-30
+
+Dr. Chi requests autonomous reproduction, repair and regression verification of
+Today overdue cleanup, Track/Save and other main app flows before public release.
+Use this isolated topic branch from PR82 / inner-main. Keep Clinical QA PR84
+separate. No shared training/learner records, deadlines, XP, identities, permissions
+or production configuration may be changed merely to clear a screen.
+
+Source reproductions identify ignored Save UPDATE failures and a concurrent
+Track/Save intent race; completed-training personal dismissal does not feed Today
+host attention; Today reselect ignores refreshKey; Track mutations hide errors;
+Field Actions child return retains stale inventories; Teams Today navigation
+replaces the frame-safe /teams document path. Preserve canonical server state and
+surface mutation failures without inventing success or completion.
+
+Read-only production inspection matched the two screenshot training titles via
+follow-up source titles: one event is closed, one is open, neither personally
+hidden. No live mutation has been attempted. Existing history dismissal accepts
+only closed events; active training must retain that lifecycle boundary. The
+closed row can gain an explicit personal Remove action, with the existing owned
+endpoint and failure feedback. Final release claims must distinguish isolated
+verification from real Teams/mobile and deployment checks.
+
+Observed source checkpoint: b4dcf55d75d4209941099148a3ff400fbb0eb38a.
+41/41 new assertions pass in the complete run; final focused 48/48 and isolated
+screens 38/38 pass. Types/build exit 0; artifact guard 3,624 JS files, zero unsafe,
+2/2 safe middleware implementations. Full baseline 149 failed assertions versus
+146 in the final full run; five Teams-bootstrap failures resolve and two loading-
+gate test races were then corrected with the same assertions and pass in focused
+rerun. The whole suite was not rerun after that test-only correction and remains
+non-green. XP service-only ACL migration is prepared, unapplied; no live auth or
+learner writes, permission changes, merge or deploy. Detailed evidence and known
+reward atomicity/replay limits: docs/APP_PRELAUNCH_RELIABILITY.md.
+
 ## CLINICAL-DISCOVERY-REQUESTED-INFORMATION — 2026-10-30
 
 The Case 006 recording shows a request for other teeth receiving an explicit

@@ -33,5 +33,14 @@ export async function syncMicrosoftDirectoryAuthority(admin: SupabaseClient): Pr
 }
 
 export async function bindDirectoryAuthorityUser(admin: SupabaseClient,userId:string,tenantId:string,aadObjectId:string) {
-  await admin.from("bty_microsoft_directory_authority").update({linked_user_id:userId,updated_at:new Date().toISOString()}).eq("tenant_id",tenantId.toLowerCase()).eq("aad_object_id",aadObjectId.toLowerCase());
+  // This optional binding runs after the verified identity has already resolved
+  // to a session. It must never turn an otherwise valid sign-in into a failure.
+  try {
+    const { error } = await admin.from("bty_microsoft_directory_authority")
+      .update({ linked_user_id: userId, updated_at: new Date().toISOString() })
+      .eq("tenant_id", tenantId.toLowerCase()).eq("aad_object_id", aadObjectId.toLowerCase());
+    if (error) console.error("[directory-authority] user binding failed", { code: error.code ?? "unknown" });
+  } catch {
+    console.error("[directory-authority] user binding failed", { code: "request_failed" });
+  }
 }

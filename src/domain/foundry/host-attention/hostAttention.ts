@@ -36,6 +36,8 @@ export type HostAttentionItem = {
   sourceTimestamp: string;
   /** Exact control-room deep link (composed in the service). */
   deepLink: string;
+  /** Personal removal is available only for an owned closed training. */
+  canRemoveTraining?: boolean;
 };
 
 /**

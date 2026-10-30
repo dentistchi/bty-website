@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
-import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
+import { BTY_SHELL_DESTINATION_EVENT, shellSearchFor } from "@/domain/teams/btyDestination";
+import { isTeamsTabPath } from "@/domain/teams/tabRuntime";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
@@ -1623,7 +1624,13 @@ export default function BtyDailyAppShell({
     }
 
     try {
-      window.history.replaceState(null, "", href);
+      // A Today card carries the canonical web address, but the Teams frame
+      // must keep its /teams document. Carry only the shell destination query.
+      const search = shellSearchFor(href, window.location.origin);
+      const address = isTeamsTabPath(window.location.pathname) && search !== null
+        ? `${window.location.pathname}${search}`
+        : href;
+      window.history.replaceState(null, "", address);
     } catch {
       /* history unavailable — the surface is still correct; only the address lags */
     }

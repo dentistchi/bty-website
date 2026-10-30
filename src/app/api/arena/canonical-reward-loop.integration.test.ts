@@ -352,7 +352,19 @@ describe("canonical reward loop integration", () => {
   it("run/complete -> qr/validate -> re-exposure/validate follows canonical reward loop", async () => {
     const { state, client } = createSupabaseState();
     mockGetSupabaseServerClient.mockResolvedValue(client);
-    mockGetSupabaseAdmin.mockReturnValue(client as never);
+    const privateRpcCalls: Array<{ fn: string; args?: Record<string, unknown> }> = [];
+    const userXpCalls: string[] = [];
+    client.rpc = async (fn?: string) => {
+      if (fn === "increment_arena_xp" || fn === "increment_weekly_xp") {
+        userXpCalls.push(fn);
+        throw new Error("privileged RPC used the user client");
+      }
+      return { error: null };
+    };
+    mockGetSupabaseAdmin.mockReturnValue({ ...client, rpc: async (fn: string, args?: Record<string, unknown>) => {
+      privateRpcCalls.push({ fn, args });
+      return adminRpc ? adminRpc(fn, args) : { error: null };
+    } } as never);
     adminFrom.mockImplementation((table: string) => client.from(table));
     adminRpc = async (fn?: string, args?: Record<string, unknown>) => {
       if (fn === "increment_weekly_xp") {
@@ -560,5 +572,8 @@ describe("canonical reward loop integration", () => {
     expect(noChangeBody.follow_up_scheduled).toBe(true);
     expect(noChangeBody.reflection.core_xp).toBe(0);
     expect(noChangeBody.reflection.weekly_xp).toBe(1);
+    expect(userXpCalls).toEqual([]);
+    expect(privateRpcCalls.filter(call => call.fn === "increment_weekly_xp").map(call => call.args?.p_delta)).toEqual([13, 8, 3, 1]);
+    expect(Number(state.weeklyXp.find(row => row.user_id === "u1")?.xp_total)).toBe(125);
   });
 });

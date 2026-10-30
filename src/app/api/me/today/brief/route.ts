@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
             reason: h.reason,
             sourceTimestamp: h.sourceTimestamp,
             deepLink: h.deepLink,
+            canRemoveTraining: h.canRemoveTraining === true,
           })),
           actionStatus: actionStatus.map((a) => ({
             stableId: a.stableId,

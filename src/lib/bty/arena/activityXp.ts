@@ -69,6 +69,9 @@ export async function recordActivityXp(
   const deltaCapped = capArenaDailyDelta(xp, todayTotal);
   if (deltaCapped <= 0) return { ok: true, xp: 0 };
 
+  const xpWriter = getSupabaseAdmin();
+  if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
+
   const { error: insErr } = await supabase.from("activity_xp_events").insert({
     user_id: userId,
     activity_type: activityType,
@@ -78,11 +81,11 @@ export async function recordActivityXp(
 
   await supabase.rpc("ensure_arena_profile");
 
-  const league = await getActiveLeague(supabase, getSupabaseAdmin());
+  const league = await getActiveLeague(supabase, xpWriter);
   const leagueId: string | null = league?.league_id ?? null;
 
   // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-  const { error: wxErr } = await supabase.rpc("increment_weekly_xp", {
+  const { error: wxErr } = await xpWriter.rpc("increment_weekly_xp", {
     p_user_id: userId,
     p_league_id: leagueId,
     p_delta: deltaCapped,

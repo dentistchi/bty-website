@@ -1,3 +1,4 @@
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
 
   const { data: run, error: runErr } = await supabase
     .from("arena_runs")
-    .select("run_id, scenario_id, run_type, status")
+    .select("run_id, scenario_id, run_type, status, beginner_maturity_score")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -62,8 +63,25 @@ export async function POST(req: Request) {
   const score = computeBeginnerMaturityScore(responses, riskLen);
   const feedback = getMaturityFeedback(score);
 
+  const alreadyCompleted = (storedScore: unknown) => {
+    if (typeof storedScore !== "number" || !Number.isFinite(storedScore)) {
+      return NextResponse.json({ error: "COMPLETION_RESULT_UNAVAILABLE" }, { status: 409 });
+    }
+    const storedFeedback = getMaturityFeedback(storedScore);
+    return NextResponse.json({ ok: true, idempotent: true, beginner_maturity_score: storedScore,
+      band: storedFeedback.band, label: storedFeedback.label, message: storedFeedback.message });
+  };
+  if ((run as { status?: string }).status === "DONE") {
+    return alreadyCompleted((run as { beginner_maturity_score?: number }).beginner_maturity_score);
+  }
+  if ((run as { status?: string }).status !== "IN_PROGRESS") {
+    return NextResponse.json({ error: "RUN_NOT_ACTIVE" }, { status: 409 });
+  }
+  const xpWriter = getSupabaseAdmin();
+  if (!xpWriter) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+
   const nowIso = new Date().toISOString();
-  const { error: updErr } = await supabase
+  const { data: claimed, error: updErr } = await supabase
     .from("arena_runs")
     .update({
       status: "DONE",
@@ -71,19 +89,31 @@ export async function POST(req: Request) {
       beginner_maturity_score: score,
     })
     .eq("run_id", runId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "IN_PROGRESS")
+    .select("run_id")
+    .maybeSingle();
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+  if (!claimed) {
+    const { data: current } = await supabase.from("arena_runs")
+      .select("status, beginner_maturity_score").eq("run_id", runId).eq("user_id", user.id).maybeSingle();
+    if ((current as { status?: string } | null)?.status === "DONE") {
+      return alreadyCompleted((current as { beginner_maturity_score?: number }).beginner_maturity_score);
+    }
+    return NextResponse.json({ error: "RUN_COMPLETION_CONFLICT" }, { status: 409 });
+  }
 
   const beginnerSeasonalXp = 30;
   await supabase.rpc("ensure_arena_profile");
   // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-  const { error: wxErr } = await supabase.rpc("increment_weekly_xp", {
+  const { error: wxErr } = await xpWriter.rpc("increment_weekly_xp", {
     p_user_id: user.id,
     p_league_id: null,
     p_delta: beginnerSeasonalXp,
   });
-  if (wxErr) console.warn("[beginner-complete] weekly_xp increment failed", wxErr.message);
+  if (wxErr) return NextResponse.json({ error: "XP_AWARD_FAILED" }, { status: 500 });
   const coreResult = await applySeasonalXpToCore(supabase, user.id, beginnerSeasonalXp);
   if ("error" in coreResult) {
     // log but don't fail the request

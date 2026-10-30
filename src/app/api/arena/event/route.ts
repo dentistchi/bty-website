@@ -1,3 +1,6 @@
+import { getScenarioById as getLegacyScenarioById } from "@/lib/bty/scenario/engine";
+import { evaluateChoice } from "@/lib/bty/arena/engine";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import {
@@ -40,13 +43,26 @@ export async function POST(req: Request) {
   const eventType = typeof eventTypeRaw === "string" ? eventTypeRaw.trim() : "";
   const choiceId = body?.choiceId ? String(body.choiceId) : null;
   const followUpIndex = typeof body?.followUpIndex === "number" ? body.followUpIndex : null;
-  const xp = Number(body?.xp ?? 0);
-  const deltas = body?.deltas ?? null;
+  // Legacy event capture never accepts a client-authored reward. Canonical
+  // primary choices use /arena/choice; the remaining legacy catalog is bundled.
+  let xp = 0;
+  let deltas: ReturnType<typeof evaluateChoice>["deltas"] | null = null;
+
   let meta = body?.meta ?? null;
 
   if (!runId) return NextResponse.json({ error: "runId_required" }, { status: 400 });
   if (!scenarioId) return NextResponse.json({ error: "scenarioId_required" }, { status: 400 });
   if (!eventType) return NextResponse.json({ error: "eventType_required" }, { status: 400 });
+
+  if (eventType === "CHOICE_CONFIRMED") {
+    const scenario = getLegacyScenarioById(scenarioId ?? "");
+    const choice = scenario?.choices.find(item => item.choiceId === choiceId);
+    if (!scenario || !choice) return NextResponse.json({ error: "INVALID_REWARD_CHOICE" }, { status: 400 });
+    const reward = evaluateChoice({ scenarioId: scenario.scenarioId, choiceId: choice.choiceId,
+      intent: choice.intent, xpBase: choice.xpBase, difficulty: choice.difficulty, hiddenDelta: choice.hiddenDelta });
+    xp = reward.xp;
+    deltas = reward.deltas;
+  }
 
   let reExposureDueCandidate = false;
   if (meta != null && typeof meta === "object" && !Array.isArray(meta)) {
@@ -87,7 +103,7 @@ export async function POST(req: Request) {
 
   const { data: runActor, error: runActorErr } = await supabase
     .from("arena_runs")
-    .select("user_id")
+    .select("user_id, scenario_id")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -96,6 +112,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "run_not_found_or_forbidden" }, { status: 404 });
   }
 
+  if (eventType === "CHOICE_CONFIRMED" && (runActor as { scenario_id?: string }).scenario_id !== scenarioId) {
+    return NextResponse.json({ error: "RUN_SCENARIO_MISMATCH" }, { status: 409 });
+  }
+  const xpWriter = xp > 0 ? getSupabaseAdmin() : null;
+  if (xp > 0 && !xpWriter) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
   const runOwner = String((runActor as { user_id: string }).user_id);
   logActionContractActorTrace("arena_event_choice", {
     incoming_actor_user_id: user.id,
@@ -141,11 +162,12 @@ export async function POST(req: Request) {
   }
 
   if (xp > 0) {
-    await supabase.rpc("increment_arena_xp", {
+    const { error: rewardError } = await xpWriter!.rpc("increment_arena_xp", {
       p_user_id: user.id,
       p_run_id: runId,
       p_xp: xp,
     });
+    if (rewardError) return NextResponse.json({ error: "XP_AWARD_FAILED" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, reExposureDueCandidate });

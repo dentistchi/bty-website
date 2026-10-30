@@ -240,8 +240,18 @@ export default function FieldActionsFocus({
     initialFieldActionId ? { mode: "form", contractId: initialFieldActionId } : { mode: "list" },
   );
 
+  const [reloadKey, setReloadKey] = useState(0);
+  const returnToList = useCallback(() => {
+    // Reconcile with canonical server state after a child saves/reviews, and do
+    // not paint the old status while that reconciliation is pending.
+    setLearnerState("loading");
+    setHostState("loading");
+    setView({ mode: "list" });
+    setReloadKey(key => key + 1);
+  }, []);
+
   // Canonical learner inventory — READ-only; retry re-fetches, never creates/mutates a contract.
-  const loadInventory = useCallback(async (): Promise<boolean> => {
+  const loadInventory = useCallback(async (isCurrent: () => boolean): Promise<boolean> => {
     try {
       const res = await fetch(`/api/bty/action-contract/mine`, { credentials: "include", cache: "no-store" });
       if (!res.ok) return false;
@@ -250,6 +260,7 @@ export default function FieldActionsFocus({
       // Dedup by canonical contract id (defensive; the single source is already unique).
       const byId = new Map<string, MyFieldAction>();
       for (const it of Array.isArray(d.items) ? d.items : []) if (it?.contractId) byId.set(it.contractId, it);
+      if (!isCurrent()) return false;
       setItems([...byId.values()]);
       return true;
     } catch {
@@ -260,7 +271,11 @@ export default function FieldActionsFocus({
   useEffect(() => {
     let cancelled = false;
     setLearnerState("loading");
-    void loadInventory().then((ok) => {
+    setHostState("loading");
+    setHostQueue([]);
+    setStageCounts(null);
+    setOpportunities([]);
+    void loadInventory(() => !cancelled).then((ok) => {
       if (!cancelled) setLearnerState(ok ? "ready" : "error");
     });
     void (async () => {
@@ -295,14 +310,14 @@ export default function FieldActionsFocus({
     return () => {
       cancelled = true;
     };
-  }, [loc, loadInventory]);
+  }, [loc, loadInventory, reloadKey]);
 
   // Sub-views reuse the canonical state-aware components (no lifecycle logic here).
   if (view.mode === "form") {
-    return <FieldActionForm locale={locale} contractId={view.contractId} onBack={() => setView({ mode: "list" })} />;
+    return <FieldActionForm locale={locale} contractId={view.contractId} onBack={returnToList} />;
   }
   if (view.mode === "host") {
-    return <HostActionReviewDetail locale={locale} actionContractId={view.contractId} onBack={() => setView({ mode: "list" })} />;
+    return <HostActionReviewDetail locale={locale} actionContractId={view.contractId} onBack={returnToList} />;
   }
 
   const byGroup: Record<Exclude<FieldActionLearnerGroup, "other">, MyFieldAction[]> = {
@@ -354,7 +369,7 @@ export default function FieldActionsFocus({
             data-testid="fa-retry"
             onClick={() => {
               setLearnerState("loading");
-              void loadInventory().then((ok) => setLearnerState(ok ? "ready" : "error"));
+              setReloadKey(key => key + 1);
             }}
             className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/80 hover:text-white"
           >

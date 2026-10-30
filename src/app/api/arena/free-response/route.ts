@@ -1,3 +1,4 @@
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
@@ -96,6 +97,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "FREE_RESPONSE_ALREADY_SUBMITTED" }, { status: 409 });
   }
 
+  const xpWriter = getSupabaseAdmin();
+  if (!xpWriter) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+
   const meta = {
     responseText: responseText.slice(0, 2000),
     praise: feedback.praise,
@@ -114,7 +118,7 @@ export async function POST(req: Request) {
 
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
-  const { error: rpcErr } = await supabase.rpc("increment_arena_xp", {
+  const { error: rpcErr } = await xpWriter.rpc("increment_arena_xp", {
     p_user_id: user.id,
     p_run_id: runId,
     p_xp: FREE_RESPONSE_XP,

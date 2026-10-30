@@ -63,6 +63,7 @@ type HostAttention = {
   reason?: string;
   sourceTimestamp?: string;
   deepLink?: string;
+  canRemoveTraining?: boolean;
 };
 type HostActionReview = { actionContractId: string };
 
@@ -86,6 +87,7 @@ const COPY: Record<Locale, {
   savedForLater: string;
   savedForLaterSub: string;
   todayEmpty: string;
+  teamFollowUps: string;
   catEyebrow: Record<PrimaryActionCandidate["category"], string>;
   // Deterministic empty-day fallbacks (tiers 6–8).
   fallbackHeader: string;
@@ -95,8 +97,16 @@ const COPY: Record<Locale, {
   practiceCta: string;
   findBody: string;
   findCta: string;
+  removeTraining: string;
+  removeTrainingConfirm: string;
+  removeTrainingFailed: string;
+  trainingStillOpen: string;
 }> = {
   en: {
+    removeTraining: "Remove training",
+    trainingStillOpen: "Training is open. Open it to close the session before removing it.",
+    removeTrainingConfirm: "Remove this finished training and its reminders from your Today and history? Learning records will remain.",
+    removeTrainingFailed: "Couldn’t remove this training. It may still be open. Please try again.",
     eyebrow: "BETTER THAN YESTERDAY",
     yesterday: "Yesterday",
     yesterdayReturned: "You showed up yesterday.",
@@ -115,6 +125,7 @@ const COPY: Record<Locale, {
     savedForLater: "Saved for later",
     savedForLaterSub: "Things you chose not to lose.",
     todayEmpty: "You're all caught up for today.",
+    teamFollowUps: "Your team has follow-ups below.",
     catEyebrow: {
       ACTION_REVISION: "Needs revision",
       ACTION_DUE: "Action due",
@@ -135,6 +146,10 @@ const COPY: Record<Locale, {
     findCta: "Find a program",
   },
   ko: {
+    removeTraining: "교육 숨기기",
+    trainingStillOpen: "진행 중인 교육입니다. 교육을 열어 종료한 뒤 목록에서 제거할 수 있습니다.",
+    removeTrainingConfirm: "완료된 이 교육과 관련 알림을 내 Today와 지난 교육 목록에서 숨길까요? 학습 기록은 그대로 남습니다.",
+    removeTrainingFailed: "교육을 숨기지 못했습니다. 아직 진행 중일 수 있습니다. 다시 시도해 주세요.",
     eyebrow: "어제보다 나은 나",
     yesterday: "어제",
     yesterdayReturned: "어제 당신은 이 자리에 왔습니다.",
@@ -153,6 +168,7 @@ const COPY: Record<Locale, {
     savedForLater: "나중에 보기",
     savedForLaterSub: "잃어버리고 싶지 않아 담아둔 것들.",
     todayEmpty: "오늘 할 일을 모두 마쳤습니다.",
+    teamFollowUps: "아래에 확인할 팀 후속 항목이 있습니다.",
     catEyebrow: {
       ACTION_REVISION: "수정 필요",
       ACTION_DUE: "행동 마감",
@@ -258,6 +274,25 @@ export default function TodayHome({
   const [hasAvailablePractice, setHasAvailablePractice] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showAllHost, setShowAllHost] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [removingTraining, setRemovingTraining] = useState<string | null>(null);
+  const [removeTrainingFailed, setRemoveTrainingFailed] = useState(false);
+
+  const removeHostTraining = async (eventId: string) => {
+    if (removingTraining || !window.confirm(t.removeTrainingConfirm)) return;
+    setRemovingTraining(eventId);
+    setRemoveTrainingFailed(false);
+    try {
+      const response = await fetch(`/api/bty/foundry/event-history/${encodeURIComponent(eventId)}/dismiss`, {
+        method: "POST", credentials: "include", cache: "no-store",
+      });
+      const body = await response.json().catch(() => null) as { ok?: boolean } | null;
+      if (!response.ok || body?.ok !== true) { setRemoveTrainingFailed(true); return; }
+      setHostAttention(previous => previous.filter(item => item.eventId !== eventId));
+      setReloadKey(key => key + 1);
+    } catch { setRemoveTrainingFailed(true); }
+    finally { setRemovingTraining(null); }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -326,7 +361,7 @@ export default function TodayHome({
     return () => {
       cancelled = true;
     };
-  }, [loc]);
+  }, [loc, refreshKey, reloadKey]);
 
   const primary: PrimaryActionResult = useMemo(
     () =>
@@ -442,7 +477,7 @@ export default function TodayHome({
             onClick={() => onNavigate?.(fallback.target)}
             className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
           >
-            <span className="text-[0.9rem] leading-6 text-white/80">{t.todayEmpty}</span>
+            <span className="text-[0.9rem] leading-6 text-white/80">{openCount > 0 || reviews > 0 ? t.teamFollowUps : t.todayEmpty}</span>
             <span className="text-[0.85rem] leading-6 text-white/60">{fallback.body}</span>
             <span data-testid="today-empty-cta" className="mt-1 self-start rounded-lg border border-[#C9A66B]/45 bg-[#C9A66B]/10 px-3 py-1.5 text-[0.8rem] font-medium text-[#E5B769]">
               {fallback.cta}
@@ -578,10 +613,21 @@ export default function TodayHome({
                     {h.trainingTitle ? <span className="truncate text-xs text-white/55">{h.trainingTitle}</span> : null}
                     {h.reason ? <span className="text-xs text-white/60">{h.reason}</span> : null}
                   </button>
+                  {h.canRemoveTraining === false ? <p className="px-3 pt-1 text-xs text-white/50">{t.trainingStillOpen}</p> : null}
+                  {h.canRemoveTraining === true && h.eventId ? (
+                    <button type="button" data-testid="today-followup-remove"
+                      disabled={removingTraining !== null}
+                      onClick={() => void removeHostTraining(h.eventId!)}
+                      className="mt-1 px-3 py-2 text-xs text-white/60 underline disabled:opacity-50">
+                      {t.removeTraining}
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>
           ) : null}
+
+          {removeTrainingFailed ? <p role="alert" className="text-sm text-rose-300">{t.removeTrainingFailed}</p> : null}
 
           {followUpItems.length > HOST_PREVIEW ? (
             <button
