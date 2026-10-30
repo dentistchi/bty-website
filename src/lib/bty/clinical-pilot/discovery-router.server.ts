@@ -7,7 +7,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v4";
+const ROUTER_VERSION = "discovery-intent/v5";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -120,11 +120,19 @@ function coldPersistenceFollowup(question: string, patient: DiscoveryPatient, co
 }
 
 function ruleFacts(text: string, channel: DiscoveryChannel, patient: DiscoveryPatient) {
-  // Variant B is the unpublished Founder draft. Keep historical packs' matching intact.
+  // Case 001 guards are preview-only; Case 006's repair changes interpretation, not its frozen facts.
   // Independent questions must not negate one another (e.g. tobacco followed by chewing pain).
   const preview = patient.caseId === "drchi-001" && patient.version.endsWith("-variant-b");
-  const clauses = preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:(?:a|an|the)\s+)?(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa|periapical|cone[- ]beam)\b)/iu).filter(clause => clause.trim()) : [text];
+  const dentitionCase = patient.caseId === "drchi-006" && channel === "exam";
+  const clauses = dentitionCase ? text.split(/[?;.!]+|\b(?:and|also|plus)\b/iu).filter(clause => clause.trim())
+    : preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:(?:a|an|the)\s+)?(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa|periapical|cone[- ]beam)\b)/iu).filter(clause => clause.trim()) : [text];
   return patient.facts.filter(fact => fact.channel === channel && clauses.some(clause => {
+    // Other teeth and dentition-wide risk do not ask for the presenting tooth's MOD.
+    // Keep the existing unavailable fact; the interpreter cannot fill missing case data.
+    if (dentitionCase && (/\b(?:caries[- ]risk|root caries|lower anterior|full[- ]mouth|dentition[- ]wide|other teeth)\b/iu.test(clause)
+      || /\b(?:other|additional)\s+(?:restorations?|fillings?)\b/iu.test(clause) && !/\b(?:this|that|same) tooth\b/iu.test(clause))) {
+      return fact.id === "drchi-006:caries-risk";
+    }
     if (preview) {
       const pain = /\b(?:hurt\w*|pain\w*|ache\w*|sore\w*|tender\w*)\b/iu.test(clause);
       const explicitHabit = /\b(?:avoid\w*|favou?r\w*|prefer\w*|switch\w*|changed?)\b/iu.test(clause);

@@ -1,5 +1,31 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-REQUESTED-INFORMATION — 2026-10-30
+
+The Case 006 recording shows a request for other teeth receiving an explicit
+unavailable caries-risk response, followed by the static author reference saying
+to assess caries risk. The comparison does not currently evaluate omitted
+questions, but its presentation does not acknowledge that this request was made.
+Derive a post-assessment acknowledgement from the issued trace: requested but
+unavailable facts/topics are case information limits, not omitted questions or
+normal findings. Keep uninterpreted requests separate. Preserve the original
+questions, replies, references and assessment-time acquired information.
+
+Also repair the Case 006 interpreter's target scope: requests for restorations
+in other teeth or dentition-wide caries risk must not substitute the target
+tooth's MOD finding. Keep explicitly mixed examinations and target-tooth requests.
+Do not fill missing patient facts or change frozen packs. No production writes,
+merge, deployment, secret changes, migration or seed are authorized by this repair.
+
+Observed evidence: the two-file reproduction on the original implementation had
+8 failed / 14 passed tests. With the repair, 27 related files / 366 tests
+pass; TypeScript exits 0; the 10 isolated public browser tests pass at 320, 390
+and 1280 px. The Cloudflare build exits 0 with loopback-only public placeholders.
+Its artifact guard checks 3,621 JS files: zero unsafe matches and 2/2 safe
+middleware implementations. The full unrelated repository suite and live model
+quality measurement are not rerun. Patient packs and author references remain
+unchanged; no learner record or production configuration is written.
+
 ## CLINICAL-DISCOVERY-WORKER-TRANSPORT — 2026-10-25
 
 The post-deploy Founder GET on `bc89591b` confirmed both domains' source identity
