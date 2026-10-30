@@ -34,8 +34,10 @@ describe('search-note copy — quota vs temporary vs direct-link', () => {
   it('quota exhausted → daily-limit copy, NOT "검색이 잠시 붐벼요"', async () => {
     installFetch({ ...base, degraded: true, quotaExceeded: true });
     renderGuest(<RequestForm slug="bty-home" roomOpen eventId="evt-1" />);
+    expect(screen.getByText('BTY 추천곡').closest('details')!.open).toBe(true);
     await runSearch();
     await waitFor(() => expect(screen.getByText(/오늘 YouTube 검색 한도를 모두 사용했어요/)).toBeTruthy());
+    expect(screen.getByText('BTY 추천곡').closest('details')!.open).toBe(false);
     expect(screen.queryByText(/검색이 잠시 붐벼요/)).toBeNull();
     // The direct-link paste path stays visible/usable.
     expect(screen.getByText('YouTube 링크 직접 붙여넣기')).toBeTruthy();

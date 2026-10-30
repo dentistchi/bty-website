@@ -35,7 +35,7 @@ export const GUEST_MESSAGES = {
   // Editorial song ideas: selecting a title searches for a version; it does not request it.
   'guest.picks.title': { en: 'BTY song picks', ko: 'BTY 추천곡' },
   'guest.picks.count': { en: { one: '{count} song', other: '{count} songs' }, ko: { other: '{count}곡' } },
-  'guest.picks.hint': { en: 'Choose a song, then select a backing track from the search results.', ko: '곡을 고른 뒤 검색 결과에서 원하는 반주를 선택하세요.' },
+  'guest.picks.hint': { en: 'Tap a song to find backing tracks, then tap Request on the version you want to sing.', ko: '곡을 누르면 반주가 검색돼요. 원하는 반주에서 ‘신청하기’를 눌러주세요.' },
   'guest.picks.categories': { en: 'Song categories', ko: '추천곡 분류' },
   'guest.picks.search': { en: 'Find a track', ko: '반주 찾기' },
   'guest.picks.search_song': { en: 'Find a track for {title} by {artist}', ko: '{artist} {title} 반주 찾기' },

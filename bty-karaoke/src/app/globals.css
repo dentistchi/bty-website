@@ -52,6 +52,8 @@
 }
 .song-picks > summary { cursor: pointer; font-weight: 700; min-height: 44px; padding: 8px 0; }
 .song-picks-count { margin-left: 10px; color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+.guest-song-search + .song-picks { border-color: rgba(245, 196, 81, 0.55); }
+.guest-song-search + .song-picks > summary { color: var(--gold); }
 .song-picks-hint { font-size: 0.85rem; line-height: 1.5; margin: 12px 0; }
 .song-picks-categories { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; }
 .song-picks-categories .seg { flex: 0 0 auto; white-space: nowrap; min-height: 44px; padding: 9px 12px; }

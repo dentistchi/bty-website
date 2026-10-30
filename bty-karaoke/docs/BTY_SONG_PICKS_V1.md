@@ -1,6 +1,6 @@
 # BTY song picks V1
 
-Guests who do not have a song in mind can open **BTY song picks**, choose a category,
+Guests who do not have a song in mind see **BTY song picks** already expanded, choose a category,
 and select a title. That selection runs the existing backing-track search. A guest
 still reviews the returned video and explicitly requests it. The DJ add-song sheet
 uses the same catalog and its existing search/add path.
@@ -30,7 +30,11 @@ migration, or paid feature. Existing YouTube search quota still applies to selec
 
 ## Surfaces and delivery
 
-- Browser guest: `src/app/r/[slug]/RequestForm.tsx`.
+- Browser guest: `src/app/r/[slug]/RequestForm.tsx`. This is the primary surface:
+  guests scan the Host's Guest QR, complete first-use consent, and see the gold-outlined
+  catalog already expanded below direct search. Search does not automatically take
+  focus or open the mobile keyboard. Recent activity follows song selection.
+  Starting a search collapses the catalog so the returned tracks remain in view.
 - Browser DJ add sheet: `src/app/r/[slug]/dj/DjAddSongSheet.tsx`.
 - Browser host: the main room controls show **🎵 추천곡 60곡** above the Guest QR
   actions. One click opens the Korean catalog already expanded; selecting a title
@@ -59,7 +63,8 @@ migration, or paid feature. Existing YouTube search quota still applies to selec
 
 ## Manual review
 
-1. Open a running room in a browser and expand **BTY song picks** below the search.
+1. Scan Guest QR for a running room. After first-use consent, **BTY song picks**
+   below the search must already be expanded without tapping its heading.
 2. Browse categories, then choose a title. Confirm its artist/title populates search.
 3. Verify the existing search style remains selected and review the available version.
 4. Request the chosen result; confirm it appears once in the guest's requests/queue.
