@@ -1,5 +1,39 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-AUTONOMOUS-QA — 2026-10-30
+
+Dr. Chi requests that development run synthetic clinical encounters, find and
+repair defects, and report results instead of relying on him to discover bugs.
+Build reusable all-23 journeys using the actual router, four-turn production
+context and pure in-memory start/question/assessment/reference/reaction flow.
+Run isolated screens on the same interpreter. QA data must never be stored as a
+doctor's learner trace; no API, auth or database service is needed for these runs.
+
+Keep subject-selection errors, interpretation failures, authored-answer gaps and
+unavailable decision information separate. A correct "not supplied" response is
+not a completed clinical scenario when that information is required by this QA
+path. QA requirements are not compulsory learner questions or medical scoring.
+Keep frozen packs and author testimony intact; new patient facts need a separately
+versioned, explicitly fictional case design rather than guessed normal results.
+
+The initial semantic 23-case / 205-turn fixture and original result are preserved
+before router repair. Oracle review/corrections must be recorded separately, and
+reruns are regression evidence, not unseen general-model accuracy measurements.
+Rules-only and explicit model runs use independent traces. Actual model runs need
+the operator's existing gateway settings; never print keys or restart other apps.
+
+Local first run on the deployed v5 router: 48 subject-selection/resolution flags,
+34 answer-pattern flags, 74 required unavailable turns in 22 cases, zero domain
+capture invariants, zero live model calls. These are preliminary review flags;
+semantic oracle review can remove false positives with an explicit record.
+Observed repaired regression: 23 cases / 205 turns, zero selection/resolution
+issues and checked-answer-pattern mismatches, zero capture invariants, 74 required
+information-gap turns across 22 cases. The --check quality gate correctly exits 1.
+Related tests: 424/424 in 30 files; isolated screens: 37/37. No live model calls.
+Details and immutable before/after evidence: docs/CLINICAL_DISCOVERY_AUTONOMOUS_QA.md.
+No new merge, deployment, credential change, learner record, migration or seed is
+authorized by this QA request. Source preparation and isolated repair are in scope.
+
 ## CLINICAL-DISCOVERY-REQUESTED-INFORMATION — 2026-10-30
 
 The Case 006 recording shows a request for other teeth receiving an explicit
