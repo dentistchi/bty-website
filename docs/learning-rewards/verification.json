@@ -1,0 +1,103 @@
+{
+  "status": "implemented locally; draft review; not merged, migrated, deployed or enabled",
+  "baseSha": "5f1596ad89ad93fe14ad5bbb169eaa6179b0b248",
+  "applicationSourceCommit": "e1d9f91cd9ba9d11bb6e93e677726b52f0e993c9",
+  "applicationSrcTree": "c6a52e8cddfb569e5051ca46a21b65a6a2202c56",
+  "runtime": {
+    "node": "20.20.2",
+    "install": "npm ci with dependency install scripts; real node_modules; 1357 packages; package/lock unchanged"
+  },
+  "typecheck": {
+    "command": "NODE_OPTIONS=--max-old-space-size=8192 npm run lint",
+    "exitCode": 0,
+    "scope": "final source including portable browser spec"
+  },
+  "focused": {
+    "command": "vitest run: rewards domain/services/API/UI, BtyDailyAppShell, Clinical pilot route and follow-up service",
+    "passed": 362,
+    "failed": 0,
+    "files": 24,
+    "newRewardAssertions": 153
+  },
+  "full": {
+    "command": "vitest run --pool=forks --maxWorkers=2 --minWorkers=1",
+    "baseline": {
+      "total": 15642,
+      "passed": 15087,
+      "failed": 146,
+      "failedFiles": 43
+    },
+    "repair": {
+      "total": 15795,
+      "passed": 15242,
+      "failed": 144,
+      "failedFiles": 41
+    },
+    "newFailedAssertions": [],
+    "notReproducedInRepair": [
+      [
+        "components/app-shell/FieldActionForm.stateAware.test.tsx",
+        "FieldActionForm — existing-state-aware UX (7) pending → editable authoring form"
+      ],
+      [
+        "components/app-shell/SavedForLaterSwipe.test.tsx",
+        "11. the visible buttons are still the whole job ★ 11. Soon and Later still work by tap, with no gesture at all"
+      ]
+    ],
+    "note": "Non-green baseline retained. Two unchanged UI assertions did not reproduce; no repair attribution. Source code unchanged after this full run; later additions are portable e2e and docs/test-URL guard."
+  },
+  "database": {
+    "command": "node scripts/verify-learning-rewards-db.mjs with dedicated loopback PostgreSQL16",
+    "checks": 37,
+    "scope": "fictional test DB only; migration twice, Supabase-style broad default ACLs, RLS/client denial, 12 identical and 12 distinct concurrent requests, daily cap,5am boundary, timezone freeze,72h check, activation/future guard, atomic rollback, concurrent achievement acknowledgements",
+    "productionAccess": false,
+    "urlOverrideGuard": "query-string host override refused before connection"
+  },
+  "browser": {
+    "spec": "e2e/learning-rewards.public.spec.ts",
+    "passed": 6,
+    "viewports": [
+      320,
+      390,
+      1280
+    ],
+    "motion": [
+      "normal",
+      "reduced"
+    ],
+    "scope": "actual React/CSS + domain fixtures; intercepted network; no server/auth/session/production. Independent integrated harness also6/6."
+  },
+  "build": {
+    "command": "npm run cf:build",
+    "exitCode": 0,
+    "checkout": "fresh detached checkout of application source",
+    "environment": "loopback-only public Supabase placeholders, no service credentials, CIRCLE_NODE_TOTAL=2 (one static worker)",
+    "earlierAttempts": "Two integration-checkout builds compiled/types/static pages, then ENOTEMPTY removing .next/export. Fresh checkout with bounded workers succeeded. No source/build/deploy guard changes or workaround patch. Root application src tree matches successful build."
+  },
+  "artifact": {
+    "guard": {
+      "ok": true
+    },
+    "javascriptFiles": 3626,
+    "unsafe": 0,
+    "middleware": 2,
+    "safeMiddleware": 2,
+    "publicFiles": 739,
+    "serverMarkers": 5,
+    "markerMatches": [],
+    "serverFunctions": [
+      "default"
+    ]
+  },
+  "unrun": [
+    "actual authenticated Teams/iPhone production flow",
+    "live reward completion/XP write",
+    "Supabase production migration/advisor execution",
+    "merge/deployment/feature activation"
+  ],
+  "limits": [
+    "Seven badges currently earnable; five unavailable until assigned variant/path, human-reviewed sharing and frozen team roster infrastructure",
+    "Quiz-only Learn excluded until own-language completion evidence exists",
+    "Levels reflect program participation, not clinical ability or job authority"
+  ]
+}

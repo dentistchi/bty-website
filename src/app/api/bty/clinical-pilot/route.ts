@@ -1,3 +1,4 @@
+import { syncLearningRewardsIfEnabled } from "@/lib/bty/learning-rewards/service.server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser, requirePlatformAdmin, isActivePlatformAdmin } from "@/lib/authz";
@@ -65,6 +66,10 @@ export async function POST(r: NextRequest) {
           ? { operation: "message", text: input.text, channel: input.channel } : input.operation === "decision" || input.operation === "conclude"
             ? { operation: input.operation, text: input.text } : { operation: input.operation, answers: input.answers },
         "expectedEventCount" in input ? input.expectedEventCount : undefined);
-    return reply({ ok: true, trace });
+    // Only a saved reference reaction completes practice; asking or concluding is not an award.
+    const learningRewards = input.operation === "react"
+      ? await syncLearningRewardsIfEnabled(db, a.user.id).catch(() => ({ status: "pending" as const }))
+      : undefined;
+    return reply({ ok: true, trace, ...(learningRewards ? { learningRewards } : {}) });
   } catch (e) { return fail(e); }
 }

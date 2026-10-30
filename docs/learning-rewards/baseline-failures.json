@@ -1,0 +1,586 @@
+[
+  {
+    "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+    "test": "TodayHomeClient — handleCommit navigate-once prefetches the resolved destination once entry resolution settles"
+  },
+  {
+    "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+    "test": "TodayHomeClient — handleCommit navigate-once two commits → exactly one router.push(beginHref); hint flag persisted"
+  },
+  {
+    "file": "src/app/api/bty/awakening/route.test.ts",
+    "test": "GET /api/bty/awakening returns 200 with acts and trigger when authenticated"
+  },
+  {
+    "file": "src/app/api/bty/awakening/route.test.ts",
+    "test": "GET /api/bty/awakening returns 200 with content-type application/json and body shape (ok, acts, trigger)"
+  },
+  {
+    "file": "src/app/api/bty/awakening/route.test.ts",
+    "test": "GET /api/bty/awakening returns 200 with ok, acts, trigger, completedActs"
+  },
+  {
+    "file": "src/app/api/bty/awakening/route.test.ts",
+    "test": "GET /api/bty/awakening returns 500 with INTERNAL_ERROR and optional detail when handler throws"
+  },
+  {
+    "file": "src/app/api/bty/foundry/audience/leaders-preview/route.test.ts",
+    "test": "GET leaders-preview — scope + contract declares itself a preview that assigns nothing"
+  },
+  {
+    "file": "src/app/api/bty/foundry/audience/leaders-preview/route.test.ts",
+    "test": "GET leaders-preview — scope + contract resolves the organization SERVER-side and ignores a client-supplied one"
+  },
+  {
+    "file": "src/app/api/bty/foundry/audience/leaders-preview/route.test.ts",
+    "test": "GET leaders-preview — scope + contract returns an empty preview when the host has no canonical membership"
+  },
+  {
+    "file": "src/app/api/bty/foundry/audience/leaders-preview/route.test.ts",
+    "test": "GET leaders-preview — scope + contract returns zero — never a member list — when nobody qualifies"
+  },
+  {
+    "file": "src/app/api/bty/foundry/event-history/[eventId]/route.test.ts",
+    "test": "GET /api/bty/foundry/event-history/[eventId] 404s (non-disclosing) when the service returns null (foreign/active/unknown id)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/event-history/[eventId]/route.test.ts",
+    "test": "GET /api/bty/foundry/event-history/[eventId] returns the read-only detail for an owned terminal event"
+  },
+  {
+    "file": "src/app/api/bty/foundry/event-history/route.test.ts",
+    "test": "GET /api/bty/foundry/event-history returns the host's history list for an active host"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/adoptionDigestAuthority.test.ts",
+    "test": "[3.2L-R11.4K-R1] tamper → proposal_mismatch, through the real route ONE changed character is refused with proposal_mismatch — and nothing is adopted"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/adoptionDigestAuthority.test.ts",
+    "test": "[3.2L-R11.4K-R1] tamper → proposal_mismatch, through the real route an attempt with no recorded identity can never be adopted, tampered or not"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/adoptionDigestAuthority.test.ts",
+    "test": "[3.2L-R11.4K-R1] tamper → proposal_mismatch, through the real route the EXACT proposal is adopted and the receipt is recorded"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/approve/route.test.ts",
+    "test": "POST /modules/[id]/approve 200 with the approved draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/approve/route.test.ts",
+    "test": "POST /modules/[id]/approve 400 with the failing reason for an incomplete draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/approve/route.test.ts",
+    "test": "POST /modules/[id]/approve 409 for a non-draft row"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/[assetId]/route.test.ts",
+    "test": "DELETE /modules/[id]/assets/[assetId] 404 non-disclosing when the asset is not on this draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/[assetId]/route.test.ts",
+    "test": "DELETE /modules/[id]/assets/[assetId] 409 on an immutable draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/[assetId]/route.test.ts",
+    "test": "DELETE /modules/[id]/assets/[assetId] 502 when storage removal failed (row not falsely deleted)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/[assetId]/route.test.ts",
+    "test": "DELETE /modules/[id]/assets/[assetId] removes and returns removed:true"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/route.test.ts",
+    "test": "POST /modules/[id]/assets 201 with a safe asset — never bucket/path/hash/owner"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/route.test.ts",
+    "test": "POST /modules/[id]/assets 400 unsupported / invalid signature (file-specific)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/route.test.ts",
+    "test": "POST /modules/[id]/assets 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/assets/route.test.ts",
+    "test": "POST /modules/[id]/assets 409 immutable / too many files"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 200 returns validated suggestions and NEVER mutates the draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 400 on a missing/empty problem statement"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 400 on an over-long problem statement"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 409 problem_mismatch when the request problem drifted from the saved draft (stale guard)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 409 when the draft is not editable (approved/published)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions 429 when rate limited (no generation)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions maps provider_unavailable → 503, timeout → 504, invalid_output → 502 (fail-closed)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/directions/route.test.ts",
+    "test": "POST /modules/[id]/directions tolerates trivial whitespace/case drift via the compatibility check"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route WITHOUT the reference the same request is refused — the route does not infer authorship"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route a KEEP claim over a section the row never owned is refused"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route a malformed reference cannot crash the route — it falls back to the strict rule"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route a reference that does not hash to the durable digest is ignored, not trusted"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route a substituted section is still refused even WITH a valid reference"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R1] F — mixed-authorship adoption through the real route stamps the receipt, keeps the marker, and marks the attempt applied exactly once"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R2] H — a rewritten section survives the route as the Host's own KEEP + USE BTY + REWRITE stamps exactly one receipt and persists the rewritten journey"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R2] H — a rewritten section survives the route as the Host's own a declared KEEP that does not keep is refused through the route"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R2] H — a rewritten section survives the route as the Host's own junk declarations are dropped, returning that section to the strict rule"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/mixedAuthorshipAdoption.route.test.ts",
+    "test": "[R4-R2E-R2] H — a rewritten section survives the route as the Host's own the same rewrite labelled `ai_proposed` is REFUSED by the route"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 200 returns validated advisory data, generates from the SERVER context, and NEVER mutates"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 409 context_mismatch when the client fingerprint is stale"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 409 when the draft is not editable"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 422 when the canonical minimum context is incomplete"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft 429 when rate limited (no generation)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft maps provider_unavailable → 503, timeout → 504, invalid_output → 502"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/module-draft/route.test.ts",
+    "test": "POST /modules/[id]/module-draft passes persisted Host clarifications (Slice 2.4C) into generation as extra context"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T1] the failure response carries the server's own verdict a provider outage serialises retryable=true and no source to revisit"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T1] the failure response carries the server's own verdict a refused program serialises regenerate_allowed and the Host answer to revisit"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T7] the ledger can be asked about a context without spending a TRANSIENT terminal verdict is not restored — it decided nothing about the training"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T7] the ledger can be asked about a context without spending a context with no verdict answers null, so generation proceeds normally"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T7] the ledger can be asked about a context without spending a fingerprint the draft no longer has answers nothing"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/program-draft/recoveryTruth.route.test.ts",
+    "test": "[R4-R9A · T7] the ledger can be asked about a context without spending an already-refused context answers with the recovery, and calls no provider"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/publish/route.test.ts",
+    "test": "POST /modules/[id]/publish 200 returns join_url (token stays inside the URL) + reused flag"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/publish/route.test.ts",
+    "test": "POST /modules/[id]/publish 400 for a not-ready draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/publish/route.test.ts",
+    "test": "POST /modules/[id]/publish 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/publish/route.test.ts",
+    "test": "POST /modules/[id]/publish defaults locale to ko when not 'en'"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "DELETE /modules/[id] 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "DELETE /modules/[id] 409 rejecting deletion of an approved/published draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "DELETE /modules/[id] deletes a draft-status draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "GET /modules/[id] 404 non-disclosing for a foreign/missing draft"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "GET /modules/[id] returns the client draft for the owner"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "PATCH /modules/[id] 400s invalid fields with the failing codes"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "PATCH /modules/[id] 404 non-disclosing when the draft is not owned/missing"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "PATCH /modules/[id] 409 when the draft is approved/published (immutable) — even if client forces it"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/[id]/route.test.ts",
+    "test": "PATCH /modules/[id] saves a partial draft (field-level, not approval completeness)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/route.test.ts",
+    "test": "GET /api/bty/foundry/modules lists only the caller's own draft summaries (no owner id leaked)"
+  },
+  {
+    "file": "src/app/api/bty/foundry/modules/route.test.ts",
+    "test": "POST /api/bty/foundry/modules creates a draft and returns the client shape (no owner id, no asset value)"
+  },
+  {
+    "file": "src/app/api/bty/q241-healing-awakening-get.smoke.test.ts",
+    "test": "241 Healing/Awakening GET smoke 401 unauthenticated then 200 for healing and awakening when authed"
+  },
+  {
+    "file": "src/app/api/bty/q242-awakening-get.smoke.test.ts",
+    "test": "242 GET /api/bty/awakening smoke 401 unauthenticated then 200 with acts and trigger when authed"
+  },
+  {
+    "file": "src/app/api/bty/q3-healing-awakening-200-401.test.ts",
+    "test": "Q3 GET bty/healing · bty/awakening — 200·401 401 unauthenticated; 200 with phase and acts payload"
+  },
+  {
+    "file": "src/app/f/[token]/deviceDraftContainment.guard.test.ts",
+    "test": "T14 — no server draft was built no migration was added in this slice"
+  },
+  {
+    "file": "src/components/app-shell/FieldActionForm.stateAware.test.tsx",
+    "test": "FieldActionForm — existing-state-aware UX (7) pending → editable authoring form"
+  },
+  {
+    "file": "src/components/app-shell/SavedForLaterSwipe.test.tsx",
+    "test": "11. the visible buttons are still the whole job ★ 11. Soon and Later still work by tap, with no gesture at all"
+  },
+  {
+    "file": "src/components/bty/my-page/MyPageLeadershipConsole.test.tsx",
+    "test": "MyPageLeadershipConsole handleRequestQr POSTs action-loop-token with contractId and runId when both exist"
+  },
+  {
+    "file": "src/components/bty/my-page/MyPageLeadershipConsole.test.tsx",
+    "test": "MyPageLeadershipConsole handleRequestQr POSTs action-loop-token with contractId when session_id is missing"
+  },
+  {
+    "file": "src/components/bty/my-page/MyPageLeadershipConsole.test.tsx",
+    "test": "MyPageLeadershipConsole handleRequestQr uses contract from server after deferred load (serverPack not stale)"
+  },
+  {
+    "file": "src/components/bty/my-page/MyPageLeadershipConsole.test.tsx",
+    "test": "MyPageLeadershipConsole rerenders QR value when token response qrUrl changes"
+  },
+  {
+    "file": "src/components/bty/my-page/MyPageLeadershipConsole.test.tsx",
+    "test": "MyPageLeadershipConsole uses qrUrl from token response as QRCode value"
+  },
+  {
+    "file": "src/components/bty/navigation/BottomNav.test.tsx",
+    "test": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) loading state renders 3 tabs (NOT-suppressed default; hook returns false initially)"
+  },
+  {
+    "file": "src/components/bty/navigation/BottomNav.test.tsx",
+    "test": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) renders 3 tabs (Center / btyARENA / My Page) with grid-cols-3 when forced-reset inactive"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/hostAuthoringSimplificationA.test.tsx",
+    "test": "R4-R8A — failure leaves a way out, and publish truth is untouched T16 — this slice adds no migration"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/hostAuthoringSimplificationB.test.tsx",
+    "test": "R4-R8B — publish truth is re-anchored, not relaxed T17 — this slice adds no migration"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/learnFrontDoor.test.tsx",
+    "test": "T1 — the learner sees current work first the non_host branch renders Required Learning BEFORE the doors"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/learnFrontDoor.test.tsx",
+    "test": "T6/T7/T10 — nothing else moved T9 — the truthful empty state is unchanged and history stays reachable"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/programTargetConfirmation.viewport.test.ts",
+    "test": "[3.2L-R1.4] the confirmation is READABLE on the physical app viewport G1/G5 — every required element is visible, in-viewport and legible"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/programTargetConfirmation.viewport.test.ts",
+    "test": "[3.2L-R1.4] the confirmation is READABLE on the physical app viewport G2/G3 — the canonical and Korean targets render legibly and differently"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/programTargetConfirmation.viewport.test.ts",
+    "test": "[3.2L-R1.4] the confirmation is READABLE on the physical app viewport G4 — the panel is not an unexplained blank region, and touch targets survive"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/programTargetConfirmation.viewport.test.ts",
+    "test": "[3.2L-R1.4] the confirmation is READABLE on the physical app viewport G7 — a long focus keeps its tail readable and both actions reachable"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/reviewVisualGrammar.viewport.test.ts",
+    "test": "[R4-R2E] the two Review grammars are distinguishable in real pixels G1/G2 — both are legible, and neither is the invisible-text regression"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/reviewVisualGrammar.viewport.test.ts",
+    "test": "[R4-R2E] the two Review grammars are distinguishable in real pixels G3 — the editable field meets the touch target size and does not overflow the viewport"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/reviewVisualGrammar.viewport.test.ts",
+    "test": "[R4-R2E] the two Review grammars are distinguishable in real pixels G3 — the editable one is a bordered, distinctly-grounded field; the read-only one is not"
+  },
+  {
+    "file": "src/components/foundry/event-rooms/reviewVisualGrammar.viewport.test.ts",
+    "test": "[R4-R2E] the two Review grammars are distinguishable in real pixels [R4-R2E-R3] provenance recedes without becoming unreadable, and the content dominates"
+  },
+  {
+    "file": "src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts",
+    "test": "[30-31] prompt / schema parity [30] the prompt names no field the schema lacks — the R2.36 defect"
+  },
+  {
+    "file": "src/domain/foundry/events/suggestedTrainingName.test.ts",
+    "test": "T13 — the participant name stays a historical snapshot no migration was added"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/c18BoundaryReplay.contract.test.ts",
+    "test": "CORRECTED-BOUNDARY REPLAY — the exact program, on mocks 4/9. missing or conflicting reconstruction evidence stops before any reviewer call"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] artifact /6 is reachable through the bound preparation path R2.56 — the canary proves the rule-kind scope in BOTH directions"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] artifact /6 is reachable through the bound preparation path R2.59 — the canary proves the group-selection authority and the corrected banner"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] artifact /6 is reachable through the bound preparation path both legs exist: the canonical alternative, and the captured R2.52 refusal"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] artifact /6 is reachable through the bound preparation path the canary re-runs the acceptance suites, including this test"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] artifact /6 is reachable through the bound preparation path the canary runs the replay program and reads the observability record back"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] the preparation mode invokes the intended code `--binding-json` runs, so every import in the bound runner resolves"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] the preparation mode invokes the intended code `--out` writes an executable canary that is valid shell"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] the preparation mode invokes the intended code the binding carries the R2.54 authorities, recomputed from source and not restated"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] the preparation path stops before any credential or provider use `--credential-boundary-check` exits BEFORE the credential is read"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+    "test": "[R2.54] the preparation path stops before any credential or provider use the bound preparation mode performs zero generation, database and deployment actions"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
+    "test": "[R2.52][7] the artifact proves which route ran the WRITTEN version is bumped and historical /4 stays readable"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam A. loads the exact Run-4 frozen subject and reproduces its scenario digest"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam B. never invokes Plan, Render or any generation function"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam C. the narrow reviewer subject carries acceptedCost and never boundaryCompliance"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam D. the broad reviewer request carries the complete frozen construction, claim included"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam E. narrow and broad consume one replay-local identity from a single frozen load"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam F. canned reviewer output preserves every evidence field the existing parsers produce"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam G. replay accounting is inert: no sequence allocation, no DB recorder, no submission accounting"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam H. a wrong artifact sha refuses before any reviewer is invoked"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam I. production broadReviewAllowed is computed and broad rows are markable OFF_PIPELINE"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam K. evidence is written ONLY to the injected root; the real replay root stays absent"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam L. a pre-existing subject evidence file refuses before any reviewer dependency call"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam M. a broad failure still leaves partial evidence on disk"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam O. broad is called exactly once whether the narrow gate is true or false"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam P. recorded call counts equal the actual injected dependency invocations"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam Q. consumed flips exactly at the first dependency invocation, not at stage start"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+    "test": "frozen reviewer replay — phase 1 seam R. evidence retains both exact requests, their hashes and boundaryCompliance counts"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 7 — the six case artifacts are the collation authority 11. a complete run of six is reported COMPLETE"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 7 — the six case artifacts are the collation authority 12. a PARTIAL run reports what exists truthfully — never zero when artifacts are present"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 7 — the six case artifacts are the collation authority a run with NO artifacts says so without inventing any"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 9 — the exact tracked orchestrator, run end to end 1/2/14. six cases complete with NO provider call, and six artifacts exist"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 9 — the exact tracked orchestrator, run end to end 3. a case taking LONGER THAN FIVE SECONDS completes — no 5,000 ms authority exists"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 9 — the exact tracked orchestrator, run end to end 4. a content rejection does not abort — all six still run"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/liveEvaluation.test.ts",
+    "test": "PART 9 — the exact tracked orchestrator, run end to end 5/6. an infrastructure failure aborts the run and returns exit code 4"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/providerPreflight.test.ts",
+    "test": "PART 5 — CommonJS / Node 24 regression 2/3/4. it COMPILES AND RUNS under the repository's actual tsx invocation and Node"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/providerPreflight.test.ts",
+    "test": "PART 5 — CommonJS / Node 24 regression 7/9. a failure reaches the sanitized handler and exits NONZERO"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/reviewReplay.contract.test.ts",
+    "test": "the exact replay program runs end to end on mocks 9/10/11/12/13. four subjects, four artifacts, zero generation calls, no quality label"
+  },
+  {
+    "file": "src/lib/bty/foundry/arena/reviewReplay.contract.test.ts",
+    "test": "the exact replay program runs end to end on mocks a provider failure in the plan is surfaced as a nonzero exit, not smoothed over"
+  },
+  {
+    "file": "src/lib/bty/foundry/events/applyNarration.test.ts",
+    "test": "T13/T18/T19 — plumbing, in all three families T10 — no migration was added"
+  },
+  {
+    "file": "src/lib/bty/foundry/events/applyNarration.test.ts",
+    "test": "T13/T18/T19 — plumbing, in all three families T13 — every service keeps the result and maps it through the ONE helper"
+  },
+  {
+    "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+    "test": "getHostDailyAttention — priority + privacy (tests 21–23 integrated, 34/35/52) a Host-gate failure yields no items and never reaches attention reads (structural, not masked)"
+  },
+  {
+    "file": "src/lib/bty/foundry/events/participantAccountEdge.guard.test.ts",
+    "test": "T10 — no projection may expose the account edge exactly ONE read selects user_id — the session lookup that the compatibility rule needs"
+  },
+  {
+    "file": "src/lib/bty/teams/openSourceLink.test.ts",
+    "test": "★ 8+9+10. nothing else moved no database or API change was needed"
+  }
+]

@@ -27,6 +27,7 @@ import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetai
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import MeWeeklyTrace from "@/components/app-shell/MeWeeklyTrace";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
+import LearningRewards from "@/components/app-shell/LearningRewards";
 import SavedForLater from "@/components/app-shell/SavedForLater";
 import EventCreateClient from "@/components/bty/events/EventCreateClient";
 import EventHostList from "@/components/bty/events/EventHostList";
@@ -2380,6 +2381,7 @@ export default function BtyDailyAppShell({
                   />
                 </Suspense>
               </div>
+              <LearningRewards locale={locale} refreshKey={weeklyRefreshKey} />
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup entry
                   Orb. R1 (ORB-WEEKLY-ATTENDANCE): the Orb owns ONE interaction — tap to reveal the

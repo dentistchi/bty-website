@@ -1,5 +1,28 @@
 # Active application task contract
 
+## LEARNING-REWARDS-V1 — 2026-10-30
+
+Dr. Chi approved the interactive navy/gold rewards concept and requested actual app
+implementation. Connect new participation-only Learning XP to canonical owned Learn,
+Clinical Discovery reference-reviewed Practice, and due Follow-up evidence. Preserve
+legacy Core/Weekly XP, ranking, Forge stage, Teams identity and all learner records.
+Never award historical XP, score agreement with an author, or treat missing case facts
+as learner failure. UI displays server decisions: cumulative/weekly XP, unlimited levels,
+twelve badge conditions, featured earned badge, grouped milestones and reduced motion.
+
+Implementation is the first integration phase. Existing sources do not assign approved
+delayed distinct variants, four-step module paths, consented/human-adopted insights, or
+frozen team rosters. Do not fabricate these; five badges and team goals remain explicitly
+unavailable. Seven badges can progress from supported evidence. See
+`docs/LEARNING_REWARDS_V1.md` for exact eligibility, rollout and remaining infrastructure.
+
+An additive service-only atomic ledger migration is prepared, not applied. The feature
+defaults off unless `LEARNING_REWARDS_ENABLED=1`. GET is read-only; POST reconciliation,
+profile selection and achievement acknowledgement retain authenticated ownership and
+consent. Saved learning survives reward failure and can reconcile later in Me. No merge,
+production migration/write, Worker configuration or deployment is part of implementation.
+Observed verification and limits are recorded in `docs/learning-rewards/verification.json`.
+
 ## APP-PRELAUNCH-RELIABILITY — 2026-10-30
 
 Dr. Chi requests autonomous reproduction, repair and regression verification of
