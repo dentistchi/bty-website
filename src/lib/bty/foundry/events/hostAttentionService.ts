@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadHistoryDismissals } from "./foundryEventHistoryDismissal.server";
 import { hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
 import {
@@ -43,7 +44,7 @@ import {
  * append-only HOST_ACK audit event, and an explicit Host-owner RPC — no migration here.
  */
 
-type OwnedEvent = { id: string; title: string | null };
+type OwnedEvent = { id: string; title: string | null; status: string };
 
 const FALLBACK_TITLE = "Foundry training";
 
@@ -252,12 +253,19 @@ export async function getHostDailyAttention(
   // 2) Owned events — the exact authorization scope. A foreign event is never in this set.
   const { data: evs } = await admin
     .from("foundry_events")
-    .select("id, title")
+    .select("id, title, status")
     .eq("owner_user_id", ownerUserId);
   const events = (evs ?? []) as OwnedEvent[];
   if (events.length === 0) return [];
-  const eventIds = events.map((e) => e.id);
-  const titleById = new Map(events.map((e) => [e.id, trainingTitle(e.title)]));
+  // Personal cleanup of a CLOSED session also removes that session's Host
+  // reminders. Its learners and canonical PENDING follow-ups remain unchanged.
+  // A stale dismissal must never hide a current open session.
+  const hidden = await loadHistoryDismissals(admin, ownerUserId);
+  const visible = events.filter(event => event.status !== "closed" || !hidden.has(event.id));
+  if (visible.length === 0) return [];
+  const eventIds = visible.map((e) => e.id);
+  const titleById = new Map(visible.map((e) => [e.id, trainingTitle(e.title)]));
+  const canRemoveByEvent = new Map(visible.map(event => [event.id, event.status === "closed"]));
 
   // 3) Optional attention projections (each independently fail-soft), then deterministic priority sort.
   const [overdue, shared] = await Promise.all([
@@ -265,5 +273,7 @@ export async function getHostDailyAttention(
     sharedReviewAttention(admin, eventIds, titleById, locale),
   ]);
 
-  return sortHostAttention([...overdue, ...shared]);
+  return sortHostAttention([...overdue, ...shared]).map(item => ({
+    ...item, canRemoveTraining: canRemoveByEvent.get(item.eventId) === true,
+  }));
 }

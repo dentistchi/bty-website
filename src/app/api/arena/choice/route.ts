@@ -249,11 +249,12 @@ async function ensureNoChangeReexposurePendingOutcome(params: {
  */
 async function syncRunProgressAndXp(
   supabase: SupabaseClient,
+  xpWriter: SupabaseClient | null,
   userId: string,
   runId: string,
   insertStep: number,
   xp: number,
-): Promise<{ error: string } | null> {
+): Promise<{ error: string; status?: number } | null> {
   if (insertStep >= 2) {
     const nowIso = new Date().toISOString();
     const { data: runRow } = await supabase
@@ -277,7 +278,8 @@ async function syncRunProgressAndXp(
   }
 
   if (xp > 0) {
-    const { error: rpcErr } = await supabase.rpc("increment_arena_xp", {
+    if (!xpWriter) return { error: "XP_WRITER_UNAVAILABLE", status: 503 };
+    const { error: rpcErr } = await xpWriter.rpc("increment_arena_xp", {
       p_user_id: userId,
       p_run_id: runId,
       p_xp: xp,
@@ -758,6 +760,13 @@ export async function POST(req: NextRequest) {
     commitmentContractIdForSnapshot = ensured.contractId;
   }
 
+  const xpWriter = xp > 0 ? getSupabaseAdmin() : null;
+  if (xp > 0 && !xpWriter) {
+    const out = NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
   const { error: insErr } = await supabase.from("arena_events").insert({
     run_id,
     user_id: user.id,
@@ -796,9 +805,9 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const syncErr = await syncRunProgressAndXp(supabase, user.id, run_id, insertStep, xp);
+  const syncErr = await syncRunProgressAndXp(supabase, xpWriter, user.id, run_id, insertStep, xp);
   if (syncErr) {
-    const out = NextResponse.json({ error: "xp_or_run_sync_failed", message: syncErr.error }, { status: 500 });
+    const out = NextResponse.json({ error: "xp_or_run_sync_failed", message: syncErr.error }, { status: syncErr.status ?? 500 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }

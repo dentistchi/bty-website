@@ -26,6 +26,7 @@ const H = vi.hoisted(() => ({
   currentAppIsSupported: vi.fn(() => true),
   navigateTo: vi.fn(async () => {}),
   navigateToDefaultPage: vi.fn(async () => {}),
+  onShellReady: vi.fn(() => {}),
   shellProps: [] as Array<Record<string, unknown>>,
 }));
 
@@ -57,6 +58,7 @@ vi.mock("@/components/app-shell/BtyDailyAppShell", async () => {
   return {
     default: (props: Record<string, unknown>) => {
       H.shellProps.push(props);
+      React.useEffect(() => { H.onShellReady(); }, []);
       const request = props.trainingRequest as import("@/domain/teams/trainingRequest").TrainingRequest | null;
       const [open, setOpen] = React.useState<string | null>(() => request?.target.joinToken ?? null);
       const handled = React.useRef<string | null>(request?.requestKey ?? null);
@@ -113,6 +115,7 @@ function setContext(value: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   H.shellProps.length = 0;
+  H.onShellReady.mockImplementation(() => {});
   bootstrapCalls = 0;
   subPageId = undefined;
   H.currentAppIsSupported.mockReturnValue(true);
@@ -324,5 +327,21 @@ describe("no browser handoff, ever", () => {
     const urls = fetchSpy.mock.calls.map((c) => String(c[0]));
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.some((u) => u.includes("/f/"))).toBe(false);
+  });
+});
+
+
+describe("resume listener ordering at the shell-ready commit", () => {
+  it("consumes focus delivered by the first ready shell before parent passive effects", async () => {
+    setContext(undefined);
+    H.onShellReady.mockImplementationOnce(() => {
+      setContext(`foundry-training:${TOKEN}`);
+      window.dispatchEvent(new Event("focus"));
+    });
+    render(<TeamsTabShell />);
+    await waitFor(() => expect(screen.getByTestId("in-shell-training")).toBeTruthy());
+    expect(screen.getByTestId("in-shell-training").getAttribute("data-token")).toBe(TOKEN);
+    expect(bootstrapCalls).toBe(1);
+    expect(H.getAuthToken).toHaveBeenCalledTimes(1);
   });
 });

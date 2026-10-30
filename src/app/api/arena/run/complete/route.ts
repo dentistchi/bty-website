@@ -33,7 +33,7 @@ import { applyArenaRunRewardsOnVerifiedCompletion } from "@/lib/bty/arena/reflec
  *   — Action Contract: `ensureActionContractForArenaRun` → `public.bty_action_contracts` (idempotent per `user_id`+`session_id`).
  * - **200 (멱등·이중 제출):** `{ ok: true, runId, status: "DONE", idempotent: true, actionContractCreated, contractId, myPageRefetchRequired }` — **`deltaApplied`·`coreXp`·`weeklyXp` 없음**; 항상 `ensureActionContractForArenaRun`로 계약 행 보장(복구).
  * - **500:** `{ error: string }` (DB/XP 적용 실패).
- * - **계약:** `SUPABASE_SERVICE_ROLE_KEY` 누락 시 **멱등/첫 완료 모두** `ensureActionContractForArenaRun`이 `ok:false`로 로그만 남기고 **200** 유지(XP는 이미 적용된 경우).
+ * - **계약:** private XP writer 미구성 시 완료 상태를 쓰기 전에 **503** 반환.
  * - **409:** `{ error: "RUN_ABORTED" }` — `meta.aborted_at` 설정된 런은 완료 처리·XP 지급 불가.
  * - **멱등:** 이미 XP 지급된 동일 `runId` 재요청 → **200** `{ idempotent: true }` (409 아님).
  * - **429:** 미사용. DB 경합·일시 오류는 **500** — 클라이언트 백오프 재시도.
@@ -94,6 +94,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "RUN_ABORTED" }, { status: 409 });
   }
 
+  // A missing private writer is known before any completion or reward marker is persisted.
+  const adminForContract = getSupabaseAdmin();
+  if (!adminForContract) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+
   if (existing.status !== "DONE") {
     const nowIso = new Date().toISOString();
     const { error: updErr } = await supabase
@@ -145,14 +149,6 @@ export async function POST(req: Request) {
       myPageRefetchRequired: true,
       ...arenaRouterSnapshotJsonFields(nextSnap),
     });
-  }
-
-  const adminForContract = getSupabaseAdmin();
-  if (!adminForContract) {
-    console.error(
-      "[run/complete] admin null after RUN_COMPLETED_APPLIED insert — contract will not be created. Check SUPABASE_SERVICE_ROLE_KEY.",
-      { userId: user.id, runId },
-    );
   }
 
   console.log("[arena] before ensureActionContractForArenaRun", {
@@ -243,7 +239,7 @@ export async function POST(req: Request) {
       // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
       // UPSERT also applies the bonus when no weekly_xp row exists yet (the prior
       // `if (wxRow)` guard silently dropped the bonus in that case).
-      const { error: bonusErr } = await supabase.rpc("increment_weekly_xp", {
+      const { error: bonusErr } = await adminForContract.rpc("increment_weekly_xp", {
         p_user_id: user.id,
         p_league_id: null,
         p_delta: REFLECTION_QUEST_BONUS_XP,

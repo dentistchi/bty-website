@@ -8,6 +8,7 @@ import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnounceme
 import { funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
 import TrackConversation, { NewMessageBadge } from "./TrackConversation";
 import TodaySwipeAction, { type TodaySwipeTrayAction } from "./TodaySwipeAction";
+import { openSourceLink } from "@/lib/bty/teams/openSourceLink";
 import { hostTodayAction } from "@/domain/daily/todayDismissal";
 
 /**
@@ -97,6 +98,9 @@ const COPY = {
     closed: "Closed",
     error: "Couldn't load what you're tracking.",
     retry: "Retry",
+    removeFailed: "Couldn’t remove this from Today. Please try again.",
+    handleFailed: "Couldn’t save that change. Please try again.",
+    openFailed: "Couldn’t open this message in Teams. Please try again.",
   },
   ko: {
     title: "공지 추적",
@@ -125,6 +129,9 @@ const COPY = {
     closed: "종료됨",
     error: "추적 중인 항목을 불러오지 못했습니다.",
     retry: "다시 시도",
+    removeFailed: "오늘 화면에서 치우지 못했습니다. 다시 시도해 주세요.",
+    handleFailed: "변경 사항을 저장하지 못했습니다. 다시 시도해 주세요.",
+    openFailed: "Teams에서 메시지를 열지 못했습니다. 다시 시도해 주세요.",
   },
 } as const;
 
@@ -416,6 +423,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
   /** ONE run may be swiped open at a time. */
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ itemId: string; message: string } | null>(null);
 
   /**
    * Remove one run from THIS Host's Today.
@@ -427,6 +435,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
    */
   const removeRun = useCallback(
     async (announcementId: string) => {
+      setActionError(null);
       setRemoving(announcementId);
       try {
         const res = await fetch("/api/me/today/dismiss", {
@@ -435,17 +444,20 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ itemKind: "track_host", itemId: announcementId }),
         });
-        if (res.ok) {
-          setSwipeOpenId(null);
-          await load();
+        const result = await res.json().catch(() => null) as { ok?: boolean } | null;
+        if (!res.ok || result?.ok !== true) {
+          setActionError({ itemId: announcementId, message: t.removeFailed });
+          return;
         }
+        setSwipeOpenId(null);
+        await load();
       } catch {
-        /* Left visible: a run wrongly shown is noise, a run wrongly hidden loses somebody's question. */
+        setActionError({ itemId: announcementId, message: t.removeFailed });
       } finally {
         setRemoving(null);
       }
     },
-    [load],
+    [load, t.removeFailed],
   );
   const toggleConversation = useCallback(
     (recipientId: string) => setOpenRecipientId((cur) => (cur === recipientId ? null : recipientId)),
@@ -461,6 +473,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
    */
   const handle = useCallback(
     async (r: Responder, handled: boolean) => {
+      setActionError(null);
       setBusyId(r.recipientId);
       try {
         const res = await fetch(
@@ -472,14 +485,19 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
             body: JSON.stringify({ handled }),
           },
         );
-        if (res.ok) await load();
+        const result = await res.json().catch(() => null) as { ok?: boolean } | null;
+        if (!res.ok || result?.ok !== true) {
+          setActionError({ itemId: r.recipientId, message: t.handleFailed });
+          return;
+        }
+        await load();
       } catch {
-        /* Left visibly unhandled: a follow-up wrongly shown as settled is worse than a retry. */
+        setActionError({ itemId: r.recipientId, message: t.handleFailed });
       } finally {
         setBusyId(null);
       }
     },
-    [load],
+    [load, t.handleFailed],
   );
 
 
@@ -668,15 +686,24 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
             ) : null}
 
             {it.sourceUrl ? (
-              <a
-                href={it.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 data-testid="tracking-source-link"
-                className="self-start text-[0.8rem] font-medium text-[#C9A66B]"
+                data-source-url={it.sourceUrl}
+                onClick={() => {
+                  setActionError(null);
+                  void openSourceLink(it.sourceUrl).then(ok => {
+                    if (!ok) setActionError({ itemId: it.id, message: t.openFailed });
+                  }).catch(() => setActionError({ itemId: it.id, message: t.openFailed }));
+                }}
+                className="min-h-[44px] self-start text-left text-[0.8rem] font-medium text-[#C9A66B]"
               >
                 {t.openInTeams}
-              </a>
+              </button>
+            ) : null}
+
+            {actionError && (actionError.itemId === it.id || everyone.some(p => p.recipientId === actionError.itemId)) ? (
+              <p role="alert" className="text-[0.8rem] text-white/70" data-testid="tracking-action-error">{actionError.message}</p>
             ) : null}
 
             {/*

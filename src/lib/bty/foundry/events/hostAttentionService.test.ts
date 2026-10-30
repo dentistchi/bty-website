@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getHostDailyAttention } from "./hostAttentionService";
+import { getHostDailyAttention } from "@/lib/bty/foundry/events/hostAttentionService";
 
 /**
  * Host Leadership Attention V1 — owner-scoped aggregation (Slice 3.1B-3L).
@@ -16,7 +16,8 @@ const TZ = "UTC";
 
 type World = {
   hostGrants: Array<{ user_id: string; status: "active" | "revoked" }>;
-  events: Array<{ id: string; title: string | null; owner_user_id: string }>;
+  events: Array<{ id: string; title: string | null; owner_user_id: string; status?: string }>;
+  historyDismissals?: Array<{ user_id: string; event_id: string }>;
   followups: Array<{
     id: string;
     event_id: string;
@@ -65,7 +66,10 @@ function makeAdmin(world: World, throwOnTable?: string) {
       }
       case "foundry_events": {
         const owner = eqVal(ops, "owner_user_id");
-        return { data: world.events.filter((e) => e.owner_user_id === owner).map((e) => ({ id: e.id, title: e.title })) };
+        return { data: world.events.filter((e) => e.owner_user_id === owner).map((e) => ({ id: e.id, title: e.title, status: e.status })) };
+      }
+      case "bty_foundry_event_history_dismissals": {
+        return { data: (world.historyDismissals ?? []).filter(d => d.user_id === eqVal(ops, "user_id")).map(d => ({ event_id: d.event_id })) };
       }
       case "foundry_participant_followups": {
         const ids = inVal(ops, "event_id");
@@ -109,6 +113,7 @@ function makeAdmin(world: World, throwOnTable?: string) {
       eq(c: string, v: unknown) { ops.push(["eq", c, v]); return chain; },
       in(c: string, v: unknown) { ops.push(["in", c, v]); return chain; },
       not(c: string, op: string, v: unknown) { ops.push(["not", c, op, v]); return chain; },
+      returns() { return chain; },
       maybeSingle() {
         try {
           return Promise.resolve(resolve(table, select, ops));
@@ -351,5 +356,39 @@ describe("getHostDailyAttention — priority + privacy (tests 21–23 integrated
     await expect(getHostDailyAttention(admin, "host-1", NOW, TZ, "en")).rejects.toThrow();
     expect(selects.some((s) => s.table === "foundry_participant_followups")).toBe(false);
     expect(selects.some((s) => s.table === "foundry_event_training_progress")).toBe(false);
+  });
+});
+
+
+describe("prelaunch: personally removed closed training leaves Today", () => {
+  function worldWithClosedOverdue() {
+    const w = baseWorld();
+    w.events = w.events.map(e => ({...e, status: e.id === "e1" ? "closed" : "open"}));
+    w.followups = ["e1", "e2"].map((event_id,i) => ({ id:`fu${i}`,event_id,progress_id:null,follow_up_days:7,due_at:"2026-07-15T05:00:00.000Z",status:"PENDING",source_training_title:null }));
+    return w;
+  }
+  it("does not resurrect a closed training that the same Host already removed", async () => {
+    const w = worldWithClosedOverdue();
+    w.historyDismissals = [{user_id:"host-1",event_id:"e1"}];
+    const {admin}=makeAdmin(w);
+    const items=await getHostDailyAttention(admin,"host-1",NOW,TZ,"en");
+    expect(items.map(i=>i.eventId)).toEqual(["e2"]);
+    expect(w.followups.map(f=>f.status)).toEqual(["PENDING","PENDING"]);
+  });
+  it("another Host's personal cleanup cannot remove my pending follow-up", async () => {
+    const w = worldWithClosedOverdue();
+    w.historyDismissals = [{user_id:"host-2",event_id:"e1"}];
+    const {admin}=makeAdmin(w);
+    expect((await getHostDailyAttention(admin,"host-1",NOW,TZ,"en")).map(i=>i.eventId)).toEqual(["e1","e2"]);
+  });
+  it("keeps a closed training visible until its owner explicitly removes it", async () => {
+    const {admin}=makeAdmin(worldWithClosedOverdue());
+    expect((await getHostDailyAttention(admin,"host-1",NOW,TZ,"en")).map(i=>i.eventId)).toEqual(["e1","e2"]);
+  });
+  it("never suppresses live open training because of stale historical dismissal state", async () => {
+    const w=worldWithClosedOverdue();
+    w.historyDismissals=[{user_id:"host-1",event_id:"e2"}];
+    const {admin}=makeAdmin(w);
+    expect((await getHostDailyAttention(admin,"host-1",NOW,TZ,"en")).map(i=>i.eventId)).toEqual(["e1","e2"]);
   });
 });

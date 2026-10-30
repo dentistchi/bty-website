@@ -12,6 +12,9 @@ import {
   applyReexposureOutcomeReflection,
 } from "./reflectionRewards.server";
 
+const privateWriter = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => privateWriter.client }));
+
 vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
   applyDirectCoreXp: vi.fn(async () => ({ ok: true, newCoreTotal: 12 })),
 }));
@@ -64,9 +67,14 @@ function makeSupabase(): { supabase: unknown; captures: Captures } {
     // weekly_xp writes route through the atomic increment_weekly_xp RPC.
     rpc: (fn: string, args?: Record<string, unknown>) => {
       (captures.__rpc ??= []).push({ fn, ...(args ?? {}) });
+      if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
       return Promise.resolve({ data: null, error: null });
     },
   };
+  privateWriter.client = { rpc: (fn: string, args?: Record<string, unknown>) => {
+    (captures.__privateRpc ??= []).push({ fn, ...(args ?? {}) });
+    return Promise.resolve({ data: null, error: null });
+  } };
   return { supabase, captures };
 }
 
@@ -75,6 +83,7 @@ function makeSupabase(): { supabase: unknown; captures: Captures } {
 type ArenaRunCaptures = {
   inserts: Record<string, Record<string, unknown>[]>;
   rpc: { fn: string; args?: Record<string, unknown> }[];
+  privateRpc: { fn: string; args?: Record<string, unknown> }[];
 };
 
 function makeArenaRunSupabase(options?: {
@@ -88,7 +97,7 @@ function makeArenaRunSupabase(options?: {
   const profileStreak = options?.profileStreak ?? null;
   const coreXpLedgerInsertError = options?.coreXpLedgerInsertError ?? null;
 
-  const captures: ArenaRunCaptures = { inserts: {}, rpc: [] };
+  const captures: ArenaRunCaptures = { inserts: {}, rpc: [], privateRpc: [] };
 
   function arenaEventsSelectQuery() {
     // The function makes two SELECT queries against arena_events:
@@ -159,9 +168,14 @@ function makeArenaRunSupabase(options?: {
     },
     rpc: (fn: string, args?: Record<string, unknown>) => {
       captures.rpc.push({ fn, args });
+      if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
       return Promise.resolve({ data: null, error: null });
     },
   };
+  privateWriter.client = { rpc: (fn: string, args?: Record<string, unknown>) => {
+    captures.privateRpc.push({ fn, args });
+    return Promise.resolve({ data: null, error: null });
+  } };
   return { supabase, captures };
 }
 
@@ -183,6 +197,8 @@ describe("applyArenaRunRewardsOnVerifiedCompletion — STAB-02-P1 core_xp_ledger
       run: { run_id: "run-stab02-A", scenario_id: "core_01" },
     });
     expect(result).toMatchObject({ ok: true, applied: true, coreXp: 12, weeklyXp: 8 });
+    expect(captures.privateRpc).toEqual([{ fn: "increment_weekly_xp", args: { p_user_id: "user-stab02", p_league_id: null, p_delta: 8 } }]);
+    expect(captures.rpc.some(call => call.fn === "increment_weekly_xp")).toBe(false);
     const ledgerInserts = captures.inserts.core_xp_ledger ?? [];
     expect(ledgerInserts).toHaveLength(1);
     expect(ledgerInserts[0]).toEqual({
@@ -250,6 +266,7 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
     // weeklyXp 0 → upsert skipped entirely (weekly_xp untouched, no increment RPC)
     expect(captures.weekly_xp).toBeUndefined();
     expect((captures.__rpc ?? []).some((c) => c.fn === "increment_weekly_xp")).toBe(false);
+    expect(captures.__privateRpc ?? []).toEqual([]);
     // the validation event is still logged, but not as verified evidence
     expect(captures.le_verification_log?.[0]?.verified).toBe(false);
     expect(captures.arena_events?.[0]?.xp).toBe(0);
@@ -271,12 +288,13 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
     // weekly_xp write goes through the atomic increment_weekly_xp RPC, not a
     // read-modify-write select+update.
     expect(captures.weekly_xp).toBeUndefined();
-    expect(captures.__rpc?.find((c) => c.fn === "increment_weekly_xp")).toEqual({
+    expect(captures.__privateRpc?.find((c) => c.fn === "increment_weekly_xp")).toEqual({
       fn: "increment_weekly_xp",
       p_user_id: "u1",
       p_league_id: null,
       p_delta: 3,
     });
+    expect((captures.__rpc ?? []).some(call => call.fn === "increment_weekly_xp")).toBe(false);
     expect(captures.le_verification_log?.[0]?.verified).toBe(true);
     expect(captures.arena_events?.[0]?.xp).toBe(3);
     // §5.3: a computed activation is tagged distinctly from a fallback

@@ -1,5 +1,28 @@
 # Active application task contract
 
+## APP-PRELAUNCH-RELIABILITY — 2026-10-30
+
+Dr. Chi requests autonomous reproduction, repair and regression verification of
+Today overdue cleanup, Track/Save and other main app flows before public release.
+Use this isolated topic branch from PR82 / inner-main. Keep Clinical QA PR84
+separate. No shared training/learner records, deadlines, XP, identities, permissions
+or production configuration may be changed merely to clear a screen.
+
+Source reproductions identify ignored Save UPDATE failures and a concurrent
+Track/Save intent race; completed-training personal dismissal does not feed Today
+host attention; Today reselect ignores refreshKey; Track mutations hide errors;
+Field Actions child return retains stale inventories; Teams Today navigation
+replaces the frame-safe /teams document path. Preserve canonical server state and
+surface mutation failures without inventing success or completion.
+
+Read-only production inspection matched the two screenshot training titles via
+follow-up source titles: one event is closed, one is open, neither personally
+hidden. No live mutation has been attempted. Existing history dismissal accepts
+only closed events; active training must retain that lifecycle boundary. The
+closed row can gain an explicit personal Remove action, with the existing owned
+endpoint and failure feedback. Final release claims must distinguish isolated
+verification from real Teams/mobile and deployment checks.
+
 ## CLINICAL-DISCOVERY-REQUESTED-INFORMATION — 2026-10-30
 
 The Case 006 recording shows a request for other teeth receiving an explicit

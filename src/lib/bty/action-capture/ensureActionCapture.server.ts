@@ -55,7 +55,7 @@ export type ActionCapture = {
 
 export type EnsureActionCaptureResult =
   | { ok: true; capture: ActionCapture; created: boolean }
-  | { ok: false; code: "unsupported_provider" | "missing_identifier" | "not_owner" | "insert_failed" | "load_failed" };
+  | { ok: false; code: "unsupported_provider" | "missing_identifier" | "not_owner" | "insert_failed" | "load_failed" | "update_failed" };
 
 type Row = {
   id: string;
@@ -131,48 +131,8 @@ export async function ensureActionCapture(
     .eq("external_key", externalKey)
     .maybeSingle();
   if (exErr) return { ok: false, code: "load_failed" };
-  if (existing) {
-    /*
-      SAVE AFTER TRACK promotes the row's intent; TRACK AFTER SAVE leaves it alone.
-      The `is("saved_at", null)` guard is what makes the second true: a row already stamped is not
-      re-stamped, so a later Track can never move a save's timestamp, and neither can a second Save.
-    */
-    const row = existing as Row & { saved_at?: string | null; saved_removed_at?: string | null };
-    if (intent === "save" && !row.saved_at) {
-      const { data: stamped } = await admin
-        .from("bty_action_captures")
-        .update({ saved_at: new Date().toISOString() })
-        .eq("id", row.id)
-        .is("saved_at", null)
-        .select(CAPTURE_COLS)
-        .maybeSingle();
-      if (stamped) return { ok: true, capture: project(stamped as Row), created: false };
-    }
+  if (existing) return settleExisting(existing as Row & { saved_at?: string | null; saved_removed_at?: string | null });
 
-    /*
-      ★ AN EXPLICIT SAVE BRINGS A CLEARED ITEM BACK — as the SAME row, and as UNDECIDED.
-
-      `saved_at` is NOT rewritten: they saved this once, and that moment is not moved by saving it
-      again. Only the removal is lifted. `triage_choice` was already cleared when they removed it
-      (a position in a queue means nothing once the item has left), and it is normalized here as
-      well so a historically inconsistent row cannot return still wearing a stale Soon or Later.
-
-      Track never reaches this branch: only `intent === "save"` lifts a removal, so a message the
-      person cleared cannot be dragged back into their list by somebody tracking it.
-    */
-    if (intent === "save" && row.saved_removed_at) {
-      const { data: restored } = await admin
-        .from("bty_action_captures")
-        .update({ saved_removed_at: null, triage_choice: null, triaged_at: null })
-        .eq("id", row.id)
-        .eq("user_id", userId)
-        .not("saved_removed_at", "is", null)
-        .select(CAPTURE_COLS)
-        .maybeSingle();
-      if (restored) return { ok: true, capture: project(restored as Row), created: false };
-    }
-    return { ok: true, capture: project(existing as Row), created: false };
-  }
 
   // 2. Insert. status='captured' always; promotion columns deliberately absent.
   const { data: inserted, error: insErr } = await admin
@@ -195,14 +155,15 @@ export async function ensureActionCapture(
 
   // 3. 23505 → a concurrent save won the unique tuple. Re-read it; do NOT overwrite it.
   if ((insErr as { code?: string } | null)?.code === "23505") {
-    const { data: again } = await admin
+    const { data: again, error: againError } = await admin
       .from("bty_action_captures")
       .select(CAPTURE_COLS)
       .eq("user_id", userId)
       .eq("source_type", sourceType)
       .eq("external_key", externalKey)
       .maybeSingle();
-    if (again) return { ok: true, capture: project(again as Row), created: false };
+    if (againError) return { ok: false, code: "load_failed" };
+    if (again) return settleExisting(again as Row & { saved_at?: string | null; saved_removed_at?: string | null });
   }
 
   console.error("[actionCapture] insert failed", {
@@ -211,6 +172,39 @@ export async function ensureActionCapture(
     code: (insErr as { code?: string } | null)?.code ?? null,
   });
   return { ok: false, code: "insert_failed" };
+
+  /** Reconcile the caller's Save intent for either an existing row or a concurrent
+   * insert winner. Success is confirmed active lane membership, not merely row existence.
+   * Track never restores a removed save and never stamps saved_at. */
+  async function settleExisting(row: Row & { saved_at?: string | null; saved_removed_at?: string | null }): Promise<EnsureActionCaptureResult> {
+    if (intent === "track_source") return { ok: true, capture: project(row), created: false };
+    const active = (value: typeof row) => value.status === "captured" && !!value.saved_at && !value.saved_removed_at;
+    if (active(row)) return { ok: true, capture: project(row), created: false };
+    if (row.status !== "captured") return { ok: false, code: "update_failed" };
+    const patch = {
+      ...(!row.saved_at ? { saved_at: new Date().toISOString() } : {}),
+      ...(row.saved_removed_at ? { saved_removed_at: null, triage_choice: null, triaged_at: null } : {}),
+    };
+    let update = admin.from("bty_action_captures").update(patch)
+      .eq("id", row.id).eq("user_id", userId).eq("status", "captured");
+    if (!row.saved_at) update = update.is("saved_at", null);
+    // A later Remove must not be silently undone by a Save based on an older snapshot.
+    update = row.saved_removed_at
+      ? update.eq("saved_removed_at", row.saved_removed_at)
+      : update.is("saved_removed_at", null);
+    const { data: updated, error: updateError } = await update.select(CAPTURE_COLS).maybeSingle();
+    if (updateError) return { ok: false, code: "update_failed" };
+    if (updated && active(updated as typeof row)) return { ok: true, capture: project(updated as Row), created: false };
+
+    // A concurrent Save may have satisfied the guarded update. Re-read once and
+    // acknowledge only its actual stored state; never return the stale input row.
+    const { data: current, error: currentError } = await admin.from("bty_action_captures")
+      .select(CAPTURE_COLS).eq("id", row.id).eq("user_id", userId).maybeSingle();
+    if (currentError) return { ok: false, code: "load_failed" };
+    if (current && active(current as typeof row)) return { ok: true, capture: project(current as Row), created: false };
+    return { ok: false, code: "update_failed" };
+  }
+
 }
 
 /**
@@ -302,6 +296,8 @@ export async function setActionCaptureTriage(
     .eq("id", captureId)
     .eq("user_id", userId)
     .eq("status", "captured")
+    .not("saved_at", "is", null)
+    .is("saved_removed_at", null)
     .is("triage_choice", null)
     .select(CAPTURE_COLS)
     .maybeSingle();
@@ -319,6 +315,9 @@ export async function setActionCaptureTriage(
     .select(CAPTURE_COLS)
     .eq("id", captureId)
     .eq("user_id", userId)
+    .eq("status", "captured")
+    .not("saved_at", "is", null)
+    .is("saved_removed_at", null)
     .maybeSingle();
   if (exErr) return { ok: false, code: "load_failed" };
   if (existing && (existing as Row).triage_choice !== null) {
