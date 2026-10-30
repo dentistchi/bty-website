@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// V8.1 GUEST READY CONTROL — REAL render + interaction tests.
+// Request-to-queue and legacy Ready compatibility — real interaction tests.
 //
 // The V8 Device Gate failed because the string smoke tests only checked copy and
 // never proved a Ready BUTTON actually renders where the guest can reach it. These
@@ -95,6 +95,71 @@ afterEach(() => {
 
 const onRemoved = () => {};
 
+describe('Request joins the queue immediately', () => {
+  const queued = () => st({ readyAt: '2026-10-30T18:00:00Z' });
+
+  function interceptCancel(status = 200, hang = false) {
+    const previousFetch = global.fetch;
+    const cancel = vi.fn(async (_url: unknown, _options?: RequestInit) =>
+      hang ? new Promise<never>(() => {}) : jsonRes({ ok: status === 200 }, status === 200, status));
+    global.fetch = vi.fn(async (url: unknown, options?: RequestInit) => {
+      if (String(url).endsWith('/cancel')) return cancel(url, options);
+      return previousFetch(url as RequestInfo, options);
+    }) as typeof fetch;
+    return cancel;
+  }
+
+  it('shows the queued title and cancels directly, without another Ready or confirmation step', async () => {
+    statusById = { a: queued() };
+    const cancelled = vi.fn();
+    const cancel = interceptCancel();
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={cancelled} />);
+    const button = await screen.findByRole('button', { name: 'Song A 신청 취소' });
+    expect(screen.queryByRole('button', { name: '준비됐어요' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '준비 취소' })).toBeNull();
+    fireEvent.click(button);
+    await waitFor(() => expect(cancelled).toHaveBeenCalledWith('a'));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(JSON.parse(String(cancel.mock.calls[0][1]?.body))).toEqual({ token: 'cap-a' });
+    expect(readyCalls).toEqual([]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the request and shows an error when playback wins the cancellation race', async () => {
+    statusById = { a: queued() };
+    const cancelled = vi.fn();
+    interceptCancel(409);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={cancelled} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Song A 신청 취소' }));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', '이미 시작되었거나 취소할 수 없는 곡이에요.');
+    expect(cancelled).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates cancellation while the server response is pending', async () => {
+    statusById = { a: queued() };
+    const cancel = interceptCancel(200, true);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={vi.fn()} />);
+    const button = await screen.findByRole('button', { name: 'Song A 신청 취소' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('cancels the selected song in a multiple-request list with its own capability', async () => {
+    statusById = { a: queued(), b: st({ position: 3, readyAt: '2026-10-30T18:01:00Z' }) };
+    const cancelled = vi.fn();
+    const cancel = interceptCancel();
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A'), mkReq('b', 'Song B')]} onRemoved={cancelled} />);
+    fireEvent.click(await screen.findByRole('button', { name: '내 신청곡 2곡 열기' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Song B 신청 취소' }));
+    await waitFor(() => expect(cancelled).toHaveBeenCalledWith('b'));
+    expect(JSON.parse(String(cancel.mock.calls[0][1]?.body))).toEqual({ token: 'cap-b' });
+    expect(String(cancel.mock.calls[0][0])).toContain('/requests/b/cancel');
+    expect(readyCalls).toEqual([]);
+  });
+});
+
 describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even at #2)', () => {
   it('a queue #2 waiting song shows a reachable 준비됐어요 button (the regression)', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
@@ -119,7 +184,7 @@ describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even
     // The modal (dialog) must not have opened from the Ready tap.
     expect(screen.queryByRole('dialog')).toBeNull();
     // The dock flips to the ready state after the refresh.
-    expect(await screen.findByRole('button', { name: '준비 취소' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Song A 신청 취소' })).toBeTruthy();
   });
 
   it('a now-playing song shows NO Ready button in the dock', async () => {
@@ -132,7 +197,7 @@ describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even
 });
 
 describe('V8.1 — first-in-line Ready auto-starts (honest, no TV-autoplay claim)', () => {
-  it('autoStarted:true surfaces "무대가 시작되었습니다"', async () => {
+  it('a legacy join response never claims playback started without canonical playing state', async () => {
     statusById = { a: st({ state: 'up_next', position: 1, aheadCount: 0, isUpNext: true }) };
     display = { playing: null, next: { id: 'a' } }; // stage open, I am next → my_turn
     readyResponder = (id, ready) => {
@@ -141,7 +206,8 @@ describe('V8.1 — first-in-line Ready auto-starts (honest, no TV-autoplay claim
     };
     renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     fireEvent.click(await screen.findByRole('button', { name: '준비됐어요' }));
-    expect(await screen.findByText(/무대가 시작되었습니다/)).toBeTruthy();
+    expect(await screen.findByText('다음 차례예요. 호스트가 첫 곡을 시작합니다.')).toBeTruthy();
+    expect(screen.queryByText(/무대가 시작되었습니다/)).toBeNull();
   });
 
   it('autoStarted:false (a later song) shows the plain "준비 완료" continuation copy', async () => {
@@ -181,7 +247,8 @@ describe('V8.1 — expanded list offers Ready per song, independently', () => {
     await waitFor(() => expect(readyCalls).toEqual([{ id: 'b', ready: true }]));
     // Now exactly one row is ready (준비 취소) and one is still 준비됐어요.
     await waitFor(() => {
-      expect(within(dialog).getAllByRole('button', { name: '준비 취소' }).length).toBe(1);
+      expect(within(dialog).queryByRole('button', { name: '준비 취소' })).toBeNull();
+      expect(within(dialog).getByText('✓ 대기열 추가됨')).toBeTruthy();
       expect(within(dialog).getAllByRole('button', { name: '준비됐어요' }).length).toBe(1);
     });
   });
@@ -210,7 +277,7 @@ describe('V8.1 — resilience: restore, rollback, dedup', () => {
   it('mounting with an already-ready song restores the ready state (refresh persistence)', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1, readyAt: '2026-01-01T00:00:00Z' }) };
     renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
-    expect(await screen.findByRole('button', { name: '준비 취소' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Song A 신청 취소' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: '준비됐어요' })).toBeNull();
   });
 
@@ -325,7 +392,7 @@ describe('Queue Truth V1 — current requests vs completed history', () => {
     display = { playing: null, next: { id: 'a' } }; // stage idle
     statusById = { a: st({ state: 'up_next', position: 1, aheadCount: 0, readyAt: '2026-01-01T00:00:00Z' }) };
     renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
-    expect(await screen.findByText('첫 곡으로 시작할 준비가 됐어요')).toBeTruthy();
+    expect(await screen.findByText('다음 차례예요. 호스트가 첫 곡을 시작합니다.')).toBeTruthy();
     expect(screen.queryByText(/앞의 무대가 끝나면/)).toBeNull();
   });
 });

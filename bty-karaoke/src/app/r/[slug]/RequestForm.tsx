@@ -74,9 +74,8 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const [editingName, setEditingName] = useState(true);
 
   const [query, setQuery] = useState('');
-  // Performance Style: MR is the default (Dr. Chi's preference — clean backing
-  // tracks). Karaoke biases toward on-screen-words videos; Original is the raw
-  // query. Changing style re-runs the search with the same query.
+  // Karaoke is the default; guests can choose MR or Original before searching.
+  // Changing style re-runs the search with the same query.
   const [style, setStyle] = useState<PerformanceStyle>(DEFAULT_STYLE);
   const [results, setResults] = useState<YoutubeSearchItem[]>([]);
   const [resultQuery, setResultQuery] = useState('');

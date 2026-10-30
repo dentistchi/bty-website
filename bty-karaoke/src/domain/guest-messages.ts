@@ -59,8 +59,8 @@ export const GUEST_MESSAGES = {
   'guest.room.status.open': { en: 'Open', ko: '열림' },
   'guest.room.status.closed': { en: 'Closed', ko: '닫힘' },
   'guest.room.lead': {
-    en: 'Search for a song, request it, and start your own turn when it comes.',
-    ko: '노래를 검색해 신청하고, 내 차례가 되면 직접 시작하세요.',
+    en: 'Request a song to join the queue. Check your place or cancel in My Requests.',
+    ko: '노래를 신청하면 대기열에 추가돼요. 내 신청곡에서 순서를 확인하거나 취소할 수 있어요.',
   },
   'guest.room.not_found.title': { en: 'Room not found', ko: '노래방을 찾을 수 없습니다' },
   'guest.room.not_found.body': { en: 'No room exists for “{slug}”.', ko: '“{slug}” 노래방이 없습니다.' },
@@ -261,10 +261,10 @@ export const GUEST_MESSAGES = {
     ko: '준비되면 재생 순서에 반영됩니다',
   },
   'guest.subtitle.ready_ahead': {
-    en: { one: '{count} ready song is ahead of you', other: '{count} ready songs are ahead of you' },
-    ko: { other: '앞에 준비된 노래 {count}곡이 있어요' },
+    en: { one: '{count} song is ahead of you', other: '{count} songs are ahead of you' },
+    ko: { other: '앞에 노래 {count}곡이 있어요' },
   },
-  'guest.subtitle.first_up': { en: "You're ready to open the stage", ko: '첫 곡으로 시작할 준비가 됐어요' },
+  'guest.subtitle.first_up': { en: "You're next. The host starts the first song.", ko: '다음 차례예요. 호스트가 첫 곡을 시작합니다.' },
   'guest.subtitle.auto_follow': {
     en: 'You follow automatically when the current song finishes',
     ko: '현재 무대가 끝나면 자동으로 이어집니다',
@@ -286,7 +286,7 @@ export const GUEST_MESSAGES = {
   },
   'guest.stage.ready_action': { en: "I'm ready", ko: '준비됐어요' },
   'guest.stage.readying': { en: 'Getting ready…', ko: '준비하는 중…' },
-  'guest.stage.ready_title': { en: 'Ready', ko: '준비 완료' },
+  'guest.stage.ready_title': { en: 'In the queue', ko: '대기열에 추가됐어요' },
   'guest.stage.ready_note': {
     en: 'Your turn has started · your host is opening the song.',
     ko: '무대가 시작되었습니다 · Admin 화면에서 노래를 열고 있어요.',
@@ -297,7 +297,7 @@ export const GUEST_MESSAGES = {
     ko: '미리 준비해두면 차례가 오면 자동으로 시작돼요',
   },
   'guest.stage.working': { en: 'Working…', ko: '처리 중…' },
-  'guest.stage.ready_check': { en: '✓ Ready', ko: '✓ 준비 완료' },
+  'guest.stage.ready_check': { en: '✓ In the queue', ko: '✓ 대기열 추가됨' },
 
   // ─────────────────────────────────────────────────────── My requests — dock
   'guest.dock.open_a11y': {
@@ -388,8 +388,8 @@ export const GUEST_MESSAGES = {
   'guest.app_invite.continue_web': { en: 'Continue on the web', ko: '웹에서 계속하기' },
   'guest.app_entry.label': { en: 'View in the app', ko: '앱에서 보기' },
   'guest.app_entry.supporting': {
-    en: 'Follow your place in line and your ready status right in the app',
-    ko: '내 노래 순서와 준비 상태를 앱에서 바로 확인하세요',
+    en: 'Follow your place in line right in the app',
+    ko: '내 노래 순서를 앱에서 바로 확인하세요',
   },
   'guest.app_entry.title': {
     en: 'Request your first song and you can pick it up in the app',

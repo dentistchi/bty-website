@@ -21,6 +21,9 @@ describe('BTY song picks reuse the guest search', () => {
     expect(screen.getByText('BTY 추천곡').closest('details')!.open).toBe(true);
     expect(screen.getAllByRole('button', { name: /반주 찾기$/ })).toHaveLength(10);
     expect(document.activeElement).not.toBe(screen.getByPlaceholderText('노래 제목 또는 가수'));
+    const modes = screen.getByRole('group', { name: '공연 스타일' });
+    expect(modes.querySelector('button')!.textContent).toContain('노래방');
+    expect(modes.querySelector('button')!.getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: '팝송' }));
     expect(screen.getByText('Just the Way You Are')).toBeTruthy();
     expect(searchCalls()).toHaveLength(0);
@@ -36,7 +39,7 @@ describe('BTY song picks reuse the guest search', () => {
     const url = new URL(String(searchCalls()[0][0]), 'http://localhost');
     expect(url.pathname).toBe('/api/youtube/search');
     expect(url.searchParams.get('q')).toBe('DAY6 한 페이지가 될 수 있게');
-    expect(url.searchParams.get('style')).toBe('mr');
+    expect(url.searchParams.get('style')).toBe('karaoke');
     expect(input.value).toBe('DAY6 한 페이지가 될 수 있게');
     expect(screen.getByText('BTY 추천곡').closest('details')!.open).toBe(false);
   });

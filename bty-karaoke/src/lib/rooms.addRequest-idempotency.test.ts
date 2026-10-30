@@ -28,7 +28,12 @@ function makeDb() {
   // findRequestByKey(...).maybeSingle()
   b.maybeSingle = async () => ({ data: existingRow, error: null });
   // listActiveRequests ends on .order(...)
-  b.order = async () => ({ data: [], error: null });
+  b.order = async () => ({
+    data: insertError
+      ? (existingRow ? [existingRow] : [])
+      : (capturedInsert ? [{ id: 'new-req', ...capturedInsert, created_at: '2026-10-30T18:00:00Z' }] : []),
+    error: null,
+  });
   // positions query select('position').eq('room_id', id) is awaited directly
   b.then = (resolve: (v: { data: unknown; error: unknown }) => void) =>
     resolve({ data: [{ position: 1 }], error: null });
@@ -57,6 +62,9 @@ describe('addRequest — idempotency', () => {
     const res = await addRequest({ ...base, idempotencyKey: 'key-1' });
     expect(res.outcome).toBe('created');
     expect(capturedInsert?.idempotency_key).toBe('key-1');
+    expect(capturedInsert?.status).toBe('waiting');
+    expect(typeof capturedInsert?.ready_at).toBe('string');
+    if (res.outcome === 'created') expect(res.status.readyAt).toBe(capturedInsert?.ready_at);
   });
 
   it('legacy: no key → plain insert, no idempotency_key, outcome=created', async () => {
@@ -67,10 +75,14 @@ describe('addRequest — idempotency', () => {
 
   it('replayed: same key + SAME payload collides (23505) → returns the existing row, no 2nd insert', async () => {
     insertError = { code: '23505' };
-    existingRow = { id: 'existing-req', youtube_video_id: base.youtubeVideoId, guest_name: base.guestName, status: 'waiting' };
+    existingRow = { id: 'existing-req', youtube_video_id: base.youtubeVideoId, guest_name: base.guestName, status: 'waiting', ready_at: null };
     const res = await addRequest({ ...base, idempotencyKey: 'key-1' });
     expect(res.outcome).toBe('replayed');
-    if (res.outcome === 'replayed') expect(res.request.id).toBe('existing-req');
+    if (res.outcome === 'replayed') {
+      expect(res.request.id).toBe('existing-req');
+      expect(res.request.ready_at).toBeNull();
+      expect(res.status.readyAt).toBeNull();
+    }
   });
 
   it('concurrent duplicate: the losing insert (23505) replays the winner — still one row', async () => {

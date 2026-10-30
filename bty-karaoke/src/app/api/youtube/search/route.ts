@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Performance Style drives the bias. New callers pass `?style=mr|karaoke|
-  // original` (MR is the default). The legacy `?original=1` flag still maps to
+  // original` (karaoke is the default). The legacy `?original=1` flag still maps to
   // the Original style for backward compatibility.
   const styleParam = req.nextUrl.searchParams.get('style');
   const original = req.nextUrl.searchParams.get('original') === '1';

@@ -550,6 +550,9 @@ export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult
         : null,
       position,
       status: 'waiting',
+      // Request is the singer's intent to join the playing order. Persist that
+      // signal in the SAME insert; no second Ready call or playback start is needed.
+      ready_at: new Date().toISOString(),
       session_id: args.sessionId ?? null,
       event_id: args.eventId ?? null,
       idempotency_key: args.idempotencyKey ?? null,
@@ -570,7 +573,7 @@ export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult
         return { outcome: 'conflict' };
       }
       const active = await listActiveRequests(args.roomId, args.eventId ?? null);
-      const status = resolveGuestStatus(existing.id, toOrderEntries(active), existing.status);
+      const status = resolveGuestStatus(existing.id, toOrderEntries(active), existing.status, existing.ready_at);
       return { outcome: 'replayed', request: existing, status, activeCount: active.length };
     }
     throw error;
@@ -578,7 +581,7 @@ export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult
 
   const request = data as KaraokeRequest;
   const active = await listActiveRequests(args.roomId, args.eventId ?? null);
-  const status = resolveGuestStatus(request.id, toOrderEntries(active), request.status);
+  const status = resolveGuestStatus(request.id, toOrderEntries(active), request.status, request.ready_at);
   return { outcome: 'created', request, status, activeCount: active.length };
 }
 

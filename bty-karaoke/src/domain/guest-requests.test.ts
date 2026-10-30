@@ -177,7 +177,7 @@ describe('readyStageCopy — honest, state-derived', () => {
   const base = { ready: true, stageOpen: null as boolean | null, isEarliestReady: false, readyAheadCount: 0 };
   it('idle earliest Ready does NOT mention a previous stage', () => {
     const c = readyStageCopy('ko', { ...base, state: 'up_next', stageOpen: true, isEarliestReady: true });
-    expect(c).toBe('첫 곡으로 시작할 준비가 됐어요');
+    expect(c).toBe('다음 차례예요. 호스트가 첫 곡을 시작합니다.');
     expect(c).not.toContain('앞의 무대가 끝나면');
   });
   it('another song playing + next eligible Ready → continuation copy', () => {
@@ -186,7 +186,7 @@ describe('readyStageCopy — honest, state-derived', () => {
     );
   });
   it('Ready songs ahead → honest ahead count', () => {
-    expect(readyStageCopy('ko', { ...base, state: 'waiting', readyAheadCount: 2 })).toBe('앞에 준비된 노래 2곡이 있어요');
+    expect(readyStageCopy('ko', { ...base, state: 'waiting', readyAheadCount: 2 })).toBe('앞에 노래 2곡이 있어요');
   });
   it('not ready → neutral copy', () => {
     expect(readyStageCopy('ko', { ...base, state: 'waiting', ready: false })).toBe('준비되면 재생 순서에 반영됩니다');

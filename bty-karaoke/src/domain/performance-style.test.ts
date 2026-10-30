@@ -8,11 +8,12 @@ import {
 } from './performance-style';
 
 describe('performance style — defaults', () => {
-  it('MR is the default style', () => {
-    expect(DEFAULT_STYLE).toBe('mr');
-    expect(normalizeStyle(undefined)).toBe('mr');
-    expect(normalizeStyle(null)).toBe('mr');
-    expect(normalizeStyle('nonsense')).toBe('mr');
+  it('karaoke is first and selected by default', () => {
+    expect(PERFORMANCE_STYLES).toEqual(['karaoke', 'mr', 'original']);
+    expect(DEFAULT_STYLE).toBe('karaoke');
+    expect(normalizeStyle(undefined)).toBe('karaoke');
+    expect(normalizeStyle(null)).toBe('karaoke');
+    expect(normalizeStyle('nonsense')).toBe('karaoke');
   });
 
   it('normalizes the three known styles', () => {
