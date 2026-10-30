@@ -2,7 +2,7 @@
 // to perform BEFORE searching; the style biases the YouTube query toward the
 // right kind of video. No network, no side effects.
 //
-// Reflects Dr. Chi's operating preference: MR (backing track) is the DEFAULT.
+// Karaoke is first and selected by default; MR remains an explicit alternative.
 //   - mr        → instrumental / backing-track versions (vocals removed)
 //   - karaoke   → 노래방 / karaoke videos (likely on-screen words)
 //   - original  → the raw query (official audio / MV), no bias at all
@@ -14,17 +14,17 @@ import { biasKaraokeQuery } from './youtube-search';
 
 export type PerformanceStyle = 'mr' | 'karaoke' | 'original';
 
-export const PERFORMANCE_STYLES: readonly PerformanceStyle[] = ['mr', 'karaoke', 'original'];
+export const PERFORMANCE_STYLES: readonly PerformanceStyle[] = ['karaoke', 'mr', 'original'];
 
-/** MR is the default: Dr. Chi's rooms favour clean backing tracks. */
-export const DEFAULT_STYLE: PerformanceStyle = 'mr';
+/** Start with karaoke videos, which are more likely to include on-screen words. */
+export const DEFAULT_STYLE: PerformanceStyle = 'karaoke';
 
 const HANGUL = /[가-힣ᄀ-ᇿ㄰-㆏]/;
 
 // Terms that already express an MR/instrumental intent — never double-append.
 const MR_BIAS = /\bmr\b|instrumental|backing\s*track|minus\s*one|off\s*vocal|반주/i;
 
-/** Narrow an arbitrary string to a valid PerformanceStyle, defaulting to MR. */
+/** Narrow an arbitrary string to a valid PerformanceStyle, defaulting to karaoke. */
 export function normalizeStyle(raw: string | null | undefined): PerformanceStyle {
   return PERFORMANCE_STYLES.includes(raw as PerformanceStyle)
     ? (raw as PerformanceStyle)

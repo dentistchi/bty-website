@@ -89,6 +89,7 @@ export default function MyRequestsDock({
   const [pulse, setPulse] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const cancelInFlight = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(null);
   // Room-wide stage awareness (one /display poll): whether the stage is open and
   // which request is canonical-first, so "Start My Song" appears ONLY when this
@@ -97,12 +98,6 @@ export default function MyRequestsDock({
   const [nextId, setNextId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [justStarted, setJustStarted] = useState(false); // V8: my Ready auto-started my song
-  useEffect(() => {
-    if (!justStarted) return;
-    const t = window.setTimeout(() => setJustStarted(false), 4000);
-    return () => window.clearTimeout(t);
-  }, [justStarted]);
   // `arrived`: a brief one-time "It's your turn" flash flag.
   const [arrived, setArrived] = useState(false);
   const arrivedRef = useRef<string | null>(null); // request id we already fired arrival for
@@ -269,12 +264,14 @@ export default function MyRequestsDock({
 
 
   async function doCancel(r: MyRequest) {
+    if (cancelInFlight.current.has(r.requestId)) return;
     // Compat guard: an older stored entry without a capability can't be cancelled
     // from this device — never send an unauthorized request.
     if (!r.cancelToken) {
       setError(t('guest.cancel.error.not_this_device'));
       return;
     }
+    cancelInFlight.current.add(r.requestId);
     setCancellingId(r.requestId);
     setError(null);
     // Safe diagnostics only (no token/secret): id suffix, token presence, status.
@@ -306,6 +303,7 @@ export default function MyRequestsDock({
     } catch {
       setError(t('guest.cancel.error.network'));
     } finally {
+      cancelInFlight.current.delete(r.requestId);
       setCancellingId(null);
     }
   }
@@ -333,11 +331,8 @@ export default function MyRequestsDock({
         },
       );
       if (res.ok) {
-        // V8 AUTOPILOT — the server may have auto-started this song (first in line +
-        // stage open). Surface an honest "무대가 시작되었습니다" note; the YouTube
-        // handoff still happens on the Admin Player (we never claim TV autoplay).
-        const data = (await res.json().catch(() => ({}))) as { autoStarted?: boolean };
-        if (data.autoStarted) setJustStarted(true);
+        // Compatibility for a request submitted before Request joined the order
+        // automatically. This action never starts playback.
         void refreshAll();
         return;
       }
@@ -434,10 +429,8 @@ export default function MyRequestsDock({
 
   return (
     <>
-      {/* Permanent performance card — a persistent, stage-aware surface (never a
-          disappearing toast). It walks the guest through WAITING → MY TURN →
-          READY → PLAYING → FINISH. Finish is ALWAYS explicit (2-step inline
-          confirm); nothing here auto-advances or auto-finishes. */}
+      {/* A new Request already joins the order. Keep its title and cancellation
+          visible; the host owns playback. Legacy unready rows retain a join action. */}
       <div className="dock">
         {stageReq && stage.kind === 'playing' && (
           <div className="perf-card playing hero" role="status">
@@ -466,9 +459,7 @@ export default function MyRequestsDock({
             <div className="perf-title big">
               {namePrefix ? t('guest.stage.next_named', { name: namePrefix }) : t('guest.stage.next')}
             </div>
-            {/* V8 AUTOPILOT — Ready is the go signal. If nothing is playing, pressing
-                Ready starts the stage right away; otherwise it starts automatically the
-                moment the current song ends. No Admin Start needed. */}
+            {stageSong && <div className="perf-song">{stageSong}</div>}
             <div className="perf-sub">{t('guest.stage.next_note')}</div>
             <div className="perf-actions">
               <button
@@ -489,12 +480,8 @@ export default function MyRequestsDock({
             <div className="perf-eyebrow">{namePrefix ? namePrefix : t('guest.stage.ready_title')}</div>
             <div className="perf-title big">{t('guest.stage.ready_title')}</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
-            {/* V8: honest — the stage auto-continues on the current song's end; the
-                Admin opens the video on the TV. We never claim TV autoplay. */}
             <div className="perf-sub">
-              {justStarted
-                ? t('guest.stage.ready_note')
-                : readyStageCopy(locale, {
+              {readyStageCopy(locale, {
                     state: 'up_next',
                     ready: true,
                     stageOpen,
@@ -506,10 +493,11 @@ export default function MyRequestsDock({
               <button
                 type="button"
                 className="perf-btn ghost"
-                onClick={() => doReady(stageReq, false)}
-                disabled={actingId === stageReq.requestId}
+                onClick={() => doCancel(stageReq)}
+                disabled={!stageReq.cancelToken || cancellingId === stageReq.requestId}
+                aria-label={t('guest.dock.cancel_a11y', { title: stageSong })}
               >
-                {t('guest.stage.cancel_ready')}
+                {t(cancellingId === stageReq.requestId ? 'guest.stage.working' : 'guest.dock.cancel_request')}
               </button>
             </div>
           </div>
@@ -520,12 +508,11 @@ export default function MyRequestsDock({
             <span className="perf-wait-ico" aria-hidden>{waitReady ? '✅' : '🎶'}</span>
             <div className="perf-wait-main">
               <div className="perf-wait-text">
-                {waitReady
-                  ? t('guest.stage.ready_title')
-                  : stage.aheadCount === 0
+                {stage.aheadCount === 0
                     ? t('guest.status.up_next')
                     : t('guest.summary.earliest', { position: stage.position })}
               </div>
+              {stageSong && <div className="perf-song">{stageSong}</div>}
               {/* V8.1 — Ready pre-signals well before the turn; when it lands, the song
                   auto-continues the moment the stage frees. We never claim TV autoplay. */}
               <div className="perf-wait-sub">
@@ -540,22 +527,25 @@ export default function MyRequestsDock({
                   : t('guest.stage.prepare_note')}
               </div>
             </div>
-            {/* stopPropagation: a Ready tap must never bubble up to open the sheet. */}
+            {/* A confirmed queued song offers cancellation, never a second Ready step. */}
             <button
               type="button"
               className={`perf-btn perf-btn-inline ${waitReady ? 'ghost' : 'ready'}`}
               onClick={(e) => {
                 e.stopPropagation();
-                void doReady(stageReq, !waitReady);
+                if (waitReady) void doCancel(stageReq);
+                else void doReady(stageReq, true);
               }}
-              disabled={actingId === stageReq.requestId}
+              disabled={!stageReq.cancelToken || actingId === stageReq.requestId || cancellingId === stageReq.requestId}
+              aria-label={waitReady ? t('guest.dock.cancel_a11y', { title: stageSong }) : undefined}
             >
-              {actingId === stageReq.requestId
+              {actingId === stageReq.requestId || cancellingId === stageReq.requestId
                 ? t('guest.stage.working')
-                : t(waitReady ? 'guest.stage.cancel_ready' : 'guest.stage.ready_action')}
+                : t(waitReady ? 'guest.dock.cancel_request' : 'guest.stage.ready_action')}
             </button>
           </div>
         )}
+        {error && !expanded && <div className="banner error" role="alert">{error}</div>}
         <button
           type="button"
           className={`dock-pill${pulse ? ' pulse' : ''}`}
@@ -645,14 +635,6 @@ export default function MyRequestsDock({
                                     readyAheadCount: Math.max(0, readyOrderIds.indexOf(r.requestId)),
                                   })}
                                 </span>
-                                <button
-                                  type="button"
-                                  className="sheet-ready-btn ghost"
-                                  onClick={() => doReady(r, false)}
-                                  disabled={acting}
-                                >
-                                  {t(acting ? 'guest.stage.working' : 'guest.stage.cancel_ready')}
-                                </button>
                               </>
                             ) : (
                               <button
@@ -695,7 +677,8 @@ export default function MyRequestsDock({
                           <button
                             type="button"
                             className="linkish cancel-link"
-                            onClick={() => setConfirmingId(r.requestId)}
+                            onClick={() => doCancel(r)}
+                            disabled={cancellingId === r.requestId}
                             aria-label={t('guest.dock.cancel_a11y', { title: song.title || r.title })}
                           >
                             {t('guest.dock.cancel_request')}

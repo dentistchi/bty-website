@@ -28,6 +28,22 @@ direct-link fallback, duration admission, provenance, and idempotent submission 
 preserved. There is no new chart subscription, AI request, scheduled refresh, table,
 migration, or paid feature. Existing YouTube search quota still applies to selections.
 
+## Request and cancel
+
+Karaoke is the first and default Guest search style; MR and Original remain optional.
+Choosing a catalog title only searches. Choosing **Request** on an actual result adds
+one waiting request with `ready_at` in the same insert, so a new request already joins
+the playing order without a second Ready tap. A retry replays the existing row and
+never re-readies it or changes its state. Creation does not start playback; the host
+starts the first song and the existing continuation and admission rules still apply.
+
+The Guest's waiting card shows the title and **Cancel request**, which cancels the
+request directly rather than just clearing readiness. Each row in My Requests also
+has its own cancel button. Ownership capabilities and the server's waiting-only
+guard still apply; a playback/cancel race reports the real result and a failed
+cancellation keeps the request. A legacy unready row retains its compatibility
+Ready action; existing requests and native UI are not rewritten by this web release.
+
 ## Surfaces and delivery
 
 - Browser guest: `src/app/r/[slug]/RequestForm.tsx`. This is the primary surface:
