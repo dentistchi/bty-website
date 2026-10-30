@@ -6,11 +6,14 @@ import { badgeForVideo } from '@/domain/video-kind';
 import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
 import SongPicks from '@/components/guest/SongPicks';
+import type { GuestLocale } from '@/domain/guest-locale';
 
 interface Props {
   /** Adds the chosen song to the queue (server appends at the tail). */
   onAddSong: (payload: Record<string, unknown>) => Promise<'ok' | 'error'>;
   onClose: () => void;
+  initiallyShowPicks?: boolean;
+  picksLocale?: GuestLocale;
 }
 
 type Mode = 'karaoke' | 'original';
@@ -20,7 +23,7 @@ type SearchState = 'idle' | 'searching' | 'done';
 // an Original ↔ Karaoke/Lyrics toggle and video-kind badges so the DJ can pick a
 // version likely to show words on the TV. Adding routes through the DJ-authed
 // endpoint; the song lands at the tail of the canonical queue.
-export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
+export default function DjAddSongSheet({ onAddSong, onClose, initiallyShowPicks = false, picksLocale = 'en' }: Props) {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<Mode>('karaoke');
   const [name, setName] = useState('');
@@ -160,7 +163,8 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
         </div>
 
         <SongPicks
-          locale="en"
+          locale={picksLocale}
+          initiallyOpen={initiallyShowPicks}
           disabled={state === 'searching' || addingId !== null}
           onPick={(song) => {
             setQuery(song.searchQuery);

@@ -32,12 +32,17 @@ migration, or paid feature. Existing YouTube search quota still applies to selec
 
 - Browser guest: `src/app/r/[slug]/RequestForm.tsx`.
 - Browser DJ add sheet: `src/app/r/[slug]/dj/DjAddSongSheet.tsx`.
+- Browser host: the main room controls show **🎵 추천곡 60곡** above the Guest QR
+  actions. One click opens the Korean catalog already expanded; selecting a title
+  uses the existing search and result-confirmation flow.
 - Guest controls use the existing English/Korean dictionary and locale provider.
 - The Swift iOS app has its own UI; this change does not update the native app or
-  submit a new App Store build. It also does not deploy the web app automatically.
-- No real YouTube search or production queue write was used during verification;
-  backing-track availability and matching are determined by the existing search
-  results when a user chooses a song.
+  submit a new App Store build. Web deployments are explicit Cloudflare releases.
+- The initial local checks below used fixtures. A later owner-authorized production
+  host check selected 이적 — 걱정말아요 그대, searched real YouTube results, added one
+  synthetic test request, then removed it and confirmed the test queue was empty.
+  Availability and matching for all 60 songs are still determined by search results
+  when a user chooses a title; they have not all been individually verified.
 
 ## Validation
 
@@ -58,4 +63,5 @@ migration, or paid feature. Existing YouTube search quota still applies to selec
 2. Browse categories, then choose a title. Confirm its artist/title populates search.
 3. Verify the existing search style remains selected and review the available version.
 4. Request the chosen result; confirm it appears once in the guest's requests/queue.
-5. Repeat in the DJ add-song sheet and in English/Korean guest mode.
+5. On the host's main room screen, click **🎵 추천곡 60곡**. The Korean list must
+   already be expanded without opening the Admin menu. Repeat in English/Korean guest mode.

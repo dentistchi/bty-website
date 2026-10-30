@@ -44,6 +44,7 @@ import DjAddSongSheet from './DjAddSongSheet';
 import NowSingingClock from './NowSingingClock';
 import { usePlaybackClock } from './usePlaybackClock';
 import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
+import { SONG_PICKS } from '@/domain/song-picks';
 
 /** Small "likely has words on the TV" badge for a request's video. */
 function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
@@ -263,6 +264,7 @@ export default function DjBoard({
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [startWithPicks, setStartWithPicks] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [startingNew, setStartingNew] = useState(false); // V7 Start New Event in flight
@@ -694,17 +696,28 @@ export default function DjBoard({
         </div>
       )}
 
-      {/* This console is an EXCEPTION surface — normal operation runs on each
-          guest's phone. Make that explicit so a host doesn't drive from here. */}
+      {/* Keep the host's song selection and guest invitation paths discoverable. */}
       <div className="dj-exception-note" role="note">
-        정상 운영은 참가자가 각자의 휴대폰에서 진행합니다. 이 화면은 순서 변경이나 강제 종료가 필요할 때만
-        사용하세요.
+        {isAdmin
+          ? '추천곡에서 노래를 골라 신청하세요. 참가자는 Guest QR로 접속해 각자 신청할 수 있어요.'
+          : '정상 운영은 참가자가 각자의 휴대폰에서 진행합니다. 이 화면은 순서 변경이나 강제 종료가 필요할 때만 사용하세요.'}
       </div>
 
-      {/* Always-available exception actions — never hidden behind the empty
-          state. Guest QR only (Add song lives in the admin menu, off the base
-          screen; playback is not a DJ action anymore). */}
+      {/* Song picks open directly from the main screen, above the room actions. */}
       <div className="dj-actions-bar" role="group" aria-label="Admin actions">
+        {isAdmin && (
+          <button
+            type="button"
+            className="ghost dj-song-picks-entry"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setStartWithPicks(true);
+              setAddOpen(true);
+            }}
+          >
+            🎵 추천곡 {SONG_PICKS.length}곡
+          </button>
+        )}
         {!noLiveEvent && (
           <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
             🔳 Guest QR
@@ -981,7 +994,14 @@ export default function DjBoard({
       )}
 
       {/* ── DJ Add Song sheet (always reachable from the top actions) ─── */}
-      {addOpen && <DjAddSongSheet onAddSong={onAddSong} onClose={() => setAddOpen(false)} />}
+      {addOpen && (
+        <DjAddSongSheet
+          onAddSong={onAddSong}
+          onClose={() => setAddOpen(false)}
+          initiallyShowPicks={startWithPicks}
+          picksLocale="ko"
+        />
+      )}
 
       {/* ── Admin menu (admin role only; secondary to the live surface) ─ */}
       {isAdmin && adminOpen && adminCred && (
@@ -992,6 +1012,7 @@ export default function DjBoard({
           onShowGuestQr={showGuestQr}
           onOpenAddSong={() => {
             setAdminOpen(false);
+            setStartWithPicks(false);
             setAddOpen(true);
           }}
           onSessionEnded={() => onRefresh()}
