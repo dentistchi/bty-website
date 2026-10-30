@@ -1,0 +1,63 @@
+{
+  "scope": "prelaunch-isolated-verification",
+  "applicationSourceCommit": "b4dcf55d75d4209941099148a3ff400fbb0eb38a",
+  "baseCommit": "4c0ba329b0ad315c52f315364cf6cbe92cf54d7e",
+  "node": "20.20.2",
+  "maxWorkers": 2,
+  "minWorkers": 1,
+  "baseline": {
+    "numTotalTests": 15643,
+    "numPassedTests": 15085,
+    "numFailedTests": 149,
+    "numPendingTests": 409
+  },
+  "after": {
+    "numTotalTests": 15684,
+    "numPassedTests": 15129,
+    "numFailedTests": 146,
+    "numPendingTests": 409
+  },
+  "baselineRawSha256": "5607b4417f55205f62c1cf46bb55aae39527ae9aa6d45c648ab43139974e2f22",
+  "afterRawSha256": "be51319df16b16d2a39537657c2a57529a07a2e127d2021b2a37ffd4775e8770",
+  "newAssertions": 41,
+  "newAssertionsPassed": 41,
+  "resolvedBaselineFailures": [
+    [
+      "src/app/api/auth/teams-bootstrap/teamsBootstrap.route.test.ts",
+      "teams-bootstrap \u2014 RESOLVED ignores every identity field a client tries to supply"
+    ],
+    [
+      "src/app/api/auth/teams-bootstrap/teamsBootstrap.route.test.ts",
+      "teams-bootstrap \u2014 RESOLVED resolves on tid + oid only, and reads the email from the RESOLVED id"
+    ],
+    [
+      "src/app/api/auth/teams-bootstrap/teamsBootstrap.route.test.ts",
+      "teams-bootstrap \u2014 RESOLVED returns a session, and only session material"
+    ],
+    [
+      "src/app/api/auth/teams-bootstrap/teamsBootstrap.route.test.ts",
+      "teams-bootstrap \u2014 announcement binding (Slice A1) a failed binding NEVER fails the sign-in"
+    ],
+    [
+      "src/app/api/auth/teams-bootstrap/teamsBootstrap.route.test.ts",
+      "teams-bootstrap \u2014 announcement binding (Slice A1) binds recipient rows frozen for THIS Microsoft identity, using the resolved user"
+    ]
+  ],
+  "addedFullRunFailures": [
+    [
+      "src/components/foundry/learner/inShellLearnerRoom.test.tsx",
+      "an honest refusal, never a dead end event_closed \u2192 This training is no longer open., with a way back"
+    ],
+    [
+      "src/components/foundry/learner/inShellLearnerRoom.test.tsx",
+      "an honest refusal, never a dead end unauthenticated \u2192 Sign in to BTY to open this training., with a way back"
+    ]
+  ],
+  "postFullRunTestCorrection": "inShellLearnerRoom refusal assertions now await the final refusal text rather than the shared loading gate. No production learner code changed. Same assertions retained.",
+  "lastTargeted": 48,
+  "lastTargetedFailed": 0,
+  "browserPassed": 38,
+  "productionMutations": 0,
+  "migrationApplied": false,
+  "fullSuiteRerunAfterTestOnlyCorrection": false
+}

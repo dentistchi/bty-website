@@ -169,8 +169,8 @@ describe("an honest refusal, never a dead end", () => {
       });
     const onExit = vi.fn();
     render(<InShellLearnerRoom target={{ joinToken: TOKEN }} locale="en" onExit={onExit} />);
-    await waitFor(() => expect(screen.getByTestId("in-shell-room-gate")).toBeTruthy());
-    expect(screen.getByTestId("in-shell-room-gate").textContent).toContain(message);
+    // The gate also renders while loading; wait for the actual refusal message.
+    await waitFor(() => expect(screen.getByTestId("in-shell-room-gate").textContent).toContain(message));
     fireEvent.click(screen.getByTestId("in-shell-room-back"));
     expect(onExit).toHaveBeenCalled();
   });
