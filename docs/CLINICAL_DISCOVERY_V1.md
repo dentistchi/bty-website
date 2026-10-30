@@ -22,6 +22,36 @@ omit requested examination results. A matched unavailable fact is not a normal o
 negative result. A question the router cannot interpret is separately `clarify`;
 that is not evidence that the clinical information is absent.
 
+### Comparison must acknowledge information requests
+
+After assessment, the comparison identifies issued requests for which the case
+could not provide all information, including mixed replies with unavailable facts
+or missing-history topics. It shows the literal question and issued reply. The
+recorded author approach is a general reference, not personalized feedback that
+the doctor omitted those questions. Uninterpreted requests are shown separately;
+they do not establish either a recognized topic or an absent clinical finding.
+These views are derived from the existing trace and also apply when an earlier
+attempt is reopened. They do not rewrite events or infer new acquired facts.
+
+The Case 006 recording also exposed a target-scope error: “Any other restoration
+in teeth” returned the presenting tooth's MOD finding. Interpreter version
+`discovery-intent/v5` keeps that request and dentition-wide caries-risk requests
+with the existing unavailable dentition assessment. Explicit examination clauses
+are processed separately, preserving mixed target-tooth/dentition requests.
+Patient packs, answers and availability remain unchanged. This does not make the
+missing caries assessment available; a fuller fictional case needs a new reviewed
+patient-pack version.
+
+Observed local repair checks: 8 failures / 14 passes in the two-file reproduction
+before the fix; 27 related files / 366 tests pass after it, including the new
+Case 006 target-scope and comparison/reload regressions. TypeScript exits 0.
+The existing 10 isolated browser flow/geometry checks pass at 320, 390 and 1280 px;
+the new acknowledgement cases are covered in the component tests. Cloudflare
+build exits 0 with isolated loopback placeholders; artifact guard checks 3,621 JS
+files with zero unsafe matches and 2/2 safe middleware implementations. Full
+repository tests, real iPhone/Teams use and live model accuracy are not rerun for
+this repair. No production learner record, migration, seed or setting is changed.
+
 Case 001's additional interview variant supplies fixed fictional answers/results
 to make a fuller encounter possible. Its pack version and each added fact identify
 `fictional-extension-awaiting-review`. These additions are not statements made by

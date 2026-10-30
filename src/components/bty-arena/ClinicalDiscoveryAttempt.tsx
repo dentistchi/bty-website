@@ -179,6 +179,10 @@ export function ClinicalDiscoveryAttempt({ c, userId, onBack, onWrittenHistory }
   const shown = trace?.caseSnapshot ?? c;
   const submitted = trace ? initialAssessment(trace) : null;
   const reference = trace ? releasedReference(trace) : null;
+  const unavailableTurns = turns.filter(({ reply }) => reply.resolution !== "clarify" && (reply.resolution === "unavailable"
+    || reply.unavailableFactIds.length > 0 || !!reply.unavailableTopicIds?.length));
+  const unresolvedTurns = turns.filter(({ reply }) => reply.resolution === "clarify");
+  const requestedUnavailableIds = new Set(unavailableTurns.flatMap(({ reply }) => reply.unavailableFactIds));
 
   return <section className="mx-auto max-w-3xl space-y-4 p-4 pb-8 sm:p-6" aria-label="Clinical discovery encounter">
     <div className="flex flex-wrap items-center gap-3">
@@ -253,9 +257,25 @@ export function ClinicalDiscoveryAttempt({ c, userId, onBack, onWrittenHistory }
         <h2 className="text-xl font-bold">Compare approaches</h2>
         {trace.discovery?.scenarioProvenance && <p className="text-sm text-slate-600">This interview includes fictional details added for practice. The recorded author perspective below predates those additions; their alignment is awaiting author review.</p>}
         <p className="text-sm text-slate-600">Review the questions you chose, the information you obtained, and the reasoning behind your plan. Agreement is not a medical accuracy score.</p>
+        {unavailableTurns.length > 0 && <article className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <h3 className="font-bold">Information you requested but the case could not provide</h3>
+          <p className="text-sm">These requests are recorded. Missing case information is not a question you omitted or a normal finding.</p>
+          <ul className="space-y-3">{unavailableTurns.map(turn => <li key={turn.sequence} className="text-sm">
+            <p className="whitespace-pre-wrap break-words font-semibold">{turn.question}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words">{turn.reply.text}</p>
+          </li>)}</ul>
+        </article>}
+        {unresolvedTurns.length > 0 && <details className="rounded-xl border p-4">
+          <summary className="cursor-pointer font-semibold">Requests the simulator could not interpret</summary>
+          <p className="mt-2 text-sm">These requests remain unresolved. They do not establish that you omitted the intended topic or that its findings were normal.</p>
+          <ul className="mt-3 space-y-3">{unresolvedTurns.map(turn => <li key={turn.sequence} className="text-sm">
+            <p className="whitespace-pre-wrap break-words font-semibold">{turn.question}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words">{turn.reply.text}</p>
+          </li>)}</ul>
+        </details>}
         <div className="grid gap-4 md:grid-cols-2">
           <article className="space-y-3 rounded-2xl border p-4"><h3 className="font-bold">Your initial assessment and plan</h3><p className="whitespace-pre-wrap break-words text-sm">{submitted}</p></article>
-          <article className="space-y-3 rounded-2xl border border-teal-200 bg-teal-50 p-4"><h3 className="font-bold">Dr. Chi’s recorded approach</h3><p className="text-xs">English paraphrase · awaiting author review</p><p className="whitespace-pre-wrap break-words text-sm">{reference.paraphrase}</p>
+          <article className="space-y-3 rounded-2xl border border-teal-200 bg-teal-50 p-4"><h3 className="font-bold">Dr. Chi’s recorded approach</h3><p className="text-xs">English paraphrase · awaiting author review</p><p className="text-sm">This is a recorded reference, not feedback that you missed these questions.</p><p className="whitespace-pre-wrap break-words text-sm">{reference.paraphrase}</p>
             <details><summary className="cursor-pointer text-sm">Original response</summary><p lang="ko" className="mt-2 whitespace-pre-wrap break-words text-sm">{reference.original}</p></details>
             <p className="text-xs">{reference.label}</p>
             {reference.limitations.length > 0 && <details><summary className="cursor-pointer text-sm">What remains unspecified</summary><ul className="mt-2 list-disc space-y-2 pl-4 text-xs">{reference.limitations.map((x, i) => <li key={i}>{x}</li>)}</ul></details>}
@@ -263,7 +283,7 @@ export function ClinicalDiscoveryAttempt({ c, userId, onBack, onWrittenHistory }
         </div>
         {reference.interviewContext && <details className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">Review the patient information after your assessment</summary>
           <p className="mt-2 text-sm text-slate-600">Compare what you asked with the case information. Unavailable results remain unknown.</p>
-          <dl className="mt-3 space-y-3">{reference.interviewContext.facts.map(f => <div key={f.factId} className="text-sm"><dt className="font-semibold">{f.label}{!f.available ? " · unavailable" : ""}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{f.answer}</dd>
+          <dl className="mt-3 space-y-3">{reference.interviewContext.facts.map(f => <div key={f.factId} className="text-sm"><dt className="font-semibold">{f.label}{!f.available ? requestedUnavailableIds.has(f.factId) ? " · requested, case information unavailable" : " · unavailable" : ""}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{f.answer}</dd>
             {f.provenance === "fictional-extension-awaiting-review" && <dd className="mt-1 text-xs text-slate-500">Fictional practice detail · awaiting author review</dd>}</div>)}</dl>
         </details>}
         {reference.evidenceNotes.length > 0 && <details open className="rounded-xl border p-4"><summary className="cursor-pointer font-semibold">Clinical evidence notes · separate from the author response</summary><div className="mt-3 space-y-3 text-sm">{reference.evidenceNotes.map((x, i) => <p className="whitespace-pre-wrap break-words" key={i}>{x}</p>)}</div></details>}

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ClinicalCasesPractice } from "./ClinicalCasesPractice";
 import {
   applyPilotAction, blankAnswers, publicCase, referenceFor, startPilot,
@@ -186,6 +186,61 @@ describe("question-led clinical discovery", () => {
     expect(discoveryTurns(current())[0]).toMatchObject({ question: "Do you grind your teeth at night?", reply: { resolution: "unavailable", availableFactIds: [] } });
     expect(screen.queryByText(restorationAnswer)).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dr. Chi’s recorded approach" })).toBeNull();
+  });
+
+  it("acknowledges requested caries information that the case could not supply, including after reload", async () => {
+    await begin();
+    replyOverride = { channel: "exam", text: "Dentition-wide caries findings and risk assessment have not been supplied.",
+      factIds: ["caries-risk"], availableFactIds: [], unavailableFactIds: ["caries-risk"],
+      resolution: "unavailable", responseKind: "case-information", routing: { method: "authored-rules", version: "fixture-v1" } };
+    await ask("On other teeth", "exam");
+    const asked = structuredClone(discoveryTurns(current()));
+    expect(screen.queryByRole("heading", { name: "Information you requested but the case could not provide" })).toBeNull();
+    await conclude("Need caries risk before deciding whether to crown.");
+    const comparison = within(screen.getByRole("region", { name: "Approach comparison" }));
+    expect(comparison.getByRole("heading", { name: "Information you requested but the case could not provide" })).toBeTruthy();
+    expect(comparison.getByText("On other teeth")).toBeTruthy();
+    expect(comparison.getByText(replyOverride.text)).toBeTruthy();
+    expect(comparison.getByText("These requests are recorded. Missing case information is not a question you omitted or a normal finding.")).toBeTruthy();
+    expect(comparison.getByRole("heading", { name: "Dr. Chi’s recorded approach" }).closest("article")!.textContent).toContain(referenceFor(source).paraphrase);
+    expect(discoveryTurns(current())).toEqual(asked);
+    expect(current().events.find(e => e.type === "assessment_submitted")!.payload.informationAvailable).toEqual([]);
+    const released = current().events.find(e => e.type === "reference_released")!.payload.reference as ReturnType<typeof referenceFor>;
+    released.interviewContext = { packVersion: "fixture-pack-v1", facts: [{ factId: "caries-risk", channel: "exam",
+      label: "Dentition-wide caries assessment", answer: replyOverride.text, available: false, provenance: "recorded-case-context" }] };
+    cleanup();
+    render(<ClinicalCasesPractice />);
+    fireEvent.click(await screen.findByRole("button", { name: /Case 001/ }));
+    await screen.findByRole("heading", { name: "Information you requested but the case could not provide" });
+    expect(screen.getByText("Dentition-wide caries assessment · requested, case information unavailable")).toBeTruthy();
+    expect(discoveryTurns(current())).toEqual(asked);
+  });
+
+  it.each(["missing-topic", "mixed"])("retains a %s information gap in comparison without calling it acquired", async kind => {
+    await begin();
+    replyOverride = { channel: "patient", text: "Medication history is not supplied.", factIds: [], availableFactIds: [], unavailableFactIds: [],
+      resolution: "unavailable", unavailableTopicIds: ["medications"], recognizedTopicIds: ["medications"],
+      routing: { method: "authored-rules", version: "fixture-v1" } };
+    if (kind === "mixed") replyOverride = { ...replyOverride, text: "Cold bothers it briefly. Medication history is not supplied.",
+      factIds: ["cold"], availableFactIds: ["cold"], resolution: "answered" };
+    await ask("Cold sensitivity and medications?");
+    await conclude();
+    const comparison = within(screen.getByRole("region", { name: "Approach comparison" }));
+    expect(comparison.getByText("Cold sensitivity and medications?")).toBeTruthy();
+    expect(comparison.getByText(replyOverride.text)).toBeTruthy();
+    expect(current().events.find(e => e.type === "assessment_submitted")!.payload.informationAvailable).toEqual(kind === "mixed" ? ["cold"] : []);
+  });
+
+  it("keeps uninterpreted requests separate from recognized requests for unavailable information", async () => {
+    await begin();
+    replyOverride = { channel: "exam", text: "Please specify the test.", factIds: [], availableFactIds: [], unavailableFactIds: [],
+      resolution: "clarify", routing: { method: "authored-rules", version: "fixture-v1" } };
+    await ask("Check it", "exam");
+    await conclude();
+    const comparison = within(screen.getByRole("region", { name: "Approach comparison" }));
+    expect(comparison.queryByRole("heading", { name: "Information you requested but the case could not provide" })).toBeNull();
+    expect(comparison.getByText("Requests the simulator could not interpret")).toBeTruthy();
+    expect(comparison.getByText("Check it")).toBeTruthy();
   });
 
   it("recovers an unacknowledged request across remount and reuses its request ID", async () => {
