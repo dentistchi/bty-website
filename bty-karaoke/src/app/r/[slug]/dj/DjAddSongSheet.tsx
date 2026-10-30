@@ -5,6 +5,7 @@ import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { badgeForVideo } from '@/domain/video-kind';
 import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
+import SongPicks from '@/components/guest/SongPicks';
 
 interface Props {
   /** Adds the chosen song to the queue (server appends at the tail). */
@@ -39,16 +40,17 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
     return () => (openerRef.current as HTMLElement | null)?.focus?.();
   }, []);
 
-  async function runSearch(e?: React.FormEvent, m: Mode = mode) {
+  async function runSearch(e?: React.FormEvent, m: Mode = mode, rawQuery = query) {
     e?.preventDefault();
-    if (query.trim().length < 2) return;
+    const searchQuery = rawQuery.trim();
+    if (searchQuery.length < 2) return;
     setState('searching');
     setError(null);
     setResults([]);
     setNote(null);
     setFallbackUrl(null);
     try {
-      const url = `/api/youtube/search?q=${encodeURIComponent(query.trim())}${m === 'original' ? '&original=1' : ''}`;
+      const url = `/api/youtube/search?q=${encodeURIComponent(searchQuery)}${m === 'original' ? '&original=1' : ''}`;
       const res = await fetch(url);
       const data = await res.json();
       if (!res.ok) {
@@ -156,6 +158,15 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
             Original
           </button>
         </div>
+
+        <SongPicks
+          locale="en"
+          disabled={state === 'searching' || addingId !== null}
+          onPick={(song) => {
+            setQuery(song.searchQuery);
+            void runSearch(undefined, mode, song.searchQuery);
+          }}
+        />
 
         {error && <div className="banner error" style={{ marginTop: 10 }}>{error}</div>}
         {addedTitle && (

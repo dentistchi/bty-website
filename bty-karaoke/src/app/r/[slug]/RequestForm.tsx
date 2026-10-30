@@ -28,6 +28,7 @@ import {
 import RequestResultCard from './RequestResultCard';
 import GuestDiagnosticPanel from './GuestDiagnosticPanel';
 import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
+import SongPicks from '@/components/guest/SongPicks';
 import MyRequestsDock from './MyRequestsDock';
 import RecentlySungSection from './RecentlySungSection';
 import AppInvitationCard from './AppInvitationCard';
@@ -218,9 +219,10 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     [style, results],
   );
 
-  async function runSearch(e: React.FormEvent | null, mode: PerformanceStyle = style) {
+  async function runSearch(e: React.FormEvent | null, mode: PerformanceStyle = style, rawQuery = query) {
     e?.preventDefault();
-    if (query.trim().length < 2) return;
+    const searchQuery = rawQuery.trim();
+    if (searchQuery.length < 2) return;
     setError(null);
     // A new search moves on from any prior submit status (retry button hides).
     if (!submittingKey) {
@@ -235,7 +237,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     setSearchNote(null);
     try {
       const res = await fetch(
-        `/api/youtube/search?q=${encodeURIComponent(query.trim())}&style=${mode}`,
+        `/api/youtube/search?q=${encodeURIComponent(searchQuery)}&style=${mode}`,
       );
       const data = await res.json();
       if (!res.ok) {
@@ -245,7 +247,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       }
       const items: YoutubeSearchItem[] = data.items ?? [];
       setResults(items);
-      setResultQuery(query.trim());
+      setResultQuery(searchQuery);
       setFallbackUrl(data.fallbackUrl ?? null);
       if (data.gated) setSearchNote(t('guest.search.warming_up'));
       // Daily YouTube search quota exhausted — honest, distinct from a temporary blip.
@@ -254,7 +256,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       else if (data.degraded) setSearchNote(t('guest.search.busy'));
       else if (items.length === 0) setSearchNote(t('guest.search.no_results'));
       setSearchState('done');
-      void loadRecommendations(items, query.trim());
+      void loadRecommendations(items, searchQuery);
     } catch {
       setError(t('guest.search.network_error'));
       setSearchState('idle');
@@ -627,7 +629,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         {/* BUILD 20M-WEB8 — 방금 부른 노래 only. The web Guest has no saved-song library. */}
         <RecentlySungSection recentlySung={recentlySung.items} />
 
-        <form onSubmit={runSearch}>
+        <form onSubmit={runSearch} className="guest-song-search">
           <label htmlFor="q">{t('guest.search.prompt')}</label>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <input
@@ -661,6 +663,15 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
           </div>
           <p className="muted style-hint">{styleCopy(locale, style).hint}</p>
         </form>
+
+        <SongPicks
+          locale={locale}
+          disabled={!roomOpen || searchState === 'searching' || submittingKey !== null}
+          onPick={(song) => {
+            setQuery(song.searchQuery);
+            void runSearch(null, style, song.searchQuery);
+          }}
+        />
 
         {searchNote && (
           <p className="muted" style={{ marginTop: 10, whiteSpace: 'pre-line' }}>

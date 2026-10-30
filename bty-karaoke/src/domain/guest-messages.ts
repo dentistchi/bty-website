@@ -32,6 +32,20 @@ export interface MessageEntry {
 export type MessageParams = Readonly<Record<string, string | number>>;
 
 export const GUEST_MESSAGES = {
+  // Editorial song ideas: selecting a title searches for a version; it does not request it.
+  'guest.picks.title': { en: 'BTY song picks', ko: 'BTY 추천곡' },
+  'guest.picks.count': { en: { one: '{count} song', other: '{count} songs' }, ko: { other: '{count}곡' } },
+  'guest.picks.hint': { en: 'Choose a song, then select a backing track from the search results.', ko: '곡을 고른 뒤 검색 결과에서 원하는 반주를 선택하세요.' },
+  'guest.picks.categories': { en: 'Song categories', ko: '추천곡 분류' },
+  'guest.picks.search': { en: 'Find a track', ko: '반주 찾기' },
+  'guest.picks.search_song': { en: 'Find a track for {title} by {artist}', ko: '{artist} {title} 반주 찾기' },
+  'guest.picks.category.together': { en: 'Sing together', ko: '다 같이 부르기' },
+  'guest.picks.category.party': { en: 'Party songs', ko: '신나는 노래' },
+  'guest.picks.category.ballad': { en: 'Ballads', ko: '발라드' },
+  'guest.picks.category.memories': { en: 'Old favorites', ko: '추억의 노래' },
+  'guest.picks.category.kpop': { en: 'K-pop', ko: '케이팝' },
+  'guest.picks.category.pop': { en: 'Pop songs', ko: '팝송' },
+
   // ─────────────────────────────────────────────────────── Language switcher
   'guest.language.label': { en: 'Language', ko: '언어' },
   'guest.language.a11y': {
