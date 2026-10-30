@@ -1,0 +1,488 @@
+{
+  "version": "bty-picks-v1-2026-10-30",
+  "curatedOn": "2026-10-30",
+  "kind": "editorial-song-ideas",
+  "description": "BTY editorial selection. Not a chart, ranking, difficulty rating, or verified video catalog. Category order is editorial, not popularity.",
+  "songs": [
+    {
+      "id": "bty-together-01",
+      "title": "한 페이지가 될 수 있게",
+      "artist": "DAY6",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "DAY6 한 페이지가 될 수 있게"
+    },
+    {
+      "id": "bty-together-02",
+      "title": "예뻤어",
+      "artist": "DAY6",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "DAY6 예뻤어"
+    },
+    {
+      "id": "bty-together-03",
+      "title": "걱정말아요 그대",
+      "artist": "이적",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "이적 걱정말아요 그대"
+    },
+    {
+      "id": "bty-together-04",
+      "title": "취중진담",
+      "artist": "전람회",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "전람회 취중진담"
+    },
+    {
+      "id": "bty-together-05",
+      "title": "감사",
+      "artist": "김동률",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "김동률 감사"
+    },
+    {
+      "id": "bty-together-06",
+      "title": "아로하",
+      "artist": "조정석",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "조정석 아로하"
+    },
+    {
+      "id": "bty-together-07",
+      "title": "사랑했나봐",
+      "artist": "윤도현",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "윤도현 사랑했나봐"
+    },
+    {
+      "id": "bty-together-08",
+      "title": "선물",
+      "artist": "멜로망스",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "멜로망스 선물"
+    },
+    {
+      "id": "bty-together-09",
+      "title": "주저하는 연인들을 위해",
+      "artist": "잔나비",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "잔나비 주저하는 연인들을 위해"
+    },
+    {
+      "id": "bty-together-10",
+      "title": "벚꽃 엔딩",
+      "artist": "버스커 버스커",
+      "category": "together",
+      "language": "ko",
+      "searchQuery": "버스커 버스커 벚꽃 엔딩"
+    },
+    {
+      "id": "bty-party-01",
+      "title": "연예인",
+      "artist": "싸이",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "싸이 연예인"
+    },
+    {
+      "id": "bty-party-02",
+      "title": "챔피언",
+      "artist": "싸이",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "싸이 챔피언"
+    },
+    {
+      "id": "bty-party-03",
+      "title": "강남스타일",
+      "artist": "싸이",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "싸이 강남스타일"
+    },
+    {
+      "id": "bty-party-04",
+      "title": "순정",
+      "artist": "코요태",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "코요태 순정"
+    },
+    {
+      "id": "bty-party-05",
+      "title": "DOC와 춤을",
+      "artist": "DJ DOC",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "DJ DOC DOC와 춤을"
+    },
+    {
+      "id": "bty-party-06",
+      "title": "해변의 여인",
+      "artist": "쿨",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "쿨 해변의 여인"
+    },
+    {
+      "id": "bty-party-07",
+      "title": "초대",
+      "artist": "엄정화",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "엄정화 초대"
+    },
+    {
+      "id": "bty-party-08",
+      "title": "잘못된 만남",
+      "artist": "김건모",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "김건모 잘못된 만남"
+    },
+    {
+      "id": "bty-party-09",
+      "title": "Tears",
+      "artist": "소찬휘",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "소찬휘 Tears"
+    },
+    {
+      "id": "bty-party-10",
+      "title": "무조건",
+      "artist": "박상철",
+      "category": "party",
+      "language": "ko",
+      "searchQuery": "박상철 무조건"
+    },
+    {
+      "id": "bty-ballad-01",
+      "title": "거리에서",
+      "artist": "성시경",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "성시경 거리에서"
+    },
+    {
+      "id": "bty-ballad-02",
+      "title": "보고 싶다",
+      "artist": "김범수",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "김범수 보고 싶다"
+    },
+    {
+      "id": "bty-ballad-03",
+      "title": "야생화",
+      "artist": "박효신",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "박효신 야생화"
+    },
+    {
+      "id": "bty-ballad-04",
+      "title": "너를 위해",
+      "artist": "임재범",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "임재범 너를 위해"
+    },
+    {
+      "id": "bty-ballad-05",
+      "title": "안되나요",
+      "artist": "휘성",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "휘성 안되나요"
+    },
+    {
+      "id": "bty-ballad-06",
+      "title": "소주 한 잔",
+      "artist": "임창정",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "임창정 소주 한 잔"
+    },
+    {
+      "id": "bty-ballad-07",
+      "title": "가시",
+      "artist": "버즈",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "버즈 가시"
+    },
+    {
+      "id": "bty-ballad-08",
+      "title": "눈의 꽃",
+      "artist": "박효신",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "박효신 눈의 꽃"
+    },
+    {
+      "id": "bty-ballad-09",
+      "title": "너였다면",
+      "artist": "정승환",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "정승환 너였다면"
+    },
+    {
+      "id": "bty-ballad-10",
+      "title": "잊지 말아요",
+      "artist": "백지영",
+      "category": "ballad",
+      "language": "ko",
+      "searchQuery": "백지영 잊지 말아요"
+    },
+    {
+      "id": "bty-memories-01",
+      "title": "붉은 노을",
+      "artist": "이문세",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "이문세 붉은 노을"
+    },
+    {
+      "id": "bty-memories-02",
+      "title": "서른 즈음에",
+      "artist": "김광석",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "김광석 서른 즈음에"
+    },
+    {
+      "id": "bty-memories-03",
+      "title": "인연",
+      "artist": "이선희",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "이선희 인연"
+    },
+    {
+      "id": "bty-memories-04",
+      "title": "옛사랑",
+      "artist": "이문세",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "이문세 옛사랑"
+    },
+    {
+      "id": "bty-memories-05",
+      "title": "안녕이라고 말하지마",
+      "artist": "이승철",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "이승철 안녕이라고 말하지마"
+    },
+    {
+      "id": "bty-memories-06",
+      "title": "Never Ending Story",
+      "artist": "부활",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "부활 Never Ending Story"
+    },
+    {
+      "id": "bty-memories-07",
+      "title": "어쩌다 마주친 그대",
+      "artist": "송골매",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "송골매 어쩌다 마주친 그대"
+    },
+    {
+      "id": "bty-memories-08",
+      "title": "청춘",
+      "artist": "산울림",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "산울림 청춘"
+    },
+    {
+      "id": "bty-memories-09",
+      "title": "내 사랑 내 곁에",
+      "artist": "김현식",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "김현식 내 사랑 내 곁에"
+    },
+    {
+      "id": "bty-memories-10",
+      "title": "빙글빙글",
+      "artist": "나미",
+      "category": "memories",
+      "language": "ko",
+      "searchQuery": "나미 빙글빙글"
+    },
+    {
+      "id": "bty-kpop-01",
+      "title": "봄날",
+      "artist": "BTS",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "BTS 봄날"
+    },
+    {
+      "id": "bty-kpop-02",
+      "title": "Dynamite",
+      "artist": "BTS",
+      "category": "kpop",
+      "language": "en",
+      "searchQuery": "BTS Dynamite"
+    },
+    {
+      "id": "bty-kpop-03",
+      "title": "마지막처럼",
+      "artist": "BLACKPINK",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "BLACKPINK 마지막처럼"
+    },
+    {
+      "id": "bty-kpop-04",
+      "title": "CHEER UP",
+      "artist": "TWICE",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "TWICE CHEER UP"
+    },
+    {
+      "id": "bty-kpop-05",
+      "title": "다시 만난 세계",
+      "artist": "소녀시대",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "소녀시대 다시 만난 세계"
+    },
+    {
+      "id": "bty-kpop-06",
+      "title": "거짓말",
+      "artist": "BIGBANG",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "BIGBANG 거짓말"
+    },
+    {
+      "id": "bty-kpop-07",
+      "title": "좋은 날",
+      "artist": "아이유",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "아이유 좋은 날"
+    },
+    {
+      "id": "bty-kpop-08",
+      "title": "Ditto",
+      "artist": "NewJeans",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "NewJeans Ditto"
+    },
+    {
+      "id": "bty-kpop-09",
+      "title": "I AM",
+      "artist": "IVE",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "IVE I AM"
+    },
+    {
+      "id": "bty-kpop-10",
+      "title": "Supernova",
+      "artist": "aespa",
+      "category": "kpop",
+      "language": "ko",
+      "searchQuery": "aespa Supernova"
+    },
+    {
+      "id": "bty-pop-01",
+      "title": "Just the Way You Are",
+      "artist": "Bruno Mars",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Bruno Mars Just the Way You Are"
+    },
+    {
+      "id": "bty-pop-02",
+      "title": "Someone Like You",
+      "artist": "Adele",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Adele Someone Like You"
+    },
+    {
+      "id": "bty-pop-03",
+      "title": "Dancing Queen",
+      "artist": "ABBA",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "ABBA Dancing Queen"
+    },
+    {
+      "id": "bty-pop-04",
+      "title": "Don't Stop Me Now",
+      "artist": "Queen",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Queen Don't Stop Me Now"
+    },
+    {
+      "id": "bty-pop-05",
+      "title": "Don't Look Back in Anger",
+      "artist": "Oasis",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Oasis Don't Look Back in Anger"
+    },
+    {
+      "id": "bty-pop-06",
+      "title": "Take Me Home, Country Roads",
+      "artist": "John Denver",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "John Denver Take Me Home, Country Roads"
+    },
+    {
+      "id": "bty-pop-07",
+      "title": "Your Song",
+      "artist": "Elton John",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Elton John Your Song"
+    },
+    {
+      "id": "bty-pop-08",
+      "title": "Perfect",
+      "artist": "Ed Sheeran",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Ed Sheeran Perfect"
+    },
+    {
+      "id": "bty-pop-09",
+      "title": "Sunday Morning",
+      "artist": "Maroon 5",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "Maroon 5 Sunday Morning"
+    },
+    {
+      "id": "bty-pop-10",
+      "title": "Let It Be",
+      "artist": "The Beatles",
+      "category": "pop",
+      "language": "en",
+      "searchQuery": "The Beatles Let It Be"
+    }
+  ]
+}
