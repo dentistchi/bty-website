@@ -16,9 +16,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const searchCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).startsWith('/api/youtube/search?'));
 
 describe('BTY song picks reuse the guest search', () => {
-  it('browses categories without fetching or submitting a request', () => {
+  it('shows the guest catalog expanded without focusing search or fetching', () => {
     renderGuest(<RequestForm slug="bty-home" roomOpen />);
-    fireEvent.click(screen.getByText('BTY 추천곡'));
+    expect(screen.getByText('BTY 추천곡').closest('details')!.open).toBe(true);
+    expect(screen.getAllByRole('button', { name: /반주 찾기$/ })).toHaveLength(10);
+    expect(document.activeElement).not.toBe(screen.getByPlaceholderText('노래 제목 또는 가수'));
     fireEvent.click(screen.getByRole('button', { name: '팝송' }));
     expect(screen.getByText('Just the Way You Are')).toBeTruthy();
     expect(searchCalls()).toHaveLength(0);
@@ -29,7 +31,6 @@ describe('BTY song picks reuse the guest search', () => {
     renderGuest(<RequestForm slug="bty-home" roomOpen />);
     const input = screen.getByPlaceholderText('노래 제목 또는 가수') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'previous typed query' } });
-    fireEvent.click(screen.getByText('BTY 추천곡'));
     fireEvent.click(screen.getByRole('button', { name: 'DAY6 한 페이지가 될 수 있게 반주 찾기' }));
     await waitFor(() => expect(searchCalls()).toHaveLength(1));
     const url = new URL(String(searchCalls()[0][0]), 'http://localhost');
@@ -46,7 +47,6 @@ describe('BTY song picks reuse the guest search', () => {
       json: async () => ({ items: [], degraded: true, quotaExceeded: true, fallbackUrl: 'https://www.youtube.com/results?search_query=DAY6' }),
     })));
     renderGuest(<RequestForm slug="bty-home" roomOpen />);
-    fireEvent.click(screen.getByText('BTY 추천곡'));
     fireEvent.click(screen.getByRole('button', { name: 'DAY6 한 페이지가 될 수 있게 반주 찾기' }));
     await waitFor(() => expect(screen.getByText(/오늘 YouTube 검색 한도를 모두 사용했어요/)).toBeTruthy());
     expect(screen.getByText('YouTube 링크 직접 붙여넣기')).toBeTruthy();
@@ -54,7 +54,6 @@ describe('BTY song picks reuse the guest search', () => {
 
   it('does not start a search from picks in a closed room', () => {
     renderGuest(<RequestForm slug="bty-home" roomOpen={false} />);
-    fireEvent.click(screen.getByText('BTY 추천곡'));
     const button = screen.getByRole('button', { name: 'DAY6 한 페이지가 될 수 있게 반주 찾기' });
     expect((button as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(button);
@@ -79,7 +78,6 @@ describe('BTY song picks reuse the guest search', () => {
       return { ok: true, status: 200, headers: new Headers(), json: async () => body };
     }));
     renderGuest(<RequestForm slug="bty-home" roomOpen onSubmitted={submitted} />);
-    fireEvent.click(screen.getByText('BTY 추천곡'));
     fireEvent.click(screen.getByRole('button', { name: 'DAY6 한 페이지가 될 수 있게 반주 찾기' }));
     const requestButton = await screen.findByRole('button', { name: `${item.title} 신청하기` });
     // Choosing an editorial title must never auto-submit a provider video.
@@ -96,7 +94,7 @@ describe('BTY song picks reuse the guest search', () => {
 
   it('shows the same catalog with English controls for English guests', () => {
     renderGuest(<RequestForm slug="bty-home" roomOpen />, 'en');
-    fireEvent.click(screen.getByText('BTY song picks'));
+    expect(screen.getByText('BTY song picks').closest('details')!.open).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Pop songs' }));
     expect(screen.getByRole('button', { name: 'Find a track for Perfect by Ed Sheeran' })).toBeTruthy();
     expect(searchCalls()).toHaveLength(0);

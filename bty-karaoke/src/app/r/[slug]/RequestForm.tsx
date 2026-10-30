@@ -626,9 +626,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
           </div>
         )}
 
-        {/* BUILD 20M-WEB8 — 방금 부른 노래 only. The web Guest has no saved-song library. */}
-        <RecentlySungSection recentlySung={recentlySung.items} />
-
         <form onSubmit={runSearch} className="guest-song-search">
           <label htmlFor="q">{t('guest.search.prompt')}</label>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
@@ -639,7 +636,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('guest.search.placeholder')}
               maxLength={100}
-              autoFocus
             />
             <button type="submit" disabled={query.trim().length < 2 || searchState === 'searching'}>
               {searchState === 'searching' ? '…' : t('guest.search.action')}
@@ -666,6 +662,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
         <SongPicks
           locale={locale}
+          initiallyOpen={searchState === 'idle'}
           disabled={!roomOpen || searchState === 'searching' || submittingKey !== null}
           onPick={(song) => {
             setQuery(song.searchQuery);
@@ -764,6 +761,9 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
             {submittingKey === 'manual' ? t('guest.request.cta.pending') : t('guest.search.paste_submit')}
           </button>
         </details>
+
+        {/* Recent activity follows the guest's song-selection controls. */}
+        <RecentlySungSection recentlySung={recentlySung.items} />
       </div>
 
       {/* Floating live confirmation / my-requests dock */}

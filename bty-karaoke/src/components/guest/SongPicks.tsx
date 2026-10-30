@@ -19,7 +19,7 @@ export default function SongPicks({ locale, disabled = false, initiallyOpen = fa
   const songs = SONG_PICKS.filter((song) => song.category === category);
 
   useEffect(() => {
-    if (initiallyOpen && panel.current) panel.current.open = true;
+    if (panel.current) panel.current.open = initiallyOpen;
   }, [initiallyOpen]);
 
   return (
