@@ -2651,6 +2651,7 @@ a.btn.block {
 /* ── DJ operational: always-on actions, video badges, add-song, toggles ── */
 .dj-actions-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 10px 0 4px;
 }
@@ -2664,6 +2665,10 @@ a.btn.block {
   align-items: center;
   justify-content: center;
   text-decoration: none;
+}
+.dj-actions-bar > .dj-song-picks-entry {
+  flex: 1 0 100%;
+  min-height: 48px;
 }
 /* This console is an exception surface — the note makes that unmistakable. */
 .dj-exception-note {

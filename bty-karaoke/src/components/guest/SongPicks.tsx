@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GuestLocale } from '@/domain/guest-locale';
 import { guestT } from '@/domain/guest-messages';
 import { SONG_PICKS, SONG_PICK_CATEGORIES, type SongPick, type SongPickCategory } from '@/domain/song-picks';
@@ -8,14 +8,19 @@ import { SONG_PICKS, SONG_PICK_CATEGORIES, type SongPick, type SongPickCategory 
 interface Props {
   locale: GuestLocale;
   disabled?: boolean;
+  initiallyOpen?: boolean;
   onPick: (song: SongPick) => void;
 }
 
 /** Browsing is local; only an explicit song selection starts the existing search. */
-export default function SongPicks({ locale, disabled = false, onPick }: Props) {
+export default function SongPicks({ locale, disabled = false, initiallyOpen = false, onPick }: Props) {
   const [category, setCategory] = useState<SongPickCategory>('together');
   const panel = useRef<HTMLDetailsElement>(null);
   const songs = SONG_PICKS.filter((song) => song.category === category);
+
+  useEffect(() => {
+    if (initiallyOpen && panel.current) panel.current.open = true;
+  }, [initiallyOpen]);
 
   return (
     <details className="song-picks" ref={panel}>
