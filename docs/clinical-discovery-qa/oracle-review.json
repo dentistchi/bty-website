@@ -1,0 +1,144 @@
+{
+  "schema": "clinical-discovery-oracle-review/v1",
+  "originalFixtureHash": "a92beed88a6ae5f2f49da199268dd19ce43f905621d1803fa8c4e022a5240049",
+  "correctedFixtureHash": "aec9365e35e0b89c85ddefd8bd82626835b05df8c80f851776d6204c849520f3",
+  "changes": [
+    {
+      "caseId": "drchi-002",
+      "turnNumber": 5,
+      "question": "Get a bitewing to see how deep the decay goes.",
+      "before": {
+        "acceptedFactIds": []
+      },
+      "after": {
+        "acceptedFactIds": [
+          "drchi-002:restoration"
+        ]
+      },
+      "reason": "The returned restoration/caries-location description is the same lesion whose radiographic depth was explicitly requested, and it was already issued in turn 4. Repeating this context with the required depth-to-pulp answer is semantically reasonable. It should not be counted as an independent unasked disclosure or a routing failure."
+    },
+    {
+      "caseId": "drchi-010",
+      "turnNumber": 4,
+      "question": "Does it ever hurt without you eating or drinking?",
+      "before": {
+        "answerPatterns": [
+          "no spontaneous pain"
+        ]
+      },
+      "after": {
+        "answerPatterns": [
+          "(?:\\bno spontaneous pain\\b|\\bdo not have spontaneous pain\\b)"
+        ]
+      },
+      "reason": "Latent oracle negation bug: the frozen source fact says I do not have spontaneous pain. The baseline still has a genuine routing miss on this turn; this correction does not excuse clarification or change fact expectations."
+    },
+    {
+      "caseId": "drchi-010",
+      "turnNumber": 5,
+      "question": "Does it hurt when you bite down on food?",
+      "before": {
+        "answerPatterns": [
+          "no biting pain"
+        ]
+      },
+      "after": {
+        "answerPatterns": [
+          "(?:\\bno biting pain\\b|\\bdo not have biting pain\\b)"
+        ]
+      },
+      "reason": "Observed regex false positive: I do not have biting pain expresses the exact authored negative history. Keep the separate extra progression fact issue unchanged."
+    },
+    {
+      "caseId": "drchi-012",
+      "turnNumber": 2,
+      "question": "Do you have a fever or any facial swelling today?",
+      "before": {
+        "answerPatterns": [
+          "no [\\s\\S]*fever",
+          "no current facial swelling"
+        ]
+      },
+      "after": {
+        "answerPatterns": [
+          "(?:\\bno (?:current )?fever\\b|\\bdo not (?:currently )?have (?:a )?fever\\b)",
+          "no current facial swelling"
+        ]
+      },
+      "reason": "Observed regex false positive: I do not currently have a fever is a negative fever history and both requested fact IDs are correct. Preserve the independent facial-swelling answer assertion."
+    },
+    {
+      "caseId": "drchi-012",
+      "turnNumber": 3,
+      "question": "Are you having trouble opening your mouth?",
+      "before": {
+        "answerPatterns": [
+          "no [\\s\\S]*difficulty opening"
+        ]
+      },
+      "after": {
+        "answerPatterns": [
+          "(?:\\bno (?:current )?(?:difficulty|trouble) opening\\b|\\bdo not (?:currently )?have (?:difficulty|trouble) opening\\b)"
+        ]
+      },
+      "reason": "Observed regex false positive: I do not currently have difficulty opening my mouth answers the request correctly. No patient finding or routing expectation changes."
+    },
+    {
+      "caseId": "drchi-017",
+      "turnNumber": 8,
+      "question": "How deep are the lesions, and are these teeth restorable?",
+      "before": {
+        "acceptedFactIds": []
+      },
+      "after": {
+        "acceptedFactIds": [
+          "drchi-017:caries"
+        ]
+      },
+      "reason": "The patient-specific lesion identity/location is reasonable context for the depth/restorability question and was already disclosed in turn 5. The required unknown restorability fact must still be present; accepting this contextual repeat must not turn missing depth into available information."
+    },
+    {
+      "caseId": "drchi-019",
+      "turnNumber": 8,
+      "question": "Examine neighboring teeth and soft tissue.",
+      "before": {
+        "acceptedFactIds": []
+      },
+      "after": {
+        "acceptedFactIds": [
+          "drchi-019:socket"
+        ]
+      },
+      "reason": "In this post-extraction encounter, an unqualified soft-tissue examination can reasonably include the socket/healing site as well as neighboring tissues. Both fixed results are unavailable and the socket unavailability was already disclosed in turn 7. The adjacent assessment remains required."
+    },
+    {
+      "caseId": "drchi-020",
+      "turnNumber": 3,
+      "question": "How many years have you been receiving Prolia?",
+      "before": {
+        "acceptedFactIds": []
+      },
+      "after": {
+        "acceptedFactIds": [
+          "drchi-020:medication"
+        ]
+      },
+      "reason": "Restating the named medication/indication alongside its duration is reasonable context and was already disclosed in turn 1. This does not excuse the baseline failure to provide four years; duration and its answer pattern remain required."
+    }
+  ],
+  "contentAmbiguities": [
+    {
+      "caseId": "drchi-001",
+      "turnNumber": 6,
+      "question": "Does that sensation linger afterwards?",
+      "note": "The selected fixed cold-history answer only says cold bothers the tooth briefly. That is a plausible short answer about duration but does not explicitly state persistence after removal of the cold stimulus. The objective cold-test answer is more explicit, but must not be substituted for patient history. Preserve this as a source-granularity/content-review limitation rather than claiming a proven comprehensive cold-history answer from its fact ID."
+    },
+    {
+      "caseId": "drchi-002",
+      "turnNumber": 2,
+      "question": "Does that feeling last a long time after the drink is gone?",
+      "note": "The existing cold history says brief sensitivity but has no explicit post-stimulus timing. A correctly routed reply may still only partially answer this wording. Do not rewrite the question to conceal that source-content limitation, and do not invent a new lingering duration in a frozen pack."
+    }
+  ],
+  "note": "Post-baseline oracle corrections before router repair. Original fixture and measurement are preserved. These are regression journeys, not an unseen validation or model accuracy score."
+}

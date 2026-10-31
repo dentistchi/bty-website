@@ -1,5 +1,30 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
+
+The live Case 005 screenshot rejects “What did we do” in Examine or test even
+though the frozen pack contains `drchi-005:rct-history`: RCT eight months ago.
+Dr. Chi correctly challenges whether earlier testing established conversational
+usability. Reproduce this through the actual router and isolated browser; treat
+input mode as recorded intent, not a reason to reject an ordinary history question.
+
+Integrate the unmerged PR84 QA work onto the current PR89 release source, preserving
+both task contracts. Add bounded general dental-procedure history, contextual timing,
+unknown-provider acknowledgement, tooth scope and independent mixed requests. Keep
+frozen packs, author references, historical trace hashes, selector/transport, user
+identity and rewards unchanged. Metadata can point only to existing patient facts;
+missing history is unavailable case information, never no prior treatment.
+
+The separate screenshot regression must fail before repair, then pass in both input
+modes at 320/390/1280px. Browser checks must assert the fixed semantic oracle as well
+as faithful rendering; an incorrectly interpreted response is not a UI acceptance
+pass. The original 23-case/205-turn fixture remains byte-for-byte unchanged. Its
+74 required missing-information turns across 22 cases remain a RED content gate,
+not learner omissions or an overall release pass. Details and observed limits are
+in docs/CLINICAL_DISCOVERY_AUTONOMOUS_QA.md. Actual Mac inference and live Teams are
+not supplied by isolated rules/model-stub tests. No deployment, production write,
+auth-session creation, migration or seed is included in this repair.
+
 ## LEARNING-REWARDS-V1 — 2026-10-30
 
 Dr. Chi approved the interactive navy/gold rewards concept and requested actual app
@@ -56,6 +81,39 @@ rerun. The whole suite was not rerun after that test-only correction and remains
 non-green. XP service-only ACL migration is prepared, unapplied; no live auth or
 learner writes, permission changes, merge or deploy. Detailed evidence and known
 reward atomicity/replay limits: docs/APP_PRELAUNCH_RELIABILITY.md.
+## CLINICAL-DISCOVERY-AUTONOMOUS-QA — 2026-10-30
+
+Dr. Chi requests that development run synthetic clinical encounters, find and
+repair defects, and report results instead of relying on him to discover bugs.
+Build reusable all-23 journeys using the actual router, four-turn production
+context and pure in-memory start/question/assessment/reference/reaction flow.
+Run isolated screens on the same interpreter. QA data must never be stored as a
+doctor's learner trace; no API, auth or database service is needed for these runs.
+
+Keep subject-selection errors, interpretation failures, authored-answer gaps and
+unavailable decision information separate. A correct "not supplied" response is
+not a completed clinical scenario when that information is required by this QA
+path. QA requirements are not compulsory learner questions or medical scoring.
+Keep frozen packs and author testimony intact; new patient facts need a separately
+versioned, explicitly fictional case design rather than guessed normal results.
+
+The initial semantic 23-case / 205-turn fixture and original result are preserved
+before router repair. Oracle review/corrections must be recorded separately, and
+reruns are regression evidence, not unseen general-model accuracy measurements.
+Rules-only and explicit model runs use independent traces. Actual model runs need
+the operator's existing gateway settings; never print keys or restart other apps.
+
+Local first run on the deployed v5 router: 48 subject-selection/resolution flags,
+34 answer-pattern flags, 74 required unavailable turns in 22 cases, zero domain
+capture invariants, zero live model calls. These are preliminary review flags;
+semantic oracle review can remove false positives with an explicit record.
+Observed repaired regression: 23 cases / 205 turns, zero selection/resolution
+issues and checked-answer-pattern mismatches, zero capture invariants, 74 required
+information-gap turns across 22 cases. The --check quality gate correctly exits 1.
+Related tests: 424/424 in 30 files; isolated screens: 37/37. No live model calls.
+Details and immutable before/after evidence: docs/CLINICAL_DISCOVERY_AUTONOMOUS_QA.md.
+No new merge, deployment, credential change, learner record, migration or seed is
+authorized by this QA request. Source preparation and isolated repair are in scope.
 
 ## CLINICAL-DISCOVERY-REQUESTED-INFORMATION — 2026-10-30
 

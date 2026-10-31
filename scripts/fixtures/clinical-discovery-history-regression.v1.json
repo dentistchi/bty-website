@@ -1,0 +1,77 @@
+[
+  {
+    "caseId": "drchi-005",
+    "packVersion": "discovery-2026-10-23.1",
+    "turns": [
+      {
+        "question": "What did we do",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "answerPatterns": [
+          "root canal",
+          "eight months"
+        ],
+        "expectedResolution": "answered",
+        "required": true,
+        "reason": "Exact reported short past-treatment request and its bounded timing follow-up must reveal only recorded treatment history, regardless of selected input mode."
+      },
+      {
+        "question": "How long ago?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "answerPatterns": [
+          "root canal",
+          "eight months"
+        ],
+        "expectedResolution": "answered",
+        "required": true,
+        "reason": "Exact reported short past-treatment request and its bounded timing follow-up must reveal only recorded treatment history, regardless of selected input mode."
+      },
+      {
+        "question": "What did we do",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "answerPatterns": [
+          "root canal",
+          "eight months"
+        ],
+        "expectedResolution": "answered",
+        "required": true,
+        "reason": "Exact reported short past-treatment request and its bounded timing follow-up must reveal only recorded treatment history, regardless of selected input mode."
+      },
+      {
+        "question": "How long ago?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "answerPatterns": [
+          "root canal",
+          "eight months"
+        ],
+        "expectedResolution": "answered",
+        "required": true,
+        "reason": "Exact reported short past-treatment request and its bounded timing follow-up must reveal only recorded treatment history, regardless of selected input mode."
+      }
+    ],
+    "contentGaps": []
+  }
+]

@@ -1,6 +1,7 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
+import { isTreatmentHistoryQuestion, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
 
-export type HistoryIntentId = "endodontic-history" | "cold-history" | "allergies" | "medications" | "symptom-onset";
+export type HistoryIntentId = "endodontic-history" | "cold-history" | "allergies" | "medications" | "symptom-onset" | "dental-treatment-history";
 export type HistoryIntentDefinition = {
   id: HistoryIntentId;
   topic: string;
@@ -11,6 +12,9 @@ export type HistoryIntentDefinition = {
 
 /** Interpretation metadata, never additional patient truth or a mutation of a frozen pack. */
 export const HISTORY_INTENTS: readonly HistoryIntentDefinition[] = [
+  { id: "dental-treatment-history", topic: "Prior dental procedure history", channel: "patient",
+    canonicalQueries: [],
+    missingAnswer: "Prior dental procedure history is not supplied in this case. This does not establish that no dental treatment was performed." },
   { id: "endodontic-history", topic: "Prior root canal treatment history", channel: "patient",
     canonicalQueries: ["root canal", "RCT", "endodontic treatment"],
     missingAnswer: "Prior root canal treatment history is not specified in this case." },
@@ -39,6 +43,15 @@ const onset = /\bwhen\b[^.!?]{0,50}\b(?:start|started|begin|began|notice|noticed
 export function recognizeHistoryIntents(text: string): HistoryIntentDefinition[] {
   const question = normalize(text);
   if (!question || advice.test(question)) return [];
+  const procedureClauses = treatmentHistoryClauses(question);
+  if (procedureClauses.some(isTreatmentHistoryQuestion)) {
+    // A "what" in the history clause must not turn a later "take a PA" into
+    // a medication question. Each independent request retains its own subject.
+    const requested = new Set<HistoryIntentId>(["dental-treatment-history"]);
+    procedureClauses.filter(clause => !isTreatmentHistoryQuestion(clause))
+      .flatMap(recognizeHistoryIntents).forEach(intent => requested.add(intent.id));
+    return HISTORY_INTENTS.filter(intent => requested.has(intent.id));
+  }
   const ids = new Set<HistoryIntentId>();
   const symptomOnset = onset.test(question)
     && !( /\b(?:filling|restoration|crown|implant|extraction|missing tooth|prolia|denosumab|injection|medication)\b/iu.test(question)
@@ -70,6 +83,7 @@ function patternMatches(fact: DiscoveryFact, query: string): boolean {
 export function factsForIntent(intent: HistoryIntentDefinition | HistoryIntentId, patient: DiscoveryPatient): DiscoveryFact[] {
   const definition = typeof intent === "string" ? HISTORY_INTENTS.find(item => item.id === intent)! : intent;
   if (!definition) return [];
+  if (definition.id === "dental-treatment-history") return treatmentHistoryFacts(patient);
   return patient.facts.filter(fact => {
     if (fact.channel !== "patient") return false;
     if (definition.id === "symptom-onset") {
