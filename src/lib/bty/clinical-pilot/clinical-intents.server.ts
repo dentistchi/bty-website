@@ -1,5 +1,7 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { isTreatmentHistoryQuestion, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
+import { isCaseDetailReview } from "./case-detail-subjects.server";
+import { isNextCaseDetailReview } from "./case-detail-next-subjects.server";
 
 export type HistoryIntentId = "endodontic-history" | "cold-history" | "allergies" | "medications" | "symptom-onset" | "dental-treatment-history";
 export type HistoryIntentDefinition = {
@@ -84,6 +86,12 @@ export function factsForIntent(intent: HistoryIntentDefinition | HistoryIntentId
   const definition = typeof intent === "string" ? HISTORY_INTENTS.find(item => item.id === intent)! : intent;
   if (!definition) return [];
   if (definition.id === "dental-treatment-history") return treatmentHistoryFacts(patient);
+  if (definition.id === "symptom-onset" && isNextCaseDetailReview(patient) && patient.caseId === "drchi-002") {
+    return patient.facts.filter(fact => fact.id === "drchi-002:onset");
+  }
+  if (definition.id === "symptom-onset" && isCaseDetailReview(patient) && patient.caseId === "drchi-011") {
+    return patient.facts.filter(fact => fact.id === "drchi-011:current-loosening-duration");
+  }
   return patient.facts.filter(fact => {
     if (fact.channel !== "patient") return false;
     if (definition.id === "symptom-onset") {

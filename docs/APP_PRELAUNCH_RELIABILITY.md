@@ -50,6 +50,15 @@ actual Teams Save/Track attempt was not replayed live.
 
 ## XP authorization change: pending migration
 
+**Historical section, superseded by a read-only catalog check on 2026-10-31:**
+both exact XP increment signatures now deny anon/authenticated execution and
+permit service_role. This task applied no migration. See
+[the current catalog evidence](clinical-complete-qa/live-catalog-readonly.json).
+The two separate legacy replay/recovery defects remain documented in
+[APP_RELEASE_FLOW_AUDIT.md](APP_RELEASE_FLOW_AUDIT.md). The paragraphs below retain
+the earlier deployment-stage observation, not the current ACL state.
+
+
 Live privilege inspection confirms that both `increment_arena_xp(uuid,uuid,integer)`
 and `increment_weekly_xp(uuid,uuid,integer)` are SECURITY DEFINER, permit
 `authenticated` execution, and accept supplied user IDs/deltas without an auth.uid

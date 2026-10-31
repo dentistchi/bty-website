@@ -147,3 +147,18 @@ describe("fetchPracticeList — error is never an empty list", () => {
     }
   });
 });
+
+describe("Practice completion acknowledgement", () => {
+  it.each([{}, { completed: false }, { ok: true }])("refuses a 200 body without canonical completed:true: %j", async body => {
+    const fetcher = vi.fn(async () => Response.json(body)) as unknown as typeof fetch;
+    expect(await completePractice(fetcher, "practice-1", "run-1")).toEqual({ ok: false });
+  });
+  it("refuses a successful HTML response instead of treating a sign-in redirect as a saved completion", async () => {
+    const fetcher = vi.fn(async () => new Response("<html>Sign in</html>", { headers: { "Content-Type": "text/html" } })) as unknown as typeof fetch;
+    expect(await completePractice(fetcher, "practice-1", "run-1")).toEqual({ ok: false });
+  });
+  it("accepts the owned completion route's canonical acknowledgement", async () => {
+    const fetcher = vi.fn(async () => Response.json({ completed: true })) as unknown as typeof fetch;
+    expect(await completePractice(fetcher, "practice-1", "run-1")).toEqual({ ok: true });
+  });
+});

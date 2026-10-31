@@ -1,0 +1,1329 @@
+[
+  {
+    "caseId": "drchi-005",
+    "packVersion": "discovery-2026-10-31.1-review-a",
+    "turns": [
+      {
+        "question": "What did we do",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:rct-history",
+          "drchi-005:crown-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history",
+          "drchi-005:crown-history"
+        ],
+        "required": true,
+        "reason": "A general treatment-history question in either input mode must disclose both recorded procedures in the new fictional version.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "root canal treatment eight months ago",
+          "crown.*three weeks ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How long ago?",
+        "channel": "exam",
+        "expectedFactIds": [],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "The immediately preceding reply contains two different procedures and dates, so timing needs a procedure-specific clarification.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "which.*(?:procedure|treatment)|specify.*(?:procedure|treatment)"
+        ],
+        "expectedResolution": "clarify"
+      },
+      {
+        "question": "Has this tooth previously had root canal treatment?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "required": true,
+        "reason": "An explicitly named RCT history question must not add the separately timed crown.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "root canal treatment eight months ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How long ago?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history"
+        ],
+        "required": true,
+        "reason": "A bounded follow-up repeats the single RCT date, not the symptom onset or crown date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "root canal treatment eight months ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "When was the crown fitted?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:crown-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:crown-history"
+        ],
+        "required": true,
+        "reason": "The definitive crown date is a separate fictional history source from the original RCT date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "crown.*three weeks ago",
+          "about a week after"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "When did the soreness come back?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:symptom-course"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:symptom-course"
+        ],
+        "required": true,
+        "reason": "Preserve the original symptom-course statement rather than changing it to the new crown date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "returned two weeks ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What did we do, and take a PA?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:rct-history",
+          "drchi-005:crown-history",
+          "drchi-005:pa"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:rct-history",
+          "drchi-005:crown-history",
+          "drchi-005:pa"
+        ],
+        "required": true,
+        "reason": "A compound history and named imaging request keeps both requested categories without medication or unrelated findings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "root canal treatment eight months ago",
+          "crown.*three weeks ago",
+          "radiolucency is smaller"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Does your bite feel off?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:bite-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:bite-history"
+        ],
+        "required": true,
+        "reason": "Patient perception is not an objective contact examination and does not request grinding history.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "seems to touch before the others"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you move your jaw backward or sideways to make your teeth fit?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:jaw-shift"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:jaw-shift"
+        ],
+        "required": true,
+        "reason": "Record the patient report without declaring a measured CR-MIP relationship.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "do not deliberately move my jaw backward or sideways"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Has anyone heard you grind at night?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:parafunction"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:parafunction"
+        ],
+        "required": true,
+        "reason": "The fictional partner report and conscious clenching are history, not an instrumentally established sleep-bruxism diagnosis.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "partner has heard me grinding",
+          "not had a sleep recording"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you wear a night guard?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-005:night-guard"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:night-guard"
+        ],
+        "required": true,
+        "reason": "Guard use is separate from the reported habit.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "never used a night guard"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Compare the current PA with the original apical lesion.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:pa"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:pa"
+        ],
+        "required": true,
+        "reason": "A decreasing lesion is the original image finding; no fully healed or no-endodontic-problem conclusion is supplied.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "radiolucency is smaller"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check for swelling and any draining sinus tract.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:swelling"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:swelling"
+        ],
+        "required": true,
+        "reason": "Preserve the original supplied negative examination.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "no swelling or sinus tract"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Tap the tooth with the mirror handle.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:percussion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:percussion"
+        ],
+        "required": true,
+        "reason": "Preserve the original mild percussion tenderness.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "mildly tender.*percussion"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the occlusal contacts while the patient closes gently.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:occlusion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:occlusion"
+        ],
+        "required": true,
+        "reason": "Obtain actual fictional contact observations rather than an assumed high contact.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "crown contacts before the adjacent teeth",
+          "shimstock"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Measure the periodontal pockets around the crown.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:probing"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:probing"
+        ],
+        "required": true,
+        "reason": "These fictional recorded probing values do not rule out every covered fracture.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "2[–-]3 mm",
+          "no isolated deep site"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check whether the crown margins are sealed or decayed.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:crown-integrity"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:crown-integrity"
+        ],
+        "required": true,
+        "reason": "Accessible crown findings remain distinct from covered tooth structure.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "Accessible margins are intact",
+          "crown has not been removed"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Examine the neighboring teeth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:adjacent"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:adjacent"
+        ],
+        "required": true,
+        "reason": "A visual neighbor examination must not disclose separately requested sensibility or percussion results.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#29 and #31",
+          "cold and percussion responses are recorded separately"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Cold-test the neighboring teeth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:adjacent-cold"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:adjacent-cold"
+        ],
+        "required": true,
+        "reason": "Request the adjacent cold-test result without substituting the target tooth or a generic visual result.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#29 and #31",
+          "brief cold response",
+          "stops after removal"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Tap the neighboring teeth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:adjacent-percussion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:adjacent-percussion"
+        ],
+        "required": true,
+        "reason": "An adjacent percussion request must not return the target tooth mild tenderness or unrelated cold results.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "Neither #29 nor #31 is tender",
+          "percussion"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Press along the gum beside the roots.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:palpation"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:palpation"
+        ],
+        "required": true,
+        "reason": "Apical palpation is distinct from percussion and probing.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "palpation at #30 does not reproduce tenderness"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Use a Tooth Slooth to test the crowned tooth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:bite-test"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-005:bite-test"
+        ],
+        "required": true,
+        "reason": "Record the actual fictional bite response without inferring hidden fracture extent.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "reproduces the mild pressure discomfort",
+          "no distinct sharp pain on release"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What is the crack extent beneath the crown toward the root?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:covered-fracture-extent"
+        ],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "Definitive covered fracture extent remains explicitly unavailable rather than being guessed normal.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "crown has not been removed",
+          "do not exclude"
+        ],
+        "expectedResolution": "unavailable"
+      },
+      {
+        "question": "Is a CR-MIP record available after deprogramming?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-005:cr-assessment"
+        ],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "A patient denial of deliberate jaw shifting is not a measured jaw-position record.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "No deprogramming or CR[–-]MIP record",
+          "discrepancy has not been established"
+        ],
+        "expectedResolution": "unavailable"
+      }
+    ],
+    "contentGaps": [
+      {
+        "topic": "Covered tooth and root-fracture extent",
+        "reason": "The crown has not been removed and no definitive covered-fracture extent is supplied."
+      },
+      {
+        "topic": "CR-MIP record and treatment response",
+        "reason": "No deprogramming record or response to an unperformed treatment is established by this case."
+      }
+    ]
+  },
+  {
+    "caseId": "drchi-006",
+    "packVersion": "discovery-2026-10-31.1-review-a",
+    "turns": [
+      {
+        "question": "Any pain or trouble chewing with this tooth?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:symptoms"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:symptoms"
+        ],
+        "required": true,
+        "reason": "Preserve the original symptom report without inferring absence of structural or caries risk.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "no pain",
+          "trouble chewing"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What dental treatment have you had?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:restoration-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:restoration-history"
+        ],
+        "required": true,
+        "reason": "A patient-history request does not reveal unrequested whole-mouth examination findings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "large filling",
+          "long time"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How long ago?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:restoration-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:restoration-history"
+        ],
+        "required": true,
+        "reason": "The bounded timing reply retains the authored qualitative duration and invents no exact placement date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "long time"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the existing filling for recurrent decay.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:restoration"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:restoration"
+        ],
+        "required": true,
+        "reason": "The serviceable target restoration is separate from findings in other teeth.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "MOD restoration",
+          "no obvious recurrent caries"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Are there restorations on any other teeth?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:other-restorations"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:other-restorations"
+        ],
+        "required": true,
+        "reason": "The question asks restoration distribution, not caries findings or the target MOD alone.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#3 and #19",
+          "small occlusal composites"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What about on the other teeth?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:other-restorations"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:other-restorations"
+        ],
+        "required": true,
+        "reason": "This follow-up retains the immediately preceding restorations subject rather than changing to a risk assessment.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#3 and #19",
+          "No other restorations are recorded"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the lower anterior interproximal areas for caries.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:lower-anterior-caries"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:lower-anterior-caries"
+        ],
+        "required": true,
+        "reason": "These are clinical lower-incisor observations and do not pretend to be imaged by posterior bitewings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#23 distal and #24 mesial",
+          "cavitated interproximal lesions with soft dentin"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Examine exposed root surfaces for root caries.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:root-caries"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:root-caries"
+        ],
+        "required": true,
+        "reason": "Root-surface examination is a separate distribution finding from lower-anterior lesions.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "accessible exposed root surfaces",
+          "no root.surface caries"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Review this patient's caries risk findings.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:caries-risk"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:caries-risk"
+        ],
+        "required": true,
+        "reason": "Supply the fictional lesion distribution and activity; no measured bacterial count or universal treatment conclusion is invented.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#23 distal and #24 mesial",
+          "no bacterial.count test"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Does your mouth feel dry?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:dry-mouth"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:dry-mouth"
+        ],
+        "required": true,
+        "reason": "Subjective symptoms are not an objective salivary-flow measurement.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "does not usually feel dry",
+          "No salivary.flow measurement"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What do you sip and snack on during the day?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:diet"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:diet"
+        ],
+        "required": true,
+        "reason": "A dietary exposure question requests diet only, not automatic caries findings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "sweetened coffee",
+          "snack between meals"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How do you brush and floss at home?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:home-care"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:home-care"
+        ],
+        "required": true,
+        "reason": "Record the fictional reported routine without attributing lesion causation to it.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "brush twice a day",
+          "floss about twice a week"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Is there a visible line on the remaining cusp?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:cusp-line"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:cusp-line"
+        ],
+        "required": true,
+        "reason": "Preserve the original visible finding and its original uncertainty.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "fine line.*remaining cusp",
+          "depth.*unclear"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Measure how much cusp wall thickness remains.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:cusp-thickness"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:cusp-thickness"
+        ],
+        "required": true,
+        "reason": "The measurement describes the accessible edge; it is not complete covered-wall thickness or definitive restorability.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "accessible occlusal edge",
+          "1\\.6 mm",
+          "restoration has not been removed"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Use a Tooth Slooth to test individual cusps.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:bite-test"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:bite-test"
+        ],
+        "required": true,
+        "reason": "A painless bite test is an observed response, not proof that no crack exists.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "loading and release",
+          "do not reproduce pain"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Shine a light through the visible cusp line.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:transillumination"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:transillumination"
+        ],
+        "required": true,
+        "reason": "Transillumination supplies only the observed visible extent.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "exposed enamel",
+          "beneath the MOD restoration is not visible"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the actual occlusal contacts on that tooth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:occlusion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:occlusion"
+        ],
+        "required": true,
+        "reason": "Objective contacts and an unperformed CR record remain distinct.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "posterior contacts occur on several teeth",
+          "#30 is not the first or only contact",
+          "No CR[–-]MIP record"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Does your bite feel wrong?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:bite-and-habits"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:bite-and-habits"
+        ],
+        "required": true,
+        "reason": "A perceived-bite question must not disclose separately stored parafunction history.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "bite feels comfortable",
+          "do not deliberately shift"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Are you aware of clenching or grinding at night?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:parafunction"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:parafunction"
+        ],
+        "required": true,
+        "reason": "A lack of awareness is reported uncertainty rather than a finding that sleep parafunction is absent.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "not aware",
+          "sleep"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you use a night guard?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-006:night-guard"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:night-guard"
+        ],
+        "required": true,
+        "reason": "Guard use is separately requested.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "not used a night guard"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check for wear facets.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:wear"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:wear"
+        ],
+        "required": true,
+        "reason": "Wear is an observation and does not establish current or nocturnal activity.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "Moderate polished wear facets",
+          "does not establish"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Obtain current bitewings.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:bitewing"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:bitewing"
+        ],
+        "required": true,
+        "reason": "Posterior bitewings cover the target posterior restoration; lower-incisor lesion diagnosis is not fabricated from this image.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#30",
+          "MOD",
+          "radiolucency"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Review the bitewings and use a Tooth Slooth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:bitewing",
+          "drchi-006:bite-test"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-006:bitewing",
+          "drchi-006:bite-test"
+        ],
+        "required": true,
+        "reason": "Two explicit examination requests retain the named findings without target visible-line or whole-mouth disclosure.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#30",
+          "do not reproduce pain"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How far does the crack extend beneath the filling toward the root?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-006:crack-extent"
+        ],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "Hidden crack extent remains an explicit case-information limit despite a painless bite test.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "restoration has not been removed",
+          "has not been established"
+        ],
+        "expectedResolution": "unavailable"
+      }
+    ],
+    "contentGaps": [
+      {
+        "topic": "Hidden crack extent",
+        "reason": "The MOD has not been removed and the extent into covered dentin or toward the root remains unestablished."
+      },
+      {
+        "topic": "Unmeasured risk factors and outcomes",
+        "reason": "No bacterial-count assay, measured salivary flow, CR-MIP record or treatment outcome is supplied."
+      }
+    ]
+  },
+  {
+    "caseId": "drchi-011",
+    "packVersion": "discovery-2026-10-31.1-review-a",
+    "turns": [
+      {
+        "question": "When was this implant crown delivered?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:history"
+        ],
+        "required": true,
+        "reason": "Preserve the original implant-crown delivery date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "five years|5 years"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How often has it needed retightening lately?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "required": true,
+        "reason": "The retightening count does not itself establish previous normal occlusal examinations.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "twice",
+          "six months"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "So this has happened twice already?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "required": true,
+        "reason": "A contextual confirmation repeats only the recurrence history.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "twice"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "What did we do last time?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:recurrence"
+        ],
+        "required": true,
+        "reason": "Last-time treatment refers to the recent retightening history, not the five-year-old crown delivery.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "twice",
+          "six months"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you have any pain around it?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:pain"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:pain"
+        ],
+        "required": true,
+        "reason": "Preserve the original report of no pain.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "no pain"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "When did you notice the crown moving again?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:current-loosening-duration"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:current-loosening-duration"
+        ],
+        "required": true,
+        "reason": "Current episode duration is different from the recurrence count and original delivery date.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "about a week ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Review the bite findings at both previous retightening visits.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:previous-occlusion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:previous-occlusion"
+        ],
+        "required": true,
+        "reason": "The new fictional records provide one adjustment and one absent record, not two normal examinations.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "five months ago",
+          "second note, two months ago",
+          "do not establish two normal bite checks"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the bite on the implant crown.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:occlusion"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:occlusion"
+        ],
+        "required": true,
+        "reason": "Record only gentle current observations and preserve the loose-restoration limitation.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "contacts before the adjacent posterior teeth",
+          "reassessment after the restoration is stabilized"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Does your bite feel off?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:bite-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:bite-history"
+        ],
+        "required": true,
+        "reason": "Patient bite perception does not by itself establish ideal jaw position.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "When the crown is tight",
+          "do not deliberately move my jaw"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you have to shift your jaw backward or sideways to make your teeth meet?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:bite-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:bite-history"
+        ],
+        "required": true,
+        "reason": "Preserve the reported jaw-shift response without an inferred comprehensive occlusal diagnosis.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "do not deliberately move my jaw backward or sideways"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Has anyone heard you grinding or clenching at night?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:parafunction"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:parafunction"
+        ],
+        "required": true,
+        "reason": "Reported habits are not an instrumental sleep-bruxism diagnosis.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "partner has heard grinding",
+          "not had a sleep recording"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Do you wear your night guard?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:night-guard"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:night-guard"
+        ],
+        "required": true,
+        "reason": "Current guard use differs from whether one was ever made.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "stopped wearing it about two years ago"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Is the implant fixture itself mobile?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:fixture-stability"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:fixture-stability"
+        ],
+        "required": true,
+        "reason": "A directed fixture-mobility examination is distinct from gross crown mobility and the entire interface.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "fixture does not move",
+          "gentle clinical testing"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Determine whether movement is in the crown or in the fixture, and check the component connection.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:components",
+          "drchi-011:connection-examination"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:components",
+          "drchi-011:connection-examination"
+        ],
+        "required": true,
+        "reason": "The explicit compound request asks source localization and accessible connection examination, not verified part compatibility.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "assembly moves relative to the fixture",
+          "no visible fracture under magnification"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Inspect the retrieved screw for visible damage.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:screw-examination"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:screw-examination"
+        ],
+        "required": true,
+        "reason": "Visual screw inspection supplies actual fictional observations without proving the screw identity or cause.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "screw is intact",
+          "Shiny wear marks",
+          "No dimensional analysis"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Inspect the internal connection under magnification.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:connection-examination"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:connection-examination"
+        ],
+        "required": true,
+        "reason": "Accessible visual findings cannot establish complete compatibility or exclude microscopic damage.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "no visible fracture",
+          "does not establish complete component compatibility"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Can the component part numbers and compatibility be verified?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:component-compatibility"
+        ],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "Unverified system identification and parts remain a real decision-information limit.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "part numbers are not available",
+          "Compatibility has not been verified"
+        ],
+        "expectedResolution": "unavailable"
+      },
+      {
+        "question": "What tightening torque is specified for these exact parts?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:torque-specification"
+        ],
+        "expectedAvailableFactIds": [],
+        "required": false,
+        "reason": "The case must not invent a torque for unverified hardware.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "No manufacturer.specific tightening specification",
+          "No torque value"
+        ],
+        "expectedResolution": "unavailable"
+      },
+      {
+        "question": "Probe gently around the implant.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:probing"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:probing"
+        ],
+        "required": true,
+        "reason": "Peri-implant probing is distinct from movement localization and radiographic levels.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "2[–-]4 mm",
+          "no bleeding or suppuration"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Compare the current PA with the previous bone levels.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:pa"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:pa"
+        ],
+        "required": true,
+        "reason": "The original image comparison does not itself establish fixture stability.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "no obvious interval bone.level change"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Have you had any new crowns, fillings, or partial dentures recently?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:recent-restorative-history"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:recent-restorative-history"
+        ],
+        "required": true,
+        "reason": "Other recent treatment history is separate from the implant crown delivery and retightenings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "not had another crown",
+          "last year"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "How do you clean around the implant?",
+        "channel": "patient",
+        "expectedFactIds": [
+          "drchi-011:home-care"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:home-care"
+        ],
+        "required": true,
+        "reason": "Home care is patient history, not a substituted implant-tissue examination.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "brush twice a day",
+          "water flosser"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Check the neighboring teeth.",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:adjacent"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:adjacent"
+        ],
+        "required": true,
+        "reason": "A neighbor examination must not return implant connection or fixture findings.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "#29 and #31",
+          "physiologic movement"
+        ],
+        "expectedResolution": "answered"
+      },
+      {
+        "question": "Is the screw-retained crown itself mobile on initial examination?",
+        "channel": "exam",
+        "expectedFactIds": [
+          "drchi-011:crown"
+        ],
+        "expectedAvailableFactIds": [
+          "drchi-011:crown"
+        ],
+        "required": true,
+        "reason": "The initial gross crown finding is separate from later directed fixture and hardware examinations.",
+        "acceptedFactIds": [],
+        "answerPatterns": [
+          "screw.retained implant crown",
+          "crown is mobile"
+        ],
+        "expectedResolution": "answered"
+      }
+    ],
+    "contentGaps": [
+      {
+        "topic": "Component identity and compatibility",
+        "reason": "Implant-system identification and component part numbers remain unavailable; visual inspection does not verify compatibility."
+      },
+      {
+        "topic": "Manufacturer torque and outcomes",
+        "reason": "No torque prescription or response to an unperformed screw replacement or remake is supplied."
+      }
+    ]
+  }
+]

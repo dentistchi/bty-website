@@ -4,6 +4,7 @@ import { GET, POST } from "./route";
 import catalog from "@/domain/clinical-pilot/catalog.json";
 import { PILOT_SCHEMA, initialAnswers, publicCase, startPilot, type AuthorCase, type PilotTrace } from "@/domain/clinical-pilot/pilot";
 import { discoveryTurns, initialAssessment } from "@/domain/clinical-pilot/discovery";
+import { discoveryPatients, DISCOVERY_PACK_VERSION } from "@/lib/bty/clinical-pilot/discovery-cases.server";
 
 // This double executes the real route, service, domain transitions and authored router.
 // It has no remote connection. Auth and the database transport are replaced at the boundary.
@@ -516,5 +517,81 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
     expect(body.check.results.every((r: { fallback: string }) => r.fallback === "local_model_http_error")).toBe(true);
     expect(state.dbCalls).toBe(0);
     expect(state.rows).toEqual([]);
+  });
+});
+
+describe.each([
+  { reviewVersion: "discovery-2026-10-31.1-review-a", detailRequests: [
+    { caseId: "drchi-005", question: "Check occlusion", factId: "drchi-005:occlusion" },
+    { caseId: "drchi-006", question: "Assess caries risk", factId: "drchi-006:caries-risk" },
+    { caseId: "drchi-011", question: "Check occlusion", factId: "drchi-011:occlusion" },
+  ] },
+  { reviewVersion: "discovery-2026-10-31.2-review-b", detailRequests: [
+    { caseId: "drchi-002", question: "Can this tooth be isolated with a rubber dam?", factId: "drchi-002:isolation" },
+    { caseId: "drchi-003", question: "Compare with the old films.", factId: "drchi-003:previous-images" },
+    { caseId: "drchi-008", question: "Is #31 tipping forward?", factId: "drchi-008:movement" },
+  ] },
+])("Founder review of separately versioned case details: $reviewVersion", ({ reviewVersion, detailRequests }) => {
+  const startCase = (caseId: string) => {
+    const source = catalog.find(row => row.caseId === caseId)!;
+    return post("start", { caseId, caseVersion: source.version });
+  };
+  for (const { caseId, question, factId } of detailRequests) {
+    it(`${caseId}: an ordinary user keeps the old unknown rather than the unreviewed preview`, async () => {
+      await startCase(caseId);
+      expect(trace().discovery!.packVersion).toBe(DISCOVERY_PACK_VERSION);
+      const r = await (await message(question, "exam")).json();
+      const reply = discoveryTurns(r.trace).at(-1)!.reply;
+      expect(reply.availableFactIds).not.toContain(factId);
+      expect(reply.unavailableFactIds).toContain(factId);
+      expect(reply.fictionalExtensionFactIds).toEqual([]);
+    });
+    it(`${caseId}: a Founder starts on the versioned review pack and issued detail is attributed`, async () => {
+      vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+      await startCase(caseId);
+      expect(trace().discovery!.packVersion).toBe(reviewVersion);
+      expect(trace().discovery!.scenarioProvenance).toBe("fictional-extension-awaiting-review");
+      expect(trace().events[0].payload.scenarioProvenance).toBe("fictional-extension-awaiting-review");
+      const r = await (await message(question, "exam")).json();
+      const reply = discoveryTurns(r.trace).at(-1)!.reply;
+      expect(reply.availableFactIds).toContain(factId);
+      expect(reply.fictionalExtensionFactIds).toContain(factId);
+      expect(r.trace.caseSnapshot.findings).toEqual([]);
+      expect(r.trace.events.some((e: { type: string }) => e.type === "reference_released")).toBe(false);
+    });
+    it(`${caseId}: enabling preview never changes an attempt already frozen on the old pack`, async () => {
+      await startCase(caseId);
+      const before = structuredClone(trace());
+      vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+      const r = await (await message(question, "exam")).json();
+      expect(r.trace.discovery.packVersion).toBe(DISCOVERY_PACK_VERSION);
+      expect(r.trace.caseHash).toBe(before.caseHash);
+      expect(r.trace.events.slice(0, before.events.length)).toEqual(before.events);
+      expect(discoveryTurns(r.trace).at(-1)!.reply.unavailableFactIds).toContain(factId);
+    });
+    it(`${caseId}: removing Founder access preserves the owned review-version attempt`, async () => {
+      vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+      await startCase(caseId);
+      const before = structuredClone(trace());
+      vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "");
+      const r = await (await message(question, "exam")).json();
+      expect(r.ok).toBe(true);
+      expect(r.trace.discovery.packVersion).toBe(reviewVersion);
+      expect(r.trace.caseHash).toBe(before.caseHash);
+      expect(r.trace.events.slice(0, before.events.length)).toEqual(before.events);
+      expect(discoveryTurns(r.trace).at(-1)!.reply.fictionalExtensionFactIds).toContain(factId);
+    });
+  }
+  it("does not publish the new patient facts in the neutral library GET", async () => {
+    vi.stubEnv("CLINICAL_DISCOVERY_FOUNDER_USER_IDS", "owner");
+    const data = await (await get()).json();
+    expect(data.cases).toHaveLength(23);
+    for (const row of data.cases) expect(row.findings).toEqual([]);
+    const preview = discoveryPatients.filter(p => p.version === reviewVersion);
+    expect(preview).toHaveLength(3);
+    const text = JSON.stringify(data);
+    for (const p of preview) for (const f of p.facts.filter(f => f.provenance)) {
+      expect(text).not.toContain(f.answer);
+    }
   });
 });

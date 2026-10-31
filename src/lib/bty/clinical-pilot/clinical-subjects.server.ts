@@ -1,5 +1,8 @@
 import type { DiscoveryChannel, DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
+import { caseDetailFactMatchesClause, caseDetailSubject, caseDetailSubjectTarget, isCaseDetailReview } from "./case-detail-subjects.server";
 import { HISTORY_INTENTS, factsForIntent, type HistoryIntentId } from "./clinical-intents.server";
+import { isNextCaseDetailReview } from "./case-detail-next-subjects.server";
+import { isCompleteReview } from "./complete-review-subjects.server";
 
 /** Interpretation metadata, not additional facts or modified patient packs.
  * Call only after the router's existing hidden-answer/advice/security gates.
@@ -13,7 +16,7 @@ export type ClinicalSubjectSegment = {
   text: string; factIds: string[]; missing: MissingClinicalSubject[];
   historySelections: { id: HistoryIntentId; factIds: string[] }[];
   /** Existing history recognition must not re-add a broader drug/cold/onset result. */
-  suppressHistoryIntentIds: ("cold-history" | "medications" | "symptom-onset")[];
+  suppressHistoryIntentIds: HistoryIntentId[];
 };
 export type ClinicalSubjectScope = {
   factIds: string[]; missing: MissingClinicalSubject[];
@@ -189,13 +192,14 @@ const independentHead = /^(?:(?:please|then)\s+)?(?:can|could|does|do|did|has|ha
 const ellipticalHead = /^(?:(?:a|an|the)\s+)?(?:pa\b|periapical\b|cbct\b|cone[- ]beam\b|occlus(?:al|ion)\b|caries[- ]risk\b|coronal seal\b|(?:cold|hot|warm|heat|chilled|iced|icy|chew(?:ing)?|bit(?:e|ing))\b|(?:masseters?|temporalis|muscles?|transillumination|percussion|palpation|probing|ept)\b|#\s*\d{1,2}\s+(?:position|eruption|margins?|contacts?|mobility)\b)/iu;
 const declinedExam = /^(?:(?:please|then)\s+)?(?:do\s+not|don't|never|skip|omit|avoid|defer|hold\s+off(?:\s+on)?)\b/iu;
 
-function composeClinicalClauses(text: string, channel: "patient" | "exam"): ClinicalClausePlan {
+function composeClinicalClauses(text: string, channel: "patient" | "exam", patient?: DiscoveryPatient): ClinicalClausePlan {
   const active: string[] = [], declined: string[] = [];
   for (const sentence of text.normalize("NFKC").replace(/[‘’]/gu, "'").split(/[?;!]+|\.(?:\s|$)/u)) {
     const clause = sentence.trim();
     if (!clause) continue;
     let start = 0;
-    const matches = [...clause.matchAll(/\b(?:and|also|plus|or)\s+/giu)];
+    const matches = [...clause.matchAll(patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))
+      ? /\b(?:and|also|plus|or|then)\s+/giu : /\b(?:and|also|plus|or)\s+/giu)];
     for (const match of matches) {
       const right = clause.slice(match.index! + match[0].length).trimStart();
       const left = clause.slice(start, match.index!).trim();
@@ -204,7 +208,10 @@ function composeClinicalClauses(text: string, channel: "patient" | "exam"): Clin
       const sharedNegativeTrigger = channel === "patient" && /^(?:and|or)\b/iu.test(match[0])
         && !independentHead.test(right)
         && /\b(?:without|not|never)\b.{0,30}\b(?:eat(?:ing)?|chew(?:ing)?|bit(?:e|ing))\b/iu.test(left);
-      const boundary = !sharedNegativeTrigger && (independentHead.test(right) || ellipticalHead.test(right));
+      const nextHead = patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))
+        && /^(?:(?:a|an|the|regular)\s+)?(?:ferrule\b|isolation\b|allergies\b|medications?\b|whether\b|#\s*\d{1,2}(?:'s)?\s+(?:eruption|tipping|inclination|position|margins?|contacts?|mobility)\b)/iu.test(right);
+      const declinedReview = patient && isCompleteReview(patient) && /^(?:please\s+)?(?:leave\b|skip\b|omit\b|defer\b|avoid\b|do not\b|don't\b)/iu.test(right);
+      const boundary = !sharedNegativeTrigger && (independentHead.test(right) || ellipticalHead.test(right) || nextHead || declinedReview);
       if (!boundary) continue;
       add(left);
       start = match.index! + match[0].length;
@@ -213,13 +220,16 @@ function composeClinicalClauses(text: string, channel: "patient" | "exam"): Clin
   }
   return { active, declined };
   function add(clause: string) {
+    if (patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))) clause = clause.replace(/^[,\s]+|[,\s]+$/gu, "");
     if (!clause) return;
-    (channel === "exam" && declinedExam.test(clause) ? declined : active).push(clause);
+    const declinedPatientRequest = patient && isCompleteReview(patient)
+      && (declinedExam.test(clause) || /^(?:please\s+)?leave\b.+\b(?:for later|out|aside)\b/iu.test(clause));
+    (channel === "exam" && declinedExam.test(clause) || declinedPatientRequest ? declined : active).push(clause);
   }
 }
 
 
-export const splitClinicalClauses = (text: string) => composeClinicalClauses(text, "patient").active;
+export const splitClinicalClauses = (text: string, patient?: DiscoveryPatient) => composeClinicalClauses(text, "patient", patient).active;
 
 export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, patient: DiscoveryPatient): ClinicalSubjectScope | undefined {
   // The aliases below describe the authored Dr. Chi catalog, not arbitrary packs.
@@ -229,9 +239,21 @@ export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, pa
   if (!text.trim() || text.length > 10000) return;
   const segments: ClinicalSubjectSegment[] = [], unscopedClauses: string[] = [];
   let hasNegatedRequest = false;
-  const clauses = composeClinicalClauses(text, channel);
+  const clauses = composeClinicalClauses(text, channel, patient);
   hasNegatedRequest = clauses.declined.length > 0;
   for (const clause of clauses.active) {
+    const clausePatient = isCaseDetailReview(patient) ? { ...patient, facts: patient.facts.filter(fact => caseDetailFactMatchesClause(clause, patient, fact)) } : patient;
+    const detail = caseDetailSubject(clause, channel, clausePatient);
+    if (detail) {
+      const factIds = clausePatient.facts.filter(fact => fact.channel === detail.channel && detail.suffixes.includes(suffix(fact))).map(fact => fact.id);
+      const target = caseDetailSubjectTarget(detail.topic, clause, patient);
+      const missing: MissingClinicalSubject[] = factIds.length ? [] : [{ id: `clinical-subject:${detail.id}${target.idSuffix}`,
+        topic: target.topic, channel: detail.channel,
+        missingAnswer: `${target.topic}: information is not supplied in this case. No normal or negative finding is established.` }];
+      segments.push({ text: clause, factIds, missing,
+        historySelections: (detail.historyIntentIds ?? []).map(id => ({ id, factIds })), suppressHistoryIntentIds: detail.suppressHistoryIntentIds ?? [] });
+      continue;
+    }
     const subjects = SUBJECTS.filter(subject => subject.channel === channel && subject.test.test(clause) && !subject.blocked?.test(clause)
       // Radiographic depth is different from remaining sound structure; an explicit
       // restorability/ferrule request in the same clause still retains that subject.
@@ -242,13 +264,16 @@ export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, pa
     const missing: MissingClinicalSubject[] = [];
     const historySelections: ClinicalSubjectSegment["historySelections"] = [];
     const factIds = subjects.flatMap(subject => {
-      const ids = selectFacts(subject, patient);
+      const ids = selectFacts(subject, clausePatient);
       if (subject.id === "cold-sensitivity") {
         const intent = HISTORY_INTENTS.find(item => item.id === "cold-history")!;
         historySelections.push({ id: intent.id, factIds: ids });
         if (!ids.length) missing.push(intent);
-      } else if (!ids.length) missing.push({ id: `clinical-subject:${subject.id}`, topic: subject.topic, channel: subject.channel,
-        missingAnswer: `${subject.topic}: information is not supplied in this case. No normal or negative finding is established.` });
+      } else if (!ids.length) {
+        const target = caseDetailSubjectTarget(subject.topic, clause, patient);
+        missing.push({ id: `clinical-subject:${subject.id}${target.idSuffix}`, topic: target.topic, channel: subject.channel,
+          missingAnswer: `${target.topic}: information is not supplied in this case. No normal or negative finding is established.` });
+      }
       return ids;
     });
     segments.push({ text: clause, factIds: dedupe(factIds), missing, historySelections,

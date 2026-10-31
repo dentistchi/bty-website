@@ -1,0 +1,98 @@
+{
+  "base": "b913a7d9827d15629773fb36c70085debf6ab888",
+  "node": "20.20.2",
+  "workers": 1,
+  "credentials": "none; env -i; only .env.example exists",
+  "baseline": {
+    "numPassedTests": 15595,
+    "numFailedTests": 152,
+    "numPendingTests": 409,
+    "numTodoTests": 0,
+    "numTotalTests": 16156
+  },
+  "baselineFailures": "baseline-normalized.json",
+  "reports": {
+    "focused-initial": {
+      "numPassedTests": 58,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTotalTests": 58,
+      "fileCount": 5,
+      "rawSha256": "47d07a00f1cecc6de7cb866da039cdf6b0fc2eada79f959238b3cd288757200d"
+    },
+    "focused-broad": {
+      "numPassedTests": 348,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTotalTests": 348,
+      "fileCount": 23,
+      "rawSha256": "17853c7a0f3fbb6277ff8316042daa3df1cee2e64b8e4aae12621b3fe29bfab8"
+    },
+    "read-race-expanded-before": {
+      "numPassedTests": 0,
+      "numFailedTests": 6,
+      "numPendingTests": 0,
+      "numTotalTests": 6,
+      "fileCount": 1,
+      "rawSha256": "27beda0ea747f916b6729e891fe390595e809725662f35b1fc079bda543e2318"
+    },
+    "practice-before": {
+      "numPassedTests": 1,
+      "numFailedTests": 4,
+      "numPendingTests": 0,
+      "numTotalTests": 5,
+      "fileCount": 1,
+      "rawSha256": "a4691709a999edad92be498f7db1c607f311507d92530255dbe7bd7d7f1fc0dd"
+    },
+    "legacy-final": {
+      "numPassedTests": 10,
+      "numFailedTests": 2,
+      "numPendingTests": 0,
+      "numTotalTests": 12,
+      "fileCount": 2,
+      "rawSha256": "0dc36797a2de8217e6dcdcd5d05deada59e1e2b563bdc8d55019069b4744b29a"
+    }
+  },
+  "combinedFocused": {
+    "passed": 406,
+    "failed": 0,
+    "files": 28
+  },
+  "focusedFiles": [
+    "src/components/app-shell/ArenaRoom.learnerSurface.test.tsx",
+    "src/components/app-shell/SavedForLaterTriage.test.tsx",
+    "src/components/app-shell/SupersededLaneReads.test.tsx",
+    "src/components/app-shell/TrackingSent.failures.test.tsx",
+    "src/components/app-shell/arenaRoomActions.test.ts",
+    "src/components/app-shell/LearningRewards.test.tsx",
+    "src/components/app-shell/SavedForLater.test.tsx",
+    "src/components/app-shell/SavedForLaterGrouping.test.tsx",
+    "src/components/app-shell/SavedForLaterSwipe.test.tsx",
+    "src/components/app-shell/SavedForLaterSwipeRestingLayer.test.tsx",
+    "src/components/app-shell/TodayHome.overdue-removal.test.tsx",
+    "src/components/app-shell/TrackingSent.source-link.test.tsx",
+    "src/components/app-shell/teams-today-destination.test.tsx",
+    "src/components/bty-arena/ClinicalCasesPractice.test.tsx",
+    "src/domain/action-capture/captureSource.test.ts",
+    "src/domain/action-capture/conversationGroup.test.ts",
+    "src/domain/action-capture/triage.test.ts",
+    "src/domain/learning-rewards/policy.test.ts",
+    "src/domain/learning-rewards/summary.test.ts",
+    "src/lib/bty/action-capture/action-capture-reliability.test.ts",
+    "src/lib/bty/action-capture/ensureActionCapture.server.test.ts",
+    "src/lib/bty/action-capture/saveTrackIntent.test.ts",
+    "src/lib/bty/action-capture/savedRemove.pg.test.ts",
+    "src/lib/bty/action-capture/triageActionCapture.server.test.ts",
+    "src/lib/bty/learning-rewards/completion-hooks.test.ts",
+    "src/lib/bty/learning-rewards/service.server.test.ts",
+    "src/lib/bty/learning-rewards/sources.server.test.ts",
+    "src/app/api/me/learning-rewards/route.test.ts"
+  ],
+  "limits": [
+    "No full suite rerun after source repairs; integrated comparison belongs to final source owner.",
+    "Saved lifecycle reproduction uses StrictMode development effect replay.",
+    "Legacy desired-invariant probes remain deliberately RED in a separate explicitly invoked config.",
+    "No live learner/auth write, migration, configuration, merge or deployment.",
+    "Current live XP ACL/function-body evidence belongs to the separate root read-only audit."
+  ]
+}

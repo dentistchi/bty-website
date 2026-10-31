@@ -1,0 +1,243 @@
+{
+  "schema": "clinical-complete-verification/v1",
+  "runtimeSourceSha": "bc0a95d84f54fefc3a5c7b02b3da563059f300cf",
+  "node": "20.20.2",
+  "productionWrites": 0,
+  "authSessionsCreated": 0,
+  "realModelInferences": 0,
+  "related": {
+    "reportedPassed": 1618,
+    "reportedFailed": 0,
+    "files": 77,
+    "inactivePostgresBodies": 15,
+    "rawSha256": "00902f1b3b44e0f9538ba9c43782634e1cdb17c4677d4d211f8e2ed5182e04cd"
+  },
+  "browser": {
+    "passed": 135,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "widths": [
+      320,
+      390,
+      1280
+    ],
+    "scope": "117 clinical flows,12 Saved/Tracking flows,6 rewards flows; real components and intercepted synthetic transport"
+  },
+  "types": {
+    "exitCode": 0,
+    "incremental": false,
+    "heapMb": 8192,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "completeJourney": {
+    "cases": 23,
+    "turns": 409,
+    "routingIssues": 0,
+    "answerPatternMismatches": 0,
+    "requiredGaps": 0,
+    "invariants": 0,
+    "extraAvailableDisclosures": 0
+  },
+  "independent": {
+    "frozenProbes": 20,
+    "passed": 20,
+    "controlledSelectorProbes": 3,
+    "controlledSelectorPassed": 3,
+    "notHeldOutAccuracy": true
+  },
+  "preservation": {
+    "priorSerializedPacks": 31,
+    "changedPriorPacks": 0,
+    "historicalFixtureFiles": 9,
+    "changedHistoricalFixtures": 0,
+    "historicalTurns": 205,
+    "historicalRequiredGaps": 74
+  },
+  "fullSuite": {
+    "baseline": {
+      "numPassedTests": 15595,
+      "numFailedTests": 152,
+      "numPendingTests": 409,
+      "numTodoTests": 0,
+      "numTotalTests": 16156
+    },
+    "final": {
+      "numPassedTests": 16074,
+      "numFailedTests": 151,
+      "numPendingTests": 409,
+      "numTodoTests": 0,
+      "numTotalTests": 16634
+    },
+    "baselineFailedFiles": 46,
+    "finalFailedFiles": 45,
+    "newFailedAssertions": [],
+    "absentBaselineFailures": [
+      {
+        "file": "src/components/app-shell/SavedForLaterSwipe.test.tsx",
+        "fullName": "11. the visible buttons are still the whole job \u2605 11b. the gesture and the button send the IDENTICAL payload",
+        "count": 1
+      }
+    ],
+    "baselineSuiteFailures": [
+      {
+        "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+        "message": "Command failed: git show --pretty=format: --name-only e71b3c84\nfatal: ambiguous argument 'e71b3c84': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'\n"
+      }
+    ],
+    "finalSuiteFailures": [
+      {
+        "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+        "message": "Command failed: git show --pretty=format: --name-only e71b3c84\nfatal: ambiguous argument 'e71b3c84': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'\n"
+      }
+    ],
+    "comparison": "Counter(file,fullName); messages retained separately, not compared only by counts",
+    "allAssertionsIdentityCheck": {
+      "schema": "full-suite-identity-comparison/v1",
+      "addedAssertions": 478,
+      "removedAssertions": 0,
+      "addedNonPassing": [],
+      "baselineSkippedIdentitiesUnchanged": true,
+      "removed": []
+    },
+    "failedFileCountMeaning": "45 total:44 assertion-failing files and1 unchanged missing-Git-object suite.",
+    "messageCheck": "After dependency-path normalization,150/151 retained messages exact. Same remaining missing-button error has only expiry23h to1d and DOM-truncation differences."
+  },
+  "build": {
+    "sourceSha": "bc0a95d84f54fefc3a5c7b02b3da563059f300cf",
+    "status": "build-and-artifact-checks-passed",
+    "install": {
+      "exitCode": 0,
+      "elapsedSeconds": 37.727,
+      "realNodeModules": true,
+      "nodeVersion": "v20.20.2",
+      "command": [
+        "npm",
+        "ci",
+        "--cache",
+        "/root/.npm",
+        "--offline"
+      ],
+      "networkScope": "Cached package tarballs; normal dependency postinstall binary download through inherited network proxy; explicit empty npm user/global configs; no account/auth/DB/deploy environment variables."
+    },
+    "build": {
+      "sourceSha": "bc0a95d84f54fefc3a5c7b02b3da563059f300cf",
+      "command": [
+        "env",
+        "-i",
+        "PATH=/root/.npm/_npx/185e25162edaacfb/node_modules/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/local/bin:/usr/bin:/bin",
+        "TMPDIR=/tmp",
+        "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:9",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY=offline-complete-check",
+        "NEXT_TELEMETRY_DISABLED=1",
+        "WRANGLER_SEND_METRICS=false",
+        "CLINICAL_AUTHOR_PILOT_ENABLED=1",
+        "LEARNING_REWARDS_ENABLED=1",
+        "CIRCLE_NODE_TOTAL=2",
+        "NODE_OPTIONS=--max-old-space-size=8192",
+        "npm",
+        "run",
+        "cf:build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 173.444,
+      "startedAtEpoch": 1793480962.8107967,
+      "logSha256": "8693acefb43a5a5ce24b4b5cde950c4e361a140ae91ff5415b7f8262f57a5167"
+    },
+    "artifactAuditExecution": {
+      "sourceSha": "bc0a95d84f54fefc3a5c7b02b3da563059f300cf",
+      "command": [
+        "env",
+        "-i",
+        "PATH=/root/.npm/_npx/185e25162edaacfb/node_modules/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/local/bin:/usr/bin:/bin",
+        "/root/.npm/_npx/185e25162edaacfb/node_modules/node/bin/node",
+        "--import",
+        "/tmp/bty-complete-final/repo/node_modules/tsx/dist/loader.mjs",
+        "/workspace/scratch/44e2cc16edbd/complete-build-evidence/final-bc0a95d/audit-built-artifacts.mts"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 5.459,
+      "logSha256": "26834540d30753a00ac0607368644f5cb20acfebae4fa37eaeff4d420e7126cc"
+    },
+    "artifactAudit": {
+      "sourceSha": "bc0a95d84f54fefc3a5c7b02b3da563059f300cf",
+      "trackedStatusAfterBuild": "",
+      "sourceInputCount": 61,
+      "changedSourceInputs": [],
+      "nodeModulesIsSymlink": false,
+      "artifactGuard": {
+        "files": 3626,
+        "unsafeCount": 0,
+        "implementationCount": 2,
+        "safeImplementationCount": 2,
+        "gate": {
+          "ok": true
+        }
+      },
+      "serverFunctions": {
+        "directories": [
+          "default"
+        ],
+        "defaultOnly": true,
+        "handlerExists": true,
+        "handlerMiddlewareImplementationCount": 1,
+        "safeHandlerMiddlewareImplementationCount": 1
+      },
+      "registeredPackCount": 47,
+      "previewPackCount": 23,
+      "publicMarkerScan": {
+        "files": 1445,
+        "countsByRoot": {
+          ".open-next/assets": 782,
+          ".next/static": 658,
+          ".next/server/app": 4,
+          ".next/server/pages": 1
+        },
+        "markerCounts": {
+          "markedAvailablePatientAnswers": 427,
+          "authorReferencePrefixes": 46,
+          "selectorInstructions": 12
+        },
+        "uniqueValuesByCategory": {
+          "markedAvailablePatientAnswers": 375,
+          "authorReferencePrefixes": 46,
+          "selectorInstructions": 12
+        },
+        "expandedUniqueNeedleCount": 506,
+        "hits": [],
+        "skippedLargeFiles": [],
+        "maxFileBytes": 67108864,
+        "qualification": "Bounded exact substring check of full marked available fixed answers, 120-character authorOriginal/authorParaphrase prefixes, and selector instructions in raw/JSON/ASCII-JSON forms. Roots may contain duplicate copies of assets. No hit is not an exhaustive disclosure proof."
+      },
+      "hashes": {
+        "artifactJsManifest": "ba8ace921df1ea4e0508d367b6e5ef4c9f8c7ebc44762d800d190ea9abef19fa",
+        "worker": "d05223bf4d44c84108a102ab62aa3bc9c5568f0c3ac2064c37be5cc65c64bc45",
+        "defaultHandler": "c9c91187615b348c3453bcc8aa422904bfa1d9de20d74fae6952ad2e79017247",
+        "nextServerAfterBuild": "7c97c35f81d4171ef0d5f16e18e3fe1a8e5c0bcaabf6810abdc2e92ce814a104",
+        "packageLock": "b20af534db7ef8ffeb02dce07bfabf1d141ac4f425abf7b62e021aee1a68c167"
+      }
+    },
+    "sourceInputManifestSha256": "c33a7b8eae5161ef537df5fa435972bd5ca8b2c5cc8eaa62c502486f5d54583a",
+    "capturedWarnings": [
+      "WARN Next.js version 15.5.28 is not supported by the Next.js team.",
+      "Continuing build due to --dangerouslyUseUnsupportedNextVersion flag."
+    ],
+    "limitations": [
+      "The captured final build log ends after Next version initialization. The subprocess exited 0 and emitted artifacts were independently checked; unlogged intermediate phase counts are not claimed.",
+      "Public scan is a bounded exact-substring check with duplicate copies across roots, not an exhaustive disclosure proof.",
+      "No deployment, authentication, live model, database, production service, secret, or local Mac action was performed."
+    ],
+    "intermediateBuild": "../intermediate-aa156af (superseded aa156af; not final runtime verification)"
+  },
+  "unrun": [
+    "Actual Mac/qwen inference on new packs",
+    "Signed-in production Worker/Teams/physical-iPhone flow",
+    "PostgreSQL execution of15opt-in test bodies"
+  ],
+  "remainingReleaseGates": [
+    "Clinical review and reference alignment of Founder preview data",
+    "Actual model/Worker/Teams verification",
+    "Legacy event reward replay and Beginner partial-award recovery",
+    "Existing non-green full-suite baseline"
+  ]
+}

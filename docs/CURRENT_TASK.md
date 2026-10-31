@@ -1,5 +1,149 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-COMPLETE-REVIEW — 2026-10-31
+
+Dr. Chi requests autonomous completion and verification so routine product QA
+does not depend on him discovering defects. Complete the remaining 16 clinical
+review packs with separately versioned English fictional details, retaining Case
+001 variant B and all 31 existing serialized packs exactly. New attempts remain
+Founder-only previews; ordinary users and stored pack versions keep their prior
+behavior. No available recorded observation or author reference may be rewritten.
+Separate patient reports, objective findings, per-tooth protocols and genuinely
+unperformed/future outcomes; never invent medication orders, biopsy results,
+clearance, outcome guarantees or Dr. Chi treatment policy.
+
+Freeze semantic all-23-case journeys and independent boundary probes before
+router tuning. Reproduce known content gaps, then exercise narrow and compound
+requests, short follow-ups, negation, tooth scope, history/exam modes, model
+evidence, raw persistence and assessment-before-reference boundaries. Inspect
+Today overdue, Saved/Tracking refresh and retry, rewards and Teams navigation;
+fix concrete reproduced source defects. Preserve before/after evidence and
+compare exact full-suite failures against an unchanged same-environment baseline.
+No all-green or real-model claim may be made for a synthetic or partial check.
+
+Work includes isolated browser journeys, serial standalone types and a fresh
+Cloudflare build with public-artifact inspection. Read-only live catalog/ACL
+inspection may verify current security state without reading learner rows. No
+production write, authentication-session mint, migration, service restart, secret
+change, merge or deploy is included in this source-preparation phase. Update the
+existing Draft PR #90 with final scope, measured results and remaining release
+gates; do not ask Dr. Chi to act as the application's test runner.
+
+Observed final runtime `bc0a95d`: 16 C copies and 276 marked entries; all 31
+prior packs and nine earlier fixtures remain exact. The fixed 409-turn journey,
+20 independent probes and three controlled selector probes pass. Related tests
+report 1,618/1,618 in 77 files (15 PostgreSQL bodies inactive); 135 isolated browser
+flows, standalone types and a separate fresh Cloudflare build pass. The full
+suite has 16,074 passed / 151 failed / 409 skipped, with zero new failing assertion
+identities against the fresh b913a7d baseline. All 478 added assertion identities
+pass and none are removed; the existing missing-history suite remains. Saved/Tracking
+read races and native Practice false completion acknowledgements are repaired.
+Actual Mac/qwen, live Worker/Teams/device checks and two legacy reward invariants
+remain release gates. No deployment or DB/auth write occurred. See
+`CLINICAL_COMPLETE_REVIEW.md`, `CLINICAL_COMPLETE_QA.md`, `APP_RELEASE_FLOW_AUDIT.md`
+and `clinical-complete-qa/verification.json`.
+
+## CLINICAL-DISCOVERY-NEXT-CASE-DETAILS — 2026-10-31
+
+Dr. Chi requests the next work after PR #90's initial cases and model-scope
+repair. Prepare separately versioned English fictional details for Cases 002,
+003 and 008 using `discovery-2026-10-31.2-review-b`. Retain all 28 existing
+patient objects, including review A, and every historical stored version/hash.
+Append the new versions behind the existing Founder-only preview gate. Preserve
+all available source statements and author references; new or replaced unavailable
+details remain explicitly fictional-extension-awaiting-review.
+
+Separate pre-excavation observations from future pulp exposure/restorability;
+image comparison, covered fracture status and retreatment feasibility from one
+another; and tooth identity, #3 position, #31 inclination, space and ridge/anatomic
+measurements from a future implant plan or primary stability. Quantitative values
+are fictional design, not diagnostic cutoffs, outcome guarantees or author rules.
+Use fixed per-root/per-tooth projections to avoid releasing unrelated findings.
+
+Freeze independent semantic journeys before router repair. Reproduce the original
+three-case 12-gap-turn subset, then test natural follow-ups, compound/root/tooth
+scope, negation, patient/exam boundaries, model evidence, provenance and saved
+version isolation. Preserve original 205-turn and review-A fixtures/results;
+report this batch separately. Tests remain synthetic in memory with no auth or
+learner writes. No deployment, merge, migration, seed, runtime configuration or
+service restart is included. Update the existing Draft PR #90 with measured
+results and an English review table. Unrelated project attachments are not needed.
+
+Observed preparation: 77 marked entries across the three new packs, including
+12 fixed scope projections and five retained unknowns. All 28 prior pack hashes
+remain unchanged. The new 72-turn v2 rules path passes with zero required gaps;
+v1 retains three deliberate wrong-target gaps after an explicit annotation-only
+correction. Independent additional probes improve from 6/13 to 13/13. Related
+tests pass 897/897 across 49 files; isolated browser flows pass 48/48; final
+standalone types and a fresh-checkout Cloudflare build pass. The original
+205-turn/74-gap limit and review-A results remain separate. See
+`docs/CLINICAL_CASE_DETAILS_NEXT_REVIEW.md`, `docs/CLINICAL_CASE_DETAILS_NEXT_QA.md`
+and `docs/clinical-next-case-details-qa/verification.json`. Actual Mac/qwen and
+live Worker/Teams checks remain unrun; no production action was performed.
+
+## CLINICAL-DISCOVERY-MODEL-EVIDENCE-SCOPE — 2026-10-31
+
+Continue PR #90 verification after Dr. Chi's instruction to proceed. Independent
+inspection reproduced a model-choice scope bypass: an unrelated unscoped second
+clause makes a focal #30 finding eligible even when the model quotes only the
+first clause's explicit #29 request. Rules alone correctly disclose nothing.
+Freeze stubbed-model regressions before repair. Bind each selected real fact to
+its quoted evidence within a clause that permits that fact's tooth scope; a
+matching clause elsewhere in the request is insufficient. Preserve shared
+evidence, legitimate mixed-tooth requests, old packs, selector/3, transport and
+the four-second deadline. Record the new router version and bounded verification.
+
+Actual Mac/qwen and signed-in Worker verification require an accessible existing
+execution/session context. Do not manufacture credentials or substitute model-stub
+results for actual inference. Remaining case-content work is triaged separately;
+no additional clinical findings are added by this scope repair.
+
+Observed follow-up: the Node 20 reproduction fails 3/7 before repair and passes
+all eight final boundary tests. Related tests pass 808/808 across 45 files;
+isolated browser checks pass 39/39. Final frozen-source types and fresh-checkout
+Cloudflare build pass. v9 preserves the new 72-turn rules result and the original
+205-turn/74-gap limit. Evidence is appended in `CLINICAL_CASE_DETAILS_QA.md` and
+`clinical-case-details-qa/model-scope-verification.json`. Remaining content is
+triaged in `CLINICAL_CASE_DETAILS_NEXT_BATCH.md`; actual Mac/Worker checks remain
+unrun because neither execution channel nor existing browser session is available.
+
+## CLINICAL-DISCOVERY-CASE-DETAILS — 2026-10-31
+
+Dr. Chi approves continuing from the reported successful PR #84 real-gateway
+regression to repairing missing clinical interview/examination content. Prepare
+English, separately versioned fictional review packs for Cases 005, 006, 011 first.
+The new version is `discovery-2026-10-31.1-review-a`; the existing Founder allowlist
+controls access to new attempts. Ordinary users keep current packs; every attempt
+continues resolving its stored packVersion and source hash. Keep the neutral chief
+complaint, question-led discovery, assessment-before-reference release and raw capture.
+
+Old packs, catalog/Dr. Chi references, prior traces and original QA fixtures/archives
+remain unchanged. New/replaced details have fictional-extension-awaiting-review
+provenance and visible response labels. In the new copy only, the Case 011 crown
+fact may replace its stale unknown-source clause while retaining known screw-retained
+mobile-crown observations; this is an explicitly documented provenance-marked revision.
+Do not bundle fixture stability or component findings into that generic crown answer.
+Other available source statements remain unchanged. Do not invent microscopic crack
+extent, bacterial counts, manufacturer/torque, procedural outcomes or universal treatment
+rules. Source observations support independent clinician assessment, not a forced plan.
+
+Reproduce the 14 missing-information turns on the original three scripted cases,
+freeze a new semantic regression fixture before router tuning, then verify requests,
+short follow-ups, mixed/negative requests, disclosure scope, version isolation and
+review provenance through real router/domain and isolated browser flows. Existing
+23-case/205-turn audit and its 74 gap turns in 22 cases remain historical/current-base
+limits; new preview results are reported separately. No real-model result is claimed
+without an actual run. No production auth/learner write, migration/seed, secret/process
+change, merge or deployment is part of this source preparation. Put observed checks,
+review table and remaining gaps in a repository document and Draft PR for review.
+
+Observed preparation checks: 800/800 related tests across 44 files; 39/39 isolated
+browser flows; serial standalone types and fresh-checkout Cloudflare build pass.
+The new 72-turn rules fixture has zero required gaps or interpretation errors;
+the frozen 205-turn fixture retains 74 gaps. Actual inference for the new packs
+and live Teams remain unrun. Review and measured limits are in
+`docs/CLINICAL_CASE_DETAILS_REVIEW.md` and `docs/CLINICAL_CASE_DETAILS_QA.md`.
+
 ## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
 
 The live Case 005 screenshot rejects “What did we do” in Examine or test even

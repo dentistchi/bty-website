@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { discoveryPatients } from "./discovery-cases.server";
 import { respondToDiscovery } from "./discovery-router.server";
 import { repeatTreatmentTiming } from "./treatment-history.server";
+import { CASE_DETAIL_REVIEW_VERSION } from "./case-detail-variants.server";
 
 const sourceIds: Record<number, string[]> = {
   1: [], 2: [], 3: ["treatment-history"], 4: ["rct-timing"], 5: ["rct-history"],
@@ -44,7 +45,9 @@ describe("authored prior dental procedure history", () => {
     it(`maps only authored procedure sources for ${patient.caseId}@${patient.version} in ${channel}`, async () => {
       const before = JSON.stringify(patient);
       const suffixes = patient.caseId === "drchi-001" && /-variant-[ab]$/u.test(patient.version)
-        ? ["restoration-age"] : sourceIds[Number(patient.caseId.slice(-3))]!;
+        ? ["restoration-age"] : patient.caseId === "drchi-005" && patient.version === CASE_DETAIL_REVIEW_VERSION
+          ? ["rct-history", "crown-history"] : patient.caseId === "drchi-008" && patient.version === "discovery-2026-10-31.2-review-b"
+            ? ["duration"] : sourceIds[Number(patient.caseId.slice(-3))]!;
       const ids = suffixes.map(s => `${patient.caseId}:${s}`);
       const reply = await respondToDiscovery("What did we do?", channel, patient);
       expect(reply.factIds).toEqual(ids);

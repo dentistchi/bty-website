@@ -1,0 +1,230 @@
+{
+  "schema": "bty-readonly-live-catalog-check/v1",
+  "project": "mveycersmqfiuddslnrj",
+  "observedDate": "2026-10-31",
+  "readsOnly": true,
+  "learnerRowsRead": 0,
+  "authSessionsCreated": 0,
+  "mutations": 0,
+  "functions": [
+    {
+      "schema": "public",
+      "name": "consume_lab_attempt",
+      "arguments": "p_user_id uuid",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "service_execute": true
+    },
+    {
+      "schema": "public",
+      "name": "ensure_arena_profile",
+      "arguments": "",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "service_execute": true
+    },
+    {
+      "schema": "public",
+      "name": "increment_arena_xp",
+      "arguments": "p_user_id uuid, p_run_id uuid, p_xp integer",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "schema": "public",
+      "name": "increment_weekly_xp",
+      "arguments": "p_user_id uuid, p_league_id uuid, p_delta integer",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "schema": "public",
+      "name": "team_weekly_metrics_immutable",
+      "arguments": "",
+      "security_definer": true,
+      "settings": [
+        "search_path=public"
+      ],
+      "anon_execute": true,
+      "authenticated_execute": true,
+      "service_execute": true
+    }
+  ],
+  "rewards": [
+    {
+      "kind": "function",
+      "name": "bty_acknowledge_learning_achievements",
+      "rls": null,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": false
+    },
+    {
+      "kind": "function",
+      "name": "bty_get_learning_reward_state",
+      "rls": null,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": false
+    },
+    {
+      "kind": "function",
+      "name": "bty_record_learning_reward",
+      "rls": null,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": false
+    },
+    {
+      "kind": "table",
+      "name": "bty_today_dismissals",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": null
+    },
+    {
+      "kind": "table",
+      "name": "clinical_reasoning_traces",
+      "rls": true,
+      "anon_access": true,
+      "authenticated_access": true,
+      "service_access": true,
+      "security_definer": null
+    },
+    {
+      "kind": "table",
+      "name": "learning_reward_completions",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": null
+    },
+    {
+      "kind": "table",
+      "name": "learning_reward_ledger",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": null
+    },
+    {
+      "kind": "table",
+      "name": "learning_reward_policy",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": null
+    },
+    {
+      "kind": "table",
+      "name": "learning_reward_profiles",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "service_access": true,
+      "security_definer": null
+    }
+  ],
+  "clinicalPolicies": [
+    {
+      "policyname": "clinical_author_pilot_api_owned_insert",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(trace_schema_version <> 'clinical-author-pilot/v1'::text)"
+    },
+    {
+      "policyname": "clinical_author_pilot_api_owned_update",
+      "roles": "{authenticated}",
+      "cmd": "UPDATE",
+      "qual": "(trace_schema_version <> 'clinical-author-pilot/v1'::text)",
+      "with_check": "(trace_schema_version <> 'clinical-author-pilot/v1'::text)"
+    },
+    {
+      "policyname": "clinical_reasoning_traces_insert_own_learner",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "((( SELECT auth.uid() AS uid) = user_id) AND (trace_role = 'learner'::text) AND (status = 'active'::text))"
+    },
+    {
+      "policyname": "clinical_reasoning_traces_select_own_learner",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((( SELECT auth.uid() AS uid) = user_id) AND (trace_role = 'learner'::text))",
+      "with_check": null
+    },
+    {
+      "policyname": "clinical_reasoning_traces_update_own_active_learner",
+      "roles": "{authenticated}",
+      "cmd": "UPDATE",
+      "qual": "((( SELECT auth.uid() AS uid) = user_id) AND (trace_role = 'learner'::text) AND (status = 'active'::text) AND (superseded_at IS NULL))",
+      "with_check": "((( SELECT auth.uid() AS uid) = user_id) AND (trace_role = 'learner'::text) AND (status = 'active'::text) AND (superseded_at IS NULL))"
+    }
+  ],
+  "advisories": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 88,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "level": "WARN",
+      "count": 15,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    {
+      "name": "extension_in_public",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 3,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "note": "The two pilot API policies are RESTRICTIVE, independently confirmed in pg_policies. Table grants alone do not bypass RLS. Actual controlled role/session operations were not executed; ACL catalog evidence is not an end-to-end authorization test. The team's immutable function is a trigger, not an ordinary data RPC."
+}
