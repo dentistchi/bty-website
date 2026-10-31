@@ -61,8 +61,9 @@ export function validateLocalTarget(value: string | undefined): URL {
 
 export function validateConnectedServer(server: { db: string; host: string; port: number },
   options: { containerService?: boolean; githubActions?: boolean } = {}) {
-  assert.equal(server.db, DB_NAME);
-  assert.equal(server.port, 55473);
+  const context = `connectedServer=${JSON.stringify({ db: server.db, host: server.host, port: server.port })}`;
+  assert.equal(server.db, DB_NAME, `Unexpected disposable database; ${context}`);
+  assert.equal(server.port, 55473, `Unexpected disposable server port; ${context}`);
   if (["127.0.0.1", "::1"].includes(server.host)) return;
   const parts = server.host.split(".");
   const octets = parts.map(Number);
@@ -72,7 +73,7 @@ export function validateConnectedServer(server: { db: string; host: string; port
     || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
     || (octets[0] === 192 && octets[1] === 168));
   assert(options.containerService === true && options.githubActions === true && privateBridge,
-    "Server must be loopback, or an explicitly opted-in GitHub Actions RFC1918 container service");
+    `Server must be loopback, or an explicitly opted-in GitHub Actions RFC1918 container service; ${context}`);
 }
 
 /** Existing TS behavior, independently sourced from applySeasonalXpToCore. */
@@ -97,7 +98,9 @@ async function nativeDriver(value: string | undefined): Promise<Driver> {
       connectionTimeoutMillis: 5000, statement_timeout: 15000 });
     try {
       await client.connect();
-      const { rows } = await client.query("select current_database() as db, inet_server_addr()::text as host, inet_server_port() as port");
+      // Explicit inet::text retains /32 or /128. host(inet) supplies the plain
+      // address required by the strict guard without broadening accepted input.
+      const { rows } = await client.query("select current_database() as db, host(inet_server_addr()) as host, inet_server_port() as port");
       // Docker port publishing retains a private container address on the
       // server side; this never changes the mandatory client URL guard above.
       validateConnectedServer(rows[0], {

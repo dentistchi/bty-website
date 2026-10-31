@@ -24,10 +24,15 @@ describe("legacy XP SQL harness target guards and frozen TypeScript oracle", () 
     const ci = { containerService: true, githubActions: true };
     for (const host of ["10.0.0.2", "172.16.0.2", "172.31.255.2", "192.168.1.2"])
       expect(() => validateConnectedServer({ ...server, host }, ci)).not.toThrow();
-    for (const host of ["8.8.8.8", "172.15.0.2", "172.32.0.2", "192.169.1.2", "10.0.0.256", "localhost", "::ffff:172.18.0.2"])
+    for (const host of ["8.8.8.8", "172.15.0.2", "172.32.0.2", "192.169.1.2", "10.0.0.256", "localhost", "::ffff:172.18.0.2", "172.18.0.2/32", "127.0.0.1/32", "::1/128"])
       expect(() => validateConnectedServer({ ...server, host }, ci)).toThrow();
     expect(() => validateConnectedServer({ ...server, db: "postgres" }, ci)).toThrow();
     expect(() => validateConnectedServer({ ...server, port: 5432 }, ci)).toThrow();
     expect(() => validateConnectedServer({ ...server, host: "127.0.0.1" })).not.toThrow();
+  });
+  it("includes only disposable server metadata in failed guard diagnostics", () => {
+    const server = { db: "bty_legacy_xp_atomic_qa", host: "172.18.0.2/32", port: 55473 };
+    expect(() => validateConnectedServer(server, { containerService: true, githubActions: true }))
+      .toThrow(`connectedServer=${JSON.stringify(server)}`);
   });
 });
