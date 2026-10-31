@@ -60,12 +60,20 @@
     "bytes": 17094
   },
   "postgres-semantics-final.json": {
-    "sha256": "0d1a6102ced83a19fbf7c9c0b699ff5c6ada4f8037edf8d435308642eab7c9d3",
-    "bytes": 16100
+    "sha256": "f45ba8feaf79e30c46a60867f562a9f70e9a6a8d784ffc7a7d060a60182cd654",
+    "bytes": 8518
+  },
+  "postgres-semantics-final.log.gz": {
+    "sha256": "2689f877783aac2806da2a587f5a6a96f3b7ac2469d9290167f842407e2bb2ae",
+    "bytes": 1924
   },
   "postgres-semantics.json": {
-    "sha256": "9de69312d1334c03422b861a93cd5e00abdba68eeafb975818a184d38e46f21f",
-    "bytes": 15922
+    "sha256": "b030c37766468b20e02ba2f1f49d5995127200101460d6c10c6123122cf83779",
+    "bytes": 8428
+  },
+  "postgres-semantics.log.gz": {
+    "sha256": "a34fa48fb41f6e2fe814ec2b6122cd01796d8cf99b428698b5484486f74aee59",
+    "bytes": 1874
   },
   "receipt-edges.json.gz": {
     "sha256": "eeaed849a71c42e47e767fb4a1b52c5342d47374eceb40044c71ca08d78354d7",
