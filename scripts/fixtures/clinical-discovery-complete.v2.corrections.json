@@ -1,0 +1,398 @@
+{
+  "schema": "clinical-discovery-oracle-corrections/v1",
+  "frozenV1Commit": "12fae61",
+  "stage": "pre-runtime independent source/design review; no router output used",
+  "preserves": [
+    "all original clinical-discovery-journeys.v1.json bytes",
+    "six prior review-A/review-Bv2 journeys",
+    "all clinical request text",
+    "all required flags and expectedResolution values"
+  ],
+  "corrections": [
+    {
+      "caseId": "drchi-004",
+      "turn": 7,
+      "field": "reason",
+      "before": "Percussion is an authored unknown; do not turn it into a negative.",
+      "after": "Obtain the new fictional review-C percussion observation without changing the unavailable historical pack.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-004",
+      "turn": 8,
+      "field": "reason",
+      "before": "Occlusion is an authored unknown, separate from the sufficient improving-lesion observation context.",
+      "after": "Obtain current fictional contact observations separately from the preserved lesion comparison.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-007",
+      "turn": 6,
+      "field": "reason",
+      "before": "Exposure history is not authored.",
+      "after": "Obtain the new fictional reported smoking amount and duration.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-007",
+      "turn": 7,
+      "field": "reason",
+      "before": "Diabetes status is unknown.",
+      "after": "Obtain the new fictional diagnosis history without inferring a measured glycemic result.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-007",
+      "turn": 8,
+      "field": "reason",
+      "before": "Conditional follow-up must remain unknown; it must not imply the patient has diabetes because the question was asked.",
+      "after": "A contextual follow-up asks the separately recorded patient-reported HbA1c value and date.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-007",
+      "turn": 9,
+      "field": "reason",
+      "before": "Seeks habits, barriers and willingness central to author's response; all remain unknown.",
+      "after": "The compound request asks brushing, interdental habits, adherence barriers and willingness; disclose their distinct fixed observations.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-009",
+      "turn": 3,
+      "field": "reason",
+      "before": "Contextual follow-up asks spacing onset/progression; the cause and history are not supplied, rather than another restatement of the esthetic goal.",
+      "after": "The review-C patient reports longstanding stable spacing; its cause remains unestablished.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-009",
+      "turn": 5,
+      "field": "reason",
+      "before": "The requested lower-anterior clearance/occlusion is unavailable. The upper teeth appearing sound does not answer this examination.",
+      "after": "Obtain the new current overjet and overbite measurements without inferring restorative clearance.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-009",
+      "turn": 6,
+      "field": "reason",
+      "before": "Contextual follow-up asks the same anterior-clearance question in restorative language; no clearance value can be inferred.",
+      "after": "Obtain current palatal clearance at the rotated lateral incisor, keeping future preparation and clearance unknown.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-009",
+      "turn": 7,
+      "field": "reason",
+      "before": "Tooth proportions have no authored measurements.",
+      "after": "The broad dimensions request asks the four separate upper-incisor measurements.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-009",
+      "turn": 8,
+      "field": "reason",
+      "before": "This is a periodontal request, not a request to repeat the visible rotated-tooth finding.",
+      "after": "Obtain review-C probing and gingival findings separately from tooth rotation.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-010",
+      "turn": 8,
+      "field": "reason",
+      "before": "Dr. Chi begins with brushing technique/products, but this whole history is unavailable in the source case.",
+      "after": "Obtain the fictional brushing demonstration, actual brush and toothpaste as three requested subjects.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-010",
+      "turn": 9,
+      "field": "reason",
+      "before": "Dr. Chi discusses drinks and the oral environment; valid natural phrasing must not be scored as a missed question when no diet information is authored.",
+      "after": "Obtain the fictional reported daytime beverage exposure without inferring a causal diagnosis.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-012",
+      "turn": 7,
+      "field": "reason",
+      "before": "Contextual follow-up asks the unestablished 3-D root-to-canal relationship, not a repeat of 2-D superimposition.",
+      "after": "The contextual follow-up asks current 3-D root-to-canal orientation; preserve the source panoramic projection statement separately.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-012",
+      "turn": 8,
+      "field": "reason",
+      "before": "Other-third-molar status is unavailable; #32 findings cannot be substituted for all four teeth.",
+      "after": "The broad request asks presence plus separate position and disease observations for each other third molar.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-012",
+      "turn": 9,
+      "field": "reason",
+      "before": "Anxiety/sedation history is part of the explicitly missing medical/sedation context; no willingness or eligibility may be invented.",
+      "after": "Obtain the patient-reported anxiety account while leaving formal sedation eligibility unestablished.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-013",
+      "turn": 6,
+      "field": "reason",
+      "before": "Root-filling quality and seal are unknown; repeating visible coronal structure does not answer this request.",
+      "after": "Obtain the separate 2-D root-filling appearance and accessible coronal-seal findings; neither establishes a covered three-dimensional seal.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-013",
+      "turn": 8,
+      "field": "reason",
+      "before": "The smile/gingival measurements used in the author reasoning are not authored.",
+      "after": "Obtain separate full-smile display and comparative gingival-level measurements.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-013",
+      "turn": 9,
+      "field": "reason",
+      "before": "Two explicitly requested, unavailable decision inputs; the target restoration word must not turn them into a visual structure answer.",
+      "after": "Obtain the two requested current occlusal and caries-survey observations without inferring future risk or a restorative plan.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-014",
+      "turn": 6,
+      "field": "reason",
+      "before": "Content gap: the fixed CBCT sentence only says localized defect. Measurements/full defect extent are not supplied; an answer repeating localized defect does not answer the requested dimensions.",
+      "after": "Obtain new fictional facial-defect dimensions; the preserved historical statement alone does not supply those measurements.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-014",
+      "turn": 8,
+      "field": "reason",
+      "before": "Occlusion for this treatment plan is explicitly unassessed.",
+      "after": "Obtain current anterior contacts while preserving the absence of a fabricated or tested implant-supported temporary.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-014",
+      "turn": 9,
+      "field": "reason",
+      "before": "Parafunction is unknown and should not be inferred from an immediate-restoration request.",
+      "after": "Obtain reported awake clenching and uncertainty about sleep-related grinding.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-015",
+      "turn": 6,
+      "field": "reason",
+      "before": "Content gap with no mapped fact: Dr. Chi specifically investigates recent prosthetic treatment, but this history is neither authored nor represented by an unavailable fact. No negative history may be invented; clarification alone does not complete the encounter.",
+      "after": "Obtain new fictional recent #31 natural-tooth crown history, distinct from an implant crown or partial denture and from a proven cause of the ulcer.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-015",
+      "turn": 7,
+      "field": "reason",
+      "before": "Baseline induration is not supplied; do not leak the separate indurated-border variation into this case.",
+      "after": "Obtain the explicitly fictional review-C indurated-border finding; the original pack and separate variation remain unchanged.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-015",
+      "turn": 8,
+      "field": "reason",
+      "before": "The cervical-node examination has no supplied result.",
+      "after": "Obtain the fictional directed cervical-node examination without treating a negative result as a tissue diagnosis.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-015",
+      "turn": 9,
+      "field": "reason",
+      "before": "Both exposure history items are requested; the source only records their absence from the case context.",
+      "after": "Obtain separate fictional tobacco and alcohol exposure histories.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-015",
+      "turn": 15,
+      "field": "answerPatterns",
+      "before": [
+        "biopsy",
+        "(?:not|no|unknown|unavailable)"
+      ],
+      "after": [
+        "no tissue diagnosis",
+        "No malignancy or other diagnosis is established"
+      ],
+      "reason": "The retained Case015 unavailable fact explicitly states there is no tissue diagnosis; requiring the literal word biopsy incorrectly rejected that unchanged source answer."
+    },
+    {
+      "caseId": "drchi-016",
+      "turn": 4,
+      "field": "reason",
+      "before": "The complete medication list is unconfirmed; no concomitant medication may be inferred.",
+      "after": "Obtain the new fictional complete reported medication list without presenting it as a perioperative instruction.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-016",
+      "turn": 5,
+      "field": "reason",
+      "before": "Renal history is an unavailable history fact, distinct from a measured laboratory result.",
+      "after": "Obtain the new patient-reported renal history separately from dated objective laboratory results.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-016",
+      "turn": 6,
+      "field": "reason",
+      "before": "This requests an unavailable objective renal result, not the patient history.",
+      "after": "Obtain both requested dated eGFR and serum creatinine results rather than substituting patient recollection.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-017",
+      "turn": 6,
+      "field": "reason",
+      "before": "Requests objective testing, which is unavailable rather than normal or negative.",
+      "after": "Obtain the new fictional unstimulated collection result without assigning its cause.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-017",
+      "turn": 7,
+      "field": "reason",
+      "before": "Requests diet exposures; no answer is authored.",
+      "after": "Obtain separate daily sugar and acidic-beverage histories.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-017",
+      "turn": 9,
+      "field": "reason",
+      "before": "Requests preventive exposure; no product or fluoride history is supplied.",
+      "after": "Obtain the new fictional fluoride toothpaste and rinse history.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-018",
+      "turn": 6,
+      "field": "reason",
+      "before": "Requests Dr. Chi's initial examination priority; no muscle tenderness result is authored.",
+      "after": "The explicit five-region request asks the separate masseter, temporalis, sternocleidomastoid, neck and shoulder palpation observations.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-018",
+      "turn": 7,
+      "field": "reason",
+      "before": "Requests range-of-motion findings, which are unassessed.",
+      "after": "Obtain current comfortable and maximum opening, without inferring an unmeasured assisted opening.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-018",
+      "turn": 8,
+      "field": "reason",
+      "before": "Requests joint findings, which are distinct from muscle palpation and remain unknown.",
+      "after": "Obtain joint palpation and observed click findings separately from muscle palpation.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-019",
+      "turn": 8,
+      "field": "reason",
+      "before": "Requests adjacent findings to distinguish other causes; none are supplied.",
+      "after": "Obtain the directed visual #31 and socket-rim soft-tissue findings; sensibility and percussion remain separate requests.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-019",
+      "turn": 11,
+      "field": "answerPatterns",
+      "before": [
+        "ibuprofen",
+        "not taken an antibiotic, steroid, opioid, or acetaminophen"
+      ],
+      "after": [
+        "ibuprofen",
+        "not taken an antibiotic",
+        "not taken a steroid",
+        "not taken an opioid",
+        "not taken acetaminophen"
+      ],
+      "reason": "The finalized independent Case019 design separates postoperative antibiotic, steroid, opioid and acetaminophen use into atomic facts; the complete medication-list question explicitly requests all those current-use observations."
+    },
+    {
+      "caseId": "drchi-019",
+      "turn": 11,
+      "field": "expectedAvailableFactIds",
+      "before": [
+        "drchi-019:medications",
+        "drchi-019:other-postoperative-medications"
+      ],
+      "after": [
+        "drchi-019:medications",
+        "drchi-019:other-postoperative-medications",
+        "drchi-019:steroid-use",
+        "drchi-019:opioid-use",
+        "drchi-019:acetaminophen-use"
+      ],
+      "reason": "The finalized independent Case019 design separates postoperative antibiotic, steroid, opioid and acetaminophen use into atomic facts; the complete medication-list question explicitly requests all those current-use observations."
+    },
+    {
+      "caseId": "drchi-019",
+      "turn": 11,
+      "field": "expectedFactIds",
+      "before": [
+        "drchi-019:medications",
+        "drchi-019:other-postoperative-medications"
+      ],
+      "after": [
+        "drchi-019:medications",
+        "drchi-019:other-postoperative-medications",
+        "drchi-019:steroid-use",
+        "drchi-019:opioid-use",
+        "drchi-019:acetaminophen-use"
+      ],
+      "reason": "The finalized independent Case019 design separates postoperative antibiotic, steroid, opioid and acetaminophen use into atomic facts; the complete medication-list question explicitly requests all those current-use observations."
+    },
+    {
+      "caseId": "drchi-020",
+      "turn": 5,
+      "field": "reason",
+      "before": "Requests the pending complete medical history, not an invented healthy history.",
+      "after": "Obtain the new fictional reported medical conditions without converting Prolia exposure into an individual risk estimate.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-021",
+      "turn": 8,
+      "field": "reason",
+      "before": "Explicitly requests known contour/access plus unassessed residual cement; partial availability must remain separate.",
+      "after": "Obtain the preserved contour/access statement and new accessible cement-fragment observation without implying that covered surfaces were inspected.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-023",
+      "turn": 7,
+      "field": "reason",
+      "before": "Follow-up refers to the immediately preceding #29 filling; the required contour/integrity assessment is unprovided.",
+      "after": "The contextual follow-up refers to the prior #29 filling and asks its separate contour and accessible-margin findings.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    },
+    {
+      "caseId": "drchi-023",
+      "turn": 8,
+      "field": "reason",
+      "before": "Explicit mixed request has known bitewing information but unavailable occlusal relationships.",
+      "after": "The explicit mixed request asks the pair bitewing, current contacts at both teeth, and comparative marginal-ridge measurement.",
+      "reason": "Annotation-only wording correction: the old source-limit rationale was stale after explicitly fictional review-C facts were supplied; clinical oracle fields are unchanged."
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { repeatClinicalFollowup, scopeClinicalSubject, splitClinicalClauses, typ
 import { asksPriorTreatmentProvider, isTreatmentHistoryQuestion, repeatTreatmentTiming, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
 import { caseDetailFactMatchesClause, caseDetailFactTeeth, isCaseDetailReview, isGlobalDetailRequest, repeatCaseDetailFact } from "./case-detail-subjects.server";
 import { isNextCaseDetailReview, nextCaseDetailHasSubject } from "./case-detail-next-subjects.server";
+import { isCompleteReview, completeReviewHasSubject } from "./complete-review-subjects.server";
 
 type Fact = DiscoveryPatient["facts"][number];
 type Routing = DiscoveryReply["routing"];
@@ -11,7 +12,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent | MissingClinicalSubject };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v10";
+const ROUTER_VERSION = "discovery-intent/v11";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -118,7 +119,7 @@ function isBroadOpening(text: string) {
  * the ordinary interpreter; this is not a general pronoun resolver or a model selection.
  */
 function coldPersistenceFollowup(question: string, patient: DiscoveryPatient, context: RequestContext): Fact | undefined {
-  const nextCold = isNextCaseDetailReview(patient) && patient.caseId === "drchi-002";
+  const nextCold = (isNextCaseDetailReview(patient) || isCompleteReview(patient)) && patient.caseId === "drchi-002";
   if (!nextCold && (patient.caseId !== "drchi-001" || !patient.version.endsWith("-variant-b"))) return;
   const followup = /^(?:(?:and|so)\s+)?(?:how long (?:does|did) (?:it|that|this) last|does (?:it|that|this|the feeling) (?:linger|last|stay|hang around)(?: (?:for a while|afterwards|afterward))?)[?.!\s]*$/iu;
   if (!followup.test(question) && !(nextCold && /^does (?:that|this|the) feeling last (?:a long time|long)(?: after (?:the drink|it) is gone)?[?.!\s]*$/iu.test(question))) return;
@@ -319,7 +320,7 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   }
   if (repeatedId === null) return unavailable(channel, rulesRouting());
   const subjectScope = scopeClinicalSubject(question, channel, scopedPatient);
-  const procedureClauses = (isNextCaseDetailReview(patient) ? splitClinicalClauses(question, patient)
+  const procedureClauses = ((isNextCaseDetailReview(patient) || isCompleteReview(patient)) ? splitClinicalClauses(question, patient)
     : treatmentHistoryClauses(question)).filter(isTreatmentHistoryQuestion);
   // Interpret recognized history before channel-specific keywords. "Root canal done?"
   // must not accidentally match an inferior alveolar canal examination.
@@ -344,7 +345,7 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     ? [...subjectScope.segments.flatMap(segment => recognizeHistoryIntents(segment.text)
       .filter(intent => !segment.suppressHistoryIntentIds.some(id => id === intent.id))),
       ...subjectScope.unscopedClauses.flatMap(clause => recognizeHistoryIntents(clause))]
-    : (isNextCaseDetailReview(patient) ? splitClinicalClauses(question, patient)
+    : ((isNextCaseDetailReview(patient) || isCompleteReview(patient)) ? splitClinicalClauses(question, patient)
       : [question, ...question.split(/[?;.!]+|\b(?:also|and|plus)\b/iu)]).flatMap(clause => recognizeHistoryIntents(clause))
     ), ...scopedHistory.flatMap(item => historyIntents.filter(intent => intent.id === item.id))]
     .map(intent => [intent.id, intent])).values()];
@@ -352,7 +353,7 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   if (isCaseDetailReview(patient)) scopedPatient.facts.filter(fact => fact.channel === "patient").forEach(fact => historyFacts.add(fact.id));
   const choices: Choice[] = scopedPatient.facts.filter(fact => (fact.channel === channel || channel === "exam" && historyFacts.has(fact.id))
     && (!isCaseDetailReview(patient) || splitClinicalClauses(question, patient).some(clause =>
-      (!isNextCaseDetailReview(patient) || nextCaseDetailHasSubject(clause) || isTreatmentHistoryQuestion(clause))
+      (!(isNextCaseDetailReview(patient) || isCompleteReview(patient)) || (isCompleteReview(patient) ? completeReviewHasSubject(clause) : nextCaseDetailHasSubject(clause)) || isTreatmentHistoryQuestion(clause))
         && caseDetailFactMatchesClause(clause, patient, fact))))
     .map(fact => ({ id: fact.id, topic: fact.topic, channel: fact.channel, facts: [fact] }));
   for (const intent of historyIntents) if (!(intent.id === "dental-treatment-history" && procedureClauses.length
@@ -385,7 +386,15 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     else authoredIds.add(`intent:${intent.id}`);
   }
   const authored = choices.filter(choice => authoredIds.has(choice.id));
-  const resolvedIntents = isNextCaseDetailReview(patient) ? requestedFacts : undefined;
+  const resolvedIntents = (isNextCaseDetailReview(patient) || isCompleteReview(patient)) ? requestedFacts : undefined;
+  // An explicitly named examination batch can contain more atomic fixed results
+  // than the model selector's four-ID limit. Resolve only a fully scoped C batch
+  // by rules, retaining the model cap and never exposing a generic hidden list.
+  if (isCompleteReview(patient) && authored.length > MAX_FACTS_PER_TURN && authored.length <= 8
+    && subjectScope && !subjectScope.unscopedClauses.length
+    && authored.every(choice => choice.facts.length > 0 && choice.facts.every(fact => subjectScope.factIds.includes(fact.id)))) {
+    return disclose(channel, authored, { method: "authored-rules", version: `${ROUTER_VERSION}+review-explicit-batch/v1` }, scopedPatient, recognized, resolvedIntents);
+  }
   if (authored.length > MAX_FACTS_PER_TURN) return noFacts(channel, "Please make a more focused question or examination request.", "clarify", rulesRouting());
   // Never let model selection reintroduce an explicitly declined examination.
   if (subjectScope?.hasNegatedRequest) return disclose(channel, authored, rulesRouting(), scopedPatient, recognized, resolvedIntents);

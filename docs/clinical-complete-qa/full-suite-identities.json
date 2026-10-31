@@ -1,0 +1,8 @@
+{
+  "schema": "full-suite-identity-comparison/v1",
+  "addedAssertions": 478,
+  "removedAssertions": 0,
+  "addedNonPassing": [],
+  "baselineSkippedIdentitiesUnchanged": true,
+  "removed": []
+}

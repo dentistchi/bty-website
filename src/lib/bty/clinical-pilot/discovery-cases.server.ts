@@ -3,6 +3,7 @@ import { case001Variant } from "./case001-variant.server";
 import { case001VariantB } from "./case001-variant-b.server";
 import { caseDetailVariants } from "./case-detail-variants.server";
 import { caseDetailNextVariants } from "./case-detail-next-variants.server";
+import { completeReviewVariants } from "./complete-review-variants.server";
 
 /** Server-owned, fictional patient information. Never import into a client component.
  * Decomposed only from catalog scenario/findings; author recommendations are not patient facts.
@@ -337,5 +338,7 @@ const caseDetails = caseDetailVariants(discoveryPatients);
 discoveryPatients.push(...caseDetails);
 const nextCaseDetails = caseDetailNextVariants(discoveryPatients);
 discoveryPatients.push(...nextCaseDetails);
-export const founderPreviewPackVersions: ReadonlySet<string> = new Set([case001B, ...caseDetails, ...nextCaseDetails]
+const completeCaseDetails = completeReviewVariants(discoveryPatients);
+discoveryPatients.push(...completeCaseDetails);
+export const founderPreviewPackVersions: ReadonlySet<string> = new Set([case001B, ...caseDetails, ...nextCaseDetails, ...completeCaseDetails]
   .map(patient => `${patient.caseId}@${patient.version}`));

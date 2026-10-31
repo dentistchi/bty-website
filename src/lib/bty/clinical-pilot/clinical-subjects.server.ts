@@ -2,6 +2,7 @@ import type { DiscoveryChannel, DiscoveryFact, DiscoveryPatient } from "@/domain
 import { caseDetailFactMatchesClause, caseDetailSubject, caseDetailSubjectTarget, isCaseDetailReview } from "./case-detail-subjects.server";
 import { HISTORY_INTENTS, factsForIntent, type HistoryIntentId } from "./clinical-intents.server";
 import { isNextCaseDetailReview } from "./case-detail-next-subjects.server";
+import { isCompleteReview } from "./complete-review-subjects.server";
 
 /** Interpretation metadata, not additional facts or modified patient packs.
  * Call only after the router's existing hidden-answer/advice/security gates.
@@ -15,7 +16,7 @@ export type ClinicalSubjectSegment = {
   text: string; factIds: string[]; missing: MissingClinicalSubject[];
   historySelections: { id: HistoryIntentId; factIds: string[] }[];
   /** Existing history recognition must not re-add a broader drug/cold/onset result. */
-  suppressHistoryIntentIds: ("cold-history" | "medications" | "symptom-onset")[];
+  suppressHistoryIntentIds: HistoryIntentId[];
 };
 export type ClinicalSubjectScope = {
   factIds: string[]; missing: MissingClinicalSubject[];
@@ -197,7 +198,7 @@ function composeClinicalClauses(text: string, channel: "patient" | "exam", patie
     const clause = sentence.trim();
     if (!clause) continue;
     let start = 0;
-    const matches = [...clause.matchAll(patient && isNextCaseDetailReview(patient)
+    const matches = [...clause.matchAll(patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))
       ? /\b(?:and|also|plus|or|then)\s+/giu : /\b(?:and|also|plus|or)\s+/giu)];
     for (const match of matches) {
       const right = clause.slice(match.index! + match[0].length).trimStart();
@@ -207,9 +208,10 @@ function composeClinicalClauses(text: string, channel: "patient" | "exam", patie
       const sharedNegativeTrigger = channel === "patient" && /^(?:and|or)\b/iu.test(match[0])
         && !independentHead.test(right)
         && /\b(?:without|not|never)\b.{0,30}\b(?:eat(?:ing)?|chew(?:ing)?|bit(?:e|ing))\b/iu.test(left);
-      const nextHead = patient && isNextCaseDetailReview(patient)
+      const nextHead = patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))
         && /^(?:(?:a|an|the|regular)\s+)?(?:ferrule\b|isolation\b|allergies\b|medications?\b|whether\b|#\s*\d{1,2}(?:'s)?\s+(?:eruption|tipping|inclination|position|margins?|contacts?|mobility)\b)/iu.test(right);
-      const boundary = !sharedNegativeTrigger && (independentHead.test(right) || ellipticalHead.test(right) || nextHead);
+      const declinedReview = patient && isCompleteReview(patient) && /^(?:please\s+)?(?:leave\b|skip\b|omit\b|defer\b|avoid\b|do not\b|don't\b)/iu.test(right);
+      const boundary = !sharedNegativeTrigger && (independentHead.test(right) || ellipticalHead.test(right) || nextHead || declinedReview);
       if (!boundary) continue;
       add(left);
       start = match.index! + match[0].length;
@@ -218,9 +220,11 @@ function composeClinicalClauses(text: string, channel: "patient" | "exam", patie
   }
   return { active, declined };
   function add(clause: string) {
-    if (patient && isNextCaseDetailReview(patient)) clause = clause.replace(/^[,\s]+|[,\s]+$/gu, "");
+    if (patient && (isNextCaseDetailReview(patient) || isCompleteReview(patient))) clause = clause.replace(/^[,\s]+|[,\s]+$/gu, "");
     if (!clause) return;
-    (channel === "exam" && declinedExam.test(clause) ? declined : active).push(clause);
+    const declinedPatientRequest = patient && isCompleteReview(patient)
+      && (declinedExam.test(clause) || /^(?:please\s+)?leave\b.+\b(?:for later|out|aside)\b/iu.test(clause));
+    (channel === "exam" && declinedExam.test(clause) || declinedPatientRequest ? declined : active).push(clause);
   }
 }
 
@@ -247,7 +251,7 @@ export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, pa
         topic: target.topic, channel: detail.channel,
         missingAnswer: `${target.topic}: information is not supplied in this case. No normal or negative finding is established.` }];
       segments.push({ text: clause, factIds, missing,
-        historySelections: (detail.historyIntentIds ?? []).map(id => ({ id, factIds })), suppressHistoryIntentIds: [] });
+        historySelections: (detail.historyIntentIds ?? []).map(id => ({ id, factIds })), suppressHistoryIntentIds: detail.suppressHistoryIntentIds ?? [] });
       continue;
     }
     const subjects = SUBJECTS.filter(subject => subject.channel === channel && subject.test.test(clause) && !subject.blocked?.test(clause)

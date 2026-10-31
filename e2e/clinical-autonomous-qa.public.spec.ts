@@ -8,6 +8,7 @@ import journeysJson from "../scripts/fixtures/clinical-discovery-journeys.v1.jso
 import historyJson from "../scripts/fixtures/clinical-discovery-history-regression.v1.json";
 import detailsJson from "../scripts/fixtures/clinical-discovery-case-details.v1.json";
 import nextDetailsJson from "../scripts/fixtures/clinical-discovery-case-details-next.v2.json";
+import completeJson from "../scripts/fixtures/clinical-discovery-complete.v2.json";
 import { createQaEncounter, type QaJourney } from "../src/lib/bty/clinical-pilot/discovery-qa.server";
 import { discoveryTurns, initialAssessment, type DiscoveryReply } from "../src/domain/clinical-pilot/discovery";
 import { releasedReference, type Reaction } from "../src/domain/clinical-pilot/pilot";
@@ -40,6 +41,9 @@ test.beforeAll(async () => {
 });
 
 const runs = [
+  ...(completeJson as QaJourney[]).flatMap(journey => [320, 390, 1280].map(width => ({
+    journey, width, height: 844, label: "complete-Founder-preview",
+  }))),
   ...journeys.map(journey => ({ journey, width: 390, height: 844, label: "original-journey" })),
   ...(detailsJson as QaJourney[]).flatMap(journey => [320, 390, 1280].map(width => ({
     journey, width, height: 844, label: "case-detail-preview",

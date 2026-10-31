@@ -1,5 +1,48 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-COMPLETE-REVIEW — 2026-10-31
+
+Dr. Chi requests autonomous completion and verification so routine product QA
+does not depend on him discovering defects. Complete the remaining 16 clinical
+review packs with separately versioned English fictional details, retaining Case
+001 variant B and all 31 existing serialized packs exactly. New attempts remain
+Founder-only previews; ordinary users and stored pack versions keep their prior
+behavior. No available recorded observation or author reference may be rewritten.
+Separate patient reports, objective findings, per-tooth protocols and genuinely
+unperformed/future outcomes; never invent medication orders, biopsy results,
+clearance, outcome guarantees or Dr. Chi treatment policy.
+
+Freeze semantic all-23-case journeys and independent boundary probes before
+router tuning. Reproduce known content gaps, then exercise narrow and compound
+requests, short follow-ups, negation, tooth scope, history/exam modes, model
+evidence, raw persistence and assessment-before-reference boundaries. Inspect
+Today overdue, Saved/Tracking refresh and retry, rewards and Teams navigation;
+fix concrete reproduced source defects. Preserve before/after evidence and
+compare exact full-suite failures against an unchanged same-environment baseline.
+No all-green or real-model claim may be made for a synthetic or partial check.
+
+Work includes isolated browser journeys, serial standalone types and a fresh
+Cloudflare build with public-artifact inspection. Read-only live catalog/ACL
+inspection may verify current security state without reading learner rows. No
+production write, authentication-session mint, migration, service restart, secret
+change, merge or deploy is included in this source-preparation phase. Update the
+existing Draft PR #90 with final scope, measured results and remaining release
+gates; do not ask Dr. Chi to act as the application's test runner.
+
+Observed final runtime `bc0a95d`: 16 C copies and 276 marked entries; all 31
+prior packs and nine earlier fixtures remain exact. The fixed 409-turn journey,
+20 independent probes and three controlled selector probes pass. Related tests
+report 1,618/1,618 in 77 files (15 PostgreSQL bodies inactive); 135 isolated browser
+flows, standalone types and a separate fresh Cloudflare build pass. The full
+suite has 16,074 passed / 151 failed / 409 skipped, with zero new failing assertion
+identities against the fresh b913a7d baseline. All 478 added assertion identities
+pass and none are removed; the existing missing-history suite remains. Saved/Tracking
+read races and native Practice false completion acknowledgements are repaired.
+Actual Mac/qwen, live Worker/Teams/device checks and two legacy reward invariants
+remain release gates. No deployment or DB/auth write occurred. See
+`CLINICAL_COMPLETE_REVIEW.md`, `CLINICAL_COMPLETE_QA.md`, `APP_RELEASE_FLOW_AUDIT.md`
+and `clinical-complete-qa/verification.json`.
+
 ## CLINICAL-DISCOVERY-NEXT-CASE-DETAILS — 2026-10-31
 
 Dr. Chi requests the next work after PR #90's initial cases and model-scope

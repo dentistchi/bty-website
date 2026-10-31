@@ -18,10 +18,11 @@ describe("next review cases preserve the PR90 patient record boundary", () => {
   it("appends only the three new Founder preview versions", () => {
     const added = discoveryPatients.filter(p => p.version === version);
     expect(added.map(p => p.caseId)).toEqual(["drchi-002", "drchi-003", "drchi-008"]);
-    expect(discoveryPatients).toHaveLength(31);
+    // Later C copies are additive; retain this historical B boundary exactly.
+    expect(discoveryPatients.filter(p => p.version !== "discovery-2026-10-31.3-review-c")).toHaveLength(31);
     for (const patient of added) {
       expect(founderPreviewPackVersions.has(`${patient.caseId}@${patient.version}`)).toBe(true);
     }
-    expect(founderPreviewPackVersions.size).toBe(7);
+    expect([...founderPreviewPackVersions].filter(key => !key.endsWith("@discovery-2026-10-31.3-review-c"))).toHaveLength(7);
   });
 });

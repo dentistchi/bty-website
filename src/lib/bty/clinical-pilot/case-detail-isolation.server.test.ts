@@ -16,7 +16,7 @@ describe("frozen clinical record identity", () => {
   it("registers exactly three appended review versions, all behind the existing preview gate", () => {
     const review = discoveryPatients.filter(p => p.version === CASE_DETAIL_REVIEW_VERSION);
     expect(review.map(p => p.caseId)).toEqual(["drchi-005", "drchi-006", "drchi-011"]);
-    expect(discoveryPatients.filter(p => p.version !== "discovery-2026-10-31.2-review-b")).toHaveLength(28);
+    expect(discoveryPatients.filter(p => !["discovery-2026-10-31.2-review-b", "discovery-2026-10-31.3-review-c"].includes(p.version))).toHaveLength(28);
     for (const p of review) expect(founderPreviewPackVersions.has(`${p.caseId}@${p.version}`)).toBe(true);
   });
 });
