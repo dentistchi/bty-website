@@ -5,7 +5,91 @@ conversations, repairs interpretation defects, and preserves the measurements.
 Doctors can focus their review on clinical judgment and the realism of new case
 content. The automated test uses the actual discovery router and pure domain flow.
 
-## Observed result — 2026-10-30
+## Acceptance follow-up — Case 005 short treatment history
+
+**Status: repair prepared in this Draft PR; not deployed.** The earlier PR84
+router work was also still unmerged when Dr. Chi supplied the Case 005 screenshot.
+The current integration is based on PR89 `96d82dde`; rewards source is preserved.
+
+The screenshot is a real usability failure. “What did we do” in Examine or test
+was rejected even though the frozen pack already contains the patient statement
+“I had root canal treatment eight months ago.” The input-mode choice does not
+make an ordinary treatment-history question invalid.
+
+The first PR84 browser tests checked that the UI displayed the router's issued
+reply and retained it correctly. Semantic expectations were checked separately
+in the Node journey runner. This allowed a browser pass to be mistaken for proof
+that a natural conversation worked. The new browser loop checks independent
+expected fact IDs, available IDs, resolution and answer patterns on every turn.
+Faithfully rendering a wrong answer now fails browser acceptance.
+
+A separate frozen regression fixture contains the exact screenshot question and
+“How long ago?” in both modes. It failed all four semantic turns on v6; all three
+browser widths failed the exact first question. On v7 all four turns return only
+`drchi-005:rct-history`, and the complete browser flows pass at 320/390/1280px.
+The original 205-turn fixture and original measurement archives are unchanged.
+
+The bounded repair recognizes ordinary past dental-procedure wording, single-
+procedure timing context, independent examination clauses, explicit tooth scope,
+and unavailable provider information. It points to existing patient statements;
+“we” does not establish the treating clinician. Case011 “last time” selects the
+recent retightening record. Unknown #29 treatment does not substitute #30's crown.
+An absent procedure history means unavailable information, never no treatment.
+The source does not claim that Case005's recorded RCT is a confirmed last visit.
+
+Observed test-first evidence: 73/89 initial history tests failed before repair;
+review of additional paraphrases and mixed requests increased the suite to 104.
+Independent review exposed “What did we do and take a PA?” selecting medication
+information; the repaired version keeps the two requested subjects separate.
+A broader run then found three existing model-check assertions failing because
+the new timing helper swallowed the original restoration-placement follow-up.
+That regression was repaired without changing the old probe expectations.
+The final focused run passes **566/566 in 34 files**, including those unchanged
+route checks, 104 procedure-history tests and six stubbed-model contract tests.
+An independent reviewer reran 25 known router probes with network disabled.
+Final standalone TypeScript (`--noEmit --incremental false`, 8 GiB heap) exits 0.
+The Cloudflare build exits 0 with loopback-only public placeholders, feature flags
+on, no credentials and one static-page worker (`CIRCLE_NODE_TOTAL=2`). It compiles,
+checks types, generates all 353 pages and completes OpenNext packaging. The artifact
+guard examines 3,626 JavaScript files: zero unsafe matches, 2/2 safe middleware
+implementations. A limited scan of 172 private prefixes over 743 public text files
+finds zero matches; this is not exhaustive proof of every possible disclosure.
+
+The final browser run passes **30/30**: 27 original complete encounters plus three
+widths of the reported-history flow. Each runs start, questions, working assessment,
+submission, reference gating, comparison, reaction and completion in memory.
+No app API, auth session, model endpoint, database or learner trace is written.
+The six model-stub tests cover rejection, matching selection, unavailable source
+and disabled access; they are not actual Mac/gateway inference measurements.
+
+The final all-case rules regression still has **0 routing issues / 0 checked-answer
+mismatches / 0 capture invariants**, but **74 required unavailable turns in 22
+cases**. Its `--check` exit is deliberately **1**. These are requirements of this
+visible scripted review path, not compulsory learner questions or a diagnostic
+scoring rubric. The four-turn history fixture exits 0. Zero routing issues on
+these finite scripts does not establish arbitrary conversational accuracy.
+
+Actual Mac model quality, current live Teams/iPhone behavior and the full unrelated
+repository suite remain unrun. The prior full-suite baseline is non-green; it is
+not relabeled as a pass. The content gate remains RED and this PR stays Draft.
+
+New evidence in `docs/clinical-discovery-qa/`:
+
+- `history-before-v6.json.gz` / `history-after-v7.json.gz`: exact question and timing
+  regression with literal replies, availability and runtime source hashes.
+- `v6-regression-on-pr89.json.gz` / `v7-regression-on-pr89.json.gz`: unchanged
+  23-case/205-turn fixture on the integrated release source before/after this fix.
+- `natural-question-verification.json`: commands, checks, source hashes and limits.
+
+Repeat the separate screenshot fixture with:
+
+```sh
+node --import tsx scripts/clinical-discovery-audit.ts --mode rules \
+  --fixture scripts/fixtures/clinical-discovery-history-regression.v1.json \
+  --json /tmp/clinical-history-qa-unique.json --check
+```
+
+## Original PR84 result — 2026-10-30
 
 | Measurement, 23 cases / 205 turns | Original oracle, v5 | Reviewed oracle, v5 | Repaired v6 |
 |---|---:|---:|---:|
@@ -100,7 +184,7 @@ regressions. The separate CLI quality gate also fails on required information ga
 QA `required` flags describe this scripted review path; they never become mandatory
 learner questions or a diagnostic score.
 
-## Validation
+## Original PR84 validation
 
 - Related Clinical/Practice/domain/API/deployment-guard tests: **424/424**, 30 files.
 - Isolated browser flows: **37/37** at 320, 390, 1280 px. This includes 27 new

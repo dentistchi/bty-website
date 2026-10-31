@@ -1,6 +1,7 @@
 import type { DiscoveryChannel, DiscoveryPatient, DiscoveryReply } from "@/domain/clinical-pilot/discovery";
 import { historyIntents, recognizeHistoryIntents, factsForIntent, type HistoryIntentDefinition as HistoryIntent } from "./clinical-intents.server";
 import { repeatClinicalFollowup, scopeClinicalSubject, type MissingClinicalSubject } from "./clinical-subjects.server";
+import { asksPriorTreatmentProvider, isTreatmentHistoryQuestion, repeatTreatmentTiming, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
 
 type Fact = DiscoveryPatient["facts"][number];
 type Routing = DiscoveryReply["routing"];
@@ -8,7 +9,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent | MissingClinicalSubject };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v6";
+const ROUTER_VERSION = "discovery-intent/v7";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -270,6 +271,15 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   const scopedPatient = { ...patient, facts: patient.facts.filter(fact => (!requestedTeeth.length || !fact.toothNumbers
     || fact.toothNumbers.some(number => requestedTeeth.includes(number)))
     && (!endodonticQuestion || anatomyRequested || !/\b(?:panoram(?:ic|a)|alveolar|nerve|third[- ]molar)\b/iu.test(fact.topic))) };
+  const procedureTiming = repeatTreatmentTiming(question, scopedPatient, context);
+  if (procedureTiming) return disclose(channel, [{ id: procedureTiming.id, topic: procedureTiming.topic, channel: procedureTiming.channel, facts: [procedureTiming] }],
+    { method: "authored-rules", version: `${ROUTER_VERSION}+treatment-timing/v1` }, scopedPatient,
+    historyIntents.filter(intent => intent.id === "dental-treatment-history"));
+  if (procedureTiming === null) return unavailable(channel, rulesRouting());
+  if (asksPriorTreatmentProvider(question, scopedPatient, context)) return {
+    ...noFacts(channel, "The clinician who performed the prior dental procedure is not specified in this case.", "unavailable", rulesRouting()),
+    recognizedTopicIds: ["clinical-subject:treatment-provider"], unavailableTopicIds: ["clinical-subject:treatment-provider"],
+  };
   const repeated = coldPersistenceFollowup(question, scopedPatient, context);
   if (repeated) return disclose(channel, [{ id: repeated.id, topic: repeated.topic, channel: repeated.channel, facts: [repeated] }],
     { method: "authored-rules", version: `${ROUTER_VERSION}+context-persistence/v1` }, scopedPatient,
@@ -282,10 +292,15 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   }
   if (repeatedId === null) return unavailable(channel, rulesRouting());
   const subjectScope = scopeClinicalSubject(question, channel, scopedPatient);
+  const procedureClauses = treatmentHistoryClauses(question).filter(isTreatmentHistoryQuestion);
   // Interpret recognized history before channel-specific keywords. "Root canal done?"
   // must not accidentally match an inferior alveolar canal examination.
   const scopedHistory = subjectScope?.segments.flatMap(segment => segment.historySelections) ?? [];
   const requestedFacts = (intent: HistoryIntent) => {
+    if (intent.id === "dental-treatment-history") {
+      const ids = new Set(procedureClauses.flatMap(clause => treatmentHistoryFacts(scopedPatient, clause).map(fact => fact.id)));
+      return scopedPatient.facts.filter(fact => ids.has(fact.id));
+    }
     const scoped = scopedHistory.filter(item => item.id === intent.id);
     return scoped.length ? scopedPatient.facts.filter(fact => scoped.some(item => item.factIds.includes(fact.id))) : factsForIntent(intent, scopedPatient);
   };
@@ -299,13 +314,19 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   const historyFacts = new Set(historyIntents.flatMap(intent => factsForIntent(intent, scopedPatient).map(fact => fact.id)));
   const choices: Choice[] = scopedPatient.facts.filter(fact => fact.channel === channel || channel === "exam" && historyFacts.has(fact.id))
     .map(fact => ({ id: fact.id, topic: fact.topic, channel: fact.channel, facts: [fact] }));
-  for (const intent of historyIntents) if (!factsForIntent(intent, scopedPatient).length) {
+  for (const intent of historyIntents) if (!(intent.id === "dental-treatment-history" && procedureClauses.length
+    ? requestedFacts(intent) : factsForIntent(intent, scopedPatient)).length) {
     choices.push({ id: `intent:${intent.id}`, topic: intent.topic, channel: "patient", facts: [], missing: intent });
   }
   const missingSubjects = [...new Map((subjectScope?.missing ?? []).map(subject => [subject.id, subject])).values()];
   for (const subject of missingSubjects) if (!choices.some(choice => choice.id === `intent:${subject.id}`)) choices.push({ id: `intent:${subject.id}`, topic: subject.topic,
     channel: subject.channel, facts: [], missing: subject });
-  const unscopedQuestion = subjectScope ? subjectScope.unscopedClauses.join("? ") : question;
+  // Procedure-history clauses must not also trigger broad examination/current-symptom
+  // patterns. Independent explicit requests still pass through the existing subject scope.
+  const unscopedQuestion = procedureClauses.length
+    ? (subjectScope ? subjectScope.unscopedClauses : treatmentHistoryClauses(question))
+      .flatMap(treatmentHistoryClauses).filter(clause => !isTreatmentHistoryQuestion(clause)).join("? ")
+    : subjectScope ? subjectScope.unscopedClauses.join("? ") : question;
   const examQuestion = unscopedQuestion.replace(/\broot[- ]canals?\b/giu, "endodontic treatment");
   const examClauses = examQuestion.split(/[?;.!]+|\b(?:also|and|plus)\b/iu).filter(clause => !recognizeHistoryIntents(clause).length
     && /\b(?:perform|obtain|order|check|inspect|examine|assess|measure|evaluate|test|testing|probe|probing|palpation|palpate|percussion|percuss|pa|periapical|radiograph|x[- ]?ray|bitewing|cbct|panoramic|swelling|sinus tract|mobility|occlusal|occlusion|transillumination|margins?)\b/iu.test(clause));

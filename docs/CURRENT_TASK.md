@@ -1,5 +1,86 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
+
+The live Case 005 screenshot rejects “What did we do” in Examine or test even
+though the frozen pack contains `drchi-005:rct-history`: RCT eight months ago.
+Dr. Chi correctly challenges whether earlier testing established conversational
+usability. Reproduce this through the actual router and isolated browser; treat
+input mode as recorded intent, not a reason to reject an ordinary history question.
+
+Integrate the unmerged PR84 QA work onto the current PR89 release source, preserving
+both task contracts. Add bounded general dental-procedure history, contextual timing,
+unknown-provider acknowledgement, tooth scope and independent mixed requests. Keep
+frozen packs, author references, historical trace hashes, selector/transport, user
+identity and rewards unchanged. Metadata can point only to existing patient facts;
+missing history is unavailable case information, never no prior treatment.
+
+The separate screenshot regression must fail before repair, then pass in both input
+modes at 320/390/1280px. Browser checks must assert the fixed semantic oracle as well
+as faithful rendering; an incorrectly interpreted response is not a UI acceptance
+pass. The original 23-case/205-turn fixture remains byte-for-byte unchanged. Its
+74 required missing-information turns across 22 cases remain a RED content gate,
+not learner omissions or an overall release pass. Details and observed limits are
+in docs/CLINICAL_DISCOVERY_AUTONOMOUS_QA.md. Actual Mac inference and live Teams are
+not supplied by isolated rules/model-stub tests. No deployment, production write,
+auth-session creation, migration or seed is included in this repair.
+
+## LEARNING-REWARDS-V1 — 2026-10-30
+
+Dr. Chi approved the interactive navy/gold rewards concept and requested actual app
+implementation. Connect new participation-only Learning XP to canonical owned Learn,
+Clinical Discovery reference-reviewed Practice, and due Follow-up evidence. Preserve
+legacy Core/Weekly XP, ranking, Forge stage, Teams identity and all learner records.
+Never award historical XP, score agreement with an author, or treat missing case facts
+as learner failure. UI displays server decisions: cumulative/weekly XP, unlimited levels,
+twelve badge conditions, featured earned badge, grouped milestones and reduced motion.
+
+Implementation is the first integration phase. Existing sources do not assign approved
+delayed distinct variants, four-step module paths, consented/human-adopted insights, or
+frozen team rosters. Do not fabricate these; five badges and team goals remain explicitly
+unavailable. Seven badges can progress from supported evidence. See
+`docs/LEARNING_REWARDS_V1.md` for exact eligibility, rollout and remaining infrastructure.
+
+An additive service-only atomic ledger migration is prepared, not applied. The feature
+defaults off unless `LEARNING_REWARDS_ENABLED=1`. GET is read-only; POST reconciliation,
+profile selection and achievement acknowledgement retain authenticated ownership and
+consent. Saved learning survives reward failure and can reconcile later in Me. No merge,
+production migration/write, Worker configuration or deployment is part of implementation.
+Observed verification and limits are recorded in `docs/learning-rewards/verification.json`.
+
+## APP-PRELAUNCH-RELIABILITY — 2026-10-30
+
+Dr. Chi requests autonomous reproduction, repair and regression verification of
+Today overdue cleanup, Track/Save and other main app flows before public release.
+Use this isolated topic branch from PR82 / inner-main. Keep Clinical QA PR84
+separate. No shared training/learner records, deadlines, XP, identities, permissions
+or production configuration may be changed merely to clear a screen.
+
+Source reproductions identify ignored Save UPDATE failures and a concurrent
+Track/Save intent race; completed-training personal dismissal does not feed Today
+host attention; Today reselect ignores refreshKey; Track mutations hide errors;
+Field Actions child return retains stale inventories; Teams Today navigation
+replaces the frame-safe /teams document path. Preserve canonical server state and
+surface mutation failures without inventing success or completion.
+
+Read-only production inspection matched the two screenshot training titles via
+follow-up source titles: one event is closed, one is open, neither personally
+hidden. No live mutation has been attempted. Existing history dismissal accepts
+only closed events; active training must retain that lifecycle boundary. The
+closed row can gain an explicit personal Remove action, with the existing owned
+endpoint and failure feedback. Final release claims must distinguish isolated
+verification from real Teams/mobile and deployment checks.
+
+Observed source checkpoint: b4dcf55d75d4209941099148a3ff400fbb0eb38a.
+41/41 new assertions pass in the complete run; final focused 48/48 and isolated
+screens 38/38 pass. Types/build exit 0; artifact guard 3,624 JS files, zero unsafe,
+2/2 safe middleware implementations. Full baseline 149 failed assertions versus
+146 in the final full run; five Teams-bootstrap failures resolve and two loading-
+gate test races were then corrected with the same assertions and pass in focused
+rerun. The whole suite was not rerun after that test-only correction and remains
+non-green. XP service-only ACL migration is prepared, unapplied; no live auth or
+learner writes, permission changes, merge or deploy. Detailed evidence and known
+reward atomicity/replay limits: docs/APP_PRELAUNCH_RELIABILITY.md.
 ## CLINICAL-DISCOVERY-AUTONOMOUS-QA — 2026-10-30
 
 Dr. Chi requests that development run synthetic clinical encounters, find and

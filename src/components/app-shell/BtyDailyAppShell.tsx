@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
-import { BTY_SHELL_DESTINATION_EVENT } from "@/domain/teams/btyDestination";
+import { BTY_SHELL_DESTINATION_EVENT, shellSearchFor } from "@/domain/teams/btyDestination";
+import { isTeamsTabPath } from "@/domain/teams/tabRuntime";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
@@ -26,6 +27,7 @@ import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetai
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import MeWeeklyTrace from "@/components/app-shell/MeWeeklyTrace";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
+import LearningRewards from "@/components/app-shell/LearningRewards";
 import SavedForLater from "@/components/app-shell/SavedForLater";
 import EventCreateClient from "@/components/bty/events/EventCreateClient";
 import EventHostList from "@/components/bty/events/EventHostList";
@@ -1623,7 +1625,13 @@ export default function BtyDailyAppShell({
     }
 
     try {
-      window.history.replaceState(null, "", href);
+      // A Today card carries the canonical web address, but the Teams frame
+      // must keep its /teams document. Carry only the shell destination query.
+      const search = shellSearchFor(href, window.location.origin);
+      const address = isTeamsTabPath(window.location.pathname) && search !== null
+        ? `${window.location.pathname}${search}`
+        : href;
+      window.history.replaceState(null, "", address);
     } catch {
       /* history unavailable — the surface is still correct; only the address lags */
     }
@@ -2373,6 +2381,7 @@ export default function BtyDailyAppShell({
                   />
                 </Suspense>
               </div>
+              <LearningRewards locale={locale} refreshKey={weeklyRefreshKey} />
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup entry
                   Orb. R1 (ORB-WEEKLY-ATTENDANCE): the Orb owns ONE interaction — tap to reveal the

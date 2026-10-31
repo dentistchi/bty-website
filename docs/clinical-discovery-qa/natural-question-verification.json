@@ -1,0 +1,179 @@
+{
+  "schema": "clinical-natural-question-verification/v1",
+  "recordedAt": "2026-10-31T00:01:12.914664+00:00",
+  "synthetic": true,
+  "persistedToLearnerStore": false,
+  "integrationBase": "96d82dde3dd5eb7665dd61e996eaecaac3b8c137",
+  "priorDraftHead": "8c15012545ad1d3d68ac3232a95c9e2c5409dd9d",
+  "runtimeCheckpoint": "d0e6909747d52c81f51407406791fada08464995",
+  "sourceFileHashes": {
+    "src/lib/bty/clinical-pilot/discovery-router.server.ts": "f72b13bd8a07398d8d3128b11dbe4913c3095af7460c17fca9e72b97fa9dc7b0",
+    "src/lib/bty/clinical-pilot/clinical-intents.server.ts": "65bffc0368f09672cf9123f2bf36c757ab7cf6bc0d18317aceafd5409786bd99",
+    "src/lib/bty/clinical-pilot/clinical-subjects.server.ts": "0695d84f8289b9927ea1c993051429e48b506f4998c4334db39621c61468cb2a",
+    "src/lib/bty/clinical-pilot/treatment-history.server.ts": "2e691c370175b9dfcbaf21fbb3b39e610ad006ffe8312eaff4cf8634667f8ed9",
+    "src/lib/bty/clinical-pilot/discovery-cases.server.ts": "d5a821e72ac116f5f77fca57840ebd5a2966b8c756550fd33cd0d34527019b52",
+    "src/lib/bty/clinical-pilot/discovery-qa.server.ts": "e8b0c3a8bdb326da6877b07a6cfd205718297d8738bcdff905e2a9a826955be7",
+    "src/domain/clinical-pilot/discovery.ts": "34fc023b322d923fe6a0ea92618693802ef942f0fbb71d039fc7f3a65db8e6df",
+    "src/domain/clinical-pilot/pilot.ts": "28483daa87259b271ff8138c8248fee0cdf65ed44e606b1fbb4249b12cd43b9e",
+    "scripts/clinical-discovery-audit.ts": "b19510ccd854b88128f5fc81806a44b0cfae4625b4e3f494376f3bae2b2c2fc8",
+    "scripts/fixtures/clinical-discovery-journeys.v1.json": "aec9365e35e0b89c85ddefd8bd82626835b05df8c80f851776d6204c849520f3",
+    "scripts/fixtures/clinical-discovery-history-regression.v1.json": "af723aa086d2c43d2f362e123ded801b2c1e7c983274dbbc635ea85efa66efc6",
+    "e2e/clinical-autonomous-qa.public.spec.ts": "99e8791657000e9af8ea4870c16a0aff3e2debd4442fed633c6ecad98c15c5ce",
+    "src/lib/bty/clinical-pilot/treatment-history.server.test.ts": "d8606771ba8a8f7d4071641aa804cfd96b6864985b54e8e86ed7a92cb1a2b89a",
+    "src/lib/bty/clinical-pilot/treatment-history-model.server.test.ts": "bc2d4ab69aac657cfe7129d17db75aa47ea7e8a728c3d91556d2f679277bf043"
+  },
+  "before": {
+    "screenshotFourTurnFixture": {
+      "routingIssueTurns": 4,
+      "answerMismatchTurns": 4,
+      "exitCode": 1
+    },
+    "screenshotBrowserWidths": [
+      320,
+      390,
+      1280
+    ],
+    "screenshotBrowserFailed": 3
+  },
+  "final": {
+    "relatedTests": {
+      "files": 34,
+      "total": 566,
+      "passed": 566,
+      "failed": 0,
+      "exitCode": 0,
+      "command": "node node_modules/vitest/vitest.mjs run --pool=forks --maxWorkers=2 --minWorkers=1 <testFiles>"
+    },
+    "testFiles": [
+      "src/components/app-shell/PracticeLanding.surfaceScoping.test.tsx",
+      "src/components/app-shell/PracticeLanding.test.tsx",
+      "src/components/app-shell/teamsPracticeRecoveryOperations.test.tsx",
+      "src/components/bty-arena/ClinicalCasesPractice.test.tsx",
+      "src/components/bty-arena/ClinicalReasoningTrainer.test.tsx",
+      "src/domain/clinical-encounter/attemptLifecycleMigration.test.ts",
+      "src/domain/clinical-encounter/builder.test.ts",
+      "src/domain/clinical-encounter/comparison.test.ts",
+      "src/domain/clinical-encounter/encounter.test.ts",
+      "src/domain/clinical-encounter/expertBenchmark.test.ts",
+      "src/domain/clinical-encounter/neurosight.test.ts",
+      "src/domain/clinical-encounter/referenceTrace.test.ts",
+      "src/domain/clinical-encounter/serverPersistence.test.ts",
+      "src/domain/clinical-encounter/session.test.ts",
+      "src/domain/clinical-encounter/store.test.ts",
+      "src/domain/clinical-pilot/discovery.test.ts",
+      "src/domain/clinical-pilot/pilot.test.ts",
+      "src/domain/clinical-reasoning/clinicalReasoning.test.ts",
+      "src/lib/bty/clinical-pilot/case001-variant-b.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-discovery-gateway.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-short-questions.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-subjects.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-cases.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-context.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-dentition.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-qa.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-router.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-worker-transport.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history-model.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history.server.test.ts",
+      "src/app/api/bty/clinical-pilot/route.test.ts",
+      "src/lib/bty/foundry/arena/deployWrapper.test.ts",
+      "src/app/api/bty/clinical-encounter/traces/route.test.ts"
+    ],
+    "browser": {
+      "flows": 30,
+      "passed": 30,
+      "exitCode": 0,
+      "widths": [
+        320,
+        390,
+        1280
+      ],
+      "network": "All browser requests blocked except synthetic in-memory API/HTML transport. No real auth, API server, DB or gateway.",
+      "semanticChecks": "Expected fact IDs, available IDs, resolution and answer patterns on every scripted turn, plus capture, assessment, reference gating, reaction and layout.",
+      "runtime": "Playwright 1.49 Chromium headless shell; not real Teams/iPhone"
+    },
+    "allCaseRules": {
+      "summary": {
+        "cases": 23,
+        "turns": 205,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 74,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 200
+        },
+        "casesWithRequiredContentGaps": 22
+      },
+      "exitCode": 1,
+      "qualityGate": "RED: 74 required information-gap turns on the visible QA paths in 22 cases. Not a learner score or mandatory-question checklist."
+    },
+    "screenshotRules": {
+      "summary": {
+        "cases": 1,
+        "turns": 4,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 2
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "exitCode": 0
+    },
+    "cloudflareBuild": {
+      "command": "npm run cf:build",
+      "exitCode": 0,
+      "nextTypecheck": "passed",
+      "credentials": false,
+      "inputs": "env -i; loopback public Supabase placeholders; CLINICAL_AUTHOR_PILOT_ENABLED=1; LEARNING_REWARDS_ENABLED=1; CIRCLE_NODE_TOTAL=2; Node20; no .env or .env.local"
+    },
+    "artifact": {
+      "files": 3626,
+      "unsafeCount": 0,
+      "implementationCount": 2,
+      "safeImplementationCount": 2,
+      "result": {
+        "ok": true
+      }
+    },
+    "privatePrefixScan": {
+      "publicTextFiles": 743,
+      "privateMarkerSamples": 172,
+      "hits": [],
+      "limit": "Literal-prefix sample scan only; no exhaustive disclosure claim."
+    },
+    "standaloneTypecheck": {
+      "command": "NODE_OPTIONS=--max-old-space-size=8192 node node_modules/typescript/bin/tsc --noEmit --incremental false",
+      "exitCode": 0,
+      "diagnostics": 0
+    }
+  },
+  "unrun": [
+    "Actual Mac/qwen/gateway inference quality",
+    "Live Teams/iPhone signed-in encounter flow",
+    "Full unrelated repository test suite"
+  ],
+  "unchanged": [
+    "Frozen patient packs",
+    "Author reference records",
+    "Previously stored raw traces",
+    "Original PR84 fixture and measurement archives",
+    "Model selector/3 and transport",
+    "Founder/security configuration",
+    "Learning rewards source and policy"
+  ],
+  "productionMutations": [],
+  "finishedAt": "2026-10-31T00:02:56.826910+00:00"
+}

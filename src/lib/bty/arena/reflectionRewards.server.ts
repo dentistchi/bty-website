@@ -1,3 +1,4 @@
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PatternShiftBand, ValidationResultOrigin } from "@/domain/leadership-engine/patternShift";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
@@ -33,7 +34,7 @@ type RewardApplyResult =
     };
 
 async function upsertWeeklyXp(
-  supabase: SupabaseClient,
+  xpWriter: SupabaseClient,
   userId: string,
   delta: number,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -41,7 +42,7 @@ async function upsertWeeklyXp(
   // This path is always the global pool (league_id IS NULL). Shared by
   // applyArenaRunRewardsOnVerifiedCompletion (main QR-verified completion) and
   // applyReexposureOutcomeReflection.
-  const { error } = await supabase.rpc("increment_weekly_xp", {
+  const { error } = await xpWriter.rpc("increment_weekly_xp", {
     p_user_id: userId,
     p_league_id: null,
     p_delta: delta,
@@ -116,6 +117,9 @@ export async function applyArenaRunRewardsOnVerifiedCompletion(params: {
   const todayArenaTotal = await getArenaTodayTotal(supabase, userId);
   const deltaCapped = capArenaDailyDelta(arenaWeeklyXp, todayArenaTotal);
 
+  const xpWriter = getSupabaseAdmin();
+  if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
+
   // Insert sentinel BEFORE XP operations so a partial failure on retry cannot double-apply.
   const { error: markErr } = await supabase.from("arena_events").insert({
     user_id: userId,
@@ -128,7 +132,7 @@ export async function applyArenaRunRewardsOnVerifiedCompletion(params: {
   if (markErr) return { ok: false, error: markErr.message };
 
   await supabase.rpc("ensure_arena_profile");
-  const weekly = await upsertWeeklyXp(supabase, userId, deltaCapped);
+  const weekly = await upsertWeeklyXp(xpWriter, userId, deltaCapped);
   if (!weekly.ok) return weekly;
 
   const core = await applyDirectCoreXp(supabase, userId, arenaCoreXp);
@@ -202,7 +206,9 @@ export async function applyReexposureOutcomeReflection(params: {
       : profileByOutcome[validationResult];
 
   if (outcome.weeklyXp > 0) {
-    const weekly = await upsertWeeklyXp(supabase, userId, outcome.weeklyXp);
+    const xpWriter = getSupabaseAdmin();
+    if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
+    const weekly = await upsertWeeklyXp(xpWriter, userId, outcome.weeklyXp);
     if (!weekly.ok) return weekly;
   }
   if (outcome.coreXp > 0) {

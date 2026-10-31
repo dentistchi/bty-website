@@ -5,6 +5,7 @@ import path from "node:path";
 import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import journeysJson from "../scripts/fixtures/clinical-discovery-journeys.v1.json";
+import historyJson from "../scripts/fixtures/clinical-discovery-history-regression.v1.json";
 import { createQaEncounter, type QaJourney } from "../src/lib/bty/clinical-pilot/discovery-qa.server";
 import { discoveryTurns, initialAssessment, type DiscoveryReply } from "../src/domain/clinical-pilot/discovery";
 import { releasedReference, type Reaction } from "../src/domain/clinical-pilot/pilot";
@@ -37,15 +38,18 @@ test.beforeAll(async () => {
 });
 
 const runs = [
-  ...journeys.map(journey => ({ journey, width: 390, height: 844 })),
+  ...journeys.map(journey => ({ journey, width: 390, height: 844, label: "original-journey" })),
+  ...(historyJson as QaJourney[]).flatMap(journey => [320, 390, 1280].map(width => ({
+    journey, width, height: 844, label: "reported-history-regression",
+  }))),
   ...["drchi-006", "drchi-017"].flatMap(caseId => {
     const journey = journeys.find(j => j.caseId === caseId)!;
-    return [{ journey, width: 320, height: 740 }, { journey, width: 1280, height: 900 }];
+    return [{ journey, width: 320, height: 740, label: "original-journey" }, { journey, width: 1280, height: 900, label: "original-journey" }];
   }),
 ];
 
-for (const { journey, width, height } of runs) {
-  test(`synthetic full encounter ${journey.caseId} at ${width}px`, async ({ page }) => {
+for (const { journey, width, height, label } of runs) {
+  test(`synthetic full encounter ${journey.caseId} ${label} at ${width}px`, async ({ page }) => {
     test.setTimeout(45_000);
     // The preview provides the neutral public card. Its in-memory trace is not
     // returned by GET; Begin encounter creates the actual UI-selected session.
@@ -117,6 +121,14 @@ for (const { journey, width, height } of runs) {
       expect(saved.question).toBe(turn.question);
       expect(saved.channel).toBe(turn.channel);
       expect(saved.reply).toEqual(issuedReply);
+      // Check the fixed semantic oracle as well as DOM/transport agreement. A
+      // faithfully rendered wrong reply must not make an encounter test pass.
+      const permitted = [...turn.expectedFactIds, ...(turn.acceptedFactIds ?? [])];
+      expect(saved.reply.factIds.filter(id => !permitted.includes(id)), turn.question).toEqual([]);
+      expect(turn.expectedFactIds.filter(id => !saved.reply.factIds.includes(id)), turn.question).toEqual([]);
+      expect(turn.expectedAvailableFactIds.filter(id => !saved.reply.availableFactIds.includes(id)), turn.question).toEqual([]);
+      if (turn.expectedResolution) expect(saved.reply.resolution, turn.question).toBe(turn.expectedResolution);
+      for (const pattern of turn.answerPatterns ?? []) expect(saved.reply.text, turn.question).toMatch(new RegExp(pattern, "iu"));
       await expect(renderedArticles.nth(1 + 2 * index).locator("p").nth(1)).toHaveText(normalizeText(turn.question));
       await expect(renderedArticles.nth(2 + 2 * index).locator("p").nth(1)).toHaveText(normalizeText(saved.reply.text));
       await expect(referenceHeading).toHaveCount(0);

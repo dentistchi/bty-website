@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BTY_SHELL_DESTINATION_EVENT, decodeShellSubEntityId } from "@/domain/teams/btyDestination";
 import {
   APP_INITIALIZE_TIMEOUT_MS,
@@ -550,7 +550,9 @@ export default function TeamsTabShell() {
     not this seam, decides what to do with one — it refuses an occurrence naming the training
     already open, so a mid-quiz refocus never remounts the room.
   */
-  useEffect(() => {
+  // The ready shell can receive focus before passive effects (including the
+  // host-ready handshake) run. Install navigation listeners at the ready commit.
+  useLayoutEffect(() => {
     if (phase.k !== "ready") return;
     if (typeof window === "undefined") return;
     let cancelled = false;

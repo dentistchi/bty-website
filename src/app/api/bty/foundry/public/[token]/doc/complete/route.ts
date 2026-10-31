@@ -1,3 +1,4 @@
+import { syncLearningRewardsIfEnabled } from "@/lib/bty/learning-rewards/service.server";
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
@@ -53,11 +54,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     controlled completion: `claim_secret_hash` NON-NULL, terminal blank, raw code gone for good.
     It is returned exactly once, to the learner who just completed anonymously, and to nobody else.
   */
-  return jsonNoStore({
+  // A reward outage cannot undo the canonical completion. Me can reconcile it later.
+  const learningRewards = authUserId
+    ? await syncLearningRewardsIfEnabled(admin, authUserId).catch(() => ({ status: "pending" as const }))
+    : undefined;
+  const response = jsonNoStore({
     ok: true,
     ...r.snapshot,
+    ...(learningRewards ? { learningRewards } : {}),
     applyWindow: r.applyWindow,
     claimCode: r.claimCode,
     claimExpiresAt: r.claimExpiresAt,
   });
+  if (learningRewards) response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }

@@ -44,6 +44,7 @@ async function main() {
     casesWithRequiredContentGaps: results.filter(r => r.requiredContentGapTurns > 0).length };
   const sourceFiles = ["src/lib/bty/clinical-pilot/discovery-router.server.ts",
     "src/lib/bty/clinical-pilot/clinical-intents.server.ts", "src/lib/bty/clinical-pilot/clinical-subjects.server.ts",
+    "src/lib/bty/clinical-pilot/treatment-history.server.ts",
     "src/lib/bty/clinical-pilot/discovery-cases.server.ts", "src/lib/bty/clinical-pilot/discovery-qa.server.ts",
     "src/domain/clinical-pilot/discovery.ts", "src/domain/clinical-pilot/pilot.ts", "scripts/clinical-discovery-audit.ts"];
   const sourceFileHashes = Object.fromEntries(sourceFiles.map(name => [name, createHash("sha256").update(readFileSync(resolve(root, name))).digest("hex")]));
