@@ -1,5 +1,6 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { caseDetailFactTeeth, isCaseDetailReview } from "./case-detail-subjects.server";
+import { isNextCaseDetailReview } from "./case-detail-next-subjects.server";
 
 /** Interpretation metadata only. These IDs point to existing patient statements;
  * no examination finding, author recommendation, provider or procedure is inferred.
@@ -27,6 +28,9 @@ export function treatmentHistoryFacts(patient: DiscoveryPatient, question = ""):
   if (patient.version !== VERSION && !isVariant && !isCaseDetailReview(patient)) return [];
   let sources = isVariant ? variantSource : DENTAL_PROCEDURE_SOURCES[patient.caseId] ?? [];
   if (isCaseDetailReview(patient) && patient.caseId === "drchi-005") sources = [{ suffix: "rct-history" }, { suffix: "crown-history" }];
+  if (isNextCaseDetailReview(patient) && patient.caseId === "drchi-003") sources = isTreatmentHistoryQuestion(question)
+    ? [{ suffix: "treatment-history" }] : [{ suffix: "treatment-history" }, { suffix: "rct-timing" }];
+  if (isNextCaseDetailReview(patient) && patient.caseId === "drchi-008") sources = [{ suffix: "duration" }];
   // "Last time" asks about the repeat intervention, not the original delivery.
   if (/\b(?:last (?:time|visit|appointment|treatment|procedure)|most recent|latest)\b/iu.test(question) && sources.some(source => source.recent)) {
     sources = sources.filter(source => source.recent);

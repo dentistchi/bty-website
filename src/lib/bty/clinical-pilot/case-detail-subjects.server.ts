@@ -1,15 +1,18 @@
 import type { DiscoveryChannel, DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { CASE_DETAIL_REVIEW_VERSION } from "./case-detail-variants.server";
+import { isNextCaseDetailReview, nextCaseDetailSubject, nextCaseDetailFactTeeth, nextCaseDetailFactMatchesClause } from "./case-detail-next-subjects.server";
 
 /** Subject metadata for the three review packs only. No answers or diagnoses are
  * created here; a selection can disclose only a registered fixed patient fact. */
-export const isCaseDetailReview = (patient: DiscoveryPatient) => patient.version === CASE_DETAIL_REVIEW_VERSION
-  && ["drchi-005", "drchi-006", "drchi-011"].includes(patient.caseId);
-type Subject = { id: string; topic: string; channel: DiscoveryChannel; suffixes: string[] };
+export const isCaseDetailReview = (patient: DiscoveryPatient) => (patient.version === CASE_DETAIL_REVIEW_VERSION
+  && ["drchi-005", "drchi-006", "drchi-011"].includes(patient.caseId)) || isNextCaseDetailReview(patient);
+type Subject = { id: string; topic: string; channel: DiscoveryChannel; suffixes: string[];
+  historyIntentIds?: ("endodontic-history" | "cold-history" | "symptom-onset")[] };
 const subject = (id: string, topic: string, channel: DiscoveryChannel, ...suffixes: string[]): Subject => ({ id, topic, channel, suffixes });
 const suffix = (fact: DiscoveryFact) => fact.id.slice(fact.id.lastIndexOf(":") + 1);
 
 export function caseDetailSubject(text: string, channel: DiscoveryChannel, patient: DiscoveryPatient): Subject | undefined {
+  if (isNextCaseDetailReview(patient)) return nextCaseDetailSubject(text, channel, patient);
   if (!isCaseDetailReview(patient) || /\b(?:would|should|recommend|prescribe|replace|retighten|tighten|adjust)\b/iu.test(text)) return;
   const q = text.trim();
   const c = patient.caseId;
@@ -96,6 +99,7 @@ const focalSources: Record<string, readonly string[]> = {
 };
 export function caseDetailFactTeeth(patient: DiscoveryPatient, fact: DiscoveryFact): readonly number[] | undefined {
   if (fact.toothNumbers) return fact.toothNumbers;
+  if (isNextCaseDetailReview(patient)) return nextCaseDetailFactTeeth(patient, fact);
   return isCaseDetailReview(patient) && focalSources[patient.caseId]?.includes(suffix(fact)) ? [30] : undefined;
 }
 export function isGlobalDetailRequest(question: string, patient: DiscoveryPatient, fact: DiscoveryFact): boolean {
@@ -111,6 +115,7 @@ export function caseDetailRequestedTeeth(question: string): number[] {
 }
 export function caseDetailFactMatchesClause(question: string, patient: DiscoveryPatient, fact: DiscoveryFact): boolean {
   if (!isCaseDetailReview(patient)) return true;
+  if (!nextCaseDetailFactMatchesClause(question, patient, fact)) return false;
   const requested = caseDetailRequestedTeeth(question);
   const teeth = caseDetailFactTeeth(patient, fact);
   // A one-tooth order must not acquire both independent control findings.

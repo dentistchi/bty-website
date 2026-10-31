@@ -1,0 +1,44 @@
+{
+  "schema": "clinical-discovery-fixture-annotation-correction/v1",
+  "date": "2026-10-31",
+  "originalFixture": "scripts/fixtures/clinical-discovery-case-details-next.v1.json",
+  "originalFixtureSha256": "5297f2352130eb02302fc974797f07001173eb83470176c79dc0dfdda259ce52",
+  "correctedFixture": "scripts/fixtures/clinical-discovery-case-details-next.v2.json",
+  "correctedFixtureSha256": "9d18a065beb1ef75254c20b9c1c92b9386c575bafc660a5403bea067bfb91fa6",
+  "originalFreezeCommit": "6e09e7331951645d41b5439df3b4a8673a8119f9",
+  "changes": [
+    {
+      "caseId": "drchi-002",
+      "turnNumber": 21,
+      "question": "Check #29 distal margin and percuss #30.",
+      "field": "required",
+      "fromValue": true,
+      "toValue": false,
+      "reason": "This is a deliberate wrong-target disclosure negative control. The semantic oracle correctly requires acknowledgement that the requested other-tooth finding is unavailable. That genuine information limit must not simultaneously be required to disappear for this finite target-case quality gate."
+    },
+    {
+      "caseId": "drchi-003",
+      "turnNumber": 24,
+      "question": "Check #29 crown margins and percuss #30.",
+      "field": "required",
+      "fromValue": true,
+      "toValue": false,
+      "reason": "This is a deliberate wrong-target disclosure negative control. The semantic oracle correctly requires acknowledgement that the requested other-tooth finding is unavailable. That genuine information limit must not simultaneously be required to disappear for this finite target-case quality gate."
+    },
+    {
+      "caseId": "drchi-008",
+      "turnNumber": 21,
+      "question": "Measure the ridge at #31 and assess #3 supraeruption.",
+      "field": "required",
+      "fromValue": true,
+      "toValue": false,
+      "reason": "This is a deliberate wrong-target disclosure negative control. The semantic oracle correctly requires acknowledgement that the requested other-tooth finding is unavailable. That genuine information limit must not simultaneously be required to disappear for this finite target-case quality gate."
+    }
+  ],
+  "unchanged": [
+    "All 72 questions, modes, expected fact IDs, available fact IDs, accepted IDs, answer patterns, resolutions, per-turn reasons and declared content gaps.",
+    "Original v1 fixture bytes and pre-repair raw reports.",
+    "All clinical-content requirements apart from these three deliberately wrong-target negative-control quality annotations."
+  ],
+  "limitation": "This disclosed correction follows inspection of the quality gate definition and expected unavailable-topic acknowledgements. It is a regression-oracle annotation correction, not unseen model accuracy evidence and not a new patient finding."
+}

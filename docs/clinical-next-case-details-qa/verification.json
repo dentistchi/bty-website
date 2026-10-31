@@ -1,0 +1,429 @@
+{
+  "schema": "clinical-next-case-details-verification/v1",
+  "recordedAt": "2026-10-31T20:27:33.649153+00:00",
+  "baseLocalCommit": "080b7d55c47a24bcf3f43ad1c7289bcb37b93c55",
+  "baseRemotePR90Commit": "c3c6b6b6f42ad59dac4659fbf2ce080d5073bd38",
+  "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6",
+  "routerVersion": "discovery-intent/v10",
+  "packVersion": "discovery-2026-10-31.2-review-b",
+  "sourceFileSha256": {
+    "src/lib/bty/clinical-pilot/discovery-router.server.ts": "b9ee02beea0f2fb5ab62db88a88d2bae60ea6aef744406fa1f76f731f5f77135",
+    "src/lib/bty/clinical-pilot/clinical-intents.server.ts": "8807b210e6b4742cb21d71526d23a49f894060413db01fe80f2cc4e82ce8d22d",
+    "src/lib/bty/clinical-pilot/clinical-subjects.server.ts": "b874d7d66a4a49a4580dda5c4fbf2cd24f9797f90fd0650970dc3d1a22dd2938",
+    "src/lib/bty/clinical-pilot/treatment-history.server.ts": "40197066e03bcba22427340795fde207993e193dec0f4282650210b560c5d030",
+    "src/lib/bty/clinical-pilot/case-detail-variants.server.ts": "117d26f410fa1acb46a30ac80e8c7eb2f416b0b21659db12f4ca729ca8be8ce4",
+    "src/lib/bty/clinical-pilot/case-detail-subjects.server.ts": "863039140249372ac32f9cfc298930e73a93a5e7908a67f3f229129d78eadd4a",
+    "src/lib/bty/clinical-pilot/case-detail-next-variants.server.ts": "07262972e1c4e8f2f98381ea4be51892f515db0c3db3bfb7a635b8b2900ce4ed",
+    "src/lib/bty/clinical-pilot/case-detail-next-subjects.server.ts": "ba54824fefbc320bb765168335d7d8232f329d99cbc04f7b9ff61436bf1061a8",
+    "src/lib/bty/clinical-pilot/discovery-cases.server.ts": "647bc41e7c336cb6a8dc67081cb681a2d05f5ba48dc4d2bf65d84ce041dad6f6",
+    "src/lib/bty/clinical-pilot/discovery-qa.server.ts": "e8b0c3a8bdb326da6877b07a6cfd205718297d8738bcdff905e2a9a826955be7",
+    "src/domain/clinical-pilot/discovery.ts": "34fc023b322d923fe6a0ea92618693802ef942f0fbb71d039fc7f3a65db8e6df",
+    "src/domain/clinical-pilot/pilot.ts": "28483daa87259b271ff8138c8248fee0cdf65ed44e606b1fbb4249b12cd43b9e",
+    "scripts/clinical-discovery-audit.ts": "fe84a5f1af6883c3041891f6a3b33597e689d534c420e0118df99caf6b95c431"
+  },
+  "packFacts": {
+    "drchi-002": {
+      "total": 27,
+      "fictionalNewOrRevised": 21,
+      "explicitUnknown": 1
+    },
+    "drchi-003": {
+      "total": 33,
+      "fictionalNewOrRevised": 29,
+      "explicitUnknown": 2
+    },
+    "drchi-008": {
+      "total": 31,
+      "fictionalNewOrRevised": 27,
+      "explicitUnknown": 2
+    }
+  },
+  "derivedRootToothProjections": 12,
+  "previous28SerializedPatientHashesUnchanged": true,
+  "originalCatalogAuthorReferencesAndHistoricalFixturesUnchanged": true,
+  "originalSubsetBaseline": {
+    "cases": 3,
+    "turns": 27,
+    "requiredGapTurns": 12,
+    "gapTurnsByCase": [
+      3,
+      4,
+      5
+    ],
+    "qualification": "Not 12 unique facts; covered-fracture and retreatment uncertainties remain explicit in the new design."
+  },
+  "newPackBeforeRouting": {
+    "summary": {
+      "cases": 3,
+      "turns": 72,
+      "routingIssueTurns": 34,
+      "answerMismatchTurns": 23,
+      "requiredContentGapTurns": 0,
+      "invariantErrors": 0,
+      "modelTurns": 0,
+      "newExtraDisclosureTurns": 5,
+      "newExtraAvailableDisclosureTurns": 5,
+      "repeatedExtraSelectionTurns": 10,
+      "fallbackReasons": {
+        "local_model_not_configured": 62
+      },
+      "casesWithRequiredContentGaps": 0
+    },
+    "unitTestsPassed": 27,
+    "unitTestsFailed": 12,
+    "units": 39,
+    "rootReportSha256": "7effdf27344241c155df93584bed9fef7383e0e46972b9e8034154200331406a"
+  },
+  "oracleCorrection": {
+    "v1Preserved": true,
+    "v1Sha256": "5297f2352130eb02302fc974797f07001173eb83470176c79dc0dfdda259ce52",
+    "v2Sha256": "9d18a065beb1ef75254c20b9c1c92b9386c575bafc660a5403bea067bfb91fa6",
+    "onlyChanges": "Three intentionally wrong-target negative controls changed required:true to false. All clinical semantic expectations are unchanged.",
+    "record": "scripts/fixtures/clinical-discovery-case-details-next.v2.corrections.json"
+  },
+  "independentProbes": {
+    "oracleSha256": "7e256d458170e09693048cd26b6483a54158fbd0614df87e1ae57795d5789fef",
+    "repositoryCopyByteIdentical": true,
+    "beforePassed": 6,
+    "beforeFailed": 7,
+    "afterPassed": 13,
+    "afterFailed": 0,
+    "realModelCalls": 0,
+    "actualAfterExecutionSource": "cdafb572d5ac2a88557bda4e08a8a471870581d6",
+    "rawAfterSourceHeadMeans": "Frozen oracle baseline, not execution HEAD; see separate archived after-run manifest.",
+    "afterRunManifest": {
+      "phase": "after",
+      "observedExecutionHead": "cdafb572d5ac2a88557bda4e08a8a471870581d6",
+      "oracleSourceHead": "9de15c9000c5c66e44f92dece79ba5a4625c3015",
+      "sourceHeadFieldInRawOutput": "Identifies the frozen oracle baseline; the original runner repeats this field unchanged, not the repaired execution head.",
+      "nodeVersion": "v20.20.2",
+      "passed": 13,
+      "total": 13,
+      "realModelCalls": 0,
+      "externalNetworkCalls": 0,
+      "persistedToLearnerStore": false,
+      "oracleSha256": "7e256d458170e09693048cd26b6483a54158fbd0614df87e1ae57795d5789fef",
+      "afterSha256": "598715f4673fad539f482810672666b4bc1f1daf675bb2bcd39bb4da5cab9278",
+      "beforeSha256": "d371636b21cbfc4037b93d5f5188d4da884cbbb5980ba5a55e797d182cfc0c8b"
+    },
+    "extraUnitControls": 2
+  },
+  "nodeVersion": "20.20.2",
+  "dependencies": {
+    "command": [
+      "npm",
+      "ci",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "exitCode": 0,
+    "freshBuildCheckout": true,
+    "realNodeModulesDirectory": true,
+    "installLogSha256": "38138f255d46584145d7894dbe39d72cfaab1a7737293d710304a6075cdcdd9b"
+  },
+  "unitTests": {
+    "command": [
+      "node",
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "src/app/api/bty/clinical-encounter/traces/route.test.ts",
+      "src/app/api/bty/clinical-pilot/route.test.ts",
+      "src/app/api/me/learning-rewards/route.test.ts",
+      "src/components/app-shell/PracticeLanding.surfaceScoping.test.tsx",
+      "src/components/app-shell/PracticeLanding.test.tsx",
+      "src/components/app-shell/teamsPracticeRecoveryOperations.test.tsx",
+      "src/components/bty-arena/ClinicalCasesPractice.test.tsx",
+      "src/components/bty-arena/ClinicalReasoningTrainer.test.tsx",
+      "src/domain/clinical-encounter/attemptLifecycleMigration.test.ts",
+      "src/domain/clinical-encounter/builder.test.ts",
+      "src/domain/clinical-encounter/comparison.test.ts",
+      "src/domain/clinical-encounter/encounter.test.ts",
+      "src/domain/clinical-encounter/expertBenchmark.test.ts",
+      "src/domain/clinical-encounter/neurosight.test.ts",
+      "src/domain/clinical-encounter/referenceTrace.test.ts",
+      "src/domain/clinical-encounter/serverPersistence.test.ts",
+      "src/domain/clinical-encounter/session.test.ts",
+      "src/domain/clinical-encounter/store.test.ts",
+      "src/domain/clinical-pilot/discovery.test.ts",
+      "src/domain/clinical-pilot/pilot.test.ts",
+      "src/domain/clinical-reasoning/clinicalReasoning.test.ts",
+      "src/domain/learning-rewards/policy.test.ts",
+      "src/domain/learning-rewards/summary.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-isolation.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-model-scope.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-next-isolation.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-next-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-next-regressions.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-next-variants.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-scope.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-variants.server.test.ts",
+      "src/lib/bty/clinical-pilot/case001-variant-b.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-discovery-gateway.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-short-questions.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-subjects.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-cases.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-context.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-dentition.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-qa.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-router.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-worker-transport.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history-model.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history.server.test.ts",
+      "src/lib/bty/foundry/arena/deployWrapper.test.ts",
+      "src/lib/bty/learning-rewards/completion-hooks.test.ts",
+      "src/lib/bty/learning-rewards/service.server.test.ts",
+      "src/lib/bty/learning-rewards/sources.server.test.ts",
+      "--pool=forks",
+      "--maxWorkers=1",
+      "--minWorkers=1",
+      "--reporter=json",
+      "--outputFile=/tmp/bty-next-cases-final-tests.json"
+    ],
+    "exitCode": 0,
+    "files": 49,
+    "passed": 897,
+    "failed": 0,
+    "rawResultSha256": "426dfb0cb75dbff1080bda66dd07a6be8f3d506be47145b52033ab8a0c8bf4af"
+  },
+  "browser": {
+    "command": [
+      "node",
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "/tmp/bty-next-cases-playwright.cjs"
+    ],
+    "exitCode": 0,
+    "passed": 48,
+    "widths": [
+      320,
+      390,
+      1280
+    ],
+    "newReviewBFlows": 9,
+    "priorFlows": 39,
+    "transport": "Real UI with intercepted in-memory router/domain and traces; no server/auth/DB/network",
+    "config": "const {defineConfig} = require('/workspace/scratch/44e2cc16edbd/bty-clinical-next-cases/node_modules/@playwright/test');\nmodule.exports = defineConfig({\n testDir: '/workspace/scratch/44e2cc16edbd/bty-clinical-next-cases/e2e',\n testMatch: '**/clinical-autonomous-qa.public.spec.ts',\n outputDir: '/tmp/bty-next-cases-pw-results',\n fullyParallel: false, workers: 1, retries: 0, reporter: 'line',\n use: {headless: true,launchOptions:{executablePath:'/tmp/bty-case-detail-browsers/chromium_headless_shell-1148/chrome-linux/headless_shell',args:['--no-sandbox']}}\n});\n",
+    "specSha256": "faff01793921ff38c42a3f16288df58e71789f8ff5e4de9d6bf82b7cb022bbe0",
+    "logSha256": "b2431092d022904384d6ac8ac6e373b50dee73c454155be206f5657ab023da16"
+  },
+  "types": {
+    "command": [
+      "node",
+      "node_modules/typescript/bin/tsc",
+      "--noEmit",
+      "--incremental",
+      "false"
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    },
+    "exitCode": 0,
+    "logBytes": 0,
+    "separateFromBuildGeneratedFiles": true
+  },
+  "build": {
+    "command": [
+      "npm",
+      "run",
+      "cf:build"
+    ],
+    "exitCode": 0,
+    "sourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6",
+    "freshCheckoutRuntimeHashesMatch": true,
+    "envIsolation": "env -i with loopback public Supabase placeholders; no auth/DB/deploy credentials",
+    "env": {
+      "PATH": "/root/.npm/_npx/185e25162edaacfb/node_modules/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/local/bin:/usr/bin:/bin",
+      "TMPDIR": "/tmp",
+      "NEXT_PUBLIC_SUPABASE_URL": "http://127.0.0.1:9",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "offline-case-detail-check",
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "WRANGLER_SEND_METRICS": "false",
+      "CLINICAL_AUTHOR_PILOT_ENABLED": "1",
+      "LEARNING_REWARDS_ENABLED": "1",
+      "CIRCLE_NODE_TOTAL": "2",
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    },
+    "logSha256": "0192837b28fb0b46ab68fe734486c7c7c2d482338f1a4cea8d0ba9de969a648a"
+  },
+  "artifactGuard": {
+    "files": 3626,
+    "unsafeCount": 0,
+    "implementationCount": 2,
+    "safeImplementationCount": 2,
+    "gate": {
+      "ok": true
+    }
+  },
+  "publicMarkerScan": {
+    "scannedPublicTextFiles": 743,
+    "markerCounts": {
+      "sixReviewPatientAnswers": 119,
+      "authorReferences": 46,
+      "selectorInstructions": 12
+    },
+    "hits": [],
+    "qualification": "Exact prefix samples only; not an exhaustive disclosure proof."
+  },
+  "syntheticRules": [
+    {
+      "label": "next-v2",
+      "exitCode": 0,
+      "summary": {
+        "cases": 3,
+        "turns": 72,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 62
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "fixtureSha256": "9d18a065beb1ef75254c20b9c1c92b9386c575bafc660a5403bea067bfb91fa6",
+      "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6"
+    },
+    {
+      "label": "next-v1",
+      "exitCode": 1,
+      "summary": {
+        "cases": 3,
+        "turns": 72,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 3,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 62
+        },
+        "casesWithRequiredContentGaps": 3
+      },
+      "fixtureSha256": "5297f2352130eb02302fc974797f07001173eb83470176c79dc0dfdda259ce52",
+      "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6"
+    },
+    {
+      "label": "review-a",
+      "exitCode": 0,
+      "summary": {
+        "cases": 3,
+        "turns": 72,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 67
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "fixtureSha256": "958d9051a4fc2fd5df577dd3978c8d1377ed182d6c2b5dc487d8d6379408c0eb",
+      "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6"
+    },
+    {
+      "label": "original205",
+      "exitCode": 1,
+      "summary": {
+        "cases": 23,
+        "turns": 205,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 74,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 200
+        },
+        "casesWithRequiredContentGaps": 22
+      },
+      "fixtureSha256": "aec9365e35e0b89c85ddefd8bd82626835b05df8c80f851776d6204c849520f3",
+      "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6"
+    },
+    {
+      "label": "history",
+      "exitCode": 0,
+      "summary": {
+        "cases": 1,
+        "turns": 4,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 2
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "fixtureSha256": "af723aa086d2c43d2f362e123ded801b2c1e7c983274dbbc635ea85efa66efc6",
+      "runtimeSourceCommit": "cdafb572d5ac2a88557bda4e08a8a471870581d6"
+    }
+  ],
+  "archivesSha256": {
+    "history-final.json.gz": "e578cbae1a0daf8fe667b6837e117d9f0210e2ed4d59d3efa9125ed3e80c5824",
+    "independent-after-run-manifest.json.gz": "af0537e682d596b53af9b1e798282043076c83819e27c9b2ff35829b7f59e82e",
+    "independent-after.json.gz": "1ed2e9398a698915a4a923dd76c35ce50cdfb415415bb97893c04b6f19f08db0",
+    "independent-before.json.gz": "b2c8f1d4a93d5c2f01eb8213095ef238ec7000c820c507b020f366f6715931ae",
+    "original-three-cases-before.json.gz": "bb87ff5a95beaac978190b55649fee94f578f6df29100956a2e887cc3f94b2bd",
+    "original205-final.json.gz": "ba0bcbf929b834f5b0860e5ff02c12524a2580c7813ccf1e42c0490c92716e2a",
+    "review-a-final.json.gz": "7c6ad76ca79111514dccfac3297e521ab98dff8301a79c5c3698773b6465f43a",
+    "review-b-before-router.json.gz": "e8fb4e7e9864cffddd55938284f7b0a86ecdd2c6ebc34878475186dd678b068c",
+    "review-b-v1-final.json.gz": "70634a2d41865f962fa214aab32cb163fa6f57e93977137c0c492c399f7c9a75",
+    "review-b-v2-final.json.gz": "aed769f3e8f57a9eca54c0a437c4e76ae63bf29aaf3fb16cd2d3978a778793ed",
+    "unit-before-router.json.gz": "b8b372251d7d657edb5b6a0d34754eabf056f485e070c70905994500cf730bc9",
+    "unit-final.json.gz": "1385ca5b7ab80275f421b55514a98506c54f12a27a88d79ac455d77ec338e617"
+  },
+  "recoveredCheckFailures": [
+    {
+      "check": "two optional agent standalone tsc attempts",
+      "exitCode": 134,
+      "cause": "Default 2GB heap exhausted before diagnostics; not passes. Root final 8GB run passed."
+    },
+    {
+      "check": "independent then-history control after first followup repair",
+      "passed": 14,
+      "failed": 1,
+      "cause": "History recognition still used the unsplit full question when no subject scope existed; fixed and included in final 897-test run."
+    }
+  ],
+  "unrun": [
+    "actual Mac/qwen evaluation of new packs",
+    "signed-in live Worker model-check",
+    "physical iPhone/Teams flows",
+    "full unrelated repository test suite"
+  ],
+  "qualifications": [
+    "Visible finite fixtures and controlled completions are regression coverage, not held-out model accuracy.",
+    "Same-clause topic meaning is not proved by evidence/root/tooth scope checks.",
+    "New preview paths do not change the original 205-turn 74-gap result."
+  ],
+  "productionActions": {
+    "merge": false,
+    "deploy": false,
+    "migration": false,
+    "databaseWrite": false,
+    "authSessionCreated": false,
+    "secretChange": false,
+    "servicesRestarted": false
+  }
+}

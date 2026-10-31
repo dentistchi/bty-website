@@ -1,0 +1,210 @@
+{
+  "schema": "independent-clinical-review-b-probes/v1",
+  "sourceHead": "9de15c9000c5c66e44f92dece79ba5a4625c3015",
+  "packVersion": "discovery-2026-10-31.2-review-b",
+  "frozenBeforeExecution": true,
+  "synthetic": true,
+  "persistedToLearnerStore": false,
+  "expectedIdOrderSignificant": false,
+  "probes": [
+    {
+      "name": "medications-drugs-supplements",
+      "caseId": "drchi-002",
+      "question": "Any regular drugs or supplements?",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-002:medications"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-002:medications"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "medical-and-regular-drugs",
+      "caseId": "drchi-008",
+      "question": "What health conditions do you have, and what regular drugs do you use?",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-008:medical",
+        "drchi-008:medications"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-008:medical",
+        "drchi-008:medications"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "ferrule-then-isolation",
+      "caseId": "drchi-002",
+      "question": "Measure ferrule height then assess rubber-dam isolation.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-002:ferrule",
+        "drchi-002:isolation"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-002:ferrule",
+        "drchi-002:isolation"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "named-ept-and-pa",
+      "caseId": "drchi-002",
+      "question": "Record EPT and periapical status.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-002:ept",
+        "drchi-002:apical-imaging"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-002:ept",
+        "drchi-002:apical-imaging"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "distal-pocket-depths-only",
+      "caseId": "drchi-003",
+      "question": "For #30, record distal-root pocket depths only.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-003:probing-distal"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-003:probing-distal"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "mesial-obturation-then-distal-probing",
+      "caseId": "drchi-003",
+      "question": "Review the mesial root obturation, then assess distal-root probing.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-003:root-filling-quality-mesial",
+        "drchi-003:probing-distal"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-003:root-filling-quality-mesial",
+        "drchi-003:probing-distal"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "control-percussion-then-focal-margins",
+      "caseId": "drchi-003",
+      "question": "Percuss #29, then examine crown margins on #30.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-003:adjacent-percussion-29",
+        "drchi-003:crown-margins"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-003:adjacent-percussion-29",
+        "drchi-003:crown-margins"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "position-then-ridge-width",
+      "caseId": "drchi-008",
+      "question": "Assess #31's mesial inclination, then measure ridge width at #30.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-008:movement",
+        "drchi-008:bone"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-008:movement",
+        "drchi-008:bone"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "opposing-position-only",
+      "caseId": "drchi-008",
+      "question": "Record only #3's vertical eruption position.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-008:opposing"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-008:opposing"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "fracture-then-crown-margins",
+      "caseId": "drchi-003",
+      "question": "Assess root fracture status, then inspect the crown margins.",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [
+        "drchi-003:fracture",
+        "drchi-003:crown-margins"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-003:crown-margins"
+      ],
+      "expectedResolution": "answered"
+    },
+    {
+      "name": "restorative-margin-is-not-caries-boundary",
+      "caseId": "drchi-002",
+      "question": "What is the distal restorative margin-to-bone distance?",
+      "channel": "exam",
+      "mode": "rules",
+      "expectedFactIds": [],
+      "expectedAvailableFactIds": [],
+      "expectedResolution": "unavailable"
+    },
+    {
+      "name": "controlled-model-wrong-root-evidence",
+      "caseId": "drchi-003",
+      "question": "Review distal-root obturation of #30. Describe background details.",
+      "channel": "exam",
+      "mode": "controlled-model",
+      "expectedFactIds": [
+        "drchi-003:root-filling-quality-distal"
+      ],
+      "expectedAvailableFactIds": [
+        "drchi-003:root-filling-quality-distal"
+      ],
+      "expectedResolution": "answered",
+      "modelSelectedFactIds": [
+        "drchi-003:root-filling-quality-mesial"
+      ],
+      "modelEvidence": [
+        "distal-root obturation"
+      ]
+    },
+    {
+      "name": "controlled-model-wrong-site-evidence",
+      "caseId": "drchi-008",
+      "question": "Measure ridge width at tooth #3. Tell me more about the case.",
+      "channel": "exam",
+      "mode": "controlled-model",
+      "expectedFactIds": [],
+      "expectedAvailableFactIds": [],
+      "expectedResolution": "unavailable",
+      "modelSelectedFactIds": [
+        "drchi-008:bone"
+      ],
+      "modelEvidence": [
+        "ridge width"
+      ]
+    }
+  ]
+}

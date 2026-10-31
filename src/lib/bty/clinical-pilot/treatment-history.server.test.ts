@@ -46,7 +46,8 @@ describe("authored prior dental procedure history", () => {
       const before = JSON.stringify(patient);
       const suffixes = patient.caseId === "drchi-001" && /-variant-[ab]$/u.test(patient.version)
         ? ["restoration-age"] : patient.caseId === "drchi-005" && patient.version === CASE_DETAIL_REVIEW_VERSION
-          ? ["rct-history", "crown-history"] : sourceIds[Number(patient.caseId.slice(-3))]!;
+          ? ["rct-history", "crown-history"] : patient.caseId === "drchi-008" && patient.version === "discovery-2026-10-31.2-review-b"
+            ? ["duration"] : sourceIds[Number(patient.caseId.slice(-3))]!;
       const ids = suffixes.map(s => `${patient.caseId}:${s}`);
       const reply = await respondToDiscovery("What did we do?", channel, patient);
       expect(reply.factIds).toEqual(ids);

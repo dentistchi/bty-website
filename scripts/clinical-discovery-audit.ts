@@ -46,6 +46,8 @@ async function main() {
     "src/lib/bty/clinical-pilot/clinical-intents.server.ts", "src/lib/bty/clinical-pilot/clinical-subjects.server.ts",
     "src/lib/bty/clinical-pilot/treatment-history.server.ts",
     "src/lib/bty/clinical-pilot/case-detail-variants.server.ts", "src/lib/bty/clinical-pilot/case-detail-subjects.server.ts",
+    "src/lib/bty/clinical-pilot/case-detail-next-variants.server.ts",
+    "src/lib/bty/clinical-pilot/case-detail-next-subjects.server.ts",
     "src/lib/bty/clinical-pilot/discovery-cases.server.ts", "src/lib/bty/clinical-pilot/discovery-qa.server.ts",
     "src/domain/clinical-pilot/discovery.ts", "src/domain/clinical-pilot/pilot.ts", "scripts/clinical-discovery-audit.ts"];
   const sourceFileHashes = Object.fromEntries(sourceFiles.map(name => [name, createHash("sha256").update(readFileSync(resolve(root, name))).digest("hex")]));

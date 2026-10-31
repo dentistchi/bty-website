@@ -1,5 +1,43 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-NEXT-CASE-DETAILS — 2026-10-31
+
+Dr. Chi requests the next work after PR #90's initial cases and model-scope
+repair. Prepare separately versioned English fictional details for Cases 002,
+003 and 008 using `discovery-2026-10-31.2-review-b`. Retain all 28 existing
+patient objects, including review A, and every historical stored version/hash.
+Append the new versions behind the existing Founder-only preview gate. Preserve
+all available source statements and author references; new or replaced unavailable
+details remain explicitly fictional-extension-awaiting-review.
+
+Separate pre-excavation observations from future pulp exposure/restorability;
+image comparison, covered fracture status and retreatment feasibility from one
+another; and tooth identity, #3 position, #31 inclination, space and ridge/anatomic
+measurements from a future implant plan or primary stability. Quantitative values
+are fictional design, not diagnostic cutoffs, outcome guarantees or author rules.
+Use fixed per-root/per-tooth projections to avoid releasing unrelated findings.
+
+Freeze independent semantic journeys before router repair. Reproduce the original
+three-case 12-gap-turn subset, then test natural follow-ups, compound/root/tooth
+scope, negation, patient/exam boundaries, model evidence, provenance and saved
+version isolation. Preserve original 205-turn and review-A fixtures/results;
+report this batch separately. Tests remain synthetic in memory with no auth or
+learner writes. No deployment, merge, migration, seed, runtime configuration or
+service restart is included. Update the existing Draft PR #90 with measured
+results and an English review table. Unrelated project attachments are not needed.
+
+Observed preparation: 77 marked entries across the three new packs, including
+12 fixed scope projections and five retained unknowns. All 28 prior pack hashes
+remain unchanged. The new 72-turn v2 rules path passes with zero required gaps;
+v1 retains three deliberate wrong-target gaps after an explicit annotation-only
+correction. Independent additional probes improve from 6/13 to 13/13. Related
+tests pass 897/897 across 49 files; isolated browser flows pass 48/48; final
+standalone types and a fresh-checkout Cloudflare build pass. The original
+205-turn/74-gap limit and review-A results remain separate. See
+`docs/CLINICAL_CASE_DETAILS_NEXT_REVIEW.md`, `docs/CLINICAL_CASE_DETAILS_NEXT_QA.md`
+and `docs/clinical-next-case-details-qa/verification.json`. Actual Mac/qwen and
+live Worker/Teams checks remain unrun; no production action was performed.
+
 ## CLINICAL-DISCOVERY-MODEL-EVIDENCE-SCOPE — 2026-10-31
 
 Continue PR #90 verification after Dr. Chi's instruction to proceed. Independent

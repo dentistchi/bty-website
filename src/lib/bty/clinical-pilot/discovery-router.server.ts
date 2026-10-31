@@ -3,6 +3,7 @@ import { historyIntents, recognizeHistoryIntents, factsForIntent, type HistoryIn
 import { repeatClinicalFollowup, scopeClinicalSubject, splitClinicalClauses, type MissingClinicalSubject } from "./clinical-subjects.server";
 import { asksPriorTreatmentProvider, isTreatmentHistoryQuestion, repeatTreatmentTiming, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
 import { caseDetailFactMatchesClause, caseDetailFactTeeth, isCaseDetailReview, isGlobalDetailRequest, repeatCaseDetailFact } from "./case-detail-subjects.server";
+import { isNextCaseDetailReview, nextCaseDetailHasSubject } from "./case-detail-next-subjects.server";
 
 type Fact = DiscoveryPatient["facts"][number];
 type Routing = DiscoveryReply["routing"];
@@ -10,7 +11,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent | MissingClinicalSubject };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v9";
+const ROUTER_VERSION = "discovery-intent/v10";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -67,7 +68,8 @@ function unavailable(channel: DiscoveryChannel, routing: Routing) {
     : "I could not match that examination request to a result. Please be more specific or continue your assessment.", "clarify", routing);
 }
 
-function disclose(channel: DiscoveryChannel, choices: Choice[], routing: Routing, patient: DiscoveryPatient, requestedIntents: HistoryIntent[]): DiscoveryReply {
+function disclose(channel: DiscoveryChannel, choices: Choice[], routing: Routing, patient: DiscoveryPatient, requestedIntents: HistoryIntent[],
+  resolveIntent?: (intent: HistoryIntent) => Fact[]): DiscoveryReply {
   if (!choices.length) return unavailable(channel, routing);
   const selected = new Set(choices.flatMap(choice => choice.facts.map(fact => fact.id)));
   const facts = patient.facts.filter(fact => selected.has(fact.id));
@@ -75,7 +77,8 @@ function disclose(channel: DiscoveryChannel, choices: Choice[], routing: Routing
   // Acquired information can cover several subjects; that does not mean they were all asked.
   const missingHistory = missing.flatMap(item => historyIntents.filter(intent => intent.id === item.id));
   const recognized = [...new Map([...requestedIntents, ...missingHistory].map(intent => [intent.id, intent])).values()];
-  const unavailableTopics = recognized.filter(intent => !factsForIntent(intent, patient).some(fact => selected.has(fact.id) && fact.available !== false));
+  const unavailableTopics = recognized.filter(intent => !(resolveIntent ? resolveIntent(intent) : factsForIntent(intent, patient))
+    .some(fact => selected.has(fact.id) && fact.available !== false));
   const otherMissing = missing.filter(item => !historyIntents.some(intent => intent.id === item.id));
   const hasAvailable = facts.some(fact => fact.available !== false);
   return {
@@ -115,9 +118,10 @@ function isBroadOpening(text: string) {
  * the ordinary interpreter; this is not a general pronoun resolver or a model selection.
  */
 function coldPersistenceFollowup(question: string, patient: DiscoveryPatient, context: RequestContext): Fact | undefined {
-  if (patient.caseId !== "drchi-001" || !patient.version.endsWith("-variant-b")) return;
+  const nextCold = isNextCaseDetailReview(patient) && patient.caseId === "drchi-002";
+  if (!nextCold && (patient.caseId !== "drchi-001" || !patient.version.endsWith("-variant-b"))) return;
   const followup = /^(?:(?:and|so)\s+)?(?:how long (?:does|did) (?:it|that|this) last|does (?:it|that|this|the feeling) (?:linger|last|stay|hang around)(?: (?:for a while|afterwards|afterward))?)[?.!\s]*$/iu;
-  if (!followup.test(question)) return;
+  if (!followup.test(question) && !(nextCold && /^does (?:that|this|the) feeling last (?:a long time|long)(?: after (?:the drink|it) is gone)?[?.!\s]*$/iu.test(question))) return;
   const last = context.at(-1);
   if (last?.factIds.length !== 1) return;
   return patient.facts.find(fact => fact.id === last.factIds[0] && fact.id === `${patient.caseId}:cold`
@@ -129,7 +133,7 @@ function ruleFacts(text: string, channel: DiscoveryChannel, patient: DiscoveryPa
   // Independent questions must not negate one another (e.g. tobacco followed by chewing pain).
   const preview = patient.caseId === "drchi-001" && patient.version.endsWith("-variant-b");
   const dentitionCase = patient.caseId === "drchi-006" && channel === "exam" && !isCaseDetailReview(patient);
-  const clauses = isCaseDetailReview(patient) ? splitClinicalClauses(text)
+  const clauses = isCaseDetailReview(patient) ? splitClinicalClauses(text, patient)
     : dentitionCase ? text.split(/[?;.!]+|\b(?:and|also|plus)\b/iu).filter(clause => clause.trim())
     : preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:(?:a|an|the)\s+)?(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa|periapical|cone[- ]beam)\b)/iu).filter(clause => clause.trim()) : [text];
   return patient.facts.filter(fact => fact.channel === channel && clauses.some(clause => {
@@ -251,7 +255,7 @@ async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choi
         if (isCaseDetailReview(patient) && ids.some((id, index) => {
           const quoted = evidence[evidence.length === 1 ? 0 : index];
           return facts.find(choice => choice.id === id)!.facts.some(fact =>
-            !splitClinicalClauses(text).some(clause => grounded(quoted, clause)
+            !splitClinicalClauses(text, patient).some(clause => grounded(quoted, clause)
               && caseDetailFactMatchesClause(clause, patient, fact)));
         })) throw new ModelFailure("local_model_evidence_scope_mismatch");
         return ids;
@@ -315,7 +319,8 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   }
   if (repeatedId === null) return unavailable(channel, rulesRouting());
   const subjectScope = scopeClinicalSubject(question, channel, scopedPatient);
-  const procedureClauses = treatmentHistoryClauses(question).filter(isTreatmentHistoryQuestion);
+  const procedureClauses = (isNextCaseDetailReview(patient) ? splitClinicalClauses(question, patient)
+    : treatmentHistoryClauses(question)).filter(isTreatmentHistoryQuestion);
   // Interpret recognized history before channel-specific keywords. "Root canal done?"
   // must not accidentally match an inferior alveolar canal examination.
   const scopedHistory = subjectScope?.segments.flatMap(segment => segment.historySelections) ?? [];
@@ -326,7 +331,7 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     }
     const scoped = scopedHistory.filter(item => item.id === intent.id);
     if (!scoped.length && isCaseDetailReview(patient)) {
-      const clauses = splitClinicalClauses(question).filter(clause => recognizeHistoryIntents(clause).some(item => item.id === intent.id));
+      const clauses = splitClinicalClauses(question, patient).filter(clause => recognizeHistoryIntents(clause).some(item => item.id === intent.id));
       if (clauses.length) {
         const ids = new Set(clauses.flatMap(clause => factsForIntent(intent, { ...scopedPatient,
           facts: scopedPatient.facts.filter(fact => caseDetailFactMatchesClause(clause, scopedPatient, fact)) }).map(fact => fact.id)));
@@ -339,13 +344,16 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     ? [...subjectScope.segments.flatMap(segment => recognizeHistoryIntents(segment.text)
       .filter(intent => !segment.suppressHistoryIntentIds.some(id => id === intent.id))),
       ...subjectScope.unscopedClauses.flatMap(clause => recognizeHistoryIntents(clause))]
-    : [question, ...question.split(/[?;.!]+|\b(?:also|and|plus)\b/iu)].flatMap(clause => recognizeHistoryIntents(clause))
+    : (isNextCaseDetailReview(patient) ? splitClinicalClauses(question, patient)
+      : [question, ...question.split(/[?;.!]+|\b(?:also|and|plus)\b/iu)]).flatMap(clause => recognizeHistoryIntents(clause))
     ), ...scopedHistory.flatMap(item => historyIntents.filter(intent => intent.id === item.id))]
     .map(intent => [intent.id, intent])).values()];
   const historyFacts = new Set(historyIntents.flatMap(intent => factsForIntent(intent, scopedPatient).map(fact => fact.id)));
   if (isCaseDetailReview(patient)) scopedPatient.facts.filter(fact => fact.channel === "patient").forEach(fact => historyFacts.add(fact.id));
   const choices: Choice[] = scopedPatient.facts.filter(fact => (fact.channel === channel || channel === "exam" && historyFacts.has(fact.id))
-    && (!isCaseDetailReview(patient) || splitClinicalClauses(question).some(clause => caseDetailFactMatchesClause(clause, patient, fact))))
+    && (!isCaseDetailReview(patient) || splitClinicalClauses(question, patient).some(clause =>
+      (!isNextCaseDetailReview(patient) || nextCaseDetailHasSubject(clause) || isTreatmentHistoryQuestion(clause))
+        && caseDetailFactMatchesClause(clause, patient, fact))))
     .map(fact => ({ id: fact.id, topic: fact.topic, channel: fact.channel, facts: [fact] }));
   for (const intent of historyIntents) if (!(intent.id === "dental-treatment-history" && procedureClauses.length
     ? requestedFacts(intent) : factsForIntent(intent, scopedPatient)).length) {
@@ -377,22 +385,23 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     else authoredIds.add(`intent:${intent.id}`);
   }
   const authored = choices.filter(choice => authoredIds.has(choice.id));
+  const resolvedIntents = isNextCaseDetailReview(patient) ? requestedFacts : undefined;
   if (authored.length > MAX_FACTS_PER_TURN) return noFacts(channel, "Please make a more focused question or examination request.", "clarify", rulesRouting());
   // Never let model selection reintroduce an explicitly declined examination.
-  if (subjectScope?.hasNegatedRequest) return disclose(channel, authored, rulesRouting(), scopedPatient, recognized);
+  if (subjectScope?.hasNegatedRequest) return disclose(channel, authored, rulesRouting(), scopedPatient, recognized, resolvedIntents);
   const settings = modelConfig();
-  if (!settings.config) return disclose(channel, authored, rulesRouting(settings.fallback), scopedPatient, recognized);
-  if (!options.allowModel) return disclose(channel, authored, rulesRouting("local_model_not_enabled"), scopedPatient, recognized);
+  if (!settings.config) return disclose(channel, authored, rulesRouting(settings.fallback), scopedPatient, recognized, resolvedIntents);
+  if (!options.allowModel) return disclose(channel, authored, rulesRouting("local_model_not_enabled"), scopedPatient, recognized, resolvedIntents);
   try {
     const ids = await modelFactIds(question, channel, choices, settings.config, context, patient);
     // A model cannot replace an explicit authored intent with unrelated topics.
     if (authored.length && (ids.length !== authored.length || authored.some(choice => !ids.includes(choice.id)))) {
-      return disclose(channel, authored, rulesRouting("local_model_selection_mismatch"), scopedPatient, recognized);
+      return disclose(channel, authored, rulesRouting("local_model_selection_mismatch"), scopedPatient, recognized, resolvedIntents);
     }
     return disclose(channel, choices.filter(choice => ids.includes(choice.id)), {
       method: "local-model", version: `${ROUTER_VERSION}+${SELECTOR_VERSION}:${settings.config.model}`,
-    }, scopedPatient, recognized);
+    }, scopedPatient, recognized, resolvedIntents);
   } catch (error) {
-    return disclose(channel, authored, rulesRouting(error instanceof ModelFailure ? error.reason : "local_model_unavailable"), scopedPatient, recognized);
+    return disclose(channel, authored, rulesRouting(error instanceof ModelFailure ? error.reason : "local_model_unavailable"), scopedPatient, recognized, resolvedIntents);
   }
 }

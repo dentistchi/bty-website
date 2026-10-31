@@ -1,5 +1,12 @@
 # Remaining clinical discovery content: next-batch triage
 
+Status update: Cases 002, 003 and 008 are now prepared as separately versioned
+fictional review-B packs. Their exact statements and measured checks are in
+[CLINICAL_CASE_DETAILS_NEXT_REVIEW.md](CLINICAL_CASE_DETAILS_NEXT_REVIEW.md) and
+[CLINICAL_CASE_DETAILS_NEXT_QA.md](CLINICAL_CASE_DETAILS_NEXT_QA.md). The original
+report partition and priority map below are retained as the design baseline,
+not presented as a new measurement of the original catalog.
+
 This is a read-only mapping of the frozen original 23-case/205-turn report to
 Dr. Chi's existing reference statements. It adds no patient finding, treatment
 rule or evaluation requirement. The original report still has 74 required-gap

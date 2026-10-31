@@ -520,17 +520,22 @@ describe("GET ?view=model-check — connection diagnostic, Founder only", () => 
   });
 });
 
-describe("Founder review of separately versioned case details", () => {
-  const reviewVersion = "discovery-2026-10-31.1-review-a";
+describe.each([
+  { reviewVersion: "discovery-2026-10-31.1-review-a", detailRequests: [
+    { caseId: "drchi-005", question: "Check occlusion", factId: "drchi-005:occlusion" },
+    { caseId: "drchi-006", question: "Assess caries risk", factId: "drchi-006:caries-risk" },
+    { caseId: "drchi-011", question: "Check occlusion", factId: "drchi-011:occlusion" },
+  ] },
+  { reviewVersion: "discovery-2026-10-31.2-review-b", detailRequests: [
+    { caseId: "drchi-002", question: "Can this tooth be isolated with a rubber dam?", factId: "drchi-002:isolation" },
+    { caseId: "drchi-003", question: "Compare with the old films.", factId: "drchi-003:previous-images" },
+    { caseId: "drchi-008", question: "Is #31 tipping forward?", factId: "drchi-008:movement" },
+  ] },
+])("Founder review of separately versioned case details: $reviewVersion", ({ reviewVersion, detailRequests }) => {
   const startCase = (caseId: string) => {
     const source = catalog.find(row => row.caseId === caseId)!;
     return post("start", { caseId, caseVersion: source.version });
   };
-  const detailRequests = [
-    { caseId: "drchi-005", question: "Check occlusion", factId: "drchi-005:occlusion" },
-    { caseId: "drchi-006", question: "Assess caries risk", factId: "drchi-006:caries-risk" },
-    { caseId: "drchi-011", question: "Check occlusion", factId: "drchi-011:occlusion" },
-  ];
   for (const { caseId, question, factId } of detailRequests) {
     it(`${caseId}: an ordinary user keeps the old unknown rather than the unreviewed preview`, async () => {
       await startCase(caseId);

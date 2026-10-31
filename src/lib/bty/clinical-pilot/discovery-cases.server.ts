@@ -2,6 +2,7 @@ import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/di
 import { case001Variant } from "./case001-variant.server";
 import { case001VariantB } from "./case001-variant-b.server";
 import { caseDetailVariants } from "./case-detail-variants.server";
+import { caseDetailNextVariants } from "./case-detail-next-variants.server";
 
 /** Server-owned, fictional patient information. Never import into a client component.
  * Decomposed only from catalog scenario/findings; author recommendations are not patient facts.
@@ -334,5 +335,7 @@ discoveryPatients.push(case001B);
 // through the unchanged service; ordinary users skip every entry in this set.
 const caseDetails = caseDetailVariants(discoveryPatients);
 discoveryPatients.push(...caseDetails);
-export const founderPreviewPackVersions: ReadonlySet<string> = new Set([case001B, ...caseDetails]
+const nextCaseDetails = caseDetailNextVariants(discoveryPatients);
+discoveryPatients.push(...nextCaseDetails);
+export const founderPreviewPackVersions: ReadonlySet<string> = new Set([case001B, ...caseDetails, ...nextCaseDetails]
   .map(patient => `${patient.caseId}@${patient.version}`));
