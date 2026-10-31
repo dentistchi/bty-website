@@ -1,0 +1,316 @@
+{
+  "schema": "clinical-review-model-evidence-scope-verification/v1",
+  "recordedAt": "2026-10-31T19:48:50.015720+00:00",
+  "runtimeSourceCommit": "27a14f08a2804c47d60cea3d2f066d4c66215878",
+  "routerVersion": "discovery-intent/v9",
+  "selectorVersion": "selector/3",
+  "nodeVersion": "20.20.2",
+  "sourceFileSha256": {
+    "src/lib/bty/clinical-pilot/discovery-router.server.ts": "2c909bbd93bcbb5454eb04c7516a02f8e44cfa3313d2bf6a781be0259241ce75",
+    "src/lib/bty/clinical-pilot/clinical-intents.server.ts": "3774fb431f7ce167e4d332048bbb217a26de2a5dc155265c166ccd396de21366",
+    "src/lib/bty/clinical-pilot/clinical-subjects.server.ts": "31a4b8690dab2c7c965471c0e34f083b3377b23c9c7ad4ad8f229cd9a8aab121",
+    "src/lib/bty/clinical-pilot/treatment-history.server.ts": "c198b65380cb9b86642881fe2f32f3a16599e2ca3e7ff8252d53e9ed5ef30b57",
+    "src/lib/bty/clinical-pilot/case-detail-variants.server.ts": "117d26f410fa1acb46a30ac80e8c7eb2f416b0b21659db12f4ca729ca8be8ce4",
+    "src/lib/bty/clinical-pilot/case-detail-subjects.server.ts": "d8e5346b38f1158f7dca6b3336d4eb5e114142e6165ffb616754f97c32e5da81",
+    "src/lib/bty/clinical-pilot/discovery-cases.server.ts": "b9c56f167ec10406600790f0be4099c3e49fd2bc65d8e3af7fabd7bffe769c8b",
+    "src/lib/bty/clinical-pilot/discovery-qa.server.ts": "e8b0c3a8bdb326da6877b07a6cfd205718297d8738bcdff905e2a9a826955be7",
+    "src/domain/clinical-pilot/discovery.ts": "34fc023b322d923fe6a0ea92618693802ef942f0fbb71d039fc7f3a65db8e6df",
+    "src/domain/clinical-pilot/pilot.ts": "28483daa87259b271ff8138c8248fee0cdf65ed44e606b1fbb4249b12cd43b9e",
+    "scripts/clinical-discovery-audit.ts": "58f1a9f8ff4e4de221cc8e7137cfbff51b94e8b5bd745259a0978d19b3a01292"
+  },
+  "before": {
+    "command": [
+      "node",
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "src/lib/bty/clinical-pilot/case-detail-model-scope.server.test.ts",
+      "--pool=forks",
+      "--maxWorkers=1",
+      "--minWorkers=1",
+      "--reporter=json",
+      "--outputFile=/tmp/bty-model-evidence-scope-root-before.json"
+    ],
+    "exitCode": 1,
+    "tests": 7,
+    "failed": 3,
+    "passed": 4,
+    "baselineSourceCommit": "cd2165b",
+    "rawResultSha256": "20d8ecf014d427572fe1104b9d137dac458556a32106503f7c5d0e20f7c78ddb"
+  },
+  "after": {
+    "tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "exitCode": 0,
+    "originalSevenAssertionsUnchanged": true,
+    "newPositiveControl": "shared evidence for both recorded prior procedures within one clause",
+    "rawResultSha256": "2c54d625607c2ea58b274862b5b829ea5507ad64e83fe99a0afbe786516f2311"
+  },
+  "independentVerification": {
+    "nodeVersion": "20.20.2",
+    "testsPassed": 8,
+    "rawResultSha256": "115aabcc94da1a317f4012c5c4d6fb9a7122fb3f9098da02a49c838fb0e232d6",
+    "additionalProbe": {
+      "caseId": "drchi-011",
+      "question": "Study socket anchorage at #29. Could you elaborate?",
+      "controlledModelEvidence": "socket anchorage",
+      "selectedFact": "drchi-011:fixture-stability",
+      "actualFactIds": [],
+      "resolution": "clarify",
+      "fallback": "local_model_evidence_scope_mismatch"
+    },
+    "source": "independent sub-agent execution; model transport fully stubbed"
+  },
+  "unitTests": {
+    "command": [
+      "node",
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "src/app/api/bty/clinical-encounter/traces/route.test.ts",
+      "src/app/api/bty/clinical-pilot/route.test.ts",
+      "src/app/api/me/learning-rewards/route.test.ts",
+      "src/components/app-shell/PracticeLanding.surfaceScoping.test.tsx",
+      "src/components/app-shell/PracticeLanding.test.tsx",
+      "src/components/app-shell/teamsPracticeRecoveryOperations.test.tsx",
+      "src/components/bty-arena/ClinicalCasesPractice.test.tsx",
+      "src/components/bty-arena/ClinicalReasoningTrainer.test.tsx",
+      "src/domain/clinical-encounter/attemptLifecycleMigration.test.ts",
+      "src/domain/clinical-encounter/builder.test.ts",
+      "src/domain/clinical-encounter/comparison.test.ts",
+      "src/domain/clinical-encounter/encounter.test.ts",
+      "src/domain/clinical-encounter/expertBenchmark.test.ts",
+      "src/domain/clinical-encounter/neurosight.test.ts",
+      "src/domain/clinical-encounter/referenceTrace.test.ts",
+      "src/domain/clinical-encounter/serverPersistence.test.ts",
+      "src/domain/clinical-encounter/session.test.ts",
+      "src/domain/clinical-encounter/store.test.ts",
+      "src/domain/clinical-pilot/discovery.test.ts",
+      "src/domain/clinical-pilot/pilot.test.ts",
+      "src/domain/clinical-reasoning/clinicalReasoning.test.ts",
+      "src/domain/learning-rewards/policy.test.ts",
+      "src/domain/learning-rewards/summary.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-isolation.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-model-scope.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-scope.server.test.ts",
+      "src/lib/bty/clinical-pilot/case-detail-variants.server.test.ts",
+      "src/lib/bty/clinical-pilot/case001-variant-b.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-discovery-gateway.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-short-questions.server.test.ts",
+      "src/lib/bty/clinical-pilot/clinical-subjects.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-cases.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-context.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-dentition.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-journeys.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-qa.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-router.server.test.ts",
+      "src/lib/bty/clinical-pilot/discovery-worker-transport.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history-model.server.test.ts",
+      "src/lib/bty/clinical-pilot/treatment-history.server.test.ts",
+      "src/lib/bty/foundry/arena/deployWrapper.test.ts",
+      "src/lib/bty/learning-rewards/completion-hooks.test.ts",
+      "src/lib/bty/learning-rewards/service.server.test.ts",
+      "src/lib/bty/learning-rewards/sources.server.test.ts",
+      "--pool=forks",
+      "--maxWorkers=1",
+      "--minWorkers=1",
+      "--reporter=json",
+      "--outputFile=/tmp/bty-model-scope-final808-tests.json"
+    ],
+    "files": 45,
+    "passed": 808,
+    "failed": 0,
+    "exitCode": 0,
+    "rawResultSha256": "eae6ee14255bdd6fc9e31dbda04302529c8c1d9b1d8753c20f48bf57d65e5a61"
+  },
+  "browser": {
+    "command": [
+      "node",
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "/tmp/bty-case-detail-playwright.cjs"
+    ],
+    "exitCode": 0,
+    "passed": 39,
+    "widths": [
+      320,
+      390,
+      1280
+    ],
+    "network": "intercepted; in-memory router/domain transport",
+    "configUnchangedFromInitialVerification": true,
+    "specSha256": "ad31ba2fceefa569e610306047821dc7746b4b63fbe47c6ab380eedcf05049c0",
+    "logSha256": "39c5c8f4580d41415722c84c6b2df89bd674e71387682549d023b3cfe98eacd8"
+  },
+  "types": {
+    "command": [
+      "node",
+      "node_modules/typescript/bin/tsc",
+      "--noEmit",
+      "--incremental",
+      "false"
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    },
+    "exitCode": 0,
+    "logBytes": 0
+  },
+  "dependencies": {
+    "command": [
+      "npm",
+      "ci",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "exitCode": 0,
+    "realNodeModulesDirectory": true,
+    "logSha256": "2fb1ce948c8b750fb89e2766c8426b220abb4d3bf5f411c0eedeb013f1612383"
+  },
+  "build": {
+    "command": [
+      "npm",
+      "run",
+      "cf:build"
+    ],
+    "exitCode": 0,
+    "freshCheckout": true,
+    "runtimeHashesMatch": true,
+    "envIsolation": "env -i with loopback-only public Supabase placeholders and no credentials",
+    "env": {
+      "PATH": "/root/.npm/_npx/185e25162edaacfb/node_modules/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/local/bin:/usr/bin:/bin",
+      "TMPDIR": "/tmp",
+      "NEXT_PUBLIC_SUPABASE_URL": "http://127.0.0.1:9",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "offline-case-detail-check",
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "WRANGLER_SEND_METRICS": "false",
+      "CLINICAL_AUTHOR_PILOT_ENABLED": "1",
+      "LEARNING_REWARDS_ENABLED": "1",
+      "CIRCLE_NODE_TOTAL": "2",
+      "NODE_OPTIONS": "--max-old-space-size=8192"
+    },
+    "generatedPages": 353,
+    "logSha256": "e4695dcf350e36a2f7f6dd3627d23dd6617e6a9b92ea8bfc8f71ca0fa76cf784"
+  },
+  "artifactGuard": {
+    "files": 3626,
+    "unsafeCount": 0,
+    "implementationCount": 2,
+    "safeImplementationCount": 2,
+    "gate": {
+      "ok": true
+    }
+  },
+  "publicMarkerScan": {
+    "scannedPublicTextFiles": 743,
+    "markerCounts": {
+      "reviewPatientAnswers": 60,
+      "authorReferences": 46,
+      "selectorInstructions": 12
+    },
+    "hits": [],
+    "qualification": "Exact prefix samples only; not an exhaustive disclosure proof."
+  },
+  "syntheticRules": [
+    {
+      "name": "preview",
+      "summary": {
+        "cases": 3,
+        "turns": 72,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 67
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "exitCode": 0,
+      "fixtureSha256": "958d9051a4fc2fd5df577dd3978c8d1377ed182d6c2b5dc487d8d6379408c0eb"
+    },
+    {
+      "name": "base",
+      "summary": {
+        "cases": 23,
+        "turns": 205,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 74,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 200
+        },
+        "casesWithRequiredContentGaps": 22
+      },
+      "exitCode": 1,
+      "fixtureSha256": "aec9365e35e0b89c85ddefd8bd82626835b05df8c80f851776d6204c849520f3"
+    },
+    {
+      "name": "history",
+      "summary": {
+        "cases": 1,
+        "turns": 4,
+        "routingIssueTurns": 0,
+        "answerMismatchTurns": 0,
+        "requiredContentGapTurns": 0,
+        "invariantErrors": 0,
+        "modelTurns": 0,
+        "newExtraDisclosureTurns": 0,
+        "newExtraAvailableDisclosureTurns": 0,
+        "repeatedExtraSelectionTurns": 0,
+        "fallbackReasons": {
+          "local_model_not_configured": 2
+        },
+        "casesWithRequiredContentGaps": 0
+      },
+      "exitCode": 0,
+      "fixtureSha256": "af723aa086d2c43d2f362e123ded801b2c1e7c983274dbbc635ea85efa66efc6"
+    }
+  ],
+  "originalEvidenceArchiveHashesPreserved": true,
+  "followupArchivesSha256": {
+    "model-evidence-scope-after.json.gz": "b2937f5ad1b6df743fb20a7365ff333e6adf9b5227b164e212b82d3c3fb3dfd5",
+    "model-evidence-scope-before.json.gz": "4cfec16724d5e670014ff251fcf17597d58cd2c5273a8399327b7a9df07128ab",
+    "model-scope-history-after.json.gz": "396c6d357cf5d261bb96e06f3664307033f0dc1e7a89f7ba2eb01a1d393b8e59",
+    "model-scope-original-after.json.gz": "2213caf29f89d8f4f69d0d8459389b923e53bb8860ef34db0bdb483245a234f7",
+    "model-scope-review-after.json.gz": "e67b3ea972444a025c71400c90e5105559110c60eddaae092df3015931795d06"
+  },
+  "liveAccess": {
+    "existingBrowserSession": "unavailable: originating browser context required",
+    "publicVersionProbeStatuses": {
+      "arena.btydaily.com": 403,
+      "bty-arena-staging.ywamer2022.workers.dev": 403
+    },
+    "liveVersionVerified": false,
+    "macExecutionChannelAvailable": false
+  },
+  "unrun": [
+    "actual Mac/qwen evaluation of new packs",
+    "signed-in Worker model-check",
+    "physical iPhone/Teams flows",
+    "full unrelated repository test suite"
+  ],
+  "limitations": [
+    "Controlled model responses verify the router boundary, not qwen accuracy.",
+    "A same-clause wrong-topic selection may still pass evidence/tooth validation; arbitrary semantic accuracy is not established.",
+    "Finite visible fixtures are regression coverage, not an unseen benchmark."
+  ],
+  "productionActions": {
+    "merge": false,
+    "deploy": false,
+    "databaseWrite": false,
+    "authSessionCreated": false,
+    "secretsChanged": false,
+    "servicesRestarted": false
+  }
+}

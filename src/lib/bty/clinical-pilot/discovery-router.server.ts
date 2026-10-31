@@ -10,7 +10,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent | MissingClinicalSubject };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v8";
+const ROUTER_VERSION = "discovery-intent/v9";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -198,7 +198,8 @@ async function boundedResponseText(response: Response) {
   } finally { reader.releaseLock(); }
 }
 
-async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choice[], config: ModelConfig, context: RequestContext): Promise<string[]> {
+async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choice[], config: ModelConfig, context: RequestContext,
+  patient: DiscoveryPatient): Promise<string[]> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -244,6 +245,15 @@ async function modelFactIds(text: string, channel: DiscoveryChannel, facts: Choi
         if (ids.length && ((evidence.length !== ids.length && evidence.length !== 1) || evidence.some(item => !grounded(item, text)))) {
           throw new ModelFailure("local_model_ungrounded_selection");
         }
+        // An unrelated unscoped clause can make a fact eligible in the offered
+        // topic list. Its actual evidence must still belong to a clause that
+        // permits that fact's tooth, rather than borrowing another clause's scope.
+        if (isCaseDetailReview(patient) && ids.some((id, index) => {
+          const quoted = evidence[evidence.length === 1 ? 0 : index];
+          return facts.find(choice => choice.id === id)!.facts.some(fact =>
+            !splitClinicalClauses(text).some(clause => grounded(quoted, clause)
+              && caseDetailFactMatchesClause(clause, patient, fact)));
+        })) throw new ModelFailure("local_model_evidence_scope_mismatch");
         return ids;
       })(),
       new Promise<never>((_, reject) => {
@@ -374,7 +384,7 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   if (!settings.config) return disclose(channel, authored, rulesRouting(settings.fallback), scopedPatient, recognized);
   if (!options.allowModel) return disclose(channel, authored, rulesRouting("local_model_not_enabled"), scopedPatient, recognized);
   try {
-    const ids = await modelFactIds(question, channel, choices, settings.config, context);
+    const ids = await modelFactIds(question, channel, choices, settings.config, context, patient);
     // A model cannot replace an explicit authored intent with unrelated topics.
     if (authored.length && (ids.length !== authored.length || authored.some(choice => !ids.includes(choice.id)))) {
       return disclose(channel, authored, rulesRouting("local_model_selection_mismatch"), scopedPatient, recognized);

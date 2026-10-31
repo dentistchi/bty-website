@@ -1,5 +1,31 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-MODEL-EVIDENCE-SCOPE — 2026-10-31
+
+Continue PR #90 verification after Dr. Chi's instruction to proceed. Independent
+inspection reproduced a model-choice scope bypass: an unrelated unscoped second
+clause makes a focal #30 finding eligible even when the model quotes only the
+first clause's explicit #29 request. Rules alone correctly disclose nothing.
+Freeze stubbed-model regressions before repair. Bind each selected real fact to
+its quoted evidence within a clause that permits that fact's tooth scope; a
+matching clause elsewhere in the request is insufficient. Preserve shared
+evidence, legitimate mixed-tooth requests, old packs, selector/3, transport and
+the four-second deadline. Record the new router version and bounded verification.
+
+Actual Mac/qwen and signed-in Worker verification require an accessible existing
+execution/session context. Do not manufacture credentials or substitute model-stub
+results for actual inference. Remaining case-content work is triaged separately;
+no additional clinical findings are added by this scope repair.
+
+Observed follow-up: the Node 20 reproduction fails 3/7 before repair and passes
+all eight final boundary tests. Related tests pass 808/808 across 45 files;
+isolated browser checks pass 39/39. Final frozen-source types and fresh-checkout
+Cloudflare build pass. v9 preserves the new 72-turn rules result and the original
+205-turn/74-gap limit. Evidence is appended in `CLINICAL_CASE_DETAILS_QA.md` and
+`clinical-case-details-qa/model-scope-verification.json`. Remaining content is
+triaged in `CLINICAL_CASE_DETAILS_NEXT_BATCH.md`; actual Mac/Worker checks remain
+unrun because neither execution channel nor existing browser session is available.
+
 ## CLINICAL-DISCOVERY-CASE-DETAILS — 2026-10-31
 
 Dr. Chi approves continuing from the reported successful PR #84 real-gateway

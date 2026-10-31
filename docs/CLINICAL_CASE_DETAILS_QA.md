@@ -34,7 +34,8 @@ issue turns, 17 checked-answer mismatches and 5 newly disclosed extra AVAILABLE
 findings. Other extra selections repeated previously issued facts. The final
 72-turn rules run has 0 in those categories and 0 capture invariants.
 
-The router is `discovery-intent/v8`. Review-only subject metadata separates:
+The initial review repair used `discovery-intent/v8`; the evidence-scope follow-up
+below uses `discovery-intent/v9`. Review-only subject metadata separates:
 
 - Patient bite perception, jaw-shift reports and parafunction from objective exams.
 - Prior RCT versus the new crown history. After both are disclosed, bare timing
@@ -140,3 +141,63 @@ new 72-turn before/after, the frozen 205/4-turn rechecks, the independent probe
 before/after and the five-scope-test failing baseline as compressed JSON. Runtime
 file/fixture hashes identify measured content even when a local commit or working
 copy supplied the run. No archived original PR84 measurement is replaced.
+
+## Follow-up: model evidence must retain its clause and tooth
+
+Continuing verification reproduced a gap outside the rules-only paths. In Case 005,
+`Check cap borders on tooth #29. Describe background details.` left the authored
+selection empty, but the unscoped second clause made the #30 crown-integrity topic
+eligible. A controlled model response selecting that topic and quoting only
+`cap borders` was accepted. Case 011 had the same failure for fixture stability;
+an evidence quote crossing the sentence boundary also passed the old guard.
+These are observed router failures with stubbed model responses, not observed
+qwen accuracy failures.
+
+The independent seven-test reproduction was frozen before the repair: three
+failed and four passed, confirmed on Node 20.20.2. The final v9 router requires
+each selected real fact's evidence to fit wholly within a clause whose tooth
+scope permits that fact. It cannot borrow eligibility from a different clause.
+A rejected selection records `local_model_evidence_scope_mismatch` and falls back
+to the authored result. Shared evidence within one clause remains supported.
+The selector/3 prompt, model transport/deadline, patient packs and historical
+records are unchanged by this follow-up.
+
+Observed final checks on runtime source `27a14f08a2804c47d60cea3d2f066d4c66215878`:
+
+- Eight model-boundary tests pass, including the original seven unchanged tests
+  and an additional shared-evidence history control. Independent Node 20 rerun:
+  8/8; an additional controlled wrong-tooth paraphrase also disclosed no facts.
+- Related tests: 808/808 across 45 files. Isolated browser encounters: 39/39.
+- New 72-turn rules fixture: no routing, checked-answer, capture, required-gap or
+  new-extra issues. Frozen original 205-turn fixture retains 74 required gaps
+  with no interpretation errors (exit 1); the original four-turn fixture exits 0.
+- Fresh-checkout Cloudflare build exits 0. Artifact guard: 3,626 JavaScript files,
+  zero unsafe matches, 2/2 safe implementations. The sampled 60 patient, 46
+  reference and 12 selector prefixes have zero hits in 743 public text files.
+
+The final serial typecheck, exact source hashes and commands are in
+`docs/clinical-case-details-qa/model-scope-verification.json`. Five append-only
+`model-*` archives preserve this follow-up separately from the initial evidence.
+This guard checks quoted evidence and tooth scope; it does not establish whether
+an arbitrary same-clause topic choice is semantically correct. Actual qwen and
+live Worker/Teams checks remain required and are not replaced by these tests.
+
+## Remaining execution and content work
+
+The current browser connection could not access an existing Founder session. Both
+unauthenticated version probes from this execution environment returned HTTP 403;
+they do not establish a new live version. There is no Mac execution channel here.
+No login session, deployment or service restart was created to clear these limits.
+
+The existing authorized Mac executor can run the model command above from a
+verified PR #90 checkout using its existing gateway and key file. Inspect the
+actual model-turn count and fallbacks as well as routing, answer and extra/missing
+disclosure fields; a correct rules fallback is not model verification. Then run
+the existing signed-in Founder `GET /api/bty/clinical-pilot?view=model-check` to
+verify the production Worker path. This GET is connection-only and does not
+create learner attempts or establish new-pack accuracy. Preserve the current
+gateway/model services and do not mint an auth session for this check.
+
+The read-only remaining-case map and proposed next batch (002, 003, 008) are in
+[CLINICAL_CASE_DETAILS_NEXT_BATCH.md](CLINICAL_CASE_DETAILS_NEXT_BATCH.md).
+No additional fictional findings were added by this scope follow-up.
