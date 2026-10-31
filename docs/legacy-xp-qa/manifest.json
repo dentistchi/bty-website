@@ -7,13 +7,61 @@
     "sha256": "ee3e8dac546a5e63e141d241020ab87b72c3a0e4b9cd0612c7195cfa9b61d984",
     "bytes": 4373
   },
+  "field-action-fixed-run1.json.gz": {
+    "sha256": "f6432ccc1ea70542d478a14edf3a044cd4702d679ace242e70bb52b776ee900e",
+    "bytes": 869
+  },
+  "field-action-fixed-run2.json.gz": {
+    "sha256": "4f51e417d25c33778ca8929ff4f02fadd952c18d7d57b9c499f2de5aa435a983",
+    "bytes": 871
+  },
+  "field-action-fixed-run3.json.gz": {
+    "sha256": "9c3f44624c8669c23348c9e40aafb7e2cd9be762feabfad7f3fa908f56ca6255",
+    "bytes": 875
+  },
+  "field-action-held-fetch-before.json.gz": {
+    "sha256": "ee152c1a97d01ce0e2fd235a1d435b1f925eed06ddd8d95e2d6b48fde83983de",
+    "bytes": 1416
+  },
+  "focused-delivery.json.gz": {
+    "sha256": "0b72cf285914cfcca21a88c92a8279ea301f49e3d0703dfea094e36d1cf0c110",
+    "bytes": 14001
+  },
   "focused-final.json.gz": {
     "sha256": "a4facca9dfad65ba3acad4f4860baedeceba3d489f832cff7a502f84a71ec7a0",
     "bytes": 13439
   },
+  "full-after.json.gz": {
+    "sha256": "f3737e16b753cb92127696c8a0734a107a5175b4b652d28938c389bab148d76e",
+    "bytes": 783645
+  },
+  "full-baseline.json.gz": {
+    "sha256": "a2847d72bfe78f55336274292a22475f542e95e09f4577821a0769902be31550",
+    "bytes": 777081
+  },
+  "full-comparison.json": {
+    "sha256": "dfdda38fbf64c7e51a39304fe466efb940d589d6c5ee7b248b10bc90c969d20e",
+    "bytes": 3787
+  },
   "helper-independent.json.gz": {
     "sha256": "b27773bfb8a86be667039e603b5b78609bea077a745d67d842a54b8d3c112a95",
     "bytes": 1145
+  },
+  "native-ci-first-failure.log.gz": {
+    "sha256": "1cdebe07062edcf4c6f45a17cae45a671bbd2264fdccb815b272f33202d9c27d",
+    "bytes": 10316
+  },
+  "native-ci-result.json": {
+    "sha256": "9bcca5cdf6315b430260673d12e7758d536de073dd90ce3741225c686e592d47",
+    "bytes": 8557
+  },
+  "native-ci-success.log.gz": {
+    "sha256": "7d046ed6a1168b4f03503d48b532ea20b820eb705601a0ff46d0ffff014259c7",
+    "bytes": 17094
+  },
+  "postgres-semantics-final.json": {
+    "sha256": "0d1a6102ced83a19fbf7c9c0b699ff5c6ada4f8037edf8d435308642eab7c9d3",
+    "bytes": 16100
   },
   "postgres-semantics.json": {
     "sha256": "9de69312d1334c03422b861a93cd5e00abdba68eeafb975818a184d38e46f21f",
@@ -30,6 +78,10 @@
   "routes-independent-after.json.gz": {
     "sha256": "11cfda5cc73e925e1fef2e6e709c7b2f99747aa6d363d57834b7942366b606de",
     "bytes": 3934
+  },
+  "runtime-hashes.json": {
+    "sha256": "d97d2d05168ccd91a0a308b52911bc275d7f55e2d0d18371f06d8cf09175a2de",
+    "bytes": 3402
   },
   "xp-build-artifact-gate.log.gz": {
     "sha256": "61e3e86446d4b749d9e9d41c916a37c759c551577c94c51d8a5d59d771b0727b",

@@ -1,0 +1,47 @@
+{
+  "baseline": {
+    "numTotalTests": 15963,
+    "numPassedTests": 15403,
+    "numFailedTests": 151,
+    "numPendingTests": 409
+  },
+  "after": {
+    "numTotalTests": 16151,
+    "numPassedTests": 15590,
+    "numFailedTests": 152,
+    "numPendingTests": 409
+  },
+  "baselineFailedFiles": 45,
+  "afterFailedFiles": 46,
+  "newFailures": [
+    {
+      "file": "src/components/app-shell/FieldActionForm.stateAware.test.tsx",
+      "name": "FieldActionForm \u2014 existing-state-aware UX (7) pending \u2192 editable authoring form",
+      "count": 1,
+      "messages": [
+        "TestingLibraryElementError: Unable to find an element by: [data-testid=\"field-action-who\"]\n\nIgnored nodes: comments, script, style\n\u001b[36m<body>\u001b[39m\n  \u001b[36m<div>\u001b[39m\n    \u001b[36m<section\u001b[39m\n      \u001b[33mclass\u001b[39m=\u001b[32m\"flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4\"\u001b[39m\n      \u001b[33mdata-testid\u001b[39m=\u001b[32m\"field-action-form\"\u001b[39m\n    \u001b[36m>\u001b[39m\n      \u001b[36m<button\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"self-start text-xs text-white/60 hover:text-white/85\"\u001b[39m\n        \u001b[33mdata-testid\u001b[39m=\u001b[32m\"field-action-back\"\u001b[39m\n        \u001b[33mtype\u001b[39m=\u001b[32m\"button\"\u001b[39m\n      \u001b[36m>\u001b[39m\n        \u001b[0m\u2190 \u001b[0m\n        \u001b[0mBack\u001b[0m\n      \u001b[36m</button>\u001b[39m\n      \u001b[36m<div\u001b[39m\n        \u001b[33mclass\u001b[39m=\u001b[32m\"h-16 animate-pulse rounded-lg bg-white/[0.03]\"\u001b[39m\n        \u001b[33mdata-testid\u001b[39m=\u001b[32m\"field-action-loading\"\u001b[39m\n      \u001b[36m/>\u001b[39m\n    \u001b[36m</section>\u001b[39m\n  \u001b[36m</div>\u001b[39m\n\u001b[36m</body>\u001b[39m\n    at Object.getElementError (/workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@testing-library/dom/dist/config.js:37:19)\n    at /workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@testing-library/dom/dist/query-helpers.js:76:38\n    at /workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@testing-library/dom/dist/query-helpers.js:52:17\n    at /workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@testing-library/dom/dist/query-helpers.js:95:19\n    at /workspace/scratch/44e2cc16edbd/bty-xp-atomic/src/components/app-shell/FieldActionForm.stateAware.test.tsx:84:19\n    at file:///workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/scratch/44e2cc16edbd/bty-xp-atomic/node_modules/@vitest/runner/dist/index.js:1262:5)"
+      ]
+    }
+  ],
+  "resolved": [],
+  "removed": [
+    {
+      "file": "src/app/api/arena/beginner-complete/beginner-xp-security.test.ts",
+      "name": "beginner completion trusted one-time award returns the stored completed result without awarding it again",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/arena/beginner-complete/beginner-xp-security.test.ts",
+      "name": "beginner completion trusted one-time award lets only one concurrent owned IN_PROGRESS claim award the fixed30 weekly XP",
+      "count": 1
+    }
+  ],
+  "addedCount": 190,
+  "addedNotPassing": [],
+  "suiteErrorsBefore": [
+    "src/app/f/[token]/roomEntryExitContainment.test.tsx"
+  ],
+  "suiteErrorsAfter": [
+    "src/app/f/[token]/roomEntryExitContainment.test.tsx"
+  ]
+}

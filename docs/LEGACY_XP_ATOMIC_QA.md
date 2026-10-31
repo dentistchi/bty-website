@@ -27,9 +27,9 @@ keep their existing reward policy.
 - Independent repaired API run: 94/94 across the 83 atomic probes and 11 security
   controls, with only auth/database factories stubbed; consent/scoring/helper/routes
   execute real source. Mocked concurrency proves delegation, not PostgreSQL locks.
-- Root final related run: 329/329 across 29 files, including actual hooks/pages,
+- Root final related run: 339/339 across 30 files, including actual hooks/pages,
   strict public receipts, API persistence boundaries, general completion/free-response
-  regressions, helper tests and two always-active SQL harness guard/oracle checks.
+  regressions, helper tests and four always-active SQL harness guard/oracle checks.
 - Independent extra route edges: 20/20. Independent helper edges: 19/19.
 - Root standalone TypeScript with Node 20.20.2 and an 8 GiB heap: exit 0. The first
   attempt found two new test typing errors; exact matcher/return annotations fixed
@@ -47,23 +47,61 @@ ownership, no-user-write assertions and one-award controls are retained.
 ## SQL verification and limits
 
 Root independently reapplied the exact migration to a fresh embedded PostgreSQL
-17.5 engine (PGlite 0.3.14): **118/118 passed**. Includes repeat migration, immutable
+17.5 engine (PGlite 0.3.14): **119/119 passed**. Includes repeat migration, immutable
 receipt ACLs, replay/conflict, both reward-kind crossover directions, deleted and
 recreated run IDs, historical review, forced errors/suppressed writes with rollback
 and retry, and 80 legacy Core/buffer/custom-name parity checks. The fixture is an
 isolated minimal schema with relevant legacy functions, not the production database.
 It creates synthetic rows only in memory and imports no application environment.
 
-Native PostgreSQL cannot start here: the execution namespace maps only UID 0 and
-does not permit changing UID; PostgreSQL refuses root execution. Embedded single
-session execution is **not** native lock/race evidence. Four separate-backend race
-groups are prepared: duplicate choice, duplicate Beginner, conflicting input and
-same-user cross-run Core/weekly updates, with observed blocking and backend IDs.
-A secret-free disposable PostgreSQL 17 CI workflow is prepared to run these on
-Draft PR opened/synchronize. It uses separate backend IDs and observed row-lock
-blocking; CI has not yet run. Docker bridge server addresses require an explicit
-GitHub Actions-only opt-in; the client target remains literal loopback, fixed port
-and a fresh task-specific database.
+Native PostgreSQL cannot start in this execution namespace (UID 0 only). The
+secret-free GitHub CI path closed that gap on a disposable **PostgreSQL 17.11**
+container: **123/123 passed**, including all four independent-backend race groups.
+Eight duplicate choice requests and eight duplicate Beginner requests each yield
+one original receipt, with all other acknowledgements replaying it. Conflicting
+choice inputs have one winner; six same-user Beginner runs preserve every Core
+buffer and weekly increment. The harness requires distinct backend IDs and all
+contenders observed waiting on real row locks before release.
+
+Verified head `fe3471af`, [run 41250106625](https://github.com/dentistchi/bty-website/actions/runs/41250106625),
+job `124681645670`; `unrun` is empty for that isolated SQL suite. Native test inputs
+remain identical in the final docs/UI-test follow-up. This is not full production
+Supabase schema or Worker/Teams integration validation. The first CI attempt
+failed before SQL because `inet::text` included `/32`; `host(inet_server_addr())`
+now produces a plain address while strict loopback/CI-private address guards remain.
+Both logs and the extracted successful JSON result are retained.
+
+## Full repository comparison
+
+Both runs use Node 20.20.2, stripped app environment, identical source lockfile and
+one worker. Compare a multiset of relative-file + exact assertion full name, with
+suite collection errors separately retained. Raw counts are deliberately not
+rewritten after a narrower repair:
+
+| Run | Passed | Failed | Skipped | Failed files |
+| --- | ---: | ---: | ---: | ---: |
+| Clean inner-main `50e7a311` | 15,403 | 151 | 409 | 45 |
+| XP branch broad run | 15,590 | 152 | 409 | 46 |
+
+All 190 added assertion identities in the broad run pass; none of the 151 baseline
+failing identities disappeared. Two old Beginner security test identities were
+replaced by explicit frozen-receipt/review-required assertions, reflecting the
+intentional contract change. The same missing historical Git-object collection
+error remains. The full suite is **not green**.
+
+The one additional failure is an unchanged `FieldActionForm.stateAware` test: it
+awaited a wrapper that is also present during loading, then synchronously queried
+an editable field before fetch/body/state completion. The component is byte-identical
+on baseline and branch. A held-fetch reproduction fails deterministically (7/8
+pass); the final test retains the expected editable field, verifies the loading
+state, releases fetch and awaits that actual field. Three independent file runs
+pass 8/8, and the final root 339-test run includes all eight. This is a corrected
+test readiness wait, not evidence of an application repair.
+
+The broad run began before the last two SQL-harness guard tests were added; they
+are covered in the final targeted run. The full repository suite was not rerun
+after this test-only correction. No overall whole-suite pass or zero-failure
+release claim follows from the targeted checks.
 
 ## Remaining verification
 
@@ -78,11 +116,12 @@ finds zero hits and no public SQL files; this is not exhaustive disclosure proof
 Install initially failed on missing proxy/DNS and then platform CA trust; the final
 normal installation retained only platform proxy/CA variables and passed.
 
-Full-suite exact-identity comparison and native CI results will be recorded when
-observed. Until then neither is marked passed.
+Native concurrency now passes as described above. The exact full-suite comparison
+and its remaining non-green baseline are preserved, not relabeled as a pass.
 Actual Teams/iPhone, production Worker calls and production migrations are unrun.
 The rollout fence and old-invocation drain in `LEGACY_XP_ATOMIC_SQL.md` remain
-mandatory; source tests do not authorize reopening production writes.
+mandatory; source tests do not authorize reopening production writes. Other legacy
+Core writers remain outside the new two-path transaction protocol.
 
 ## Evidence
 
