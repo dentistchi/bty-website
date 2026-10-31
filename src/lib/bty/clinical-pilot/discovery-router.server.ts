@@ -1,7 +1,8 @@
 import type { DiscoveryChannel, DiscoveryPatient, DiscoveryReply } from "@/domain/clinical-pilot/discovery";
 import { historyIntents, recognizeHistoryIntents, factsForIntent, type HistoryIntentDefinition as HistoryIntent } from "./clinical-intents.server";
-import { repeatClinicalFollowup, scopeClinicalSubject, type MissingClinicalSubject } from "./clinical-subjects.server";
+import { repeatClinicalFollowup, scopeClinicalSubject, splitClinicalClauses, type MissingClinicalSubject } from "./clinical-subjects.server";
 import { asksPriorTreatmentProvider, isTreatmentHistoryQuestion, repeatTreatmentTiming, treatmentHistoryClauses, treatmentHistoryFacts } from "./treatment-history.server";
+import { caseDetailFactMatchesClause, caseDetailFactTeeth, isCaseDetailReview, isGlobalDetailRequest, repeatCaseDetailFact } from "./case-detail-subjects.server";
 
 type Fact = DiscoveryPatient["facts"][number];
 type Routing = DiscoveryReply["routing"];
@@ -9,7 +10,7 @@ type ModelConfig = { endpoint: string; model: string; key?: string };
 type Choice = { id: string; topic: string; channel: DiscoveryChannel; facts: Fact[]; missing?: HistoryIntent | MissingClinicalSubject };
 type RequestContext = readonly { question: string; channel: DiscoveryChannel; factIds: string[] }[];
 
-const ROUTER_VERSION = "discovery-intent/v7";
+const ROUTER_VERSION = "discovery-intent/v8";
 // Recorded with every model selection so a turn shows which selector instructions produced it.
 const SELECTOR_VERSION = "selector/3";
 const MAX_FACTS_PER_TURN = 4;
@@ -127,10 +128,12 @@ function ruleFacts(text: string, channel: DiscoveryChannel, patient: DiscoveryPa
   // Case 001 guards are preview-only; Case 006's repair changes interpretation, not its frozen facts.
   // Independent questions must not negate one another (e.g. tobacco followed by chewing pain).
   const preview = patient.caseId === "drchi-001" && patient.version.endsWith("-variant-b");
-  const dentitionCase = patient.caseId === "drchi-006" && channel === "exam";
-  const clauses = dentitionCase ? text.split(/[?;.!]+|\b(?:and|also|plus)\b/iu).filter(clause => clause.trim())
+  const dentitionCase = patient.caseId === "drchi-006" && channel === "exam" && !isCaseDetailReview(patient);
+  const clauses = isCaseDetailReview(patient) ? splitClinicalClauses(text)
+    : dentitionCase ? text.split(/[?;.!]+|\b(?:and|also|plus)\b/iu).filter(clause => clause.trim())
     : preview ? text.split(/[?;.!]+|\b(?:and|also|plus)\s+(?=(?:(?:a|an|the)\s+)?(?:check|visual(?:ly)?|inspect|examine|perform|obtain|order|measure|test|palpate|percuss|ept|cbct|pa|periapical|cone[- ]beam)\b)/iu).filter(clause => clause.trim()) : [text];
   return patient.facts.filter(fact => fact.channel === channel && clauses.some(clause => {
+    if (!caseDetailFactMatchesClause(clause, patient, fact)) return false;
     // Other teeth and dentition-wide risk do not ask for the presenting tooth's MOD.
     // Keep the existing unavailable fact; the interpreter cannot fill missing case data.
     if (dentitionCase && (/\b(?:caries[- ]risk|root caries|lower anterior|full[- ]mouth|dentition[- ]wide|other teeth)\b/iu.test(clause)
@@ -268,14 +271,24 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
   const requestedTeeth = [...question.matchAll(/(?:#\s*|\btooth\s*(?:number\s*)?)([1-9]|[12]\d|3[0-2])\b/giu)].map(match => Number(match[1]));
   const endodonticQuestion = /\b(?:root[- ]canals?|rct|endodontic(?:ally)?)\b/iu.test(question);
   const anatomyRequested = /\b(?:inferior alveolar|mandibular canal|nerve|panoram(?:ic|a)|third[- ]molar|wisdom)\b/iu.test(question);
-  const scopedPatient = { ...patient, facts: patient.facts.filter(fact => (!requestedTeeth.length || !fact.toothNumbers
-    || fact.toothNumbers.some(number => requestedTeeth.includes(number)))
+  const scopedPatient = { ...patient, facts: patient.facts.filter(fact => (isCaseDetailReview(patient) || !requestedTeeth.length || !caseDetailFactTeeth(patient, fact)
+    || caseDetailFactTeeth(patient, fact)!.some(number => requestedTeeth.includes(number)) || isGlobalDetailRequest(question, patient, fact))
     && (!endodonticQuestion || anatomyRequested || !/\b(?:panoram(?:ic|a)|alveolar|nerve|third[- ]molar)\b/iu.test(fact.topic))) };
   const procedureTiming = repeatTreatmentTiming(question, scopedPatient, context);
   if (procedureTiming) return disclose(channel, [{ id: procedureTiming.id, topic: procedureTiming.topic, channel: procedureTiming.channel, facts: [procedureTiming] }],
     { method: "authored-rules", version: `${ROUTER_VERSION}+treatment-timing/v1` }, scopedPatient,
     historyIntents.filter(intent => intent.id === "dental-treatment-history"));
-  if (procedureTiming === null) return unavailable(channel, rulesRouting());
+  if (procedureTiming === null) {
+    const previousIds = context.at(-1)?.factIds ?? [];
+    const knownProcedures = treatmentHistoryFacts(scopedPatient).filter(fact => previousIds.includes(fact.id));
+    if (isCaseDetailReview(patient) && knownProcedures.length > 1) return noFacts(channel,
+      "Which prior procedure do you mean? Please name the treatment you are asking about.", "clarify", rulesRouting());
+    return unavailable(channel, rulesRouting());
+  }
+  const repeatedDetail = repeatCaseDetailFact(question, scopedPatient, context);
+  if (repeatedDetail) return disclose(channel, [{ id: repeatedDetail.id, topic: repeatedDetail.topic,
+    channel: repeatedDetail.channel, facts: [repeatedDetail] }],
+    { method: "authored-rules", version: `${ROUTER_VERSION}+review-repeat/v1` }, scopedPatient, []);
   if (asksPriorTreatmentProvider(question, scopedPatient, context)) return {
     ...noFacts(channel, "The clinician who performed the prior dental procedure is not specified in this case.", "unavailable", rulesRouting()),
     recognizedTopicIds: ["clinical-subject:treatment-provider"], unavailableTopicIds: ["clinical-subject:treatment-provider"],
@@ -302,6 +315,14 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
       return scopedPatient.facts.filter(fact => ids.has(fact.id));
     }
     const scoped = scopedHistory.filter(item => item.id === intent.id);
+    if (!scoped.length && isCaseDetailReview(patient)) {
+      const clauses = splitClinicalClauses(question).filter(clause => recognizeHistoryIntents(clause).some(item => item.id === intent.id));
+      if (clauses.length) {
+        const ids = new Set(clauses.flatMap(clause => factsForIntent(intent, { ...scopedPatient,
+          facts: scopedPatient.facts.filter(fact => caseDetailFactMatchesClause(clause, scopedPatient, fact)) }).map(fact => fact.id)));
+        return scopedPatient.facts.filter(fact => ids.has(fact.id));
+      }
+    }
     return scoped.length ? scopedPatient.facts.filter(fact => scoped.some(item => item.factIds.includes(fact.id))) : factsForIntent(intent, scopedPatient);
   };
   const recognized = [...new Map([...(subjectScope
@@ -312,7 +333,9 @@ export async function respondToDiscovery(text: string, channel: DiscoveryChannel
     ), ...scopedHistory.flatMap(item => historyIntents.filter(intent => intent.id === item.id))]
     .map(intent => [intent.id, intent])).values()];
   const historyFacts = new Set(historyIntents.flatMap(intent => factsForIntent(intent, scopedPatient).map(fact => fact.id)));
-  const choices: Choice[] = scopedPatient.facts.filter(fact => fact.channel === channel || channel === "exam" && historyFacts.has(fact.id))
+  if (isCaseDetailReview(patient)) scopedPatient.facts.filter(fact => fact.channel === "patient").forEach(fact => historyFacts.add(fact.id));
+  const choices: Choice[] = scopedPatient.facts.filter(fact => (fact.channel === channel || channel === "exam" && historyFacts.has(fact.id))
+    && (!isCaseDetailReview(patient) || splitClinicalClauses(question).some(clause => caseDetailFactMatchesClause(clause, patient, fact))))
     .map(fact => ({ id: fact.id, topic: fact.topic, channel: fact.channel, facts: [fact] }));
   for (const intent of historyIntents) if (!(intent.id === "dental-treatment-history" && procedureClauses.length
     ? requestedFacts(intent) : factsForIntent(intent, scopedPatient)).length) {

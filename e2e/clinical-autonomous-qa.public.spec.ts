@@ -6,6 +6,7 @@ import postcss from "postcss";
 import tailwindcss from "tailwindcss";
 import journeysJson from "../scripts/fixtures/clinical-discovery-journeys.v1.json";
 import historyJson from "../scripts/fixtures/clinical-discovery-history-regression.v1.json";
+import detailsJson from "../scripts/fixtures/clinical-discovery-case-details.v1.json";
 import { createQaEncounter, type QaJourney } from "../src/lib/bty/clinical-pilot/discovery-qa.server";
 import { discoveryTurns, initialAssessment, type DiscoveryReply } from "../src/domain/clinical-pilot/discovery";
 import { releasedReference, type Reaction } from "../src/domain/clinical-pilot/pilot";
@@ -39,6 +40,9 @@ test.beforeAll(async () => {
 
 const runs = [
   ...journeys.map(journey => ({ journey, width: 390, height: 844, label: "original-journey" })),
+  ...(detailsJson as QaJourney[]).flatMap(journey => [320, 390, 1280].map(width => ({
+    journey, width, height: 844, label: "case-detail-preview",
+  }))),
   ...(historyJson as QaJourney[]).flatMap(journey => [320, 390, 1280].map(width => ({
     journey, width, height: 844, label: "reported-history-regression",
   }))),
@@ -106,6 +110,9 @@ for (const { journey, width, height, label } of runs) {
     const renderedArticles = conversation.getByRole("article");
     const referenceHeading = page.getByRole("heading", { name: "Dr. Chi’s recorded approach", exact: true });
     await expect(composer).toBeVisible();
+    if (preview.patient.facts.some(f => f.provenance)) {
+      await expect(page.getByText("Fictional interview variant · scenario details awaiting author review", { exact: true })).toBeVisible();
+    }
     await expect(conversation.getByText(card.scenario, { exact: true })).toBeVisible();
     await expect(referenceHeading).toHaveCount(0);
     expect(releasedReference(current().trace)).toBeNull();
@@ -131,6 +138,9 @@ for (const { journey, width, height, label } of runs) {
       for (const pattern of turn.answerPatterns ?? []) expect(saved.reply.text, turn.question).toMatch(new RegExp(pattern, "iu"));
       await expect(renderedArticles.nth(1 + 2 * index).locator("p").nth(1)).toHaveText(normalizeText(turn.question));
       await expect(renderedArticles.nth(2 + 2 * index).locator("p").nth(1)).toHaveText(normalizeText(saved.reply.text));
+      const provenanceLabel = renderedArticles.nth(2 + 2 * index).getByText("Fictional practice detail · awaiting Dr. Chi\'s review", { exact: true });
+      if (saved.reply.fictionalExtensionFactIds?.length) await expect(provenanceLabel).toBeVisible();
+      else await expect(provenanceLabel).toHaveCount(0);
       await expect(referenceHeading).toHaveCount(0);
       expect(releasedReference(current().trace)).toBeNull();
 
@@ -153,6 +163,7 @@ for (const { journey, width, height, label } of runs) {
     expect(initialAssessment(current().trace)).toBe(assessment);
     expect(current().trace.phase).toBe("submitted");
     const comparison = page.getByRole("region", { name: "Approach comparison" });
+    if (preview.patient.facts.some(f => f.provenance)) await expect(comparison.getByText("This interview includes fictional details added for practice. The recorded author perspective below predates those additions; their alignment is awaiting author review.", { exact: true })).toBeVisible();
     await expect(comparison.getByText(normalizeText(releasedReference(current().trace)!.paraphrase), { exact: true })).toBeVisible();
     const turns = discoveryTurns(current().trace);
     const unavailable = turns.filter(({ reply }) => reply.resolution !== "clarify"

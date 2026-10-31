@@ -1,4 +1,5 @@
 import type { DiscoveryChannel, DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
+import { caseDetailFactMatchesClause, caseDetailSubject, caseDetailSubjectTarget, isCaseDetailReview } from "./case-detail-subjects.server";
 import { HISTORY_INTENTS, factsForIntent, type HistoryIntentId } from "./clinical-intents.server";
 
 /** Interpretation metadata, not additional facts or modified patient packs.
@@ -232,6 +233,17 @@ export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, pa
   const clauses = composeClinicalClauses(text, channel);
   hasNegatedRequest = clauses.declined.length > 0;
   for (const clause of clauses.active) {
+    const clausePatient = isCaseDetailReview(patient) ? { ...patient, facts: patient.facts.filter(fact => caseDetailFactMatchesClause(clause, patient, fact)) } : patient;
+    const detail = caseDetailSubject(clause, channel, clausePatient);
+    if (detail) {
+      const factIds = clausePatient.facts.filter(fact => fact.channel === detail.channel && detail.suffixes.includes(suffix(fact))).map(fact => fact.id);
+      const target = caseDetailSubjectTarget(detail.topic, clause, patient);
+      const missing: MissingClinicalSubject[] = factIds.length ? [] : [{ id: `clinical-subject:${detail.id}${target.idSuffix}`,
+        topic: target.topic, channel: detail.channel,
+        missingAnswer: `${target.topic}: information is not supplied in this case. No normal or negative finding is established.` }];
+      segments.push({ text: clause, factIds, missing, historySelections: [], suppressHistoryIntentIds: [] });
+      continue;
+    }
     const subjects = SUBJECTS.filter(subject => subject.channel === channel && subject.test.test(clause) && !subject.blocked?.test(clause)
       // Radiographic depth is different from remaining sound structure; an explicit
       // restorability/ferrule request in the same clause still retains that subject.
@@ -242,13 +254,16 @@ export function scopeClinicalSubject(text: string, channel: DiscoveryChannel, pa
     const missing: MissingClinicalSubject[] = [];
     const historySelections: ClinicalSubjectSegment["historySelections"] = [];
     const factIds = subjects.flatMap(subject => {
-      const ids = selectFacts(subject, patient);
+      const ids = selectFacts(subject, clausePatient);
       if (subject.id === "cold-sensitivity") {
         const intent = HISTORY_INTENTS.find(item => item.id === "cold-history")!;
         historySelections.push({ id: intent.id, factIds: ids });
         if (!ids.length) missing.push(intent);
-      } else if (!ids.length) missing.push({ id: `clinical-subject:${subject.id}`, topic: subject.topic, channel: subject.channel,
-        missingAnswer: `${subject.topic}: information is not supplied in this case. No normal or negative finding is established.` });
+      } else if (!ids.length) {
+        const target = caseDetailSubjectTarget(subject.topic, clause, patient);
+        missing.push({ id: `clinical-subject:${subject.id}${target.idSuffix}`, topic: target.topic, channel: subject.channel,
+          missingAnswer: `${target.topic}: information is not supplied in this case. No normal or negative finding is established.` });
+      }
       return ids;
     });
     segments.push({ text: clause, factIds: dedupe(factIds), missing, historySelections,

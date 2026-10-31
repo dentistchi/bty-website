@@ -1,6 +1,7 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
 import { case001Variant } from "./case001-variant.server";
 import { case001VariantB } from "./case001-variant-b.server";
+import { caseDetailVariants } from "./case-detail-variants.server";
 
 /** Server-owned, fictional patient information. Never import into a client component.
  * Decomposed only from catalog scenario/findings; author recommendations are not patient facts.
@@ -329,4 +330,9 @@ discoveryPatients.push(case001Variant(discoveryPatients.find(p => p.caseId === "
 // starting on variant A, and attempts frozen on any pack still resolve by version.
 const case001B = case001VariantB(discoveryPatients.at(-1)!);
 discoveryPatients.push(case001B);
-export const founderPreviewPackVersions: ReadonlySet<string> = new Set([`${case001B.caseId}@${case001B.version}`]);
+// New interview details are review previews. Stored versions continue resolving
+// through the unchanged service; ordinary users skip every entry in this set.
+const caseDetails = caseDetailVariants(discoveryPatients);
+discoveryPatients.push(...caseDetails);
+export const founderPreviewPackVersions: ReadonlySet<string> = new Set([case001B, ...caseDetails]
+  .map(patient => `${patient.caseId}@${patient.version}`));

@@ -1,5 +1,42 @@
 # Active application task contract
 
+## CLINICAL-DISCOVERY-CASE-DETAILS — 2026-10-31
+
+Dr. Chi approves continuing from the reported successful PR #84 real-gateway
+regression to repairing missing clinical interview/examination content. Prepare
+English, separately versioned fictional review packs for Cases 005, 006, 011 first.
+The new version is `discovery-2026-10-31.1-review-a`; the existing Founder allowlist
+controls access to new attempts. Ordinary users keep current packs; every attempt
+continues resolving its stored packVersion and source hash. Keep the neutral chief
+complaint, question-led discovery, assessment-before-reference release and raw capture.
+
+Old packs, catalog/Dr. Chi references, prior traces and original QA fixtures/archives
+remain unchanged. New/replaced details have fictional-extension-awaiting-review
+provenance and visible response labels. In the new copy only, the Case 011 crown
+fact may replace its stale unknown-source clause while retaining known screw-retained
+mobile-crown observations; this is an explicitly documented provenance-marked revision.
+Do not bundle fixture stability or component findings into that generic crown answer.
+Other available source statements remain unchanged. Do not invent microscopic crack
+extent, bacterial counts, manufacturer/torque, procedural outcomes or universal treatment
+rules. Source observations support independent clinician assessment, not a forced plan.
+
+Reproduce the 14 missing-information turns on the original three scripted cases,
+freeze a new semantic regression fixture before router tuning, then verify requests,
+short follow-ups, mixed/negative requests, disclosure scope, version isolation and
+review provenance through real router/domain and isolated browser flows. Existing
+23-case/205-turn audit and its 74 gap turns in 22 cases remain historical/current-base
+limits; new preview results are reported separately. No real-model result is claimed
+without an actual run. No production auth/learner write, migration/seed, secret/process
+change, merge or deployment is part of this source preparation. Put observed checks,
+review table and remaining gaps in a repository document and Draft PR for review.
+
+Observed preparation checks: 800/800 related tests across 44 files; 39/39 isolated
+browser flows; serial standalone types and fresh-checkout Cloudflare build pass.
+The new 72-turn rules fixture has zero required gaps or interpretation errors;
+the frozen 205-turn fixture retains 74 gaps. Actual inference for the new packs
+and live Teams remain unrun. Review and measured limits are in
+`docs/CLINICAL_CASE_DETAILS_REVIEW.md` and `docs/CLINICAL_CASE_DETAILS_QA.md`.
+
 ## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
 
 The live Case 005 screenshot rejects “What did we do” in Examine or test even

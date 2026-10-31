@@ -1,4 +1,5 @@
 import type { DiscoveryFact, DiscoveryPatient } from "@/domain/clinical-pilot/discovery";
+import { caseDetailFactTeeth, isCaseDetailReview } from "./case-detail-subjects.server";
 
 /** Interpretation metadata only. These IDs point to existing patient statements;
  * no examination finding, author recommendation, provider or procedure is inferred.
@@ -23,8 +24,9 @@ const normalized = (text: string) => text.normalize("NFKC").replace(/[‘’]/gu
 
 export function treatmentHistoryFacts(patient: DiscoveryPatient, question = ""): DiscoveryFact[] {
   const isVariant = patient.caseId === "drchi-001" && [VERSION + "-variant-a", VERSION + "-variant-b"].includes(patient.version);
-  if (patient.version !== VERSION && !isVariant) return [];
+  if (patient.version !== VERSION && !isVariant && !isCaseDetailReview(patient)) return [];
   let sources = isVariant ? variantSource : DENTAL_PROCEDURE_SOURCES[patient.caseId] ?? [];
+  if (isCaseDetailReview(patient) && patient.caseId === "drchi-005") sources = [{ suffix: "rct-history" }, { suffix: "crown-history" }];
   // "Last time" asks about the repeat intervention, not the original delivery.
   if (/\b(?:last (?:time|visit|appointment|treatment|procedure)|most recent|latest)\b/iu.test(question) && sources.some(source => source.recent)) {
     sources = sources.filter(source => source.recent);
@@ -32,7 +34,7 @@ export function treatmentHistoryFacts(patient: DiscoveryPatient, question = ""):
   const teeth = [...question.matchAll(/(?:#\s*|\btooth\s*(?:number\s*)?)([1-9]|[12]\d|3[0-2])\b/giu)].map(match => Number(match[1]));
   return patient.facts.filter(fact => fact.channel === "patient" && sources.some(source => fact.id === `${patient.caseId}:${source.suffix}`
     // A tooth without authored subject metadata is unknown, not the focal tooth by assumption.
-    && (!teeth.length || teeth.some(tooth => (fact.toothNumbers ?? source.teeth ?? []).includes(tooth)))));
+    && (!teeth.length || teeth.some(tooth => (caseDetailFactTeeth(patient, fact) ?? source.teeth ?? []).includes(tooth)))));
 }
 
 // Split only a new request head; "root canal and crown" stays a single history topic.
