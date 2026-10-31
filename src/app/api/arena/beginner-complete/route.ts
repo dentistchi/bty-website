@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { arenaRunIdFromUnknown, arenaScenarioIdFromUnknown } from "@/domain/arena/scenarios";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
+import { completeBeginnerReward } from "@/lib/bty/arena/legacyRewards.server";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 import { getBeginnerScenarioById } from "@/lib/bty/scenario/beginnerScenarios";
 import {
   computeBeginnerMaturityScore,
@@ -47,6 +48,12 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (runErr || !run) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if ((run as { scenario_id?: string }).scenario_id !== scenarioId) {
+    return NextResponse.json({ error: "RUN_SCENARIO_MISMATCH" }, { status: 409 });
+  }
+  if (reflectionText !== null && reflectionText.length > 20000) {
+    return NextResponse.json({ error: "INVALID_REWARD_INPUT" }, { status: 400 });
+  }
   if ((run as { run_type?: string }).run_type !== "beginner") {
     return NextResponse.json({ error: "NOT_BEGINNER_RUN" }, { status: 400 });
   }
@@ -63,77 +70,25 @@ export async function POST(req: Request) {
   const score = computeBeginnerMaturityScore(responses, riskLen);
   const feedback = getMaturityFeedback(score);
 
-  const alreadyCompleted = (storedScore: unknown) => {
-    if (typeof storedScore !== "number" || !Number.isFinite(storedScore)) {
-      return NextResponse.json({ error: "COMPLETION_RESULT_UNAVAILABLE" }, { status: 409 });
-    }
-    const storedFeedback = getMaturityFeedback(storedScore);
-    return NextResponse.json({ ok: true, idempotent: true, beginner_maturity_score: storedScore,
-      band: storedFeedback.band, label: storedFeedback.label, message: storedFeedback.message });
-  };
-  if ((run as { status?: string }).status === "DONE") {
-    return alreadyCompleted((run as { beginner_maturity_score?: number }).beginner_maturity_score);
-  }
-  if ((run as { status?: string }).status !== "IN_PROGRESS") {
+  // DONE can be a committed request whose HTTP response was lost. The receipt,
+  // not a local status shortcut, decides whether this is a safe replay.
+  if (!["IN_PROGRESS", "DONE"].includes((run as { status: string }).status)) {
     return NextResponse.json({ error: "RUN_NOT_ACTIVE" }, { status: 409 });
   }
-  const xpWriter = getSupabaseAdmin();
-  if (!xpWriter) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
-
-  const nowIso = new Date().toISOString();
-  const { data: claimed, error: updErr } = await supabase
-    .from("arena_runs")
-    .update({
-      status: "DONE",
-      completed_at: nowIso,
-      beginner_maturity_score: score,
-    })
-    .eq("run_id", runId)
-    .eq("user_id", user.id)
-    .eq("status", "IN_PROGRESS")
-    .select("run_id")
-    .maybeSingle();
-
-  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
-
-  if (!claimed) {
-    const { data: current } = await supabase.from("arena_runs")
-      .select("status, beginner_maturity_score").eq("run_id", runId).eq("user_id", user.id).maybeSingle();
-    if ((current as { status?: string } | null)?.status === "DONE") {
-      return alreadyCompleted((current as { beginner_maturity_score?: number }).beginner_maturity_score);
-    }
-    return NextResponse.json({ error: "RUN_COMPLETION_CONFLICT" }, { status: 409 });
+  const writer = getSupabaseAdmin();
+  if (!writer) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+  const result = await completeBeginnerReward(writer, {
+    userId: user.id, runId, scenarioId, responses, score, feedback,
+  });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  const receipt = result.receipt;
+  // Derived avatar state is best effort. It must never turn a committed reward
+  // into an apparent failure or replay old progression over a newer profile.
+  if (!receipt.replayed) {
+    try {
+      void syncAvatarStateAfterCoreXpChange(user.id, supabase, receipt.coreBefore, receipt.coreAfter).catch(() => {});
+    } catch { /* The durable reward remains successful. */ }
   }
-
-  const beginnerSeasonalXp = 30;
-  await supabase.rpc("ensure_arena_profile");
-  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-  const { error: wxErr } = await xpWriter.rpc("increment_weekly_xp", {
-    p_user_id: user.id,
-    p_league_id: null,
-    p_delta: beginnerSeasonalXp,
-  });
-  if (wxErr) return NextResponse.json({ error: "XP_AWARD_FAILED" }, { status: 500 });
-  const coreResult = await applySeasonalXpToCore(supabase, user.id, beginnerSeasonalXp);
-  if ("error" in coreResult) {
-    // log but don't fail the request
-  }
-
-  // Store reflection event for analytics
-  await supabase.from("arena_events").insert({
-    run_id: runId,
-    user_id: user.id,
-    step: 7,
-    event_type: "BEGINNER_REFLECTION",
-    scenario_id: scenarioId,
-    meta: reflectionText ? { reflectionText } : null,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    beginner_maturity_score: score,
-    band: feedback.band,
-    label: feedback.label,
-    message: feedback.message,
-  });
+  return NextResponse.json({ ok: true, beginner_maturity_score: receipt.score,
+    ...receipt.feedback, receiptId: receipt.receiptId, idempotent: receipt.replayed });
 }

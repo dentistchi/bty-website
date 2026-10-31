@@ -77,13 +77,17 @@ export async function POST(req: Request) {
 
   const { data: run, error: runErr } = await supabase
     .from("arena_runs")
-    .select("run_id, user_id, status")
+    .select("run_id, user_id, run_type, status")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
   if (!run) return NextResponse.json({ error: "RUN_NOT_FOUND" }, { status: 404 });
+  // Beginner runs award their fixed reward through beginner-complete only.
+  if ((run as { run_type?: string }).run_type === "beginner") {
+    return NextResponse.json({ error: "NOT_SCENARIO_RUN" }, { status: 409 });
+  }
 
   const { count, error: countErr } = await supabase
     .from("arena_events")

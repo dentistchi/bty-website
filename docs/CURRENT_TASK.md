@@ -1,5 +1,24 @@
 # Active application task contract
 
+## LEGACY-XP-ATOMICITY — 2026-10-31
+
+Repair duplicate legacy CHOICE_CONFIRMED rewards and Beginner partial completion.
+Use one private SQL transaction for reward, progress, reflection and an immutable
+receipt keyed globally by run ID. Replay identical business inputs with frozen
+results; reject changed inputs and historical events without receipts for review.
+No inference, backfill or rewriting old learner records. Require receipt validation
+before client progression, retain inputs on failure, and preserve canonical choices,
+Clinical/Practice and Learning Rewards v1. Prepare an additive migration but do not
+apply it, deploy, merge, change secrets or mint sessions in this task.
+
+Validate frozen API/client regressions, exact legacy Core conversion parity, SQL
+rollback and ACLs, typecheck, full-suite baseline identities and a fresh build.
+PGlite SQL semantics do not establish native multi-connection lock correctness;
+report unrun native races explicitly. Rollout requires fencing old split writers
+on every domain/alias and verifying in-flight requests are drained before writes
+resume. Code deployment at 100% alone is not sufficient proof of that boundary.
+This independent branch starts from inner-main 50e7a311; leave Draft PR90 unchanged.
+
 ## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
 
 The live Case 005 screenshot rejects “What did we do” in Examine or test even

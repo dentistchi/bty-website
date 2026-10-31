@@ -1,5 +1,6 @@
 import { getScenarioById as getLegacyScenarioById } from "@/lib/bty/scenario/engine";
 import { evaluateChoice } from "@/lib/bty/arena/engine";
+import { recordLegacyChoiceReward } from "@/lib/bty/arena/legacyRewards.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
@@ -115,8 +116,19 @@ export async function POST(req: Request) {
   if (eventType === "CHOICE_CONFIRMED" && (runActor as { scenario_id?: string }).scenario_id !== scenarioId) {
     return NextResponse.json({ error: "RUN_SCENARIO_MISMATCH" }, { status: 409 });
   }
-  const xpWriter = xp > 0 ? getSupabaseAdmin() : null;
-  if (xp > 0 && !xpWriter) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+  if (eventType === "CHOICE_CONFIRMED") {
+    if (!Number.isInteger(step) || step < 1 || step > 7) {
+      return NextResponse.json({ error: "INVALID_REWARD_INPUT" }, { status: 400 });
+    }
+    const writer = getSupabaseAdmin();
+    if (!writer) return NextResponse.json({ error: "XP_WRITER_UNAVAILABLE" }, { status: 503 });
+    const result = await recordLegacyChoiceReward(writer, {
+      userId: user.id, runId, scenarioId, choiceId: choiceId!, step, xp, deltas, meta,
+    });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ ok: true, reExposureDueCandidate: false,
+      xp: result.receipt.xp, receiptId: result.receipt.receiptId, idempotent: result.receipt.replayed });
+  }
   const runOwner = String((runActor as { user_id: string }).user_id);
   logActionContractActorTrace("arena_event_choice", {
     incoming_actor_user_id: user.id,
@@ -159,15 +171,6 @@ export async function POST(req: Request) {
       })
       .eq("run_id", runId)
       .eq("user_id", user.id);
-  }
-
-  if (xp > 0) {
-    const { error: rewardError } = await xpWriter!.rpc("increment_arena_xp", {
-      p_user_id: user.id,
-      p_run_id: runId,
-      p_xp: xp,
-    });
-    if (rewardError) return NextResponse.json({ error: "XP_AWARD_FAILED" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, reExposureDueCandidate });

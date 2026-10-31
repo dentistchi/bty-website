@@ -1,0 +1,50 @@
+{
+  "boundaries-before.json.gz": {
+    "sha256": "05471593574361dd7d2bf014876b571676bdc3c6cae36a57bdf0beefc8090268",
+    "bytes": 996
+  },
+  "client-before.log.gz": {
+    "sha256": "ee3e8dac546a5e63e141d241020ab87b72c3a0e4b9cd0612c7195cfa9b61d984",
+    "bytes": 4373
+  },
+  "focused-final.json.gz": {
+    "sha256": "a4facca9dfad65ba3acad4f4860baedeceba3d489f832cff7a502f84a71ec7a0",
+    "bytes": 13439
+  },
+  "helper-independent.json.gz": {
+    "sha256": "b27773bfb8a86be667039e603b5b78609bea077a745d67d842a54b8d3c112a95",
+    "bytes": 1145
+  },
+  "postgres-semantics.json": {
+    "sha256": "9de69312d1334c03422b861a93cd5e00abdba68eeafb975818a184d38e46f21f",
+    "bytes": 15922
+  },
+  "receipt-edges.json.gz": {
+    "sha256": "eeaed849a71c42e47e767fb4a1b52c5342d47374eceb40044c71ca08d78354d7",
+    "bytes": 1468
+  },
+  "routes-before.json.gz": {
+    "sha256": "767aed5597390573220dddce4889ad6a2855b3df08bbdbdb2503c6e74c4a24c9",
+    "bytes": 5412
+  },
+  "routes-independent-after.json.gz": {
+    "sha256": "11cfda5cc73e925e1fef2e6e709c7b2f99747aa6d363d57834b7942366b606de",
+    "bytes": 3934
+  },
+  "xp-build-artifact-gate.log.gz": {
+    "sha256": "61e3e86446d4b749d9e9d41c916a37c759c551577c94c51d8a5d59d771b0727b",
+    "bytes": 246
+  },
+  "xp-build-install-trust-retry.log.gz": {
+    "sha256": "fbd10521560978bcd3066ccfa979679b5e232a6da3b70db647c81184869e7a13",
+    "bytes": 723
+  },
+  "xp-build-public-scan.log.gz": {
+    "sha256": "6bc729350055ada2ef7d65d1b8bc835cc4d3439471f9f8875a86fc00c81335f5",
+    "bytes": 285
+  },
+  "xp-build.log.gz": {
+    "sha256": "5f2b466cf2c65ede855bc81725f4d552bf3df7378e5d6a0b84f6e85fae200ee2",
+    "bytes": 6301
+  }
+}

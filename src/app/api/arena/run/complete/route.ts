@@ -72,13 +72,18 @@ export async function POST(req: Request) {
 
   const { data: existing, error: selErr } = await supabase
     .from("arena_runs")
-    .select("run_id, status, scenario_id, difficulty, meta")
+    .select("run_id, run_type, status, scenario_id, difficulty, meta")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
   if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // Beginner completion has its own atomic reward receipt; it cannot also claim
+  // the general scenario completion reward or mutate its progression here.
+  if ((existing as { run_type?: string }).run_type === "beginner") {
+    return NextResponse.json({ error: "NOT_SCENARIO_RUN" }, { status: 409 });
+  }
 
   const scenarioId = (existing as { scenario_id?: string }).scenario_id ?? "";
   const runMeta = (
