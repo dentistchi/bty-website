@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const HISTORY_SHA256 = "4aa1bba0d68e7fdcfe300f49298f46dc93be5ea995ffd4ba14b1e55517084f60";
-const MIGRATIONS_SHA256 = "dde164cf165c4f8f8576d31c23d404cc8b73d635956fc7a63c1705b5d30dfaf2";
+const MIGRATIONS_SHA256 = "2d0d9767c64f4fdf5c002f943f42f6febd425a48ec0a313cbd0414a8a4f5a8dd";
 const sha256 = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 const fixture = (name: string, root: string) => join(root, "src/test-support/fixtures", name);
 
@@ -54,7 +54,7 @@ export function pinnedLaterSourceMigrations(
   const raw = readFileSync(fixture("later-migration-source-snapshot.json", root), "utf8");
   assert.equal(sha256(raw), MIGRATIONS_SHA256, "Migration source snapshot bytes changed; re-verify the named source before changing its pin");
   const value = JSON.parse(raw) as { snapshotCommit: string; entries: SourceEntry[] };
-  assert.equal(value.snapshotCommit, "f9782ed2bff32d3b6961e0125db55c091d76291f");
+  assert.equal(value.snapshotCommit, "7578ec74665af60ae7fa0f9517e47e4c05b4d631");
   assert(value.entries.length > 0);
   assert.equal(new Set(value.entries.map(entry => entry.file)).size, value.entries.length);
   return value.entries.map(entry => {
