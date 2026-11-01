@@ -55,6 +55,15 @@ const off = () =>
 
 const toggle = () => screen.getByTestId("center-consent-toggle");
 
+async function readyToggle(checked: boolean) {
+  // Loading/unknown is also aria-checked=false, but correctly remains disabled.
+  // A click is meaningful only after the preference read has resolved.
+  await waitFor(() => {
+    expect(toggle().getAttribute("aria-checked")).toBe(String(checked));
+    expect(toggle().hasAttribute("disabled")).toBe(false);
+  });
+}
+
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => {
   cleanup();
@@ -66,7 +75,7 @@ describe("reading the preference", () => {
   it("(1) OFF is rendered as OFF, and the switch is usable", async () => {
     stub(off);
     render(<CenterRealityFeed locale="en" />);
-    await waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("false"));
+    await readyToggle(false);
     expect(toggle().hasAttribute("disabled")).toBe(false);
     expect(screen.queryByTestId("center-consent-error")).toBeNull();
   });
@@ -117,7 +126,7 @@ describe("writing the preference", () => {
   it("(4/10) enabling sends the owner's own preference and updates the switch", async () => {
     stub(off);
     render(<CenterRealityFeed locale="en" />);
-    await waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("false"));
+    await readyToggle(false);
     fireEvent.click(toggle());
     await waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("true"));
     // No user id is ever sent — ownership is the session, server-side.
@@ -137,7 +146,7 @@ describe("writing the preference", () => {
   it("(11/12) a failed save rolls the switch back AND says so", async () => {
     stub(off, () => new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 }));
     render(<CenterRealityFeed locale="en" />);
-    await waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("false"));
+    await readyToggle(false);
     fireEvent.click(toggle());
     await waitFor(() => expect(screen.getByTestId("center-consent-error")).toBeTruthy());
     expect(screen.getByTestId("center-consent-error").textContent).toContain("Couldn't save that.");
@@ -149,7 +158,7 @@ describe("writing the preference", () => {
   it("(14/15) the request carries ONLY the boolean — no reflection text, no XP, no contract", async () => {
     stub(off);
     render(<CenterRealityFeed locale="en" />);
-    await waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("false"));
+    await readyToggle(false);
     fireEvent.click(toggle());
     await waitFor(() => expect(patched.length).toBe(1));
     expect(Object.keys(patched[0] as object)).toEqual(["personalizeTodayFromReflections"]);

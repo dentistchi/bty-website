@@ -1,0 +1,77 @@
+name: App cleanup persistence PostgreSQL
+
+on:
+  pull_request:
+    branches: [inner-main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - .github/workflows/app-persistence-postgres.yml
+      - scripts/qa/app-persistence-postgres.mjs
+      - src/lib/bty/action-capture/**
+      - src/lib/bty/announcement/**
+      - src/lib/bty/foundry/events/**
+      - supabase/migrations/**
+      - package.json
+      - package-lock.json
+      - vitest.config.ts
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-persistence-postgres-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cleanup-persistence:
+    name: PostgreSQL — Saved, Track and history cleanup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          # Fixed fake credential for this fresh job service, never a secret.
+          POSTGRES_PASSWORD: cleanup-disposable-only
+          PGPORT: '55473'
+        ports:
+          - 127.0.0.1:55473:55473
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 55473 -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 20
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+          package-manager-cache: false
+
+      - name: Install locked dependencies with normal install hooks
+        run: npm ci --no-audit --no-fund
+
+      - name: Execute all74 existing cleanup SQL cases and require72 database witnesses
+        env:
+          # The query suffix is required by these unchanged test files' child-DB routing.
+          BTY_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres?application_name=bty_cleanup_qa
+        run: node scripts/qa/app-persistence-postgres.mjs --output-dir "$RUNNER_TEMP/bty-app-persistence-postgres"
+
+      - name: Preserve actual SQL result, Vitest JSON, witnesses and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-persistence-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/bty-app-persistence-postgres/
+          if-no-files-found: warn
+          retention-days: 7

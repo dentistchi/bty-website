@@ -47,8 +47,13 @@ requests, overlapping ordered acts, both cross-mode arrival orders and an unrela
 user completing while the first user's transaction is held. Contenders use separate
 backend IDs and must be observed waiting on real locks before the gate opens.
 The mixed-order tests preserve the existing separate-mode policies: act-first never
-invents a Starter grant; ritual-first refuses further new acts. Native checks are
-**unrun in this source-preparation worktree** and require the isolated CI command.
+invents a Starter grant; ritual-first refuses further new acts. Native checks were
+unrun during initial source preparation. Integration subsequently observed
+**58/58 checks on PostgreSQL17.11**, including these six race groups, in
+[run 41258285658](https://github.com/dentistchi/bty-website/actions/runs/41258285658)
+at source `5d287b4f`. The [JSON receipt](release-reliability/native-healing.json)
+and compressed raw job log record distinct backend IDs, SQL lock waits and
+`unrun: []`. This is disposable CI evidence, not production application.
 
 ```sh
 HEALING_ATOMIC_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55473/bty_healing_atomic_qa \

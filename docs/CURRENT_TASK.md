@@ -2,6 +2,15 @@
 
 ## RELEASE-RELIABILITY-REMAINDER — 2026-10-31
 
+Integration checkpoint: application source frozen at `27ff4865`, final full suite
+at `76549c19` observed exit 0 (16,074 reported passed / 409 explicit skips).
+Independent browser 57/57, native atomic SQL 271/271, final types and fresh build
+pass within their documented scopes. The 74 older opt-in persistence SQL bodies
+were inactive in the full run; a separate guarded disposable CI job now requires
+their real execution and 72 database witnesses. That result remains pending.
+See `docs/RELEASE_RELIABILITY_REMAINDER.md` for exact identities and omitted proof.
+Three prepared migrations and every operational rollout gate remain unapplied.
+
 Dr. Chi requests completing the remaining failures autonomously. Continue from
 PR91 source a611a32 in an isolated integration worktree and extend that Draft PR;
 leave PR90 separate. Reproduce all failing categories rather than dismissing them

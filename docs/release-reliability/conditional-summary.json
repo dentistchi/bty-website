@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "release-conditional-gaps/v1",
+  "observedAtUtc": "2026-11-01T01:13:57.695457+00:00",
+  "sourceHead": "76549c19583bcf057dd4cd7efe9a49958106439f",
+  "scope": "Read-only AST/source inspection, filesystem existence snapshot and correlation with the second complete Vitest JSON. No tests, providers, production database calls or application/source writes were performed by this inspection.",
+  "limitations": [
+    "This is a dynamic filesystem snapshot during the later full-suite rerun; files can appear or disappear after observation.",
+    "The earlier second-run JSON proves registration/status, not branch coverage instrumentation. The exact current source conditions plus snapshot establish which named branches would be omitted in this same checkout state.",
+    "Omitted authority assertions are not all empty test bodies: absence checks, prior-path comparisons, tracked-collator assertions and a manifest-source existence check remain where individually listed.",
+    "The scan is scoped to the seven named historical/installed/build-artifact test files; it is not an exhaustive search of every possible conditional path in the repository.",
+    "409 explicit skipped cases are distinct from reported-pass tests with omitted branches. The three new isolated native database QA commands do not cause these legacy18 file gates to run."
+  ],
+  "reportAuthority": {
+    "path": "/workspace/scratch/44e2cc16edbd/bty-release-reliability/docs/release-reliability/full-after-second.json.gz",
+    "compressedSha256": "aa09748dc232e55819cf8b69e472f85d9a1d52c9e715d7393a941f5967b5a6da",
+    "numPassedTests": 16073,
+    "numFailedTests": 1,
+    "numPendingTests": 409,
+    "status": "Second full run had one failure; the third full rerun remains outside this artifact."
+  },
+  "summary": {
+    "reportedPassWithOmittedHistoricalOrInstalledFileProof": 39,
+    "reportedPassWithOmittedOptionalBuildArtifactProof": 3,
+    "totalReportedPassWithNamedOmittedProof": 42,
+    "conditionalPositiveBodyActuallyExecuted": 1,
+    "explicitSkippedTests": 409,
+    "explicitSkippedFiles": 18,
+    "explicitSkippedByCategory": {
+      "Supabase integration": 6,
+      "PostgreSQL/PostgREST integration": 401,
+      "real model/provider": 2
+    },
+    "omissionsByFile": {
+      "src/lib/bty/foundry/arena/c18BoundaryReplay.contract.test.ts": 7,
+      "src/lib/bty/foundry/arena/c18NarrowBoundary.contract.test.ts": 9,
+      "src/lib/bty/foundry/arena/stabilityForensics.contract.test.ts": 7,
+      "src/lib/bty/foundry/arena/stabilityRunner.contract.test.ts": 13,
+      "src/lib/bty/foundry/arena/fullRetentionRunner.test.ts": 3,
+      "src/components/foundry/arena-practice/ArenaPracticeFlow.previewSurface.test.ts": 1,
+      "src/lib/bty/teams/teamsAppManifest.test.ts": 2
+    }
+  },
+  "countReconciliation": "43 structurally conditional test bodies were identified. The original R2.23D-R4 aggregate packet exists and its full positive assertions run, leaving39 omitted historical/installed-file proofs plus3 optional build-artifact proofs. Counting every structural conditional as omitted would overstate the gap by one."
+}

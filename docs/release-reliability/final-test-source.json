@@ -1,0 +1,17 @@
+{
+  "commit": "76549c19583bcf057dd4cd7efe9a49958106439f",
+  "tree": "2a8bf8dfa6a3f6e8e4217ef75da6557ab93c916e",
+  "runtimeFreeze": "27ff4865acd8f21166c2dc48e226ed8343fe1023",
+  "changedSinceFreeze": [
+    "docs/RELEASE_RELIABILITY_REMAINDER.md",
+    "docs/release-reliability/catalog-preflight.json",
+    "src/components/center/centerConsentToggle.test.tsx",
+    "src/components/foundry/event-rooms/LeadersEligibilityPreview.render.test.tsx"
+  ],
+  "nodeVersion": "v20.20.2",
+  "report": "release-full-after-verified.json",
+  "sourceTests": {
+    "src/components/center/centerConsentToggle.test.tsx": "0d14da4cf7e3f407aff8342568e152fa12a01de8a5260cf00c1730efeb040fcf",
+    "src/components/foundry/event-rooms/LeadersEligibilityPreview.render.test.tsx": "3342ed89022aa8589b76847803efb392dd84dcdfd36c54adce10b6bd5959f928"
+  }
+}

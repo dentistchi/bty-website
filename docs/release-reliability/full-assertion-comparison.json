@@ -1,0 +1,1966 @@
+{
+  "identity": "Multiset(relative test file, exact fullName); duplicate multiplicity retained. Suite describe counts are not file counts.",
+  "baselineSource": "a611a320f82e39c35056ad1d4853b30bdb69f14c",
+  "finalTestSource": "76549c19583bcf057dd4cd7efe9a49958106439f",
+  "commonMultiplicity": 16122,
+  "addedMultiplicity": 361,
+  "removedOrRenamedMultiplicity": 31,
+  "retainedBaselineFailingIdentitiesNowPassed": 118,
+  "baselineFailingIdentitiesRenamedOrReplaced": 25,
+  "baselineCollectionErrors": [
+    "src/app/f/[token]/roomEntryExitContainment.test.tsx"
+  ],
+  "finalCollectionErrors": [],
+  "newFailedIdentities": [],
+  "added": [
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport accepts a canonical acknowledgement (idempotent=false)",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport accepts a canonical acknowledgement (idempotent=true)",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport does not present an HTTP500 read as a legitimate ineligible patient state and retries the read",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps a successful HTML response as an unconfirmed completion",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":200,\"body\":{\"ok\":\"true\",\"idempotent\":false}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":200,\"body\":{\"ok\":true,\"idempotent\":\"false\"}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":200,\"body\":{\"ok\":true,\"idempotent\":false,\"starterUnlockGranted\":\"UNKNOWN\"}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":200,\"body\":{\"ok\":true}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":200,\"body\":{}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport keeps the ritual after an invalid completion acknowledgement {\"status\":500,\"body\":{\"ok\":true,\"idempotent\":false}} and permits retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport rejects malformed successful read []",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport rejects malformed successful read null",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport rejects malformed successful read { eligible: 'yes', …(4) }",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport rejects malformed successful read { eligible: true, …(3) }",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport rejects malformed successful read {}",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport renders a Korean read failure with a retry action",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport shows review-required feedback without claiming the historical completion succeeded",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx",
+      "fullName": "Second Awakening honest transport submits once while the acknowledgement is still pending",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport does not invent a relationship focus from malformed intelligence []",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport does not invent a relationship focus from malformed intelligence null",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport does not invent a relationship focus from malformed intelligence { userState: 'clean_start', …(4) }",
+      "count": 2
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport does not invent a relationship focus from malformed intelligence {}",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport ignores a superseded StrictMode read after the newer blocking snapshot has rendered",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport keeps Today usable when HTTP200 pulse has an invalid shape ({\"pulse\":[]})",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport keeps Today usable when HTTP200 pulse has an invalid shape ({\"pulse\":null})",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport keeps Today usable when HTTP200 pulse has an invalid shape ({\"pulse\":{\"domains\":{}}})",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport keeps Today usable when HTTP200 pulse has an invalid shape ({\"pulse\":{\"overall\":\"quiet\",\"domains\":{\"self\":{\"band\":\"invented\",\"copyKey\":\"x\"},\"others\":{\"band\":\"quiet\",\"copyKey\":\"today.pulse.others.quiet\"},\"ground\":{\"band\":\"quiet\",\"copyKey\":\"today.pulse.ground.quiet\"}},\"hasAnyEvidence\":false}})",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport keeps Today usable when HTTP200 pulse has an invalid shape ({\"pulse\":{}})",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport opens cleanly after http transport failure",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport opens cleanly after json transport failure",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport opens cleanly after network transport failure",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport renders a valid server-derived relationship focus without a second chooser",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport renders the current relationship doors from a valid open-day snapshot, without a retired Orb action",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the neutral existing fallback for malformed gate []",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the neutral existing fallback for malformed gate null",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the neutral existing fallback for malformed gate { gate: 'FORCED_RESET', …(1) }",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the neutral existing fallback for malformed gate { gate: 'UNKNOWN', …(1) }",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the neutral existing fallback for malformed gate {}",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — server-owned gate and safe transport uses the server blocking gate as the only destination, without choosing a local Arena entry",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract does not treat unavailable actsError as fresh eligible data",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract does not treat unavailable eventsError as fresh eligible data",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract does not treat unavailable milestoneError as fresh eligible data",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract does not treat unavailable statsError as fresh eligible data",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract does not treat unavailable trainError as fresh eligible data",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract refuses consent before any progress or eligibility read",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "Awakening current read contract uses real 28 distinct-day eligibility and scopes every query to the authenticated user",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "does not publish a normal progress DTO for a non-prefix act history",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "returns review-required for a claimed starter that has no durable unlock",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/awakening/route.test.ts",
+      "fullName": "returns review-required rather than all-acts-complete for a historical partial marker",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract allows a platform admin without querying unrelated Host/directory sources",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract allows a successfully synced enabled Microsoft member ({\"is_provider\":false,\"is_manager\":true})",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract allows a successfully synced enabled Microsoft member ({\"is_provider\":true,\"is_manager\":false})",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract does not accept a Microsoft-derived Host grant without a currently eligible directory snapshot",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract does not accept a revoked explicit Host grant",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract does not treat authentication as author authority",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract fails closed when the directory authority query fails",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract fails closed when the private client is unavailable",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract keeps platform admin capability owner-scoped instead of granting foreign-content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract lists only the canonical caller's drafts even when another owner is requested",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract makes foreign and missing drafts indistinguishable through the real owner-scoped service",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract never authorizes from client/user metadata, an email or a claimed role",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract preserves explicit/legacy manual Host exception (null)",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract preserves explicit/legacy manual Host exception (true)",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses ineligible/foreign Microsoft snapshots ({\"account_enabled\":false}) before content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses ineligible/foreign Microsoft snapshots ({\"is_provider\":false,\"is_manager\":false}) before content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses ineligible/foreign Microsoft snapshots ({\"linked_user_id\":\"other-owner\"}) before content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses ineligible/foreign Microsoft snapshots ({\"sync_status\":\"indeterminate\"}) before content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses ineligible/foreign Microsoft snapshots ({\"user_type\":\"Guest\"}) before content access",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/foundry/manager-authority.contract.test.ts",
+      "fullName": "actual Foundry author gate and owned-draft route/service contract refuses unauthenticated callers before acquiring a private client or reading content",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/healing/route.test.ts",
+      "fullName": "Healing unavailable progress is retryable does not silently downgrade an unavailable milestone to Phase I",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/healing/route.test.ts",
+      "fullName": "Healing unavailable progress is retryable refuses consent before reading the user's phase",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/healing/route.test.ts",
+      "fullName": "does not publish Phase I plus allActsComplete for three acts without their milestone",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/healing/route.test.ts",
+      "fullName": "does not publish a normal progress DTO for a non-prefix act history",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/bty/healing/route.test.ts",
+      "fullName": "returns review-required for a claimed starter that has no durable unlock",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/complete/route.test.ts",
+      "fullName": "Second Awakening committed response and review contract does not invoke completion services before current consent",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/complete/route.test.ts",
+      "fullName": "Second Awakening committed response and review contract returns a dedicated review code for a historical partial completion",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/complete/route.test.ts",
+      "fullName": "Second Awakening committed response and review contract returns a healthy canonical replay without pretending to grant another starter",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/complete/route.test.ts",
+      "fullName": "Second Awakening completion unavailable read boundaries returns a sanitized retryable error for a thrown completion service",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/complete/route.test.ts",
+      "fullName": "Second Awakening completion unavailable read boundaries returns a sanitized retryable error for a thrown eligibility service",
+      "count": 1
+    },
+    {
+      "file": "src/app/api/emotional-stats/second-awakening/route.test.ts",
+      "fullName": "distinguishes a historical completion inconsistency from a transient load failure",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP accepts durable completion with pending XP without resubmitting the learning",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP does not convert a review-required claim response into an awarded or Saved-to-BTY success",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP keeps malformed HTTP200 responses pending and retryable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP keeps pending recovery after 503 then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP keeps pending recovery after malformed then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP keeps the pending panel while a subsequent claim is still in flight",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP preserves completed learning after a 503 and lets an explicit retry reach the awarded result",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP provides Korean pending and review copy without backend codes",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP reconciles a lost claim acknowledgement against the saved awarded snapshot",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP shows review-required truth without an automatic claim or an impossible payment retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "discussion: completed learning and unconfirmed XP shows saved completion and an explicit retry without falsely showing earned XP or auto-claiming",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP accepts durable completion with pending XP without resubmitting the learning",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP does not convert a review-required claim response into an awarded or Saved-to-BTY success",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP keeps malformed HTTP200 responses pending and retryable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP keeps pending recovery after 503 then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP keeps pending recovery after malformed then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP keeps the pending panel while a subsequent claim is still in flight",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP preserves completed learning after a 503 and lets an explicit retry reach the awarded result",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP provides Korean pending and review copy without backend codes",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP reconciles a lost claim acknowledgement against the saved awarded snapshot",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP shows review-required truth without an automatic claim or an impossible payment retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "document: completed learning and unconfirmed XP shows saved completion and an explicit retry without falsely showing earned XP or auto-claiming",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP accepts durable completion with pending XP without resubmitting the learning",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP does not convert a review-required claim response into an awarded or Saved-to-BTY success",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP keeps malformed HTTP200 responses pending and retryable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP keeps pending recovery after 503 then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP keeps pending recovery after malformed then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP keeps the pending panel while a subsequent claim is still in flight",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP preserves completed learning after a 503 and lets an explicit retry reach the awarded result",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP provides Korean pending and review copy without backend codes",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP reconciles a lost claim acknowledgement against the saved awarded snapshot",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP shows review-required truth without an automatic claim or an impossible payment retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "guidance: completed learning and unconfirmed XP shows saved completion and an explicit retry without falsely showing earned XP or auto-claiming",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP accepts durable completion with pending XP without resubmitting the learning",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP does not convert a review-required claim response into an awarded or Saved-to-BTY success",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP keeps malformed HTTP200 responses pending and retryable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP keeps pending recovery after 503 then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP keeps pending recovery after malformed then a healthy GET reports claimable",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP keeps the pending panel while a subsequent claim is still in flight",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP preserves completed learning after a 503 and lets an explicit retry reach the awarded result",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP provides Korean pending and review copy without backend codes",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP reconciles a lost claim acknowledgement against the saved awarded snapshot",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP shows review-required truth without an automatic claim or an impossible payment retry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/completionXpRecovery.test.tsx",
+      "fullName": "video: completed learning and unconfirmed XP shows saved completion and an explicit retry without falsely showing earned XP or auto-claiming",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T1/T2 — video and PDF entry speak ordinary language document — KO parity: 학습 / 이 학습에 표시할 이름 / 계속하기, and no 파운드리 or 입장",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T1/T2 — video and PDF entry speak ordinary language document — no FOUNDRY, no join-a-system wording; TRAINING / purposeful name field / Continue",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T1/T2 — video and PDF entry speak ordinary language the name field still exists, now saying what it is for",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T1/T2 — video and PDF entry speak ordinary language video — KO parity: 학습 / 이 학습에 표시할 이름 / 계속하기, and no 파운드리 or 입장",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T1/T2 — video and PDF entry speak ordinary language video — no FOUNDRY, no join-a-system wording; TRAINING / purposeful name field / Continue",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T10 — return containment is unchanged a rejected return produces NO assigned exit and NO back control",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T10 — return containment is unchanged accepts only the app shell, in both locales",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T10 — return containment is unchanged rejects external, protocol-relative, backslash and non-app targets",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T10 — return containment is unchanged the sanitizer source is byte-identical to the shipped contract",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T11 — this slice changed copy and navigation only no migration, no schema, no RPC, no API route was touched",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T11 — this slice changed copy and navigation only the comparison is non-vacuous",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T11 — this slice changed copy and navigation only the join-token payload and participant contract are untouched at source",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T11 — this slice changed copy and navigation only the rooms still demand a name — no prefill, no profile read, no identity smuggling",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T3 — guidance entry stays exactly as it already was Guidance / purposeful name field / Continue are intact",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T3 — guidance entry stays exactly as it already was live discussion keeps its own eyebrow",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T4 — the return control is named for where it goes KO back label carries no 파운드리, in all three rooms and the in-shell follow-up",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T4 — the return control is named for where it goes document — Back to Learn, never Back to Foundry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T4 — the return control is named for where it goes guidance — Back to Learn, never Back to Foundry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T4 — the return control is named for where it goes the label is TRUE: the repository's only producer of ?return= aims at the Learn tab",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T4 — the return control is named for where it goes video — Back to Learn, never Back to Foundry",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back document — a primary CTA whose href is the sanitized return, verbatim",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back document — the href is exactly what sanitizeRoomReturn returns for a KO target",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back guidance no longer falls to the generic site root when it holds a validated return",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back guidance — a primary CTA whose href is the sanitized return, verbatim",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back guidance — the href is exactly what sanitizeRoomReturn returns for a KO target",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back video — a primary CTA whose href is the sanitized return, verbatim",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T5/T6/T7 — an assigned learner finishes with a way back video — the href is exactly what sanitizeRoomReturn returns for a KO target",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to document — 30-day is stated as 30, not normalised",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to document — NO checkpoint fabricates nothing",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to document — a 7-day checkpoint is stated on the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to document — nothing about signing in or securing XP leaks onto the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to guidance — 30-day is stated as 30, not normalised",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to guidance — NO checkpoint fabricates nothing",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to guidance — a 7-day checkpoint is stated on the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to guidance — nothing about signing in or securing XP leaks onto the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to video — 30-day is stated as 30, not normalised",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to video — NO checkpoint fabricates nothing",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to video — a 7-day checkpoint is stated on the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T8 — the follow-up is explained to the person it applies to video — nothing about signing in or securing XP leaks onto the awarded path",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T9 — the open-link ending is untouched document — with NO return, the existing handoff panel and destination still render",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T9 — the open-link ending is untouched guidance with no return keeps its previous root destination and label",
+      "count": 1
+    },
+    {
+      "file": "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+      "fullName": "T9 — the open-link ending is untouched video — with NO return, the existing handoff panel and destination still render",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads a late Tracking HTTP failure cannot replace the confirmed removal",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads a late Tracking body success cannot replace the confirmed removal",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads a late Tracking malformed body cannot replace the confirmed removal",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads a late Tracking success cannot replace the confirmed removal",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads an earlier Saved mount read cannot undo a confirmed remove",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/SupersededLaneReads.test.tsx",
+      "fullName": "superseded Saved and Tracking reads an earlier Saved mount read cannot undo a confirmed triage",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/arenaRoomActions.test.ts",
+      "fullName": "Practice completion acknowledgement accepts the owned completion route's canonical acknowledgement",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/arenaRoomActions.test.ts",
+      "fullName": "Practice completion acknowledgement refuses a 200 body without canonical completed:true: {\"completed\":false}",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/arenaRoomActions.test.ts",
+      "fullName": "Practice completion acknowledgement refuses a 200 body without canonical completed:true: {\"ok\":true}",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/arenaRoomActions.test.ts",
+      "fullName": "Practice completion acknowledgement refuses a 200 body without canonical completed:true: {}",
+      "count": 1
+    },
+    {
+      "file": "src/components/app-shell/arenaRoomActions.test.ts",
+      "fullName": "Practice completion acknowledgement refuses a successful HTML response instead of treating a sign-in redirect as a saved completion",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":\"true\",\"completedActs\":[1]}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":true,\"completedActs\":\"1\"}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":true,\"completedActs\":[1,1]}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":true,\"completedActs\":[1,4]}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":true,\"completedActs\":[2]}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not advance progress from malformed acknowledgement {\"ok\":true,\"completedActs\":[]}",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback does not describe a review-required 409 as an already recorded act or reload as success",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback only the explicit already-completed conflict reloads the canonical progress",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback rejects malformed HTTP200 reads [] and offers retry",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback rejects malformed HTTP200 reads null and offers retry",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback rejects malformed HTTP200 reads { ok: 'true', …(4) } and offers retry",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback rejects malformed HTTP200 reads { ok: true, …(4) } and offers retry",
+      "count": 2
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback rejects malformed HTTP200 reads {} and offers retry",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback retains zero progress after a server failure, then accepts a canonical retry",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx",
+      "fullName": "Awakening Acts verified progress feedback shows a review-required read without guessing that all acts were completed",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.routeTransition.test.tsx",
+      "fullName": "contained legacy BottomNav route transitions can transition between protected and auth surfaces with the real hooks",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.routeTransition.test.tsx",
+      "fullName": "contained legacy BottomNav route transitions does not run signed-in navigation hooks or fetch on a login surface",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) loading state renders five legacy tabs (NOT-suppressed default; hook returns false initially)",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) renders only Center tab with grid-cols-1 when forced-reset active (all other routes suppressed)",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) renders the current five contained legacy tabs with grid-cols-5 when forced-reset inactive",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/FoundryFollowupStatus.test.tsx",
+      "fullName": "FoundryFollowupStatus — the observation date is when they SAW it a pre-3.2M-5 payload renders its filing instant in reader zone America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/FoundryFollowupStatus.test.tsx",
+      "fullName": "FoundryFollowupStatus — the observation date is when they SAW it a pre-3.2M-5 payload renders its filing instant in reader zone Pacific/Kiritimati",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/FoundryFollowupStatus.test.tsx",
+      "fullName": "FoundryFollowupStatus — the observation date is when they SAW it a pre-3.2M-5 payload renders its filing instant in reader zone UTC",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/learnFrontDoor.test.tsx",
+      "fullName": "T1 — the learner sees current work first the non_author branch renders Required Learning BEFORE the doors",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window keeps both exact endpoints on different canonical day keys in America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window keeps both exact endpoints on different canonical day keys in Asia/Kathmandu",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window keeps both exact endpoints on different canonical day keys in Australia/Lord_Howe",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window keeps both exact endpoints on different canonical day keys in Europe/Berlin",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window keeps both exact endpoints on different canonical day keys in Pacific/Auckland",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-03-07T20:00:00Z in America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-10-31T20:00:00Z in America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-10-31T20:00:00Z in UTC",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-11-01T12:59:59Z in America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-11-01T13:00:00Z in America/Los_Angeles",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window preserves calendar boundaries: 2026-12-31T20:00:00Z in Asia/Seoul",
+      "count": 1
+    },
+    {
+      "file": "src/domain/daily/userDayWindow.test.ts",
+      "fullName": "canonical user-day window reproduces the former empty fall-back window without treating it as a valid day",
+      "count": 1
+    },
+    {
+      "file": "src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts",
+      "fullName": "[30-31] prompt / schema parity allows concreteAction only as supplied request context while still rejecting unknown output fields",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/authority/foundryAuthor.server.test.ts",
+      "fullName": "hasFoundryAuthorCapability fails closed when bty_microsoft_directory_authority cannot be read",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "Second Awakening milestone read failure never grants eligibility when already-completed state is unavailable",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "Second Awakening never grants from unavailable eligibility or unlock inputs refuses a failed eventsError source rather than treating it as empty",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "Second Awakening never grants from unavailable eligibility or unlock inputs refuses a failed statsError source rather than treating it as empty",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "Second Awakening never grants from unavailable eligibility or unlock inputs refuses a failed trainError source rather than treating it as empty",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "can read a healthy completed milestone without requiring fresh train or unlock data",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "does not classify a stored starter without its durable unlock as a healthy completed ritual",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/emotional-stats/secondAwakening.test.ts",
+      "fullName": "does not reopen a marker with a claimed starter but no completion timestamp",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/c18BoundaryReplay.contract.test.ts",
+      "fullName": "the pinned synthetic input cannot borrow the historical digest or tolerate mutation",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+      "fullName": "synthetic preparation cannot become historical or live evidence a generated synthetic canary stops before any live path or credential prompt",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+      "fullName": "synthetic preparation cannot become historical or live evidence keeps historical preparation fail-closed when its exact captured artifact is missing",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
+      "fullName": "synthetic preparation cannot become historical or live evidence refuses a synthetic flag outside the explicit mock mode",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
+      "fullName": "[R2.52][7] the artifact proves which route ran the WRITTEN version is bumped and an explicit synthetic /4 shape stays readable",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
+      "fullName": "synthetic source authority refuses synthetic inputs on the live route before any dependency call",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
+      "fullName": "synthetic source authority the actual CLI labels synthetic mock output and refuses live/default substitutions",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam A. loads the exact tracked synthetic subject and reproduces its own scenario digest",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam B. never invokes Plan, Render or any generation function",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam C. the narrow reviewer subject carries acceptedCost and never boundaryCompliance",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam D. the broad reviewer request carries the complete frozen construction, claim included",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam E. narrow and broad consume one replay-local identity from a single frozen load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam F. canned reviewer output preserves every evidence field the existing parsers produce",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam G. replay accounting is inert: no sequence allocation, no DB recorder, no submission accounting",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam H. a wrong artifact sha refuses before any reviewer is invoked",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam I. production broadReviewAllowed is computed and broad rows are markable OFF_PIPELINE",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam J. reviewConstraintCompliance body is byte-identical; only its export token may change",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam K. evidence is written ONLY to the injected root; the real replay root stays absent",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam L. a pre-existing subject evidence file refuses before any reviewer dependency call",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam M. a broad failure still leaves partial evidence on disk",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam N. the CLI parser rejects bad argv before any dependency call",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam O. broad is called exactly once whether the narrow gate is true or false",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam P. recorded call counts equal the actual injected dependency invocations",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam Q. consumed flips exactly at the first dependency invocation, not at stage start",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam R. evidence retains both exact requests, their hashes and boundaryCompliance counts",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam S. the harness references no generation symbol at all",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam historical identities never accept a synthetic subject or invoke reviewers",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam synthetic seams require explicit reviewers and an isolated output root",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — synthetic phase 1 seam the historical CLI fails closed on missing captures and a wrong expected hash",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not attach a revoked assignment when no active assignment exists",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context arena_profiles fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context foundry_event_assignments fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context foundry_event_module fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context foundry_event_participants fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context foundry_event_training_progress fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume a claim when authoritative context foundry_events fails to load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not consume an ambiguous historical reward as a successful paid claim",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not extend the original claim expiry on replay",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary does not treat an errored decision predicate as no Apply obligation",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary never permits another account to replay a consumed credential",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary rejects a malformed success instead of asserting that Core was awarded",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary reports infrastructure outage PGRST202 as unavailable, not a bad credential",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary reports infrastructure outage XX001 as unavailable, not a bad credential",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary requires an atomic claim+Core receipt, rather than trusting the old ledger-only row",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary resolves the active assignment when an archived revoked membership snapshot also exists",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/completionClaimAtomic.test.ts",
+      "fullName": "deferred claim atomic Core receipt boundary resolves the same-account lost acknowledgement from a consumed claim receipt",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundry-xp-atomic.pg.test.ts",
+      "fullName": "Foundry SQL harness safety and frozen business oracle never substitutes a remote or application database",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundry-xp-atomic.pg.test.ts",
+      "fullName": "Foundry SQL harness safety and frozen business oracle pins +10 permanent Core, three awards per day, no Weekly or buffer mutation",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundry-xp-atomic.pg.test.ts",
+      "fullName": "Foundry SQL harness safety and frozen business oracle requires both explicit CI flags for a plain RFC1918 server address",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary contains thrown transport errors without inventing an existing award",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary does not claim a split ledger/Core failure was paid",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary does not hide a retained receipt if its learner later becomes the event owner",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary does not label historical ledger-only state as an established award",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary does not shift the reward day to UTC after a profile lookup error",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary does not shift the reward day to UTC after a profile lookup throw",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary passes exact 25-hour Seattle fall-back bounds to the atomic RPC",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary preserves owner exclusion through the SQL authority without a Core mutation",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary rejects unsupported or mismatched acknowledgements 'awarded'",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary rejects unsupported or mismatched acknowledgements []",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary rejects unsupported or mismatched acknowledgements null",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary rejects unsupported or mismatched acknowledgements { …(12) }",
+      "count": 4
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary rejects unsupported or mismatched acknowledgements {}",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary reports unavailable on private RPC failure 42883",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary reports unavailable on private RPC failure PGRST202",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary reports unavailable on private RPC failure XX001",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary retains a truthful daily limit without an unsupported paid receipt",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary returns an identical receipt replay without another Core or avatar transition",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "Foundry Core reward atomic receipt boundary uses one atomic private boundary instead of the old ledger then TypeScript Core update",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof confirms an original positive receipt without any write",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof does not interpret anonymous completion as an awarded account",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof keeps owner exclusion truthful after a reload without inventing a claimable reward",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof rejects an event replay whose original progress is not a canonical UUID",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof reports historical timestamps without receipts as review-required",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof reports unavailable storage instead of a paid timestamp",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof retains a proven payment when its account is now the event owner",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "read-only account/event reward proof retains account-event payment truth across another progress/session without inventing its marker",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "strict read-only reward timezone preparation uses UTC only when neither stored nor device timezone is resolved",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "strict read-only reward timezone preparation uses a valid hint only for truly unresolved storage and never captures it outside the transaction",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/foundryXpAtomic.test.ts",
+      "fullName": "strict read-only reward timezone preparation uses the stored IANA zone before a device hint without writing",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability accepts an eligible synced Microsoft manager and still scopes every item to owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability denies an untrusted or ineligible directory snapshot ({\"account_enabled\":false}) before reading owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability denies an untrusted or ineligible directory snapshot ({\"is_provider\":false,\"is_manager\":false}) before reading owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability denies an untrusted or ineligible directory snapshot ({\"linked_user_id\":\"another-user\"}) before reading owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability denies an untrusted or ineligible directory snapshot ({\"sync_status\":\"failed\"}) before reading owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "Host attention uses the canonical Foundry author capability denies an untrusted or ineligible directory snapshot ({\"user_type\":\"Guest\"}) before reading owned events",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "getHostDailyAttention — eligibility & ownership (tests 1–6) (5) an unsynced org responsibility alone does not grant author capability",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "getHostDailyAttention — priority + privacy (tests 21–23 integrated, 34/35/52) an unavailable author gate fails closed before owned events or attention reads",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostQuizFollowUp.test.ts",
+      "fullName": "readLearnerResultDetail keeps the internal account/Teams coordinates out of the exact Host-facing detail DTO",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostQuizFollowUp.test.ts",
+      "fullName": "readLearnerResultDetail the event filter refuses a participant row actually belonging to another training",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostQuizFollowUp.test.ts",
+      "fullName": "readLearnerResultDetail the owner filter refuses the same stored event for another caller",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/participantAccountEdge.guard.test.ts",
+      "fullName": "T10 — no projection may expose the account edge only registered account-resolution or owner-scoped internal reads select user_id",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healing-atomic.pg.test.ts",
+      "fullName": "Healing atomic SQL harness target guards accepts only the designated disposable database on literal loopback55473",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healing-atomic.pg.test.ts",
+      "fullName": "Healing atomic SQL harness target guards requires both CI flags for a private container server and never accepts public/masked addresses",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing completion split-write regression does not acknowledge act 3 or leave it recorded when its milestone write fails",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing completion split-write regression does not acknowledge or retain the ritual milestone when its starter unlock fails",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary contains thrown private transport failures",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary delegates act 3 through one private transaction and never writes through the owner client",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary delegates the verified server-derived starter and returns the committed ritual result",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary does not use owner-client writes if the private writer is unavailable",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary fails closed if storage RPC is missing (42883)",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary fails closed if storage RPC is missing (PGRST202)",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary preserves review-required history instead of claiming duplicate success",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects an unstructured private acknowledgement ([])",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects an unstructured private acknowledgement (null)",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects an unstructured private acknowledgement ({ ok: true })",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects an unstructured private acknowledgement ({})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"actCompletedAt\":null})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"actId\":1})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"completedActs\":[1,1,3]})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"completedActs\":[1,3,2]})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"completedAt\":\"2026-07-02T12:00:00Z\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"completedAt\":null})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"idempotent\":true})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"operation\":\"ritual\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"policyVersion\":\"wrong\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched act receipt fields ({\"userId\":\"another-user\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"completedAt\":null})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"idempotent\":\"false\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"operation\":\"act\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"policyVersion\":\"wrong\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"starterUnlockGranted\":\"EL\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"starterUnlockGranted\":\"SAG\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary rejects mismatched ritual receipt fields ({\"userId\":\"another-user\"})",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary retains a retryable act after a private failure and sends the identical input again",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "Healing private acknowledgement boundary uses a healthy stored ritual replay rather than recomputing or granting a starter",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "does not publish nextAct null when three recorded acts have no completion milestone",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "does not serialize invalid act history [ 1, 3 ] as nextAct null",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/healing/healingCompletion.atomic.test.ts",
+      "fullName": "does not serialize invalid act history [ 2 ] as nextAct null",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity checks the bytes of all 23 observed later migrations without applying any SQL",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity compares available local history exactly instead of silently using a contradictory fixture",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity leaves an unregistered future migration visible to every empty-list guard",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity refuses missing/replaced commits and any changed fixture byte, including a vacuous list",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity refuses modified registered SQL even though its filename was previously observed",
+      "count": 1
+    },
+    {
+      "file": "src/test-support/repositoryScope.test.ts",
+      "fullName": "pinned repository-scope proof integrity retains independently retrieved exact, nonempty historical changed-file sets",
+      "count": 1
+    }
+  ],
+  "removedOrRenamed": [
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — handleCommit navigate-once prefetches the resolved destination once entry resolution settles",
+      "count": 1
+    },
+    {
+      "file": "src/app/[locale]/today/TodayHomeClient.commit.test.tsx",
+      "fullName": "TodayHomeClient — handleCommit navigate-once two commits → exactly one router.push(beginHref); hint flag persisted",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) loading state renders 3 tabs (NOT-suppressed default; hook returns false initially)",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) renders 3 tabs (Center / btyARENA / My Page) with grid-cols-3 when forced-reset inactive",
+      "count": 1
+    },
+    {
+      "file": "src/components/bty/navigation/BottomNav.test.tsx",
+      "fullName": "BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7) renders only Center tab with grid-cols-1 when forced-reset active (Arena + My Page suppressed)",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/FoundryFollowupStatus.test.tsx",
+      "fullName": "FoundryFollowupStatus — the observation date is when they SAW it a pre-3.2M-5 payload still shows its only available date",
+      "count": 1
+    },
+    {
+      "file": "src/components/foundry/event-rooms/learnFrontDoor.test.tsx",
+      "fullName": "T1 — the learner sees current work first the non_host branch renders Required Learning BEFORE the doors",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/authority/foundryAuthor.server.test.ts",
+      "fullName": "hasFoundryAuthorCapability fails closed when bty_microsoft_authority_snapshots cannot be read",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
+      "fullName": "[R2.52][7] the artifact proves which route ran the WRITTEN version is bumped and historical /4 stays readable",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam A. loads the exact Run-4 frozen subject and reproduces its scenario digest",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam B. never invokes Plan, Render or any generation function",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam C. the narrow reviewer subject carries acceptedCost and never boundaryCompliance",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam D. the broad reviewer request carries the complete frozen construction, claim included",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam E. narrow and broad consume one replay-local identity from a single frozen load",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam F. canned reviewer output preserves every evidence field the existing parsers produce",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam G. replay accounting is inert: no sequence allocation, no DB recorder, no submission accounting",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam H. a wrong artifact sha refuses before any reviewer is invoked",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam I. production broadReviewAllowed is computed and broad rows are markable OFF_PIPELINE",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam J. reviewConstraintCompliance body is byte-identical; only its export token may change",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam K. evidence is written ONLY to the injected root; the real replay root stays absent",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam L. a pre-existing subject evidence file refuses before any reviewer dependency call",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam M. a broad failure still leaves partial evidence on disk",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam N. the CLI parser rejects bad argv before any dependency call",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam O. broad is called exactly once whether the narrow gate is true or false",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam P. recorded call counts equal the actual injected dependency invocations",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam Q. consumed flips exactly at the first dependency invocation, not at stage start",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam R. evidence retains both exact requests, their hashes and boundaryCompliance counts",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts",
+      "fullName": "frozen reviewer replay — phase 1 seam S. the harness references no generation symbol at all",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "getHostDailyAttention — eligibility & ownership (tests 1–6) (5) an org responsibility alone does not grant it — only an active Foundry Host grant does",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/hostAttentionService.test.ts",
+      "fullName": "getHostDailyAttention — priority + privacy (tests 21–23 integrated, 34/35/52) a Host-gate failure yields no items and never reaches attention reads (structural, not masked)",
+      "count": 1
+    },
+    {
+      "file": "src/lib/bty/foundry/events/participantAccountEdge.guard.test.ts",
+      "fullName": "T10 — no projection may expose the account edge exactly ONE read selects user_id — the session lookup that the compatibility rule needs",
+      "count": 1
+    }
+  ],
+  "replacementReasonsByFile": {
+    "src/app/[locale]/today/TodayHomeClient.commit.test.tsx": "Retained legacy Today body: normalize transport shape, bounded readiness and duplicate-commit/order tests. Current /today redirects to /app; not an active Today defect claim.",
+    "src/components/bty/navigation/BottomNav.test.tsx": "Correct the stale three-tab fixture to the existing contained legacy five-tab navigation; keep forced-reset suppression assertions. No production navigation change.",
+    "src/components/foundry/event-rooms/FoundryFollowupStatus.test.tsx": "Correct the pre-3.2M-5 date expectation to the existing visible observation-date contract; add missing-date and source controls.",
+    "src/components/foundry/event-rooms/learnFrontDoor.test.tsx": "Match existing non-host front-door order; retain visible current-learning and entry assertions. No production order change.",
+    "src/lib/bty/authority/foundryAuthor.server.test.ts": "Name the actual canonical directory authority table queried by the real gate; preserve unavailable-read denial and real capability controls.",
+    "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts": "Replace stale exact-current-version assumption with current version and pinned historical readability controls.",
+    "src/lib/bty/foundry/arena/frozenReviewerReplay.test.ts": "Run the same seam semantics on explicitly synthetic fixed inputs, separately from absent Run4 historical captures; retain original live SHA/path authorities and fail-closed negatives.",
+    "src/lib/bty/foundry/events/hostAttentionService.test.ts": "Use the real explicit Foundry author gate contract; read outage is unavailable rather than healthy empty. Add owned platform/manual/Microsoft allow/deny controls.",
+    "src/lib/bty/foundry/events/participantAccountEdge.guard.test.ts": "Account-edge recovery now reads the canonical private reward receipt; validate non-projection and allow only owned internal account-edge reads."
+  },
+  "claimBoundary": "Stale contracts are renamed or replaced transparently, not claimed unchanged. Added identities all report passed. Conditional evidence omissions remain distinct below."
+}

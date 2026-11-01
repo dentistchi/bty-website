@@ -83,7 +83,10 @@ reused. These checks do not invalidate a healthy independent ritual milestone.
 Independent SQL verification applies the exact migration to isolated PostgreSQL
 fixtures. PGlite semantics cover 52 checks, including rollback/suppressed writes,
 service-only ACLs, owner read preservation, historical review and frozen replay.
-Six native independent-backend race groups are prepared separately; their result
-must be observed in CI, not inferred from single-session tests. Neither fixture
-is the full production Supabase migration stack. Current SQL SHA256 is
+Integration CI subsequently observed **58/58 native PostgreSQL17.11 checks**,
+including all six independent-backend race groups with distinct backend IDs and
+observed SQL lock waits. [Run 41258285658](https://github.com/dentistchi/bty-website/actions/runs/41258285658)
+used source `5d287b4f`; [the native receipt](release-reliability/native-healing.json)
+has an empty `unrun` list. Neither fixture is the full production Supabase
+migration stack. Current SQL SHA256 is
 `d1d9f2cc68ad36cbad0bcd1494091bfb5fe91c1d136e5c97c4429ccdd0a89d6f`.

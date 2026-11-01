@@ -1,0 +1,840 @@
+{
+  "config": {
+    "configFile": "/workspace/scratch/44e2cc16edbd/release-browser-independent-final/playwright.config.cjs",
+    "rootDir": "/workspace/scratch/44e2cc16edbd/bty-release-reliability/e2e",
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "line",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/workspace/scratch/44e2cc16edbd/release-browser-independent-final/playwright-report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 15000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/workspace/scratch/44e2cc16edbd/release-browser-independent-final/playwright-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "public",
+        "name": "public",
+        "testDir": "/workspace/scratch/44e2cc16edbd/bty-release-reliability/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "app-release-reliability.public.spec.ts",
+          "practice-completion-reliability.public.spec.ts",
+          "healing-client-reliability.public.spec.ts"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "version": "1.49.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "app-release-reliability.public.spec.ts",
+      "file": "app-release-reliability.public.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "320px isolated release reliability",
+          "file": "app-release-reliability.public.spec.ts",
+          "line": 145,
+          "column": 8,
+          "specs": [
+            {
+              "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 966,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:27.806Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-46ef7dd23dda47e87538",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 148,
+              "column": 9
+            },
+            {
+              "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 805,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:29.256Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-30532a7aa29ec58917d5",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 172,
+              "column": 9
+            },
+            {
+              "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 761,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:30.104Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-4478188ca5716d04d6d3",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 193,
+              "column": 9
+            },
+            {
+              "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1113,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:30.869Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-1b88ab5730aca787553e",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 221,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "390px isolated release reliability",
+          "file": "app-release-reliability.public.spec.ts",
+          "line": 145,
+          "column": 8,
+          "specs": [
+            {
+              "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 749,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:31.986Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-146850d6d9aecc65d4d6",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 148,
+              "column": 9
+            },
+            {
+              "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 726,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:32.739Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-4e26fbcff6c08a0ed7ac",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 172,
+              "column": 9
+            },
+            {
+              "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 782,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:33.469Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-59e975c17621a0b088bf",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 193,
+              "column": 9
+            },
+            {
+              "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 657,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:34.255Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-442aab26fdb8bd2ffb7c",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 221,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "1280px isolated release reliability",
+          "file": "app-release-reliability.public.spec.ts",
+          "line": 145,
+          "column": 8,
+          "specs": [
+            {
+              "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 674,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:34.918Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-cb19000b61b7680c9877",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 148,
+              "column": 9
+            },
+            {
+              "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 732,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:35.595Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-680fb90c06a043c8b32c",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 172,
+              "column": 9
+            },
+            {
+              "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 816,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:36.339Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-8254c524df5290c5bc83",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 193,
+              "column": 9
+            },
+            {
+              "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 708,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:37.159Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a6f70611c025c4b2f1e-f4ad1b8c0a3d52841698",
+              "file": "app-release-reliability.public.spec.ts",
+              "line": 221,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "healing-client-reliability.public.spec.ts",
+      "file": "healing-client-reliability.public.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "320px Healing response truth",
+          "file": "healing-client-reliability.public.spec.ts",
+          "line": 55,
+          "column": 44,
+          "specs": [
+            {
+              "title": "second distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 620,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:37.890Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-b83f9b737ddffe077b94",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            },
+            {
+              "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 800,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:38.809Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-8999a2a0fb6785365786",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            }
+          ]
+        },
+        {
+          "title": "390px Healing response truth",
+          "file": "healing-client-reliability.public.spec.ts",
+          "line": 55,
+          "column": 44,
+          "specs": [
+            {
+              "title": "second distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 725,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:39.618Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-dfaa52cc030c22c60689",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            },
+            {
+              "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 10137,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:40.349Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-726079a4e2dd9e9fc376",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            }
+          ]
+        },
+        {
+          "title": "1280px Healing response truth",
+          "file": "healing-client-reliability.public.spec.ts",
+          "line": 55,
+          "column": 44,
+          "specs": [
+            {
+              "title": "second distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 653,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:50.490Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-cd98c1c35952d7977ea1",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            },
+            {
+              "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 554,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:51.147Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dcdafccd4c6444d59e9d-cd2c49d4f9f1bbdf06e2",
+              "file": "healing-client-reliability.public.spec.ts",
+              "line": 57,
+              "column": 55
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "practice-completion-reliability.public.spec.ts",
+      "file": "practice-completion-reliability.public.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "320px native Practice completion truth",
+          "file": "practice-completion-reliability.public.spec.ts",
+          "line": 42,
+          "column": 8,
+          "specs": [
+            {
+              "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 864,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:51.709Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fdabdc7515ec6b19523a-50476065d72b8abb9972",
+              "file": "practice-completion-reliability.public.spec.ts",
+              "line": 44,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "390px native Practice completion truth",
+          "file": "practice-completion-reliability.public.spec.ts",
+          "line": 42,
+          "column": 8,
+          "specs": [
+            {
+              "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 724,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:52.764Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fdabdc7515ec6b19523a-5bd5132845d70ee580aa",
+              "file": "practice-completion-reliability.public.spec.ts",
+              "line": 44,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "1280px native Practice completion truth",
+          "file": "practice-completion-reliability.public.spec.ts",
+          "line": 42,
+          "column": 8,
+          "specs": [
+            {
+              "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "public",
+                  "projectName": "public",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 894,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-01T00:43:53.492Z",
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "fdabdc7515ec6b19523a-2f30beb82427caee544c",
+              "file": "practice-completion-reliability.public.spec.ts",
+              "line": 44,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-01T00:43:26.800Z",
+    "duration": 27667.790999999997,
+    "expected": 21,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
