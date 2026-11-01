@@ -1,3 +1,4 @@
+import { rewardWritesPaused } from "@/lib/bty/rewardWritePause";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isValidIanaTz } from "@/lib/bty/daily/userDay";
 import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
@@ -41,6 +42,7 @@ export function syncFoundryAvatarAfterAward(admin: SupabaseClient, receipt: Foun
 export async function awardFoundryCoreAtomic(admin: SupabaseClient, input: {
   userId: string; eventId: string; progressId: string; start: string; end: string;
 }): Promise<FoundryAwardOutcome> {
+  if (rewardWritesPaused()) return "unavailable";
   try {
     const { data, error } = await admin.rpc("bty_foundry_award_core_atomic", {
       p_user_id: input.userId, p_event_id: input.eventId, p_progress_id: input.progressId,

@@ -13,9 +13,8 @@ vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => privateWriter.c
 beforeEach(() => {
   privateWriter.client = { rpc: vi.fn(async () => ({ data: null, error: null })) };
 });
-vi.mock("./applyCoreXp", () => ({
-  applySeasonalXpToCore: vi.fn(async () => ({ coreGain: 0, newCoreTotal: 0 })),
-}));
+vi.mock("@/engine/avatar/avatar-state.service", () => ({ syncAvatarStateAfterCoreXpChange: vi.fn(async () => undefined) }));
+const AWARD = { policyVersion: "shared-xp/v2", weeklyXpTotal: 5, coreBefore: 0, coreAfter: 0, coreGain: 0, coreBufferAfter: 0.1, xp: 5 };
 
 import { recordActivityXp, capArenaDailyDelta, ARENA_DAILY_XP_CAP, type ActivityType } from "./activityXp";
 
@@ -81,12 +80,10 @@ describe("activityXp", () => {
       expect(result).toEqual({ ok: true, xp: 0 });
     });
 
-    it("returns ok false when insert fails", async () => {
-      const supabase = mockSupabase({
-        arenaToday: 0,
-        activityToday: 0,
-        insertError: "insert_failed",
-      });
+    it("returns ok false when the atomic activity award fails", async () => {
+      // The activity event is inserted inside bty_award_activity_xp_v2; its failure pays nothing.
+      privateWriter.client = { rpc: vi.fn(async () => ({ data: null, error: { message: "insert_failed" } })) };
+      const supabase = mockSupabase({ arenaToday: 0, activityToday: 0 });
       const result = await recordActivityXp(supabase, "user-1", "MENTOR_MESSAGE");
       expect(result).toEqual({ ok: false, error: "insert_failed" });
     });
@@ -101,26 +98,26 @@ describe("activityXp", () => {
   });
 
   /**
-   * Atomic weekly_xp increment regression guard (pre-demo lost-write hotfix).
-   * recordActivityXp must route the weekly_xp write through the increment_weekly_xp
-   * RPC (single atomic UPSERT) and must NOT do a weekly_xp select-then-update
-   * (the read-modify-write pattern that lost writes under concurrency).
+   * Atomic activity award regression guard. The activity event (cap basis), weekly XP
+   * and seasonal Core must be one service-role RPC (bty_award_activity_xp_v2): no
+   * direct activity_xp_events/weekly_xp/arena_profiles write and no read-then-write Core.
    */
-  describe("recordActivityXp — atomic weekly_xp increment", () => {
+  describe("recordActivityXp — atomic activity award", () => {
     function atomicMock() {
       const rpcCalls: Array<{ fn: string; args: unknown }> = [];
       const userRpcCalls: Array<{ fn: string; args: unknown }> = [];
       privateWriter.client = { rpc: (fn: string, args?: unknown) => {
         rpcCalls.push({ fn, args });
-        return Promise.resolve({ data: null, error: null });
+        return Promise.resolve({ data: fn === "bty_award_activity_xp_v2" ? AWARD : null, error: null });
       } };
       const weeklyXpDirectWrites: string[] = [];
       const make = (table: string) => {
         const node: Record<string, unknown> = {};
         for (const f of ["select", "eq", "gte", "lte", "gt", "is", "in", "not", "order", "limit", "update", "insert", "delete"]) {
           node[f] = (..._a: unknown[]) => {
-            if ((f === "update" || f === "insert" || f === "delete") && table === "weekly_xp") {
-              weeklyXpDirectWrites.push(f);
+            if ((f === "update" || f === "insert" || f === "delete" || f === "upsert")
+              && ["weekly_xp", "activity_xp_events", "arena_profiles"].includes(table)) {
+              weeklyXpDirectWrites.push(`${table}.${f}`);
             }
             return node;
           };
@@ -139,30 +136,28 @@ describe("activityXp", () => {
         from: (t: string) => make(t),
         rpc: (fn: string, args?: unknown) => {
           userRpcCalls.push({ fn, args });
-          if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
+          if (fn.startsWith("bty_award_") || fn.startsWith("increment_")) throw new Error("privileged RPC used the user client");
           return Promise.resolve({ data: null, error: null });
         },
       } as unknown as SupabaseClient;
       return { supabase, rpcCalls, userRpcCalls, weeklyXpDirectWrites };
     }
 
-    it("calls increment_weekly_xp RPC with the capped delta and no direct weekly_xp write", async () => {
+    it("calls only bty_award_activity_xp_v2 with the capped delta and writes no table directly", async () => {
       const { supabase, rpcCalls, userRpcCalls, weeklyXpDirectWrites } = atomicMock();
       const result = await recordActivityXp(supabase, "user-1", "MENTOR_MESSAGE");
 
       expect(result).toEqual({ ok: true, xp: 5 });
-      const incr = rpcCalls.find((c) => c.fn === "increment_weekly_xp");
-      expect(incr).toBeDefined();
-      expect(incr?.args).toEqual({ p_user_id: "user-1", p_league_id: null, p_delta: 5 });
-      // The read-modify-write path is gone: no weekly_xp update/insert/delete.
+      expect(rpcCalls).toEqual([{ fn: "bty_award_activity_xp_v2",
+        args: { p_user_id: "user-1", p_activity_type: "MENTOR_MESSAGE", p_delta: 5, p_league_id: null } }]);
       expect(weeklyXpDirectWrites).toEqual([]);
-      expect(userRpcCalls.some(call => call.fn === "increment_weekly_xp")).toBe(false);
+      expect(userRpcCalls).toEqual([]);
     });
 
-    it("returns ok false when the increment RPC errors", async () => {
+    it("returns ok false when the atomic RPC errors", async () => {
       const { supabase } = atomicMock();
       (privateWriter.client as { rpc: unknown }).rpc = (fn: string) =>
-        fn === "increment_weekly_xp"
+        fn === "bty_award_activity_xp_v2"
           ? Promise.resolve({ data: null, error: { message: "rpc_failed" } })
           : Promise.resolve({ data: null, error: null });
       const result = await recordActivityXp(supabase, "user-1", "CHAT_MESSAGE");

@@ -20,7 +20,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { buildApplyBundle, readCutoverSources } from "./reward-write-fence-cutover.mjs";
+import { buildApplyBundle, buildPauseBundle, buildResumeBundle, readCutoverSources } from "./reward-write-fence-cutover.mjs";
 import { validateFenceServer } from "./reward-write-fence-postgres-qa-target";
 
 type Row = Record<string, any>;
@@ -41,8 +41,11 @@ const EXPECTED_CHECKS = [
   "app legacy reward helpers through supabase-js: award, frozen replay, conflict and review-required",
   "app Healing and Foundry helpers through supabase-js commit atomically and replay",
   "weekly quest through supabase-js: five concurrent HTTP claims pay +15 once; ineligible and invalid weeks write nothing",
-  "unchanged writers through PostgREST keep working",
+  "previous-release shared XP/Core writes through PostgREST are rejected",
+  "unchanged writers and release v2 writers through PostgREST keep working",
+  "real reward modules over PostgREST: concurrent run completion, activity and Lab pay exactly once",
   "production arena_profiles triggers coexist with atomic RPC updates",
+  "database pause refuses every reward write over HTTP; the app switch stops helpers before any request; resume restores writes",
 ];
 
 // Observed read-only from production (pg_get_functiondef) on 2026-11-01.
@@ -120,8 +123,10 @@ async function waitFor(fn: () => Promise<boolean>, ms: number, what: string) {
   assert.fail(`timed out waiting for ${what}`);
 }
 
+let proxiedRequests = 0;
 function startProxy(): Promise<http.Server> {
   const server = http.createServer((req, res) => {
+    proxiedRequests += 1;
     const url = (req.url ?? "/").replace(/^\/rest\/v1/, "") || "/";
     const upstream = http.request({ host: "127.0.0.1", port: REST_PORT, path: url, method: req.method, headers: req.headers }, up => {
       res.writeHead(up.statusCode ?? 502, up.headers); up.pipe(res);
@@ -163,6 +168,10 @@ async function main() {
   const { completeAtomicAct, completeAtomicRitual } = await import("../src/lib/bty/healing/healingCompletion.server");
   const { awardFoundryCoreAtomic } = await import("../src/lib/bty/foundry/events/foundryXpAtomic.server");
   const { getWeekStartUTC } = await import("../src/lib/bty/arena/weeklyQuest");
+  const { awardSharedXp, awardRunXp, awardLabXpAtomic } = await import("../src/lib/bty/arena/sharedXp.server");
+  const { applyArenaRunRewardsOnVerifiedCompletion } = await import("../src/lib/bty/arena/reflectionRewards.server");
+  const { recordActivityXp } = await import("../src/lib/bty/arena/activityXp");
+  const { awardLabXP } = await import("../src/engine/xp/lab-xp.service");
 
   const schemaPath = path.resolve("scripts/qa/reward-fence-prod-schema.sql");
   const schema = await readFile(schemaPath, "utf8");
@@ -192,8 +201,13 @@ async function main() {
     proxy = await startProxy();
     const week = getWeekStartUTC();
 
+    // Fixture profiles with Core are seeded as the superuser with triggers skipped; every
+    // operation under test goes through PostgREST with the fence active.
     const seedUser = async () => { const u = randomUUID(); await q("insert into auth.users(id) values($1)", [u]);
-      await q("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,sub_name) values($1,11,7,199,$2,'Spark')", [u, 2 / 3]); return u; };
+      await pg.query("set session_replication_role = replica");
+      try { await q("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,sub_name) values($1,11,7,199,$2,'Spark')", [u, 2 / 3]); }
+      finally { await pg.query("set session_replication_role = origin"); }
+      return u; };
     const seedRun = async (user: string, type = "scenario", scenario = type === "beginner" ? "beginner-qa" : LEGACY_SCENARIO) =>
       (await q("insert into public.arena_runs(user_id,scenario_id,run_type) values($1,$2,$3) returning run_id", [user, scenario, type]))[0].run_id as string;
     const seedFoundry = async (user: string) => {
@@ -338,19 +352,78 @@ async function main() {
       assert.equal(await count("select count(*) n from public.arena_weekly_quest_claims where user_id=$1", [u]), 1);
       return { outcomes };
     });
-    await check("unchanged writers through PostgREST keep working", async () => {
-      const u = await seedUser(); const user = asUser(u); const canon = await seedRun(u, "scenario", CANONICAL_SCENARIO); const scen = await seedRun(u);
-      const results = {
-        canonicalChoice: await user.from("arena_events").insert({ run_id: canon, user_id: u, step: 2, event_type: "CHOICE_CONFIRMED", scenario_id: CANONICAL_SCENARIO, choice_id: "x", xp: 10, meta: { binding: "v1" } }),
-        canonicalXp: await admin.rpc("increment_arena_xp", { p_user_id: u, p_run_id: canon, p_xp: 10 }),
-        freeResponse: await user.from("arena_events").insert({ run_id: scen, user_id: u, step: 2, event_type: "FREE_RESPONSE", scenario_id: LEGACY_SCENARIO, xp: 25 }),
-        organicUnlock: await user.from("user_advanced_unlocks").insert({ user_id: u, advanced_stat_name: "EL" }),
-        weeklyXp: await admin.rpc("increment_weekly_xp", { p_user_id: u, p_league_id: null, p_delta: 5 }),
-        labLedger: await admin.from("core_xp_ledger").insert({ user_id: u, delta_xp: 5, source_type: "LAB", source_id: randomUUID() }),
+    await check("previous-release shared XP/Core writes through PostgREST are rejected", async () => {
+      const u = await seedUser(); const run = await seedRun(u); const user = asUser(u);
+      const before = (await q("select core_xp_total, lifetime_xp, weekly_xp from public.arena_profiles where user_id=$1", [u]))[0];
+      const results: Row = {
+        incrementArenaXp: await admin.rpc("increment_arena_xp", { p_user_id: u, p_run_id: run, p_xp: 82 }),
+        incrementWeeklyXp: await admin.rpc("increment_weekly_xp", { p_user_id: u, p_league_id: null, p_delta: 15 }),
+        userCorePatch: await user.from("arena_profiles").update({ core_xp_total: 250, core_xp_buffer: 0.5 }).eq("user_id", u),
+        serviceCorePatch: await admin.from("arena_profiles").update({ core_xp_total: 209 }).eq("user_id", u),
+        activityEvent: await user.from("activity_xp_events").insert({ user_id: u, activity_type: "CHAT_MESSAGE", xp: 5 }),
+        runRewardAnchor: await user.from("arena_events").insert({ user_id: u, run_id: run, event_type: "RUN_COMPLETED_APPLIED", step: 7, scenario_id: LEGACY_SCENARIO, xp: 0 }),
+        labLedger: await user.from("core_xp_ledger").insert({ user_id: u, delta_xp: 10, source_type: "LAB", source_id: `lab:${randomUUID()}` }),
+        questClaim: await user.from("arena_weekly_quest_claims").insert({ user_id: u, week_start: week, quest_type: "reflection" }),
       };
-      const statuses: Row = {};
-      for (const [k, r] of Object.entries(results)) { assert.equal(r.error, null, `${k}: ${JSON.stringify(r.error)}`); statuses[k] = r.status; }
+      const summary: Row = {};
+      for (const [k, r] of Object.entries(results)) {
+        assert(r.error, `${k} unexpectedly succeeded`);
+        assert.equal(r.error.message, "REWARD_WRITE_FENCED", `${k}: ${JSON.stringify(r.error)}`);
+        summary[k] = { status: r.status, code: r.error.code, detail: r.error.details };
+      }
+      assert.deepEqual((await q("select core_xp_total, lifetime_xp, weekly_xp from public.arena_profiles where user_id=$1", [u]))[0], before);
+      assert.equal(await count("select count(*) n from public.weekly_xp where user_id=$1", [u]), 0);
+      return summary;
+    });
+    await check("unchanged writers and release v2 writers through PostgREST keep working", async () => {
+      const u = await seedUser(); const user = asUser(u); const canon = await seedRun(u, "scenario", CANONICAL_SCENARIO); const scen = await seedRun(u);
+      const statuses: Row = {
+        canonicalChoice: (await user.from("arena_events").insert({ run_id: canon, user_id: u, step: 2, event_type: "CHOICE_CONFIRMED", scenario_id: CANONICAL_SCENARIO, choice_id: "x", xp: 10, meta: { binding: "v1" } })).status,
+        freeResponse: (await user.from("arena_events").insert({ run_id: scen, user_id: u, step: 2, event_type: "FREE_RESPONSE", scenario_id: LEGACY_SCENARIO, xp: 25 })).status,
+        organicUnlock: (await user.from("user_advanced_unlocks").insert({ user_id: u, advanced_stat_name: "EL" })).status,
+      };
+      for (const [k, v] of Object.entries(statuses)) assert.equal(v, 201, k);
+      assert.deepEqual(await awardRunXp(u, canon, 10), { ok: true });
+      const shared = await awardSharedXp({ userId: u, weeklyXp: 5, seasonalCoreXp: 5 }); assert(shared.ok, JSON.stringify(shared));
+      const lab = await awardLabXpAtomic(u, 10, `lab:${randomUUID()}`); assert(lab.ok && lab.outcome === "awarded", JSON.stringify(lab));
+      const reset = await admin.from("weekly_xp").update({ xp_total: 0 }).eq("user_id", u);       // weekly-xp-reset decreases stay direct
+      assert.equal(reset.error, null, JSON.stringify(reset.error));
+      assert.equal((await admin.rpc("bty_e2e_set_core_xp", { p_user_id: u, p_core: 300 })).error, null);
+      assert.equal(await count("select core_xp_total n from public.arena_profiles where user_id=$1", [u]), 300);
       return statuses;
+    });
+    await check("real reward modules over PostgREST: concurrent run completion, activity and Lab pay exactly once", async () => {
+      const u = await seedUser(); const user = asUser(u); const runId = await seedRun(u, "scenario", CANONICAL_SCENARIO);
+      const before = (await q("select core_xp_total from public.arena_profiles where user_id=$1", [u]))[0].core_xp_total;
+      const both = await Promise.all([1, 2].map(() => applyArenaRunRewardsOnVerifiedCompletion({ supabase: user as never, userId: u, run: { run_id: runId, scenario_id: CANONICAL_SCENARIO } })));
+      assert(both.every(r => r.ok), JSON.stringify(both));
+      const applied = both.filter(r => r.ok && r.applied);
+      assert.equal(applied.length, 1, JSON.stringify(both));
+      const paid = applied[0] as { coreXp: number; weeklyXp: number };
+      assert.equal(await count("select count(*) n from public.arena_events where run_id=$1 and event_type='RUN_COMPLETED_APPLIED'", [runId]), 1);
+      assert.equal((await q("select core_xp_total from public.arena_profiles where user_id=$1", [u]))[0].core_xp_total - before, paid.coreXp);
+      assert.equal(await count("select count(*) n from public.core_xp_ledger where user_id=$1 and source_type='ARENA'", [u]), paid.coreXp > 0 ? 1 : 0);
+      const activity = await recordActivityXp(user as never, u, "CHAT_MESSAGE");
+      assert.deepEqual(activity, { ok: true, xp: 5 });
+      assert.equal(await count("select count(*) n from public.activity_xp_events where user_id=$1", [u]), 1);
+      const source = `lab:${randomUUID()}`;
+      const labs = await Promise.all([1, 2].map(() => awardLabXP(u, 10, { supabase: user as never, sourceId: source })));
+      assert.deepEqual(labs.map(r => ("error" in r ? r.error : "awarded")).sort(), ["awarded", "lab_xp_already_applied"]);
+      // A retried or concurrent completion asks for the run's contract again; the production
+      // key UNIQUE(user_id, action_id = arena_action_loop:<run>) keeps it to one row.
+      const { ensureActionContractWithAdmin } = await import("../src/lib/bty/action-contract/ensureActionContract");
+      // Creation preconditions: a canonical pattern family and two completed Arena runs.
+      const contractRun = await seedRun(u, "scenario", CANONICAL_SCENARIO);
+      await q("update public.arena_runs set status='DONE' where user_id=$1", [u]);
+      const input = { userId: u, runId: contractRun, scenarioId: CANONICAL_SCENARIO, nbaLogId: null, patternFamily: "ownership_escape" };
+      const contracts = await Promise.all([1, 2].map(() => ensureActionContractWithAdmin(admin, input)));
+      const retryContract = await ensureActionContractWithAdmin(admin, input);
+      const rows = await count("select count(*) n from public.bty_action_contracts where user_id=$1 and action_id=$2", [u, `arena_action_loop:${contractRun}`]);
+      assert.equal(rows, 1, `contracts for one run: ${rows}`);
+      assert.equal([...contracts, retryContract].filter(r => r.created).length, 1, JSON.stringify({ contracts, retryContract }));
+      assert.equal(retryContract.created, false);
+      return { runCompletion: both.map(r => r.ok && r.applied), coreXp: paid.coreXp, weeklyXp: paid.weeklyXp, labs,
+        contracts: { concurrent: contracts.map(r => ({ ok: r.ok, created: r.created })), retry: { ok: retryContract.ok, created: retryContract.created }, rowsForRun: rows } };
     });
     await check("production arena_profiles triggers coexist with atomic RPC updates", async () => {
       const triggers = (await q("select tgname from pg_trigger where tgrelid='public.arena_profiles'::regclass and not tgisinternal order by 1")).map(r => r.tgname);
@@ -363,6 +436,37 @@ async function main() {
       return { triggers };
     });
 
+    await check("database pause refuses every reward write over HTTP; the app switch stops helpers before any request; resume restores writes", async () => {
+      const u = await seedUser(); const runId = await seedRun(u); const reward = await seedRun(u, "scenario", CANONICAL_SCENARIO);
+      const user = asUser(u);
+      await pg.query(buildPauseBundle("QA incident drill"));
+      const before = (await q("select core_xp_total, lifetime_xp, weekly_xp from public.arena_profiles where user_id=$1", [u]))[0];
+      const paused = {
+        legacyChoice: await recordLegacyChoiceReward(admin, { userId: u, runId, scenarioId: LEGACY_SCENARIO, choiceId: "choice-a", step: 2, xp: 82, deltas: {}, meta: {} }),
+        sharedXp: await awardSharedXp({ userId: u, weeklyXp: 5, directCoreXp: 5 }),
+        runRewards: await applyArenaRunRewardsOnVerifiedCompletion({ supabase: user as never, userId: u, run: { run_id: reward, scenario_id: CANONICAL_SCENARIO } }),
+        quest: await claimWeeklyReflectionQuest(admin, { userId: u, weekStart: week }),
+      };
+      assert.deepEqual(paused.legacyChoice, { ok: false, status: 503, error: "REWARD_WRITES_PAUSED" });
+      assert.deepEqual(paused.sharedXp, { ok: false, error: "REWARD_WRITES_PAUSED" });
+      assert.deepEqual(paused.runRewards, { ok: false, error: "REWARD_WRITES_PAUSED" });
+      assert.deepEqual((await q("select core_xp_total, lifetime_xp, weekly_xp from public.arena_profiles where user_id=$1", [u]))[0], before);
+      assert.equal(await count("select count(*) n from public.arena_events where run_id=$1 and event_type='RUN_COMPLETED_APPLIED'", [reward]), 0);
+      const healingUser = await seedUser(); await q("insert into public.train_day_completions(user_id, day) select $1, g from generate_series(1,28) g", [healingUser]);
+      assert((await completeAtomicAct(healingUser, 1)).ok, "non-reward writes continue while paused");
+      await pg.query(buildResumeBundle());
+      process.env.REWARD_WRITES_PAUSED = "1";
+      const requestsBefore = proxiedRequests;
+      const appPaused = await awardSharedXp({ userId: u, weeklyXp: 5, directCoreXp: 5 });
+      const appPausedChoice = await recordLegacyChoiceReward(admin, { userId: u, runId, scenarioId: LEGACY_SCENARIO, choiceId: "choice-a", step: 2, xp: 82, deltas: {}, meta: {} });
+      delete process.env.REWARD_WRITES_PAUSED;
+      assert.deepEqual(appPaused, { ok: false, error: "REWARD_WRITES_PAUSED" });
+      assert.deepEqual(appPausedChoice, { ok: false, status: 503, error: "REWARD_WRITES_PAUSED" });
+      assert.equal(proxiedRequests, requestsBefore, "the app switch must stop before any HTTP request");
+      const resumed = await recordLegacyChoiceReward(admin, { userId: u, runId, scenarioId: LEGACY_SCENARIO, choiceId: "choice-a", step: 2, xp: 82, deltas: {}, meta: {} });
+      assert(resumed.ok, JSON.stringify(resumed));
+      return { databasePause: { legacyChoice: paused.legacyChoice, sharedXp: paused.sharedXp, runRewards: paused.runRewards, quest: paused.quest }, appSwitchHttpRequests: proxiedRequests - requestsBefore };
+    });
     const executed = evidence.checks.map((x: Row) => x.name);
     evidence.unrun = EXPECTED_CHECKS.filter(name => !executed.includes(name));
     assert.deepEqual(executed, EXPECTED_CHECKS, "every expected check body must execute exactly once, in order");

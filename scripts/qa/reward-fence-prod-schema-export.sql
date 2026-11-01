@@ -10,14 +10,14 @@ with tabs as (
     'foundry_events','foundry_event_participants','foundry_event_training_progress','foundry_event_participation_mode',
     'foundry_event_assignments','foundry_event_assignment_audit','foundry_participant_followups',
     'foundry_participant_followup_audit','foundry_participant_apply_windows','foundry_event_quiz_attempts',
-    'bty_organizations','bty_org_memberships'])
+    'bty_organizations','bty_org_memberships','activity_xp_events','arena_leagues','bty_action_contracts'])
 ),
 named_fns as (
   select p.oid from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname = any (array[
     'increment_arena_xp','increment_weekly_xp','ensure_arena_profile','bty_foundry_award_daily_capped',
     'bty_foundry_claim_assignment','bty_foundry_materialize_followup','bty_foundry_materialize_apply_window',
-    'bty_foundry_redeem_completion_claim'])
+    'bty_foundry_redeem_completion_claim','run_season_carryover'])
 ),
 dep_fns as (
   -- Functions that defaults, checks, policies or triggers of the exported tables depend on.

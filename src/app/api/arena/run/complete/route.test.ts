@@ -36,6 +36,10 @@ vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: vi.fn(),
 }));
 
+vi.mock("@/lib/bty/arena/weeklyQuestReward.server", () => ({
+  claimWeeklyReflectionQuest: vi.fn().mockResolvedValue({ ok: true, claim: { outcome: "not_eligible", weekStart: "2026-03-02" } }),
+}));
+
 vi.mock("@/lib/bty/action-contract/ensureActionContractForArenaRun", () => ({
   ensureActionContractForArenaRun: vi.fn(),
 }));
@@ -71,6 +75,7 @@ const { ensureActionContractForArenaRun } = await import(
 const { applyArenaRunRewardsOnVerifiedCompletion } = await import(
   "@/lib/bty/arena/reflectionRewards.server"
 );
+const { claimWeeklyReflectionQuest } = await import("@/lib/bty/arena/weeklyQuestReward.server");
 
 // ---------------------------------------------------------------------------
 
@@ -399,6 +404,7 @@ describe("POST /api/arena/run/complete", () => {
       "state_priority",
       "status",
       "weeklyXp",
+      "weeklyQuest",
       "xpDeferredToContractVerification",
     ].sort();
     expect(Object.keys(data).sort()).toEqual(expectedKeys);
@@ -494,6 +500,64 @@ describe("POST /api/arena/run/complete", () => {
       nbaLogId: null,
       patternFamily: null,
     });
+  });
+
+  function retryState() {
+    // Shared by both requests: whichever completion anchor the first request writes.
+    const state = { anchored: false };
+    const sb = {
+      auth: { getUser: () => Promise.resolve({ data: { user: { id: "u1" } } }) },
+      rpc: () => Promise.resolve({ error: null }),
+      from: (table: string) => {
+        if (table === "arena_runs") {
+          return chainable({ data: { run_id: "run-1", status: state.anchored ? "DONE" : "IN_PROGRESS", scenario_id: "sc-1" }, error: null });
+        }
+        if (table === "arena_events") {
+          // Applied-marker lookup sees the anchor after the first completion; the weekly
+          // reflection count is 3 (eligible) for both requests.
+          const node = chainable({ data: state.anchored ? [{ event_id: "ev-anchor" }] : [], count: 3, error: null });
+          node.insert = () => { state.anchored = true; return chainable({ data: null, error: null }); };
+          return node;
+        }
+        return chainable({ data: null, error: null });
+      },
+    };
+    (getSupabaseServerClient as ReturnType<typeof vi.fn>).mockResolvedValue(sb);
+    vi.mocked(claimWeeklyReflectionQuest)
+      .mockResolvedValueOnce({ ok: false, error: "QUEST_AWARD_FAILED" })
+      .mockResolvedValueOnce({ ok: true, claim: { outcome: "awarded", weekStart: "2026-03-02", seasonalXp: 15, coreGain: 1, coreBefore: 10, coreAfter: 11, weeklyXpTotal: 28 } });
+    return state;
+  }
+
+  it("a retry of a rewarded run recovers only a failed weekly quest; the run reward is not repeated", async () => {
+    const state = retryState();
+    vi.mocked(applyArenaRunRewardsOnVerifiedCompletion).mockImplementation(async () => {
+      state.anchored = true;
+      return { ok: true, applied: true, coreXp: 21, weeklyXp: 13, deltaApplied: 13 };
+    });
+    const first = await (await POST(makeRequest({ runId: "run-1" }))).json();
+    const retry = await (await POST(makeRequest({ runId: "run-1" }))).json();
+    expect(first).toMatchObject({ ok: true, weeklyQuest: "failed", coreXp: 21, weeklyXp: 13 });
+    expect(retry).toMatchObject({ ok: true, idempotent: true, weeklyQuest: "awarded" });
+    expect(retry).not.toHaveProperty("deltaApplied");
+    expect(applyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(claimWeeklyReflectionQuest).mock.calls.map(call => call[1])).toEqual([
+      { userId: "u1", weekStart: "2026-03-02" }, { userId: "u1", weekStart: "2026-03-02" },
+    ]);
+  });
+
+  it("a retry of a contract-gated run recovers the weekly quest without creating the contract again", async () => {
+    retryState();
+    vi.mocked(ensureActionContractForArenaRun)
+      .mockResolvedValueOnce({ ok: true, contractId: "c-1", created: true })
+      .mockResolvedValueOnce({ ok: true, contractId: "c-1", created: false });
+    const first = await (await POST(makeRequest({ runId: "run-1" }))).json();
+    const retry = await (await POST(makeRequest({ runId: "run-1" }))).json();
+    expect(first).toMatchObject({ ok: true, xpDeferredToContractVerification: true, actionContractCreated: true, contractId: "c-1", weeklyQuest: "failed" });
+    expect(retry).toMatchObject({ ok: true, idempotent: true, actionContractCreated: false, contractId: "c-1", weeklyQuest: "awarded" });
+    // Contract-gated completion defers the run reward to verification on both requests.
+    expect(applyArenaRunRewardsOnVerifiedCompletion).not.toHaveBeenCalled();
+    expect(vi.mocked(ensureActionContractForArenaRun).mock.calls.map(call => call[0].runId)).toEqual(["run-1", "run-1"]);
   });
 
   it("idempotent: RUN_COMPLETED_APPLIED + admin unavailable (ensure ok:false) — 200, actionContractCreated false", async () => {

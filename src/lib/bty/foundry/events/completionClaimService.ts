@@ -1,3 +1,4 @@
+import { rewardWritesPaused } from "@/lib/bty/rewardWritePause";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   generateClaimCode,
@@ -126,6 +127,8 @@ export async function redeemCompletionClaim(
 ): Promise<RedeemResult> {
   const normalized = normalizeClaimCode(rawCode);
   if (!normalized || !authUserId) return { ok: false, reason: "invalid" };
+  // Recovery switch: the claim stays unspent and redeemable once writes resume.
+  if (rewardWritesPaused()) return { ok: false, reason: "unavailable" };
   const claimHash = hashClaimCode(normalized);
 
   try {

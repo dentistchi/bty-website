@@ -1,10 +1,11 @@
 /**
  * Leadership Lab — Core XP만 부여; Weekly XP와 엄격히 분리.
- * `core_xp_ledger.source_type = LAB`, 프로필 갱신은 {@link applyDirectCoreXp}.
+ * `core_xp_ledger.source_type = LAB` 행과 Core 갱신은 bty_award_lab_xp_v2 한 트랜잭션에서 커밋된다.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
+import { awardLabXpAtomic } from "@/lib/bty/arena/sharedXp.server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /** `core_xp_ledger.source_type` · 런타임 가드용 단일 소스. */
@@ -74,24 +75,10 @@ export async function awardLabXP(
   const sourceId =
     options?.sourceId ?? `lab:${userId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
 
-  const { error: ledgerErr } = await client.from("core_xp_ledger").insert({
-    user_id: userId,
-    delta_xp: Math.floor(amount),
-    source_type: XP_LEDGER_SOURCE.LAB,
-    source_id: sourceId,
-  });
-
-  if (ledgerErr) {
-    if (ledgerErr.code === "23505") {
-      return { error: "lab_xp_already_applied" };
-    }
-    return { error: ledgerErr.message };
-  }
-
-  const applied = await applyDirectCoreXp(client, userId, amount);
-  if ("error" in applied) {
-    return { error: applied.error };
-  }
-
-  return { newCoreTotal: applied.newCoreTotal };
+  // The LAB ledger row (idempotency key) and its Core commit together.
+  const applied = await awardLabXpAtomic(userId, Math.floor(amount), sourceId);
+  if (!applied.ok) return { error: applied.error };
+  if (applied.outcome === "already_applied") return { error: "lab_xp_already_applied" };
+  void syncAvatarStateAfterCoreXpChange(userId, client, applied.award.coreBefore, applied.award.coreAfter).catch(() => {});
+  return { newCoreTotal: applied.award.coreAfter };
 }

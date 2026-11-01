@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { buildApplyBundle, buildRecoveryBundle, readCutoverSources, FENCE_TRIGGERS } from "./reward-write-fence-cutover.mjs";
+import { buildApplyBundle, buildPauseBundle, buildRemoveFenceBundle, buildResumeBundle, readCutoverSources, FENCE_TRIGGERS } from "./reward-write-fence-cutover.mjs";
 import { SCENARIOS } from "../src/lib/bty/scenario/legacy/bundledScenarios";
 import { SUB_NAMES, codeIndexFromTier, seasonalToCoreConversion, subTierGroupFromTier, tierFromCoreXp } from "../src/lib/bty/arena/codes";
 import { getWeekStartUTC } from "../src/lib/bty/arena/weeklyQuest";
@@ -44,16 +44,22 @@ const AWARD_SQL = "select public.bty_foundry_award_core_atomic($1::uuid,$2::uuid
 const CLAIM_SQL = "select public.bty_foundry_redeem_completion_claim_atomic($1::text,$2::uuid,$3::text,$4::text,$5::uuid,$6::uuid,$7::integer,$8::date,$9::date,$10::timestamptz,$11::integer,$12::date,$13::date,$14::timestamptz,$15::integer,$16::boolean,$17::timestamptz,$18::timestamptz) as result";
 const OLD_CLAIM_SQL = CLAIM_SQL.replace("_atomic(", "(");
 const QUEST_SQL = "select public.bty_claim_weekly_reflection_quest($1::uuid,$2::date) as result";
+const AWARD_XP_SQL = "select public.bty_award_xp_v2($1::uuid,null,$2::integer,$3::integer,$4::integer) as result";
+const RUN_XP_SQL = "select public.bty_award_run_xp_v2($1::uuid,$2::uuid,$3::integer) as result";
+const ACTIVITY_SQL = "select public.bty_award_activity_xp_v2($1::uuid,$2::text,$3::integer,null) as result";
+const LAB_SQL = "select public.bty_award_lab_xp_v2($1::uuid,$2::integer,$3::text) as result";
+const RUN_REWARDS_SQL = "select public.bty_apply_arena_run_rewards_v2($1::uuid,$2::uuid,$3::text,$4::integer,$5::integer) as result";
 // Every check body must run exactly once, in this order; a skipped body fails the run.
 const EXPECTED_CHECKS: string[] = [
   "before cutover: old legacy choice route can pay the same run twice (reproduced bug)",
   "before cutover: old beginner completion commits DONE as a separate write before XP",
   "before cutover: old Healing acts and milestone are user-JWT writes",
   "before cutover: old Foundry ledger commits without Core or marker",
+  "before cutover: old weekly quest flow pays twice under concurrency and after a failed claim insert",
   "cutover with a held write lock times out and rolls back completely",
   "cutover waits for the transaction already writing a fenced table",
   "cutover leaves every pre-existing learner row byte-identical",
-  "ledger records exactly the four cutover migrations; rerun is refused without change",
+  "ledger records exactly the cutover migrations; rerun is refused without change",
   "an old transaction opened before cutover cannot write Healing afterwards",
   "an old transaction opened before cutover cannot commit a Foundry ledger award afterwards",
   "resumed old legacy choice: event insert rejected, so the route stops before XP",
@@ -62,8 +68,9 @@ const EXPECTED_CHECKS: string[] = [
   "resumed old Healing user-JWT writes rejected (milestone after pre-cutover acts, new act, starter unlock)",
   "the Healing trigger itself rejects user-JWT writes even if a client grant is restored",
   "resumed old Foundry writes rejected: ledger, marker after pre-cutover ledger, old eligible claim",
-  "residual (documented, unfenceable by row): shared XP/Core writes of a request whose anchor committed before cutover",
-  "unchanged writers pass: canonical CHOICE_CONFIRMED, scenario FREE_RESPONSE, organic unlocks, LAB ledger, progress link/claim issue, XP RPCs",
+  "resumed shared XP/Core writes after a pre-cutover anchor are rejected",
+  "previous-release shared writer names and direct table writes are all rejected",
+  "unchanged and release writers pass: canonical choice, FREE_RESPONSE, organic unlocks, progress link/claim issue, weekly reset, v2 XP",
   "fence catalog equals the bundled legacy catalog (45 IDs) and excludes canonical IDs",
   "new legacy choice: one award, identical replay frozen, changed input refused",
   "new legacy choice: two concurrent sessions produce one award and one frozen replay",
@@ -72,23 +79,25 @@ const EXPECTED_CHECKS: string[] = [
   "new Healing acts and ritual: atomic, replay idempotent, partial history review-required",
   "new Foundry award and claim: one award, replay, concurrent claimants, partial history review-required",
   "injected failure at the final receipt/milestone write rolls back every earlier write",
-  "same legacy run: three pre-cutover anchors, resumed XP with a mid-failure and a retry pay exactly the surviving anchors",
-  "same beginner run: one DONE anchor among three old requests pays once; a failed XP call and every retry pay nothing",
-  "same Foundry progress: one ledger anchor pays Core once; a failed Core write and every retry pay nothing",
-  "residual: an old absolute Core write interleaved with a new atomic award overwrites that award (under-payment, measured)",
-  "pre-fix quest flow (still in previous-release Workers) pays twice under concurrency and after a failed claim insert",
+  "same legacy run: three pre-cutover anchors; every resumed XP write, mid-failure and retry pays nothing",
+  "same beginner run: one DONE anchor among three old requests; resumed weekly/Core writes, failures and retries pay nothing",
+  "same Foundry progress: one ledger anchor; resumed Core writes, failures and retries pay nothing",
+  "an old absolute Core write can no longer overwrite a concurrent atomic award",
+  "concurrent atomic awards from every release writer on one profile preserve every increment",
+  "atomic run rewards, activity and Lab: anchors commit with payment; concurrency, failure and retry pay exactly once",
   "atomic quest: five concurrent claims pay +15 exactly once with TypeScript-identical Core",
   "atomic quest: a failure inside the transaction writes nothing and the retry pays once",
   "atomic quest: eligibility, week bounds and caller role are enforced before any write",
   "atomic quest Core matches applySeasonalXpToCore across buffer and tier boundaries",
-  "residual: a previous-release quest request racing the atomic claim can still add one extra +15 (measured)",
+  "a previous-release quest request resumed after cutover can neither pay nor consume the claim; the atomic quest pays once",
+  "database pause stops every reward write from every writer, keeps other writes, and resumes cleanly",
   "historical rows remain byte-identical after every fenced and atomic operation",
-  "recovery bundle removes only the fence; receipts/RPCs stay; old split write possible again",
+  "last-resort fence removal drops only the fence; receipts/RPCs stay; old split write possible again",
 ];
 const SNAPSHOT_TABLES = ["public.arena_events", "public.arena_runs", "public.arena_profiles", "public.weekly_xp",
   "public.core_xp_ledger", "public.foundry_event_training_progress", "public.foundry_event_assignments",
   "public.user_healing_awakening_acts", "public.user_healing_milestones", "public.user_advanced_unlocks",
-  "public.arena_weekly_quest_claims"];
+  "public.arena_weekly_quest_claims", "public.activity_xp_events"];
 
 // Observed read-only from production pg_proc (md5(prosrc)) on 2026-11-01.
 const PROD_FUNCTION_MD5: Record<string, string> = {
@@ -163,6 +172,8 @@ create table public.bty_organizations(id uuid primary key);
 create table public.bty_org_memberships(id uuid primary key);
 create table public.foundry_events(id uuid primary key, owner_user_id uuid not null references auth.users(id), status text not null default 'active');
 create table public.foundry_event_participants(id uuid primary key, event_id uuid not null references public.foundry_events(id), user_id uuid references auth.users(id), unique(event_id,id));
+create table public.activity_xp_events(id bigserial primary key, user_id uuid not null references auth.users(id) on delete cascade,
+ activity_type text not null, xp integer not null default 0, created_at timestamptz not null default now());
 create table public.arena_weekly_quest_claims(user_id uuid not null references auth.users(id) on delete cascade, week_start date not null,
  quest_type text not null default 'reflection', created_at timestamptz not null default now(), primary key (user_id, week_start, quest_type));
 `;
@@ -245,6 +256,8 @@ async function bootstrap(c: Client) {
     grant all on public.foundry_event_training_progress to authenticated;
     grant select, update on public.arena_profiles to authenticated;
     grant all on all tables in schema public to service_role; grant usage, select on all sequences in schema public to service_role;
+    -- Supabase default privileges also give client roles sequence usage (old user-JWT inserts rely on it).
+    grant usage, select on all sequences in schema public to anon, authenticated;
     alter default privileges in schema public grant all on tables to service_role;
     revoke execute on all functions in schema public from public, anon, authenticated;
     grant execute on all functions in schema public to service_role;
@@ -258,10 +271,12 @@ async function bootstrap(c: Client) {
     create policy profiles_update_own on public.arena_profiles for update to authenticated using (auth.uid() = user_id);
     create policy profiles_insert_own on public.arena_profiles for insert to authenticated with check (auth.uid() = user_id);
     grant insert on public.arena_profiles to authenticated;
-    grant all on public.arena_weekly_quest_claims to anon, authenticated;
+    grant all on public.arena_weekly_quest_claims, public.activity_xp_events to anon, authenticated;
+    create policy activity_xp_events_insert_own on public.activity_xp_events for insert to authenticated with check (auth.uid() = user_id);
+    create policy activity_xp_events_select_own on public.activity_xp_events for select to authenticated using (auth.uid() = user_id);
     create policy weekly_quest_claims_insert_own on public.arena_weekly_quest_claims for insert to authenticated with check (auth.uid() = user_id);
     create policy weekly_quest_claims_select_own on public.arena_weekly_quest_claims for select to authenticated using (auth.uid() = user_id);`);
-  for (const t of ["arena_profiles", "arena_runs", "arena_events", "weekly_xp", "core_xp_ledger", "train_day_completions", "arena_weekly_quest_claims",
+  for (const t of ["arena_profiles", "arena_runs", "arena_events", "weekly_xp", "core_xp_ledger", "train_day_completions", "arena_weekly_quest_claims", "activity_xp_events",
     "foundry_event_training_progress", "foundry_event_assignments"]) await c.query(`alter table public.${t} enable row level security`);
   const md5 = (await c.query(`select p.proname, md5(p.prosrc) md5 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = any($1)`, [Object.keys(PROD_FUNCTION_MD5)])).rows;
@@ -333,6 +348,16 @@ const OLD = {
   questWeekly: (c: Client, user: string) => asService(c, () => c.query("select public.increment_weekly_xp($1,null,15)", [user])),
   questClaimInsert: (c: Client, user: string, week: string) => asUser(c, user, () => c.query(
     "insert into public.arena_weekly_quest_claims(user_id,week_start,quest_type) values($1,$2,'reflection')", [user, week])),
+  // activityXp.ts (old): user-JWT activity event, admin weekly, user Core; reflectionRewards (old): user
+  // RUN_COMPLETED_APPLIED, admin weekly, Core, user ARENA ledger; lab-xp (old): LAB ledger then Core.
+  activityEvent: (c: Client, user: string) => asUser(c, user, () => c.query(
+    "insert into public.activity_xp_events(user_id,activity_type,xp) values($1,'CHAT_MESSAGE',5)", [user])),
+  runAnchor: (c: Client, s: Seed) => asUser(c, s.user, () => c.query(
+    "insert into public.arena_events(user_id,run_id,event_type,step,scenario_id,xp) values($1,$2,'RUN_COMPLETED_APPLIED',7,$3,0)", [s.user, s.run, s.scenario])),
+  ledger: (c: Client, user: string, type: "LAB" | "ARENA", source: string) => asService(c, () => c.query(
+    "insert into public.core_xp_ledger(user_id,delta_xp,source_type,source_id) values($1,10,$2,$3)", [user, type, source])),
+  profileWithCore: (c: Client, user: string) => asService(c, () => c.query(
+    "insert into public.arena_profiles(user_id,core_xp_total) values($1,10)", [user])),
 };
 
 /** TypeScript oracle: applySeasonalXpToCore's arithmetic from src/lib/bty/arena/codes.ts. */
@@ -350,13 +375,21 @@ function seasonalCoreOracle(read: Row, xp: number) {
 }
 
 type Seed = { user: string; run: string; scenario: string };
+/**
+ * Fixture rows (profiles with Core, weekly totals) are seeded as the superuser with
+ * triggers skipped. Only setup uses this; every operation under test runs fenced.
+ */
+async function asFixture<T>(c: Client, fn: () => Promise<T>): Promise<T> {
+  await c.query("set session_replication_role = replica");
+  try { return await fn(); } finally { await c.query("set session_replication_role = origin"); }
+}
 type FSeed = { user: string; owner: string; event: string; participant: string; progress: string; org: string; assignment: string | null; hash: string };
 let day = { start: "", end: "", date: "", dueDate: "", dueAt: "" };
 
 async function seedRun(c: Client, type: "scenario" | "beginner", scenario = type === "beginner" ? "beginner-qa" : LEGACY_SCENARIO, user: string = randomUUID()): Promise<Seed> {
   const run = randomUUID();
   await c.query("insert into auth.users(id) values($1) on conflict do nothing", [user]);
-  await c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,sub_name) values($1,11,7,199,$2,'QA existing') on conflict do nothing", [user, 2 / 3]);
+  await asFixture(c, () => c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,sub_name) values($1,11,7,199,$2,'QA existing') on conflict do nothing", [user, 2 / 3]));
   await c.query("insert into public.arena_runs(run_id,user_id,scenario_id,run_type) values($1,$2,$3,$4)", [run, user, scenario, type]);
   return { user, run, scenario };
 }
@@ -370,7 +403,7 @@ async function seedFoundry(c: Client, claim = false, user: string = randomUUID()
   const hash = randomBytes(32).toString("hex");
   await c.query("insert into auth.users(id) values($1),($2) on conflict do nothing", [user, owner]);
   await c.query("insert into public.foundry_events(id,owner_user_id) values($1,$2)", [event, owner]);
-  await c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,tier,sub_name,stage) values($1,11,7,199,$2,19,'QA name',2) on conflict do nothing", [user, 2 / 3]);
+  await asFixture(c, () => c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,tier,sub_name,stage) values($1,11,7,199,$2,19,'QA name',2) on conflict do nothing", [user, 2 / 3]));
   await c.query("insert into public.foundry_event_participants(id,event_id,user_id) values($1,$2,$3)", [participant, event, claim ? null : user]);
   await c.query(`insert into public.foundry_event_training_progress(id,event_id,participant_id,video_completed_at,response_text,completed_at,linked_user_id,claim_secret_hash,claim_secret_expires_at)
     values($1,$2,$3,now(),'QA completion',now(),$4,$5,now()+interval '1 day')`, [progress, event, participant, claim ? null : user, claim ? hash : null]);
@@ -488,6 +521,23 @@ async function main() {
       assert.equal((await OLD.foundryLedger(c, f)).rows[0].outcome, "awarded");
       assert.equal(await count(c, "select core_xp_total n from public.arena_profiles where user_id=$1", [f.user]), 199);
     });
+    await check("before cutover: old weekly quest flow pays twice under concurrency and after a failed claim insert", async () => {
+      const racer = randomUUID(); await c.query("insert into auth.users(id) values($1)", [racer]); await seedReflections(c, racer, 3);
+      const before = await money(c, racer);
+      const sawClaim = [await OLD.questClaimRead(c, racer, week), await OLD.questClaimRead(c, racer, week)]; // both requests read first
+      for (let i = 0; i < 2; i++) { await OLD.questWeekly(c, racer); const r = await OLD.seasonalCoreRead(c, racer); await OLD.seasonalCoreWrite(c, racer, r, 15); }
+      await OLD.questClaimInsert(c, racer, week);
+      await rejected(OLD.questClaimInsert(c, racer, week), /duplicate key/);           // second insert fails; old route ignores it
+      const retry = randomUUID(); await c.query("insert into auth.users(id) values($1)", [retry]); await seedReflections(c, retry, 3);
+      const beforeRetry = await money(c, retry);
+      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15);
+      await c.query("begin"); await OLD.questClaimInsert(c, retry, week); await c.query("rollback");  // claim insert lost
+      assert.equal(await OLD.questClaimRead(c, retry, week), false);
+      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15); await OLD.questClaimInsert(c, retry, week);
+      const race = delta(await money(c, racer), before), again = delta(await money(c, retry), beforeRetry);
+      assert.deepEqual(sawClaim, [false, false]); assert.equal(race.weeklyXpTotal, 30); assert.equal(again.weeklyXpTotal, 30);
+      return { concurrent: { payments: 2, weeklyXpDelta: race.weeklyXpTotal }, failedClaimThenRetry: { payments: 2, weeklyXpDelta: again.weeklyXpTotal } };
+    });
     // Pre-cutover rows a paused old request will try to continue after cutover.
     const paused = { beginner: await seedRun(c, "beginner"), healing: await seedHealingUser(c), foundry: await seedFoundry(c), ritual: await seedHealingUser(c) };
     await OLD.beginnerDone(c, paused.beginner);
@@ -499,6 +549,9 @@ async function main() {
     const multi = { choice: await seedRun(c, "scenario"), beginner: await seedRun(c, "beginner"), beginnerFail: await seedRun(c, "beginner"),
       foundry: await seedFoundry(c), foundryFail: await seedFoundry(c), lostOld: await seedFoundry(c) };
     const lostNew = await seedFoundry(c, false, multi.lostOld.user);
+    // An old quest request that read "no claim" before cutover and resumes afterwards.
+    const questOld = randomUUID(); await c.query("insert into auth.users(id) values($1)", [questOld]); await seedReflections(c, questOld, 3);
+    assert.equal(await OLD.questClaimRead(c, questOld, week), false);
     for (let i = 0; i < 3; i++) await OLD.choiceEvent(c, multi.choice);
     const beginnerAnchors: number[] = [];
     for (const s of [multi.beginner, multi.beginnerFail]) for (let i = 0; i < 3; i++) beginnerAnchors.push((await OLD.beginnerDone(c, s)).rows.length);
@@ -506,7 +559,7 @@ async function main() {
     for (const f of [multi.foundry, multi.foundryFail]) for (let i = 0; i < 2; i++) foundryAnchors.push((await OLD.foundryLedger(c, f)).rows[0].outcome);
     await OLD.foundryLedger(c, multi.lostOld);
     const residualUsers = new Set([paused.foundry.user, paused.beginner.user, multi.choice.user, multi.beginner.user,
-      multi.beginnerFail.user, multi.foundry.user, multi.foundryFail.user, multi.lostOld.user]);
+      multi.beginnerFail.user, multi.foundry.user, multi.foundryFail.user, multi.lostOld.user, questOld]);
     const historical = await snapshot(c);
 
     // ---------------- requests already inside the database at cutover ----------------
@@ -540,7 +593,7 @@ async function main() {
       const after = await snapshot(c);
       for (const table of SNAPSHOT_TABLES) for (const row of historical[table]) assert(after[table].some((r: Row) => JSON.stringify(r) === JSON.stringify(row)), `${table} row changed`);
     });
-    await check("ledger records exactly the four cutover migrations; rerun is refused without change", async () => {
+    await check("ledger records exactly the cutover migrations; rerun is refused without change", async () => {
       const versions = (await c.query("select version from supabase_migrations.schema_migrations order by 1")).rows.map(r => r.version);
       assert.deepEqual(versions, sources.map((s: Row) => s.version));
       assert.equal(await fenceInstalled(c), FENCE_TRIGGERS.length);
@@ -601,30 +654,48 @@ async function main() {
       await rejectedUnchanged(c, () => OLD.foundryClaim(c, claim), FENCED);
       assert.equal(await count(c, "select count(*)::int n from public.foundry_event_training_progress where id=$1 and claim_consumed_at is null", [claim.progress]), 1);
     });
-    await check("residual (documented, unfenceable by row): shared XP/Core writes of a request whose anchor committed before cutover", async () => {
-      const weeklyBefore = await count(c, "select count(*)::int n from public.weekly_xp where user_id=$1", [paused.beginner.user]);
-      await OLD.beginnerWeekly(c, paused.beginner);
-      await OLD.foundryCoreWrite(c, paused.foundry, await OLD.foundryCoreRead(c, paused.foundry));
-      assert.equal(await count(c, "select count(*)::int n from public.weekly_xp where user_id=$1", [paused.beginner.user]), weeklyBefore + 1);
-      evidence.residual.push({ path: "beginner increment_weekly_xp / Foundry applyDirectCoreXp after a pre-cutover anchor",
-        why: "weekly_xp and arena_profiles are written identically by unchanged reward paths; no row-level predicate separates them",
-        bound: "completes at most that one old award; its anchor has no receipt, so the new RPC refuses with review-required (checked below)" });
+    await check("resumed shared XP/Core writes after a pre-cutover anchor are rejected", async () => {
+      await rejectedUnchanged(c, () => OLD.beginnerWeekly(c, paused.beginner), FENCED);
+      const read = await OLD.foundryCoreRead(c, paused.foundry);
+      return { error: await rejectedUnchanged(c, () => OLD.foundryCoreWrite(c, paused.foundry, read), FENCED) };
+    });
+    await check("previous-release shared writer names and direct table writes are all rejected", async () => {
+      const u = await seedHealingUser(c); const s = await seedRun(c, "scenario", LEGACY_SCENARIO, u);
+      const errors: Row = {};
+      errors.incrementArenaXp = await rejectedUnchanged(c, () => OLD.choiceXp(c, s), FENCED);
+      errors.incrementWeeklyXp = await rejectedUnchanged(c, () => OLD.questWeekly(c, u), FENCED);
+      errors.userCorePatch = await rejectedUnchanged(c, async () => OLD.seasonalCoreWrite(c, u, await OLD.seasonalCoreRead(c, u), 30), FENCED);
+      errors.serviceCorePatch = await rejectedUnchanged(c, async () => OLD.foundryCoreWrite(c, { user: u } as FSeed, 0), FENCED);
+      const v = randomUUID(); await c.query("insert into auth.users(id) values($1)", [v]);
+      errors.profileInsertWithCore = await rejectedUnchanged(c, () => OLD.profileWithCore(c, v), FENCED);
+      errors.activityEvent = await rejectedUnchanged(c, () => OLD.activityEvent(c, u), FENCED);
+      errors.runRewardAnchor = await rejectedUnchanged(c, () => OLD.runAnchor(c, s), FENCED);
+      errors.labLedger = await rejectedUnchanged(c, () => OLD.ledger(c, u, "LAB", randomUUID()), FENCED);
+      errors.arenaLedger = await rejectedUnchanged(c, () => OLD.ledger(c, u, "ARENA", s.run), FENCED);
+      errors.questClaim = await rejectedUnchanged(c, () => OLD.questClaimInsert(c, u, week), FENCED);
+      return errors;
     });
 
     // ---------------- non-replaced writers keep working ----------------
-    await check("unchanged writers pass: canonical CHOICE_CONFIRMED, scenario FREE_RESPONSE, organic unlocks, LAB ledger, progress link/claim issue, XP RPCs", async () => {
+    await check("unchanged and release writers pass: canonical choice, FREE_RESPONSE, organic unlocks, progress link/claim issue, weekly reset, v2 XP", async () => {
       const canon = await seedRun(c, "scenario", CANONICAL_SCENARIO);
-      await OLD.choiceEvent(c, canon, CANONICAL_SCENARIO, { binding: "v1" }); await OLD.choiceXp(c, canon);
+      await OLD.choiceEvent(c, canon, CANONICAL_SCENARIO, { binding: "v1" });
+      assert.equal((await service(c, RUN_XP_SQL, [canon.user, canon.run, 10])).xp, 10);
       const scen = await seedRun(c, "scenario");
       await OLD.beginnerFreeResponse(c, scen);
       const u = await seedHealingUser(c);
       await OLD.healingUnlock(c, u, "EL", new Date().toISOString()); await OLD.healingUnlock(c, u, "PRM", new Date().toISOString());
-      await asService(c, () => c.query("insert into public.core_xp_ledger(user_id,delta_xp,source_type,source_id) values($1,5,'LAB',$2)", [u, randomUUID()]));
       const f = await seedFoundry(c, true);
       await asService(c, () => c.query("update public.foundry_event_training_progress set claim_secret_hash=$2, claim_secret_expires_at=now()+interval '1 day' where id=$1", [f.progress, randomBytes(32).toString("hex")]));
       const l = await seedFoundry(c);
       await asService(c, () => c.query("update public.foundry_event_training_progress set linked_user_id=$2 where id=$1", [l.progress, l.user]));
-      await OLD.beginnerWeekly(c, scen);
+      assert.equal((await service(c, AWARD_XP_SQL, [scen.user, 5, 5, 0])).weeklyXpTotal, 5);
+      // weekly-xp-reset.service: decreases stay direct writes.
+      await asService(c, () => c.query("update public.weekly_xp set xp_total=0 where user_id=$1", [scen.user]));
+      await asService(c, () => c.query("update public.arena_profiles set weekly_xp=0 where user_id=$1", [scen.user]));
+      await c.query("insert into public.arena_profiles(user_id) values($1) on conflict do nothing", [u]);
+      await asService(c, () => c.query("select public.bty_e2e_set_core_xp($1, 300)", [u]));
+      assert.equal(await count(c, "select core_xp_total n from public.arena_profiles where user_id=$1", [u]), 300);
     });
     await check("fence catalog equals the bundled legacy catalog (45 IDs) and excludes canonical IDs", async () => {
       const inSql = (await c.query("select count(*)::int n from unnest($1::text[]) id where public.bty_reward_fence_is_legacy_catalog_scenario(id)", [legacyIds])).rows[0].n;
@@ -714,94 +785,124 @@ async function main() {
     });
 
     // ---------------- item 2: many old requests per anchor, resumed after cutover ----------------
-    await check("same legacy run: three pre-cutover anchors, resumed XP with a mid-failure and a retry pay exactly the surviving anchors", async () => {
+    await check("same legacy run: three pre-cutover anchors; every resumed XP write, mid-failure and retry pays nothing", async () => {
       const before = await money(c, multi.choice.user, multi.choice.run);
-      await OLD.choiceStep(c, multi.choice); await OLD.choiceXp(c, multi.choice);              // request 1 resumes
-      await c.query("begin"); await OLD.choiceXp(c, multi.choice); await c.query("rollback");   // request 2: XP call lost mid-transaction
-      await rejectedUnchanged(c, () => OLD.choiceEvent(c, multi.choice), FENCED);              // request 2 client retry: new event fenced, route stops
-      await OLD.choiceStep(c, multi.choice); await OLD.choiceXp(c, multi.choice);              // request 3 resumes
+      await OLD.choiceStep(c, multi.choice);                                                    // request 1 resumes: a step update is not a payment
+      await rejectedUnchanged(c, () => OLD.choiceXp(c, multi.choice), FENCED);                  // ...its XP call is refused
+      await c.query("begin"); await rejected(OLD.choiceXp(c, multi.choice), FENCED); await c.query("rollback"); // request 2 dies mid-call
+      await rejectedUnchanged(c, () => OLD.choiceEvent(c, multi.choice), FENCED);               // request 2 client retry
+      await rejectedUnchanged(c, () => OLD.choiceXp(c, multi.choice), FENCED);                  // request 3 resumes
       const paid = delta(await money(c, multi.choice.user, multi.choice.run), before);
       const anchors = await count(c, "select count(*)::int n from public.arena_events where run_id=$1 and event_type='CHOICE_CONFIRMED'", [multi.choice.run]);
-      assert.equal(anchors, 3); assert.equal(paid.runTotalXp, 164); assert.equal(paid.lifetime, 164); assert.equal(paid.profileWeekly, 164);
+      assert.equal(anchors, 3); assert.equal(paid.runTotalXp, 0); assert.equal(paid.lifetime, 0); assert.equal(paid.profileWeekly, 0);
       await rejectedUnchanged(c, () => service(c, CHOICE_SQL, choiceParams(multi.choice)), /LEGACY_REWARD_REVIEW_REQUIRED/);
-      return { anchorsBeforeCutover: anchors, paymentsAfterCutover: paid.runTotalXp / 82, xpPerPayment: 82, runTotalXpDelta: paid.runTotalXp,
-        note: "each post-cutover payment belongs to an anchor committed before cutover; no anchor can be created after it" };
+      return { anchorsBeforeCutover: anchors, paymentsAfterCutover: 0, runTotalXpDelta: paid.runTotalXp, lifetimeDelta: paid.lifetime };
     });
-    await check("same beginner run: one DONE anchor among three old requests pays once; a failed XP call and every retry pay nothing", async () => {
+    await check("same beginner run: one DONE anchor among three old requests; resumed weekly/Core writes, failures and retries pay nothing", async () => {
       assert.deepEqual(beginnerAnchors, [1, 0, 0, 1, 0, 0]);
       const before = await money(c, multi.beginner.user); const beforeFail = await money(c, multi.beginnerFail.user);
-      // Winner resumes: profile, weekly +30, Core read/write, reflection (fenced; the old route ignores that error).
-      await OLD.beginnerProfile(c, multi.beginner); await OLD.beginnerWeekly(c, multi.beginner);
-      const read = await OLD.seasonalCoreRead(c, multi.beginner.user); await OLD.seasonalCoreWrite(c, multi.beginner.user, read, 30);
+      await OLD.beginnerProfile(c, multi.beginner);
+      await rejectedUnchanged(c, () => OLD.beginnerWeekly(c, multi.beginner), FENCED);
+      const read = await OLD.seasonalCoreRead(c, multi.beginner.user);
+      await rejectedUnchanged(c, () => OLD.seasonalCoreWrite(c, multi.beginner.user, read, 30), FENCED);
       await rejectedUnchanged(c, () => OLD.beginnerReflection(c, multi.beginner), FENCED);
-      // Second run: the winner's weekly call fails mid-transaction, the route returns 500 before Core.
       await OLD.beginnerProfile(c, multi.beginnerFail);
-      await c.query("begin"); await OLD.beginnerWeekly(c, multi.beginnerFail); await c.query("rollback");
-      // Every retry and both losers re-read DONE and return the stored result without writes.
-      for (const s of [multi.beginner, multi.beginner, multi.beginnerFail, multi.beginnerFail]) {
-        assert.equal((await OLD.beginnerDone(c, s)).rows.length, 0);
-      }
+      await c.query("begin"); await rejected(OLD.beginnerWeekly(c, multi.beginnerFail), FENCED); await c.query("rollback");
+      for (const s of [multi.beginner, multi.beginner, multi.beginnerFail, multi.beginnerFail]) assert.equal((await OLD.beginnerDone(c, s)).rows.length, 0);
       const paid = delta(await money(c, multi.beginner.user), before), paidFail = delta(await money(c, multi.beginnerFail.user), beforeFail);
-      const oracle = seasonalCoreOracle(read, 30);
-      assert.equal(paid.weeklyXpTotal, 30); assert.equal(paid.core, oracle.gain);
-      assert.equal(paidFail.weeklyXpTotal, 0); assert.equal(paidFail.core, 0);
+      for (const d of [paid, paidFail]) { assert.equal(d.weeklyXpTotal, 0); assert.equal(d.core, 0); }
       for (const s of [multi.beginner, multi.beginnerFail]) await rejectedUnchanged(c, () => service(c, BEGINNER_SQL, beginnerParams(s)), /LEGACY_REWARD_REVIEW_REQUIRED/);
-      return { completed: { payments: 1, weeklyXpDelta: paid.weeklyXpTotal, coreDelta: paid.core }, failedThenRetried: { payments: 0, weeklyXpDelta: 0, coreDelta: 0 } };
+      return { winner: { payments: 0, weeklyXpDelta: 0, coreDelta: 0 }, failedThenRetried: { payments: 0, weeklyXpDelta: 0, coreDelta: 0 } };
     });
-    await check("same Foundry progress: one ledger anchor pays Core once; a failed Core write and every retry pay nothing", async () => {
+    await check("same Foundry progress: one ledger anchor; resumed Core writes, failures and retries pay nothing", async () => {
       assert.deepEqual(foundryAnchors, ["awarded", "already_awarded", "awarded", "already_awarded"]);
       const before = await money(c, multi.foundry.user); const beforeFail = await money(c, multi.foundryFail.user);
-      await OLD.foundryCoreWrite(c, multi.foundry, await OLD.foundryCoreRead(c, multi.foundry));  // anchor owner resumes Core
-      await rejectedUnchanged(c, () => OLD.foundryMarker(c, multi.foundry), FENCED);                // its marker is fenced
+      await rejectedUnchanged(c, async () => OLD.foundryCoreWrite(c, multi.foundry, await OLD.foundryCoreRead(c, multi.foundry)), FENCED);
+      await rejectedUnchanged(c, () => OLD.foundryMarker(c, multi.foundry), FENCED);
       const readFail = await OLD.foundryCoreRead(c, multi.foundryFail);
-      await c.query("begin"); await OLD.foundryCoreWrite(c, multi.foundryFail, readFail); await c.query("rollback"); // Core write lost
+      await c.query("begin"); await rejected(OLD.foundryCoreWrite(c, multi.foundryFail, readFail), FENCED); await c.query("rollback");
       for (const f of [multi.foundry, multi.foundryFail]) {
-        // Client retries: the old capped award reports already_awarded, so old code skips Core; its marker stays fenced.
         assert.equal((await OLD.foundryLedger(c, f)).rows[0].outcome, "already_awarded");
         await rejectedUnchanged(c, () => OLD.foundryMarker(c, f), FENCED);
       }
       const paid = delta(await money(c, multi.foundry.user), before), paidFail = delta(await money(c, multi.foundryFail.user), beforeFail);
-      assert.equal(paid.core, 10); assert.equal(paid.ledgerRows, 0); assert.equal(paidFail.core, 0); assert.equal(paidFail.ledgerRows, 0);
+      for (const d of [paid, paidFail]) { assert.equal(d.core, 0); assert.equal(d.ledgerRows, 0); }
       for (const f of [multi.foundry, multi.foundryFail]) {
         const r = await service(c, AWARD_SQL, [f.user, f.event, f.progress, day.start, day.end]).catch((e: Error) => ({ error: e.message }));
         assert.match(JSON.stringify(r), /FOUNDRY_XP_REVIEW_REQUIRED/);
       }
-      return { completed: { ledgerRows: 1, coreDelta: paid.core }, failedThenRetried: { ledgerRows: 1, coreDelta: 0 } };
+      return { anchorOwner: { coreDelta: 0 }, failedThenRetried: { coreDelta: 0 } };
     });
-    await check("residual: an old absolute Core write interleaved with a new atomic award overwrites that award (under-payment, measured)", async () => {
+    await check("an old absolute Core write can no longer overwrite a concurrent atomic award", async () => {
       const read = await OLD.foundryCoreRead(c, multi.lostOld);                       // old request read 199 before
       const award = await service(c, AWARD_SQL, [lostNew.user, lostNew.event, lostNew.progress, day.start, day.end]);
-      assert.equal(award.outcome, "awarded");                                          // new award commits 209
-      await OLD.foundryCoreWrite(c, multi.lostOld, read);                              // old writes 199 + 10
-      const core = (await money(c, multi.lostOld.user)).core;
-      assert.equal(core, 209);
-      evidence.residual.push({ path: "old applyDirectCoreXp/applySeasonalXpToCore read-then-write racing any Core writer",
-        measured: { expectedCore: 219, actualCore: core }, effect: "one 10-point award overwritten (lost), never duplicated",
-        note: "pre-existing lost-update hazard of TypeScript Core writers, also present in unchanged routes" });
-      return { expectedCore: 219, actualCore: core };
+      assert.equal(award.outcome, "awarded");                                          // new Foundry award commits 209
+      assert.equal((await service(c, AWARD_XP_SQL, [multi.lostOld.user, 0, 0, 7])).coreAfter, 216); // and another +7 commits 216
+      await rejectedUnchanged(c, () => OLD.foundryCoreWrite(c, multi.lostOld, read), FENCED);   // stale 199 + 10 = 209 would erase +7
+      assert.equal((await money(c, multi.lostOld.user)).core, 216);
+      return { readByOldRequest: Number(read), afterNewAwards: 216, afterOldWriteAttempt: 216 };
+    });
+    await check("concurrent atomic awards from every release writer on one profile preserve every increment", async () => {
+      const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]);
+      await asFixture(c, () => c.query("insert into public.arena_profiles(user_id,core_xp_total,core_xp_buffer,sub_name) values($1,300,0,'Spark')", [u]));
+      const legacy = await seedRun(c, "scenario", LEGACY_SCENARIO, u); const beginner = await seedRun(c, "beginner", "beginner-qa", u);
+      const runA = await seedRun(c, "scenario", CANONICAL_SCENARIO, u); const runB = await seedRun(c, "scenario", CANONICAL_SCENARIO, u);
+      await seedReflections(c, u, 3); const f = await seedFoundry(c, false, u);
+      const before = await money(c, u, legacy.run);
+      const work: [string, unknown[]][] = [
+        [AWARD_XP_SQL, [u, 0, 0, 7]], [AWARD_XP_SQL, [u, 0, 0, 7]], [AWARD_XP_SQL, [u, 0, 0, 7]],
+        [AWARD_XP_SQL, [u, 30, 30, 0]], [AWARD_XP_SQL, [u, 30, 30, 0]], [AWARD_XP_SQL, [u, 30, 30, 0]],
+        [ACTIVITY_SQL, [u, "CHAT_MESSAGE", 5]], [ACTIVITY_SQL, [u, "MENTOR_MESSAGE", 5]],
+        [LAB_SQL, [u, 10, `lab:${randomUUID()}`]], [LAB_SQL, [u, 10, `lab:${randomUUID()}`]],
+        [RUN_REWARDS_SQL, [u, runA.run, runA.scenario, 8, 12]], [RUN_REWARDS_SQL, [u, runB.run, runB.scenario, 8, 12]],
+        [QUEST_SQL, [u, week]], [AWARD_SQL, [u, f.event, f.progress, day.start, day.end]],
+        [CHOICE_SQL, choiceParams(legacy)], [BEGINNER_SQL, beginnerParams(beginner)],
+      ];
+      const sessions = await Promise.all(work.map((_, i) => open(`concurrent-${i}`)));
+      await Promise.all(work.map(([sql, args], i) => service(sessions[i], sql, args)));
+      const after = await money(c, u, legacy.run);
+      // Direct Core 21+20+24+10 = 75; seasonal 90+10+15+30 = 145 at 60:1 (Core stays >= 200).
+      const exact = 300 + 75 + 145 / 60;
+      assert.equal(after.core, Math.floor(exact)); assert(Math.abs(after.buffer - (exact - Math.floor(exact))) < 1e-9, String(after.buffer));
+      assert.equal(after.weeklyXpTotal - before.weeklyXpTotal, 90 + 10 + 16 + 15 + 30);
+      assert.equal(after.runTotalXp - before.runTotalXp, 82); assert.equal(after.lifetime - before.lifetime, 82);
+      return { awards: work.length, coreBefore: before.core, coreAfter: after.core, bufferAfter: after.buffer, expectedCoreExact: exact,
+        weeklyXpDelta: after.weeklyXpTotal - before.weeklyXpTotal };
+    });
+    await check("atomic run rewards, activity and Lab: anchors commit with payment; concurrency, failure and retry pay exactly once", async () => {
+      const s = await seedRun(c, "scenario", CANONICAL_SCENARIO); const before = await money(c, s.user);
+      const two = await Promise.all([open("run-a"), open("run-b")]);
+      const both = await Promise.all(two.map(x => service(x, RUN_REWARDS_SQL, [s.user, s.run, s.scenario, 8, 12])));
+      assert.deepEqual(both.map(r => r.applied).sort(), [false, true]);
+      assert.equal(delta(await money(c, s.user), before).core, 12);
+      assert.equal(await count(c, "select count(*)::int n from public.arena_events where run_id=$1 and event_type='RUN_COMPLETED_APPLIED'", [s.run]), 1);
+      const t = await seedRun(c, "scenario", CANONICAL_SCENARIO); const lab = `lab:${randomUUID()}`;
+      await c.query(`create function public.qa_fail() returns trigger language plpgsql as $$ begin raise exception 'QA_INJECTED_FAILURE'; end $$;
+        create trigger qa_fail before update on public.arena_profiles for each row execute function public.qa_fail();`);
+      try {
+        await rejectedUnchanged(c, () => service(c, RUN_REWARDS_SQL, [t.user, t.run, t.scenario, 8, 12]), /QA_INJECTED_FAILURE/);
+        await rejectedUnchanged(c, () => service(c, ACTIVITY_SQL, [t.user, "CHAT_MESSAGE", 5]), /QA_INJECTED_FAILURE/);
+        await rejectedUnchanged(c, () => service(c, LAB_SQL, [t.user, 10, lab]), /QA_INJECTED_FAILURE/);
+      } finally {
+        await c.query("drop trigger qa_fail on public.arena_profiles; drop function public.qa_fail();");
+      }
+      const b2 = await money(c, t.user);
+      assert.equal((await service(c, RUN_REWARDS_SQL, [t.user, t.run, t.scenario, 8, 12])).applied, true);
+      assert.equal((await service(c, RUN_REWARDS_SQL, [t.user, t.run, t.scenario, 8, 12])).applied, false);
+      assert.equal((await service(c, LAB_SQL, [t.user, 10, lab])).outcome, "awarded");
+      assert.equal((await service(c, LAB_SQL, [t.user, 10, lab])).outcome, "already_applied");
+      assert.equal((await service(c, ACTIVITY_SQL, [t.user, "CHAT_MESSAGE", 5])).xp, 5);
+      const d = delta(await money(c, t.user), b2);
+      assert.equal(d.core, 12 + 10); assert.equal(d.weeklyXpTotal, 8 + 5);
+      assert.equal(await count(c, "select count(*)::int n from public.activity_xp_events where user_id=$1", [t.user]), 1);
+      assert.equal(await count(c, "select count(*)::int n from public.core_xp_ledger where user_id=$1 and source_type in ('LAB','ARENA')", [t.user]), 2);
+      return { concurrentRunRewards: both.map(r => r.applied), afterFailureRetry: { coreDelta: d.core, weeklyXpDelta: d.weeklyXpTotal } };
     });
 
     // ---------------- item 3: weekly reflection quest +15 ----------------
-    await check("pre-fix quest flow (still in previous-release Workers) pays twice under concurrency and after a failed claim insert", async () => {
-      const racer = randomUUID(); await c.query("insert into auth.users(id) values($1)", [racer]); await seedReflections(c, racer, 3);
-      const before = await money(c, racer);
-      const sawClaim = [await OLD.questClaimRead(c, racer, week), await OLD.questClaimRead(c, racer, week)]; // both requests read first
-      for (let i = 0; i < 2; i++) { await OLD.questWeekly(c, racer); const r = await OLD.seasonalCoreRead(c, racer); await OLD.seasonalCoreWrite(c, racer, r, 15); }
-      await OLD.questClaimInsert(c, racer, week);
-      await rejected(OLD.questClaimInsert(c, racer, week), /duplicate key/);           // second insert fails; old route ignores it
-      const retry = randomUUID(); await c.query("insert into auth.users(id) values($1)", [retry]); await seedReflections(c, retry, 3);
-      const beforeRetry = await money(c, retry);
-      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15);
-      await c.query("begin"); await OLD.questClaimInsert(c, retry, week); await c.query("rollback");  // claim insert lost
-      assert.equal(await OLD.questClaimRead(c, retry, week), false);
-      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15); await OLD.questClaimInsert(c, retry, week);
-      const race = delta(await money(c, racer), before), again = delta(await money(c, retry), beforeRetry);
-      assert.deepEqual(sawClaim, [false, false]); assert.equal(race.weeklyXpTotal, 30); assert.equal(again.weeklyXpTotal, 30);
-      return { concurrent: { payments: 2, weeklyXpDelta: race.weeklyXpTotal }, failedClaimThenRetry: { payments: 2, weeklyXpDelta: again.weeklyXpTotal } };
-    });
     await check("atomic quest: five concurrent claims pay +15 exactly once with TypeScript-identical Core", async () => {
       const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
-      await c.query("update public.arena_profiles set core_xp_total=199, core_xp_buffer=$2, sub_name='Spark' where user_id=$1", [u, 0.9]);
+      await asFixture(c, () => c.query("update public.arena_profiles set core_xp_total=199, core_xp_buffer=$2, sub_name='Spark' where user_id=$1", [u, 0.9]));
       const read = (await c.query("select core_xp_total, core_xp_buffer, sub_name, sub_name_renamed_in_code from public.arena_profiles where user_id=$1", [u])).rows[0];
       const before = await money(c, u);
       const sessions5 = await Promise.all([1, 2, 3, 4, 5].map(i => open(`quest-${i}`)));
@@ -843,8 +944,8 @@ async function main() {
       const results: Row[] = [];
       for (const [core, buffer, renamed] of cases) {
         const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
-        await c.query("update public.arena_profiles set core_xp_total=$2, core_xp_buffer=$3, sub_name=$4, sub_name_renamed_in_code=$5 where user_id=$1",
-          [u, core, buffer, renamed ? "Custom" : "Spark", renamed]);
+        await asFixture(c, () => c.query("update public.arena_profiles set core_xp_total=$2, core_xp_buffer=$3, sub_name=$4, sub_name_renamed_in_code=$5 where user_id=$1",
+          [u, core, buffer, renamed ? "Custom" : "Spark", renamed]));
         const read = (await c.query("select core_xp_total, core_xp_buffer, sub_name, sub_name_renamed_in_code from public.arena_profiles where user_id=$1", [u])).rows[0];
         assert.equal((await service(c, QUEST_SQL, [u, week])).outcome, "awarded");
         const p = (await c.query("select core_xp_total, core_xp_buffer::float8 b, tier, code_index, stage, code_hidden, sub_name from public.arena_profiles where user_id=$1", [u])).rows[0];
@@ -854,19 +955,36 @@ async function main() {
       }
       return { cases: results };
     });
-    await check("residual: a previous-release quest request racing the atomic claim can still add one extra +15 (measured)", async () => {
-      const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
-      const before = await money(c, u);
-      assert.equal(await OLD.questClaimRead(c, u, week), false);                       // old request reads first
-      assert.equal((await service(c, QUEST_SQL, [u, week])).outcome, "awarded");      // new release claims and pays
-      await OLD.questWeekly(c, u); await OLD.seasonalCoreWrite(c, u, await OLD.seasonalCoreRead(c, u), 15);
-      await rejected(OLD.questClaimInsert(c, u, week), /duplicate key/);
-      const paid = delta(await money(c, u), before);
-      assert.equal(paid.weeklyXpTotal, 30);
-      evidence.residual.push({ path: "previous-release run/complete weekly quest (preview URL or in-flight)", measured: { payments: 2, weeklyXpDelta: 30 },
-        why: "the old flow pays through increment_weekly_xp and an absolute Core write before its claim; both are shared with unchanged writers",
-        mitigation: "disable workers.dev preview URLs so no previous version serves; in-flight old requests are bounded to those already running" });
-      return { payments: 2, weeklyXpDelta: paid.weeklyXpTotal };
+    await check("a previous-release quest request resumed after cutover can neither pay nor consume the claim; the atomic quest pays once", async () => {
+      const before = await money(c, questOld);
+      await rejectedUnchanged(c, () => OLD.questWeekly(c, questOld), FENCED);
+      await rejectedUnchanged(c, async () => OLD.seasonalCoreWrite(c, questOld, await OLD.seasonalCoreRead(c, questOld), 15), FENCED);
+      await rejectedUnchanged(c, () => OLD.questClaimInsert(c, questOld, week), FENCED);
+      assert.equal((await service(c, QUEST_SQL, [questOld, week])).outcome, "awarded");
+      // The old request racing after the atomic claim still cannot add a second +15.
+      await rejectedUnchanged(c, () => OLD.questWeekly(c, questOld), FENCED);
+      const paid = delta(await money(c, questOld), before);
+      assert.equal(paid.weeklyXpTotal, 15);
+      return { payments: 1, weeklyXpDelta: paid.weeklyXpTotal };
+    });
+    await check("database pause stops every reward write from every writer, keeps other writes, and resumes cleanly", async () => {
+      await c.query(buildPauseBundle("QA incident drill"));
+      const s = await seedRun(c, "scenario"); const b = await seedRun(c, "beginner"); const f = await seedFoundry(c);
+      const r = await seedRun(c, "scenario", CANONICAL_SCENARIO); const q = randomUUID(); await c.query("insert into auth.users(id) values($1)", [q]); await seedReflections(c, q, 3);
+      const refusals: Row = {};
+      for (const [name, sql, args] of [["legacyChoice", CHOICE_SQL, choiceParams(s)], ["beginner", BEGINNER_SQL, beginnerParams(b)],
+        ["foundry", AWARD_SQL, [f.user, f.event, f.progress, day.start, day.end]], ["quest", QUEST_SQL, [q, week]],
+        ["sharedXp", AWARD_XP_SQL, [s.user, 5, 5, 5]], ["runXp", RUN_XP_SQL, [r.user, r.run, 5]], ["runRewards", RUN_REWARDS_SQL, [r.user, r.run, r.scenario, 8, 12]],
+        ["activity", ACTIVITY_SQL, [s.user, "CHAT_MESSAGE", 5]], ["lab", LAB_SQL, [s.user, 10, `lab:${randomUUID()}`]]] as [string, string, unknown[]][]) {
+        refusals[name] = await rejectedUnchanged(c, () => service(c, sql, args), /REWARD_WRITES_PAUSED/);
+      }
+      const h = await seedHealingUser(c);
+      assert.deepEqual((await service(c, ACT_SQL, [h, 1])).completedActs, [1]);                   // not a reward write
+      await OLD.beginnerFreeResponse(c, s);                                                        // ordinary event writes continue
+      await c.query(buildResumeBundle());
+      assert.equal((await service(c, CHOICE_SQL, choiceParams(s))).replayed, false);
+      assert.equal((await service(c, QUEST_SQL, [q, week])).outcome, "awarded");
+      return { refused: Object.keys(refusals) };
     });
     await check("historical rows remain byte-identical after every fenced and atomic operation", async () => {
       const after = await snapshot(c);
@@ -881,12 +999,13 @@ async function main() {
     });
 
     // ---------------- recovery ----------------
-    await check("recovery bundle removes only the fence; receipts/RPCs stay; old split write possible again", async () => {
+    await check("last-resort fence removal drops only the fence; receipts/RPCs stay; old split write possible again", async () => {
       const receipts = await count(c, "select count(*)::int n from public.arena_reward_receipts");
-      await c.query(buildRecoveryBundle());
+      await c.query(buildRemoveFenceBundle());
       assert.equal(await fenceInstalled(c), 0);
       assert.equal(await count(c, "select count(*)::int n from public.arena_reward_receipts"), receipts);
-      const s = await seedRun(c, "scenario"); await OLD.choiceEvent(c, s);
+      const s = await seedRun(c, "scenario"); await OLD.choiceEvent(c, s); await OLD.choiceXp(c, s);
+      assert.equal(await count(c, "select total_xp n from public.arena_runs where run_id=$1", [s.run]), 82);
       assert.equal(await count(c, "select count(*)::int n from pg_proc where proname='bty_record_legacy_choice_reward'"), 1);
     });
     const executed = evidence.checks.map((x: Row) => x.name);

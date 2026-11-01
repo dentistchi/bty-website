@@ -37,12 +37,12 @@ jobs:
             database: bty_reward_fence_qa
             script: scripts/reward-write-fence-postgres-qa.ts
             url_env: REWARD_FENCE_TEST_DATABASE_URL
-            expected_checks: 38
+            expected_checks: 42
           - suite: PostgREST 14.5
             database: bty_reward_fence_rest
             script: scripts/reward-write-fence-postgrest-qa.ts
             url_env: REWARD_FENCE_REST_DATABASE_URL
-            expected_checks: 12
+            expected_checks: 15
     services:
       postgres:
         image: postgres:17

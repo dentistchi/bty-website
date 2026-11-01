@@ -1,3 +1,4 @@
+import { awardRunXp } from "@/lib/bty/arena/sharedXp.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
@@ -122,13 +123,8 @@ export async function POST(req: Request) {
 
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
-  const { error: rpcErr } = await xpWriter.rpc("increment_arena_xp", {
-    p_user_id: user.id,
-    p_run_id: runId,
-    p_xp: FREE_RESPONSE_XP,
-  });
-
-  if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+  const award = await awardRunXp(user.id, runId, FREE_RESPONSE_XP);
+  if (!award.ok) return NextResponse.json({ error: award.error }, { status: award.error === "REWARD_WRITES_PAUSED" ? 503 : 500 });
 
   return NextResponse.json({
     ok: true,

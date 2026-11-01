@@ -1,3 +1,4 @@
+import { rewardWritesPaused } from "@/lib/bty/rewardWritePause";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { REFLECTION_QUEST_BONUS_XP } from "@/lib/bty/arena/weeklyQuest";
 
@@ -10,7 +11,7 @@ const integer = (value: unknown, min = 0): value is number =>
 export type WeeklyQuestClaim =
   | { outcome: "awarded"; weekStart: string; seasonalXp: number; coreGain: number; coreBefore: number; coreAfter: number; weeklyXpTotal: number }
   | { outcome: "already_claimed" | "not_eligible"; weekStart: string };
-type Result = { ok: true; claim: WeeklyQuestClaim } | { ok: false; error: "QUEST_STORAGE_UNAVAILABLE" | "QUEST_AWARD_FAILED" };
+type Result = { ok: true; claim: WeeklyQuestClaim } | { ok: false; error: "QUEST_STORAGE_UNAVAILABLE" | "QUEST_AWARD_FAILED" | "REWARD_WRITES_PAUSED" };
 
 /**
  * The claim row, weekly XP and Core commit in one SQL transaction keyed by user and
@@ -18,6 +19,7 @@ type Result = { ok: true; claim: WeeklyQuestClaim } | { ok: false; error: "QUEST
  * Only the service-role writer may invoke it; there is no split-write fallback.
  */
 export async function claimWeeklyReflectionQuest(writer: SupabaseClient, input: { userId: string; weekStart: string }): Promise<Result> {
+  if (rewardWritesPaused()) return { ok: false, error: "REWARD_WRITES_PAUSED" };
   try {
     const { data, error } = await writer.rpc("bty_claim_weekly_reflection_quest", {
       p_user_id: input.userId, p_week_start: input.weekStart,

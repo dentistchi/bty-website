@@ -52,7 +52,9 @@ describe("claimWeeklyReflectionQuest", () => {
 
   it("run/complete pays the quest only through the atomic helper", () => {
     const route = readFileSync(path.resolve(__dirname, "../../../app/api/arena/run/complete/route.ts"), "utf8");
-    expect(route).toContain("claimWeeklyReflectionQuest(adminForContract, { userId: user.id, weekStart })");
+    expect(route).toContain("claimWeeklyReflectionQuest(admin, { userId, weekStart })");
+    // Both the first completion and an idempotent retry of the same run settle the quest.
+    expect(route.match(/await settleWeeklyReflectionQuest\(supabase, adminForContract, user\.id, runId\)/g)).toHaveLength(2);
     expect(route).not.toContain("arena_weekly_quest_claims");
     expect(route).not.toContain("REFLECTION_QUEST_BONUS_XP");
     expect(route).not.toContain("applySeasonalXpToCore");

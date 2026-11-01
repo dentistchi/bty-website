@@ -1,3 +1,4 @@
+import { REWARD_WRITES_PAUSED, rewardWritesPaused } from "@/lib/bty/rewardWritePause";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BeginnerRunResponses, MaturityFeedback } from "@/lib/bty/scenario/beginnerTypes";
 
@@ -19,12 +20,13 @@ export type BeginnerRewardReceipt = CommonReceipt & {
 };
 type Result<T> = { ok: true; receipt: T } | { ok: false; status: number; error: string };
 const failed = (): { ok: false; status: number; error: string } => ({ ok: false, status: 500, error: "XP_AWARD_FAILED" });
+const paused = (): { ok: false; status: number; error: string } => ({ ok: false, status: 503, error: REWARD_WRITES_PAUSED });
 function rpcError(error: unknown): ReturnType<typeof failed> {
   if (!record(error)) return failed();
   if (error.code === "PGRST202" || error.code === "42883") return { ok: false, status: 503, error: "XP_STORAGE_UNAVAILABLE" };
   const statuses: Record<string, number> = {
     REWARD_RUN_NOT_FOUND: 404, RUN_SCENARIO_MISMATCH: 409, RUN_NOT_ACTIVE: 409,
-    NOT_BEGINNER_RUN: 400, LEGACY_REWARD_REVIEW_REQUIRED: 409,
+    NOT_BEGINNER_RUN: 400, LEGACY_REWARD_REVIEW_REQUIRED: 409, REWARD_WRITES_PAUSED: 503,
     REWARD_INPUT_CONFLICT: 409, INVALID_REWARD_INPUT: 400,
   };
   const message = typeof error.message === "string" ? error.message : "";
@@ -45,6 +47,7 @@ export async function recordLegacyChoiceReward(writer: SupabaseClient, input: {
   userId: string; runId: string; scenarioId: string; choiceId: string; step: number; xp: number;
   deltas: unknown; meta: unknown;
 }): Promise<Result<ChoiceRewardReceipt>> {
+  if (rewardWritesPaused()) return paused();
   try {
     const { data, error } = await writer.rpc("bty_record_legacy_choice_reward", {
       p_user_id: input.userId, p_run_id: input.runId, p_scenario_id: input.scenarioId,
@@ -61,6 +64,7 @@ export async function recordLegacyChoiceReward(writer: SupabaseClient, input: {
 export async function completeBeginnerReward(writer: SupabaseClient, input: {
   userId: string; runId: string; scenarioId: string; responses: BeginnerRunResponses; score: number; feedback: MaturityFeedback;
 }): Promise<Result<BeginnerRewardReceipt>> {
+  if (rewardWritesPaused()) return paused();
   try {
     const { data, error } = await writer.rpc("bty_complete_beginner_reward", {
       p_user_id: input.userId, p_run_id: input.runId, p_scenario_id: input.scenarioId,

@@ -15,7 +15,12 @@ vi.mock("@/lib/legal/activeConsent", () => ({
 vi.mock("@/lib/supabase-admin", () => ({
   getSupabaseAdmin: () => {
     state.effects.push("get_private_writer");
-    return { rpc: async () => { state.effects.push("private_rpc"); return { error: null }; } };
+    return { rpc: async (fn: string, args?: { p_xp?: number }) => {
+      state.effects.push(`private_rpc:${fn}`);
+      return fn === "bty_award_run_xp_v2"
+        ? { data: { policyVersion: "shared-xp/v2", xp: args?.p_xp }, error: null }
+        : { error: null };
+    } };
   },
 }));
 vi.mock("@/lib/bty/arena/supabaseServer", () => ({

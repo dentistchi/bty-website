@@ -10,182 +10,199 @@ running after a deploy, for three reasons:
 
 - In-flight requests have no documented end.
 - Workers Logs are off.
-- All 943 earlier versions stay reachable through preview URLs with current secrets.
+- Every earlier version stays reachable through preview URLs with current secrets.
 
-Key rotation cannot separate old code from new. Every Supabase secret key maps to
-the same `service_role`, and old Healing writes use the publishable key plus the
-user's JWT. So the fence lives in the database and judges each write by what it is,
+Key rotation cannot separate old code from new. Every Supabase secret key maps to the
+same `service_role`, and old Healing writes use the publishable key plus the user's
+JWT. The fence therefore lives in the database and judges each write by what it is,
 not by which Worker or credential sent it.
 
 ## What is fenced
 
-| Path (previous release) | Old write | Fence rule |
-|---|---|---|
-| `/api/arena/event` CHOICE_CONFIRMED | user-JWT event insert, then `increment_arena_xp` | for the 45 bundled legacy catalog scenarios, a `CHOICE_CONFIRMED` needs a `legacy_choice` receipt naming that event, checked at commit |
-| `/api/arena/beginner-complete` | user-JWT `DONE`, XP, Core, reflection | a beginner run reaching `DONE`, and `BEGINNER_REFLECTION`, need a `beginner_completion` receipt |
-| old `run/complete`, `free-response` on beginner runs | `RUN_COMPLETED_APPLIED`, `RUN_COMPLETE_CONTRACT_QUEUED`, `FREE_RESPONSE` | rejected for beginner runs |
-| Healing acts / second awakening | user-JWT inserts and upserts | any `anon`/`authenticated` write to acts or milestones; a starter unlock stamped with its milestone time |
-| Foundry training/document/guidance award, old eligible claim | `foundry_training_completion` ledger row, then Core, then marker | the ledger row and `xp_awarded_at` need the matching `foundry_xp_reward_receipts` row, checked at commit |
+### Reward-specific writes (`20261101120000`)
 
-Receipt-checked triggers are deferred constraint triggers: the atomic RPCs write
-their receipt last in the same transaction.
+| Path (previous release) | Fence rule (checked at commit) |
+|---|---|
+| `/api/arena/event` CHOICE_CONFIRMED for the 45 legacy catalog scenarios | needs the `legacy_choice` receipt naming that event |
+| `/api/arena/beginner-complete` | a beginner run reaching `DONE`, and `BEGINNER_REFLECTION`, need a `beginner_completion` receipt |
+| old `run/complete`, `free-response` on beginner runs | `RUN_COMPLETED_APPLIED`, `RUN_COMPLETE_CONTRACT_QUEUED`, `FREE_RESPONSE` rejected |
+| Healing acts / second awakening | user-JWT writes to acts and milestones, and the stamped starter unlock, are rejected |
+| Foundry award and old eligible claim | the ledger row and `xp_awarded_at` need the matching `foundry_xp_reward_receipts` row |
 
-These keep working unchanged:
+### Shared XP/Core writes (`20261101140000`)
 
-- canonical `/api/arena/choice`
-- other event types
-- scenario-run free responses
-- organic emotional unlocks
-- LAB and other ledger sources
-- progress linking and claim issue
+The previous release also paid through writes that look the same whichever release
+sends them:
 
-No learner row is read for policy, inferred, backfilled or rewritten. Global JWT
-keys, service_role grants and existing records are unchanged.
+- top-level `increment_arena_xp` and `increment_weekly_xp` RPCs;
+- read-then-absolute `arena_profiles` updates (`applySeasonalXpToCore`,
+  `applyDirectCoreXp`);
+- reward anchors written before (or, for the quest, after) their payment:
+  `RUN_COMPLETED_APPLIED`, `activity_xp_events`, LAB/ARENA ledger rows and weekly quest
+  claims.
 
-## Weekly reflection quest (+15), repaired in this PR
+From the cutover, the following writes are accepted only when the outermost function
+on the database call stack is one of this release's atomic writers:
 
-`run/complete` used to:
+- any increase of `weekly_xp.xp_total`, `arena_profiles.lifetime_xp`/`weekly_xp` or
+  `arena_runs.total_xp`;
+- any change of permanent Core (`core_xp_total`, `core_xp_buffer`);
+- any of those anchors.
 
-1. read the weekly claim
-2. pay weekly XP
-3. apply Core in TypeScript
-4. insert the claim, ignoring its error.
+The atomic writers are:
 
-Two concurrent completions, or a lost claim insert followed by a retry, each paid
-twice (reproduced: +30). It now calls `bty_claim_weekly_reflection_quest`
-(`20261101130000`), which works in one transaction:
+- PR91's legacy, beginner and Foundry RPCs;
+- the quest RPC;
+- `bty_award_xp_v2`, `bty_award_run_xp_v2`, `bty_award_activity_xp_v2`,
+  `bty_award_lab_xp_v2` and `bty_apply_arena_run_rewards_v2`;
+- `bty_e2e_set_core_xp`, a test-fixture seed;
+- two unchanged single-transaction RPCs shared by both releases:
+  `bty_event_scan_award` and `run_season_carryover`.
+
+The call stack comes from `PG_CONTEXT`, which contains only function frames and their
+source statements, never client-supplied values.
+
+A direct PostgREST table write, or the old RPC names called directly, is rejected.
+Weekly-reset decreases stay direct writes.
+
+Every new writer locks the profile row and computes Core in SQL, so concurrent awards
+are added together instead of one overwriting another. The application now calls only
+these writers:
+
+- choice and free-response XP;
+- chat, mentor and quick-mode activity XP;
+- run completion and re-exposure rewards;
+- Lab XP;
+- `applySeasonalXpToCore` and `applyDirectCoreXp`.
+
+No learner row is read for policy, inferred, backfilled or rewritten. Global JWT keys
+and service_role grants are unchanged.
+
+## Weekly reflection quest (+15)
+
+`bty_claim_weekly_reflection_quest` (`20261101130000`) works in one transaction:
 
 1. re-counts the week's reflections
 2. inserts the claim first
-3. pays weekly XP and Core with the same arithmetic as `applySeasonalXpToCore`.
+3. pays weekly XP and Core.
 
-A concurrent duplicate waits on the uncommitted claim and returns `already_claimed`.
-Any failure writes nothing, so a later completion retries. The quest never fails the
-run completion.
+A concurrent duplicate waits and returns `already_claimed`; a failure writes nothing.
+
+`run/complete` settles the quest on the first completion and again on every
+idempotent retry of the same run. A quest that failed alone is therefore recovered
+by retrying that run. The run reward is not repeated: the RPC is keyed on the run's
+`RUN_COMPLETED_APPLIED` anchor. No second contract is created: the production key is
+`UNIQUE(user_id, action_id = arena_action_loop:<run>)`, plus the open-contract check
+per pattern family.
+
+## Cutover SQL
+
+`node scripts/reward-write-fence-cutover.mjs --apply-out /abs/cutover.sql` writes one
+transaction. It runs these steps in order:
+
+1. `set local lock_timeout = '3s'` and `statement_timeout = '120s'`.
+2. Lock all eleven fenced tables in `SHARE ROW EXCLUSIVE` mode: `arena_events`,
+   `arena_runs`, `core_xp_ledger`, `foundry_event_training_progress`,
+   `user_healing_awakening_acts`, `user_healing_milestones`, `user_advanced_unlocks`,
+   `arena_profiles`, `weekly_xp`, `activity_xp_events` and `arena_weekly_quest_claims`.
+   - The lock waits for every transaction already writing them. Readers continue.
+3. Refuse to run if any cutover version is already in the ledger, or the receipt tables
+   exist.
+4. Apply, in order:
+   - 20261031222747 `legacy_xp_atomic_reward_receipts`
+   - 20261101000728 `healing_awakening_atomic_completion`
+   - 20261101001020 `foundry_core_atomic_rewards`
+   - 20261101120000 `reward_write_fence_v1`
+   - 20261101130000 `weekly_reflection_quest_atomic`
+   - 20261101140000 `shared_reward_write_fence`
+5. Insert these six rows into `supabase_migrations.schema_migrations` (version, name,
+   statements).
+6. Assert before COMMIT:
+   - the 20 fence triggers are enabled;
+   - the 13 release RPCs are invoker functions that only `service_role` can execute;
+   - the Healing client write grants are revoked;
+   - the pause switch exists and is off.
+7. `commit`. A lock timeout or any failed assertion rolls everything back.
+
+The PR records the exact bundle sha256 for the final head.
 
 ## Cutover procedure
 
-1. Build the bundles locally:
-   `node scripts/reward-write-fence-cutover.mjs --apply-out /abs/cutover.sql --recovery-out /abs/remove-fence.sql`
-   and record the printed sha256.
-2. Read-only preflight: the ledger has none of the five versions, and the receipt
-   tables are absent.
-3. Apply `cutover.sql` once. In one transaction it:
-   - sets `lock_timeout=3s`;
-   - locks the seven fenced tables in `SHARE ROW EXCLUSIVE` mode;
-   - applies 20261031222747, 20261101000728, 20261101001020, 20261101120000 and
-     20261101130000;
-   - records them in the migration ledger;
-   - asserts the triggers, RPC ACLs and Healing revoke before `COMMIT`.
-
-   The lock waits for every transaction already writing those tables; readers
-   continue. A transaction that started earlier but writes later sees the fence. On
-   lock timeout or any failed assertion everything rolls back; retry it.
-4. Disable workers.dev preview URLs for `bty-arena-staging` (`previews_enabled:false`).
-   This stops previous versions from serving the unfenced shared writes listed below.
-5. Deploy the merged SHA with the existing wrapper. Between steps 3 and 5 the previous
-   release's fenced reward routes return errors. That is the intended write block.
-6. Verify:
+1. Run the read-only preflight: the ledger has none of the six versions, and the
+   receipt and control tables are absent.
+2. Apply `cutover.sql` once; retry it after a lock timeout.
+3. Deploy the merged SHA with the existing wrapper. Until then the previous release's
+   reward routes return errors. That is the intended write block. Its learning and
+   reading routes keep working.
+4. Verify:
    - both domains' `/api/version` and 100% traffic;
    - the ledger, triggers and RPC ACLs;
-   - that a preview URL of an old version no longer serves.
+   - that a previous-version preview URL can no longer pay (it gets
+     `REWARD_WRITE_FENCED`).
+5. List anchors without receipts read-only (counts only). They are review items and
+   are never backfilled.
 
-   List anchors without receipts read-only (counts only). These are historical review
-   items and are never backfilled.
+Disabling preview URLs is still good hygiene, but no payment safety depends on it.
+Neither waiting nor HTTP blocking is part of the proof; the proof is the lock plus
+database enforcement.
 
-HTTP blocking, pre-request checks and waiting are not part of the proof. The proof is
-the lock acquisition plus commit-time enforcement.
+## Recovery (no rollback to the previous release)
 
-## Verified behaviour
+Rolling the Worker back to the previous release is **not** a recovery path. Its reward
+routes are fenced and fail, and its split writers would come back if the fence were
+ever removed. Use these instead:
 
-`scripts/reward-write-fence-postgres-qa.ts` runs on native PostgreSQL 17. It passed
-38 checks per run, in 3 of 3 fresh runs.
+1. **Pause reward payments, all versions at once (database).**
+   - Build it with
+     `node scripts/reward-write-fence-cutover.mjs --pause-out /abs/pause.sql --pause-reason "<why>"`.
+     The bundle sets `bty_reward_write_control.paused = true` in one transaction and
+     verifies it.
+   - From the next statement, every reward payment fails with `REWARD_WRITES_PAUSED`.
+     This covers every writer listed above, including the atomic RPCs.
+   - Healing completion, saving, learning, reading and ordinary event writes continue.
+   - The receipts, claims and fence stay in place.
+2. **Pause in the application (clean 503s).**
+   - Set the Worker secret `REWARD_WRITES_PAUSED=1`. This creates a new version of the
+     *same* code, not the previous release.
+   - The reward helpers return `REWARD_WRITES_PAUSED` before any database request.
+   - Routes respond 503 for the legacy and beginner rewards, free-response and run
+     completion. Foundry and claim helpers report `unavailable`, and claims stay
+     unspent.
+   - Activity XP and the quest skip silently.
+3. **Resume.** Run `--resume-out /abs/resume.sql`, then remove the secret or set it to
+   `0`. Rewards resume without any repayment. Rewards refused while paused are simply
+   not recorded; the next completion or retry pays them through the normal idempotency
+   keys.
+4. **Fix forward.** Deploy a corrected SHA with the wrapper while paused, then resume.
+5. **Last resort only: `--remove-fence-out`.** It drops the 20 triggers inside the
+   same lock and keeps the receipts, claims and RPCs. It reopens every previous-release
+   split writer, so use it only when no previous version, preview URL or in-flight
+   request can reach the database.
+6. **A failed cutover leaves nothing behind.** It rolls back in one transaction.
+7. **Never drop receipt tables, quest claims or RPCs** once any row exists.
 
-Requests already in the database, or resumed later:
-- A cutover with a held write lock times out and rolls back completely.
-- A cutover waits for a transaction that is already writing.
-- An old transaction opened before the cutover cannot write afterwards.
+## Verification
 
-Several old requests on the same anchor:
+Results for the final head are recorded in the PR description. The harnesses are:
 
-| Case | Anchors before cutover | Payments after cutover |
-|---|---|---|
-| Legacy run | 3 | 2 (82 XP each); one XP call was lost, and its retry is fenced before XP |
-| Beginner run | 1 winner, 2 losers | 1 (weekly +30, Core per TypeScript); a failed weekly call plus every retry pays 0 |
-| Foundry progress | 1 awarded, 1 already_awarded | Core +10 once; a failed Core write plus every retry pays 0 |
+- `scripts/reward-write-fence-postgres-qa.ts`: native PostgreSQL, 42 checks.
+- `scripts/reward-write-fence-postgrest-qa.ts`: PostgREST 14.5 over the read-only
+  production schema export, 15 checks.
 
-In every case, new RPCs on these anchors return review-required.
+CI (`.github/workflows/reward-write-fence-postgres.yml`) fails unless every expected
+check ran exactly once, in order.
 
-Weekly quest:
-- Five concurrent claims pay +15 once.
-- An injected failure writes nothing, and the retry pays once.
-- Ineligible weeks, past-week reflections, a Tuesday or a future week, and a user
-  JWT all write nothing.
-- Core matches `applySeasonalXpToCore` at 7 buffer and tier boundaries.
+## Remaining limits
 
-Also checked:
-- unchanged writers;
-- recovery;
-- historical rows staying byte-identical;
-- an injected failure rolling back every atomic write.
-
-`scripts/reward-write-fence-postgrest-qa.ts` runs real PostgREST 14.5 (production's
-version). It passed 12 checks per run, in 3 of 3 fresh runs. Its schema is
-`scripts/qa/reward-fence-prod-schema.sql`, exported read-only from production
-pg_catalog with no rows. It adds the production auth helpers and DDL-watch event
-triggers. The app's own supabase-js clients and server helpers call it through
-`/rest/v1`.
-
-- **Schema cache:** reloads within about 0.1 s after the cutover, without restarting
-  PostgREST.
-- **Fenced old writes:** return HTTP 400, `P0001`/`REWARD_WRITE_FENCED`, and persist
-  nothing. This holds with `return=minimal` and `return=representation`, and for the
-  beginner PATCH, Foundry RPC and Foundry marker.
-- **Healing with a user JWT:** HTTP 403 (`42501`).
-- **Receipts and atomic RPCs:** 401 for anon, 403 for authenticated; service_role
-  succeeds.
-- **App helpers:** map missing storage (before cutover), conflicts and review-required
-  to the route statuses.
-- **Production `arena_profiles` triggers:** coexist with the RPCs.
-
-CI (`.github/workflows/reward-write-fence-postgres.yml`) runs both harnesses on a
-fresh `postgres:17` service. The REST job downloads the PostgREST v14.5 release and
-verifies its sha256. A Docker-bridge server address is accepted only with an explicit
-opt-in plus `GITHUB_ACTIONS=true`, and only for RFC1918 IPv4. The job fails unless
-every expected check name ran exactly once, in order.
-
-## Remaining limits (measured)
-
-1. **Pre-cutover anchors may still be paid after the cutover.** A previous-release
-   request whose anchor committed before the cutover can still complete its shared
-   `increment_*`/Core write afterwards. Unchanged writers write these tables the same
-   way.
-   - The result is at most one payment per anchor that already existed. No anchor can
-     be created after the cutover.
-   - Duplicate legacy anchors created before the cutover by the old bug are each paid
-     at most once.
-2. **Lost Core update.** The old TypeScript Core writers read, then write an absolute
-   value. One interleaved with any other Core writer can overwrite that award
-   (measured 219 → 209). This is under-payment, not duplication. Unchanged routes
-   (chat, mentor, run/complete, lab) carry the same pre-existing hazard.
-3. **Previous-release quest racing the new quest.** A previous-release `run/complete`
-   racing the atomic quest can add one extra +15 (measured).
-   - **Bound:** requests already in flight at deploy.
-   - **Prerequisite:** preview URLs disabled (step 4).
-4. **Not reproduced:** the Supabase API gateway (`sb_secret_`/`sb_publishable_` key
-   translation), the production Worker runtime, Teams, and tables outside the exported
-   subset (for example avatar state, whose sync stays best-effort).
-
-## Recovery
-
-- **New code faulty, fence correct:** `wrangler rollback` to the previous version.
-  Its fenced reward routes then fail closed and everything else serves. The quest
-  RPC and the fence stay.
-- **Fence false positive:** apply `remove-fence.sql`. It drops only the ten triggers,
-  inside the same lock, and keeps receipts and RPCs.
-  - It reopens the old split writers.
-  - Use it only while previews are disabled and no previous version is serving.
-- **Do not drop receipt tables, quest claims or RPCs** once any row exists. They are
-  the audit that prevents a second award.
-- **A failed cutover leaves nothing behind.** It rolls back in one transaction; retry
-  after the lock holder finishes.
+- **Not reproduced:**
+  - the Supabase API gateway (`sb_secret_`/`sb_publishable_` translation);
+  - the production Worker and Teams;
+  - tables outside the export (avatar state; avatar sync stays best-effort).
+- **Old anchors are never paid after the cutover.** A previous-release request whose
+  anchor committed before the cutover can no longer pay afterwards: a pre-cutover
+  `CHOICE_CONFIRMED`, beginner `DONE` or Foundry ledger row. Those anchors are left
+  unpaid and become review-required, never paid twice.
+- **Other reward systems:** Learning Rewards V1 has its own ledger and its own switch
+  (`LEARNING_REWARDS_ENABLED`), so the reward pause does not stop it.
+  `bty_event_scan_award` and `run_season_carryover` change payment columns, so the
+  database pause does stop them.

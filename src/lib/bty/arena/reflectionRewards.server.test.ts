@@ -15,9 +15,15 @@ import {
 const privateWriter = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => privateWriter.client }));
 
-vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
-  applyDirectCoreXp: vi.fn(async () => ({ ok: true, newCoreTotal: 12 })),
-}));
+vi.mock("@/engine/avatar/avatar-state.service", () => ({ syncAvatarStateAfterCoreXpChange: vi.fn(async () => undefined) }));
+const AWARD = { policyVersion: "shared-xp/v2", weeklyXpTotal: 8, coreBefore: 0, coreAfter: 12, coreGain: 12, coreBufferAfter: 0 };
+const privateResult = vi.hoisted(() => ({ value: null as null | { data: unknown; error: unknown } }));
+function privateReply(fn: string) {
+  if (privateResult.value) return privateResult.value;
+  if (fn === "bty_apply_arena_run_rewards_v2") return { data: { ...AWARD, applied: true, weeklyXp: 8, coreXp: 12 }, error: null };
+  if (fn === "bty_award_xp_v2") return { data: AWARD, error: null };
+  return { data: null, error: null };
+}
 
 // STAB-02-P1: deterministic XP values for applyArenaRunRewardsOnVerifiedCompletion
 // tests. Default returns positive coreXp / weeklyXp; individual tests override
@@ -64,16 +70,16 @@ function makeSupabase(): { supabase: unknown; captures: Captures } {
       };
       return api;
     },
-    // weekly_xp writes route through the atomic increment_weekly_xp RPC.
+    // Reward writes route through the service-role atomic RPCs only.
     rpc: (fn: string, args?: Record<string, unknown>) => {
       (captures.__rpc ??= []).push({ fn, ...(args ?? {}) });
-      if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
+      if (fn.startsWith("bty_award_") || fn.startsWith("increment_")) throw new Error("privileged RPC used the user client");
       return Promise.resolve({ data: null, error: null });
     },
   };
   privateWriter.client = { rpc: (fn: string, args?: Record<string, unknown>) => {
     (captures.__privateRpc ??= []).push({ fn, ...(args ?? {}) });
-    return Promise.resolve({ data: null, error: null });
+    return Promise.resolve(privateReply(fn));
   } };
   return { supabase, captures };
 }
@@ -168,28 +174,24 @@ function makeArenaRunSupabase(options?: {
     },
     rpc: (fn: string, args?: Record<string, unknown>) => {
       captures.rpc.push({ fn, args });
-      if (fn === "increment_weekly_xp") throw new Error("privileged RPC used the user client");
+      if (fn.startsWith("bty_") || fn.startsWith("increment_")) throw new Error("privileged RPC used the user client");
       return Promise.resolve({ data: null, error: null });
     },
   };
   privateWriter.client = { rpc: (fn: string, args?: Record<string, unknown>) => {
     captures.privateRpc.push({ fn, args });
-    return Promise.resolve({ data: null, error: null });
+    return Promise.resolve(privateReply(fn));
   } };
   return { supabase, captures };
 }
 
-describe("applyArenaRunRewardsOnVerifiedCompletion — STAB-02-P1 core_xp_ledger insert", () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
-  beforeEach(() => {
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  });
+describe("applyArenaRunRewardsOnVerifiedCompletion — one atomic reward transaction", () => {
   afterEach(() => {
-    warnSpy.mockRestore();
+    privateResult.value = null;
     vi.clearAllMocks();
   });
 
-  it("inserts core_xp_ledger row with source_type='ARENA' and source_id=run.run_id when coreGain > 0", async () => {
+  it("commits the anchor, weekly XP, Core and ARENA ledger through one service RPC", async () => {
     const { supabase, captures } = makeArenaRunSupabase();
     const result = await applyArenaRunRewardsOnVerifiedCompletion({
       supabase: supabase as never,
@@ -197,19 +199,15 @@ describe("applyArenaRunRewardsOnVerifiedCompletion — STAB-02-P1 core_xp_ledger
       run: { run_id: "run-stab02-A", scenario_id: "core_01" },
     });
     expect(result).toMatchObject({ ok: true, applied: true, coreXp: 12, weeklyXp: 8 });
-    expect(captures.privateRpc).toEqual([{ fn: "increment_weekly_xp", args: { p_user_id: "user-stab02", p_league_id: null, p_delta: 8 } }]);
-    expect(captures.rpc.some(call => call.fn === "increment_weekly_xp")).toBe(false);
-    const ledgerInserts = captures.inserts.core_xp_ledger ?? [];
-    expect(ledgerInserts).toHaveLength(1);
-    expect(ledgerInserts[0]).toEqual({
-      user_id: "user-stab02",
-      delta_xp: 12,
-      source_type: "ARENA",
-      source_id: "run-stab02-A",
-    });
+    expect(captures.privateRpc).toEqual([{ fn: "bty_apply_arena_run_rewards_v2", args: {
+      p_user_id: "user-stab02", p_run_id: "run-stab02-A", p_scenario_id: "core_01", p_weekly_delta: 8, p_core_xp: 12 } }]);
+    // No split writes: neither the RUN_COMPLETED_APPLIED anchor nor the ledger row is written directly.
+    expect(captures.inserts.arena_events).toBeUndefined();
+    expect(captures.inserts.core_xp_ledger).toBeUndefined();
+    expect(captures.rpc).toEqual([]);
   });
 
-  it("does NOT insert ledger row when coreGain === 0", async () => {
+  it("passes a zero Core gain to the RPC, which then writes no ledger row", async () => {
     const arenaLabXp = await import("@/lib/bty/arena/arenaLabXp");
     vi.mocked(arenaLabXp.computeArenaCoreXp).mockReturnValueOnce(0);
     const { supabase, captures } = makeArenaRunSupabase();
@@ -218,36 +216,31 @@ describe("applyArenaRunRewardsOnVerifiedCompletion — STAB-02-P1 core_xp_ledger
       userId: "user-stab02",
       run: { run_id: "run-stab02-Z", scenario_id: "core_01" },
     });
+    expect(captures.privateRpc[0]?.args).toMatchObject({ p_core_xp: 0, p_weekly_delta: 8 });
     expect(captures.inserts.core_xp_ledger).toBeUndefined();
   });
 
-  it("treats 23505 unique violation as benign (idempotency); no warn", async () => {
-    const { supabase, captures } = makeArenaRunSupabase({
-      coreXpLedgerInsertError: { code: "23505", message: "duplicate key value" },
-    });
+  it("reports a run already rewarded by a concurrent completion without paying", async () => {
+    privateResult.value = { data: { policyVersion: "shared-xp/v2", applied: false }, error: null };
+    const { supabase } = makeArenaRunSupabase();
     const result = await applyArenaRunRewardsOnVerifiedCompletion({
       supabase: supabase as never,
       userId: "user-stab02",
       run: { run_id: "run-stab02-DUP", scenario_id: "core_01" },
     });
-    expect(result).toMatchObject({ ok: true, applied: true });
-    expect(captures.inserts.core_xp_ledger).toHaveLength(1);
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, applied: false, coreXp: 0, weeklyXp: 0, deltaApplied: 0 });
   });
 
-  it("logs warning but does NOT throw on non-23505 ledger error", async () => {
-    const { supabase, captures } = makeArenaRunSupabase({
-      coreXpLedgerInsertError: { code: "23502", message: "null value violates NOT NULL" },
-    });
+  it("returns the failure when the atomic RPC fails; nothing was committed", async () => {
+    privateResult.value = { data: null, error: { code: "P0001", message: "REWARD_WRITES_PAUSED" } };
+    const { supabase, captures } = makeArenaRunSupabase();
     const result = await applyArenaRunRewardsOnVerifiedCompletion({
       supabase: supabase as never,
       userId: "user-stab02",
       run: { run_id: "run-stab02-ERR", scenario_id: "core_01" },
     });
-    expect(result).toMatchObject({ ok: true, applied: true });
-    expect(captures.inserts.core_xp_ledger).toHaveLength(1);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0]?.[0]).toContain("core_xp_ledger insert non-fatal failure");
+    expect(result).toEqual({ ok: false, error: "REWARD_WRITES_PAUSED" });
+    expect(captures.inserts.arena_events).toBeUndefined();
   });
 });
 
@@ -285,16 +278,13 @@ describe("applyReexposureOutcomeReflection — result_origin gating", () => {
       resultOrigin: "computed",
     });
     expect(result).toMatchObject({ ok: true, coreXp: 5, weeklyXp: 3 });
-    // weekly_xp write goes through the atomic increment_weekly_xp RPC, not a
-    // read-modify-write select+update.
+    // Weekly XP and direct Core commit together in one locked service RPC.
     expect(captures.weekly_xp).toBeUndefined();
-    expect(captures.__privateRpc?.find((c) => c.fn === "increment_weekly_xp")).toEqual({
-      fn: "increment_weekly_xp",
-      p_user_id: "u1",
-      p_league_id: null,
-      p_delta: 3,
-    });
-    expect((captures.__rpc ?? []).some(call => call.fn === "increment_weekly_xp")).toBe(false);
+    expect(captures.__privateRpc).toEqual([{
+      fn: "bty_award_xp_v2", p_user_id: "u1", p_league_id: null,
+      p_weekly_delta: 3, p_seasonal_core_xp: 0, p_direct_core_xp: 5,
+    }]);
+    expect((captures.__rpc ?? []).some(call => String(call.fn).startsWith("bty_award_"))).toBe(false);
     expect(captures.le_verification_log?.[0]?.verified).toBe(true);
     expect(captures.arena_events?.[0]?.xp).toBe(3);
     // §5.3: a computed activation is tagged distinctly from a fallback
