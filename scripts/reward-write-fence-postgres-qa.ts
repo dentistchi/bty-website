@@ -1,7 +1,10 @@
 /**
  * Native PostgreSQL verification of the reward write cutover. No dotenv, app
  * client, auth/session API or Supabase endpoint is imported. The target must be
- * a literal loopback, port 55491, database bty_reward_fence_qa, and empty.
+ * a literal loopback URL, port 55491, database bty_reward_fence_qa, and empty. A
+ * GitHub Actions service container reports its private bridge address; that is
+ * accepted only with REWARD_FENCE_TEST_CONTAINER_SERVICE=1 and GITHUB_ACTIONS=true.
+ * Every check in EXPECTED_CHECKS must execute exactly once or the run fails.
  *
  *   REWARD_FENCE_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55491/bty_reward_fence_qa \
  *     node --import tsx scripts/reward-write-fence-postgres-qa.ts --json /abs/result.json
@@ -19,8 +22,11 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-// @ts-expect-error -- plain ESM builder shared with the operator command.
 import { buildApplyBundle, buildRecoveryBundle, readCutoverSources, FENCE_TRIGGERS } from "./reward-write-fence-cutover.mjs";
+import { SCENARIOS } from "../src/lib/bty/scenario/legacy/bundledScenarios";
+import { SUB_NAMES, codeIndexFromTier, seasonalToCoreConversion, subTierGroupFromTier, tierFromCoreXp } from "../src/lib/bty/arena/codes";
+import { getWeekStartUTC } from "../src/lib/bty/arena/weeklyQuest";
+import { validateFenceServer } from "./reward-write-fence-postgres-qa-target";
 
 type Row = Record<string, any>;
 type Client = { query(sql: string, args?: unknown[]): Promise<{ rows: Row[] }>; end(): Promise<void>; processID?: number };
@@ -37,9 +43,52 @@ const RITUAL_SQL = "select public.bty_complete_second_awakening($1::uuid,$2::tex
 const AWARD_SQL = "select public.bty_foundry_award_core_atomic($1::uuid,$2::uuid,$3::uuid,$4::timestamptz,$5::timestamptz) as result";
 const CLAIM_SQL = "select public.bty_foundry_redeem_completion_claim_atomic($1::text,$2::uuid,$3::text,$4::text,$5::uuid,$6::uuid,$7::integer,$8::date,$9::date,$10::timestamptz,$11::integer,$12::date,$13::date,$14::timestamptz,$15::integer,$16::boolean,$17::timestamptz,$18::timestamptz) as result";
 const OLD_CLAIM_SQL = CLAIM_SQL.replace("_atomic(", "(");
+const QUEST_SQL = "select public.bty_claim_weekly_reflection_quest($1::uuid,$2::date) as result";
+// Every check body must run exactly once, in this order; a skipped body fails the run.
+const EXPECTED_CHECKS: string[] = [
+  "before cutover: old legacy choice route can pay the same run twice (reproduced bug)",
+  "before cutover: old beginner completion commits DONE as a separate write before XP",
+  "before cutover: old Healing acts and milestone are user-JWT writes",
+  "before cutover: old Foundry ledger commits without Core or marker",
+  "cutover with a held write lock times out and rolls back completely",
+  "cutover waits for the transaction already writing a fenced table",
+  "cutover leaves every pre-existing learner row byte-identical",
+  "ledger records exactly the four cutover migrations; rerun is refused without change",
+  "an old transaction opened before cutover cannot write Healing afterwards",
+  "an old transaction opened before cutover cannot commit a Foundry ledger award afterwards",
+  "resumed old legacy choice: event insert rejected, so the route stops before XP",
+  "forged old-route meta cannot pass: fence keys on legacy catalog IDs, not client meta",
+  "resumed old beginner completion: DONE, reflection and beginner reward events rejected",
+  "resumed old Healing user-JWT writes rejected (milestone after pre-cutover acts, new act, starter unlock)",
+  "the Healing trigger itself rejects user-JWT writes even if a client grant is restored",
+  "resumed old Foundry writes rejected: ledger, marker after pre-cutover ledger, old eligible claim",
+  "residual (documented, unfenceable by row): shared XP/Core writes of a request whose anchor committed before cutover",
+  "unchanged writers pass: canonical CHOICE_CONFIRMED, scenario FREE_RESPONSE, organic unlocks, LAB ledger, progress link/claim issue, XP RPCs",
+  "fence catalog equals the bundled legacy catalog (45 IDs) and excludes canonical IDs",
+  "new legacy choice: one award, identical replay frozen, changed input refused",
+  "new legacy choice: two concurrent sessions produce one award and one frozen replay",
+  "new beginner completion: one award and frozen replay",
+  "pre-cutover partial/duplicate legacy state is review-required and unchanged",
+  "new Healing acts and ritual: atomic, replay idempotent, partial history review-required",
+  "new Foundry award and claim: one award, replay, concurrent claimants, partial history review-required",
+  "injected failure at the final receipt/milestone write rolls back every earlier write",
+  "same legacy run: three pre-cutover anchors, resumed XP with a mid-failure and a retry pay exactly the surviving anchors",
+  "same beginner run: one DONE anchor among three old requests pays once; a failed XP call and every retry pay nothing",
+  "same Foundry progress: one ledger anchor pays Core once; a failed Core write and every retry pay nothing",
+  "residual: an old absolute Core write interleaved with a new atomic award overwrites that award (under-payment, measured)",
+  "pre-fix quest flow (still in previous-release Workers) pays twice under concurrency and after a failed claim insert",
+  "atomic quest: five concurrent claims pay +15 exactly once with TypeScript-identical Core",
+  "atomic quest: a failure inside the transaction writes nothing and the retry pays once",
+  "atomic quest: eligibility, week bounds and caller role are enforced before any write",
+  "atomic quest Core matches applySeasonalXpToCore across buffer and tier boundaries",
+  "residual: a previous-release quest request racing the atomic claim can still add one extra +15 (measured)",
+  "historical rows remain byte-identical after every fenced and atomic operation",
+  "recovery bundle removes only the fence; receipts/RPCs stay; old split write possible again",
+];
 const SNAPSHOT_TABLES = ["public.arena_events", "public.arena_runs", "public.arena_profiles", "public.weekly_xp",
   "public.core_xp_ledger", "public.foundry_event_training_progress", "public.foundry_event_assignments",
-  "public.user_healing_awakening_acts", "public.user_healing_milestones", "public.user_advanced_unlocks"];
+  "public.user_healing_awakening_acts", "public.user_healing_milestones", "public.user_advanced_unlocks",
+  "public.arena_weekly_quest_claims"];
 
 // Observed read-only from production pg_proc (md5(prosrc)) on 2026-11-01.
 const PROD_FUNCTION_MD5: Record<string, string> = {
@@ -114,6 +163,8 @@ create table public.bty_organizations(id uuid primary key);
 create table public.bty_org_memberships(id uuid primary key);
 create table public.foundry_events(id uuid primary key, owner_user_id uuid not null references auth.users(id), status text not null default 'active');
 create table public.foundry_event_participants(id uuid primary key, event_id uuid not null references public.foundry_events(id), user_id uuid references auth.users(id), unique(event_id,id));
+create table public.arena_weekly_quest_claims(user_id uuid not null references auth.users(id) on delete cascade, week_start date not null,
+ quest_type text not null default 'reflection', created_at timestamptz not null default now(), primary key (user_id, week_start, quest_type));
 `;
 const FOUNDRY_SOURCES: { file: string; table?: string; fn?: string }[] = [
   { file: "20260302000000_arena_ledgers_memberships_snapshots.sql", table: "core_xp_ledger" },
@@ -159,8 +210,8 @@ async function connect(u: URL, name: string): Promise<Client> {
   const c = new PgClient({ connectionString: u.toString(), application_name: name, connectionTimeoutMillis: 5000 });
   await c.connect();
   const s = (await c.query("select current_database() db, host(inet_server_addr()) host, inet_server_port() port")).rows[0];
-  // A Unix-socket session reports null host; this harness only accepts TCP loopback.
-  assert.equal(s.db, DB); assert.equal(String(s.port), PORT); assert(["127.0.0.1", "::1"].includes(s.host), JSON.stringify(s));
+  // A Unix-socket session reports a null host and is refused like any non-loopback server.
+  validateFenceServer(s, { containerService: process.env.REWARD_FENCE_TEST_CONTAINER_SERVICE === "1", githubActions: process.env.GITHUB_ACTIONS === "true" }, DB);
   return Object.assign(c, { processID: (c as unknown as { processID: number }).processID });
 }
 
@@ -204,8 +255,13 @@ async function bootstrap(c: Client) {
     create policy events_insert_own on public.arena_events for insert to authenticated with check (auth.uid() = user_id);
     create policy events_select_own on public.arena_events for select to authenticated using (auth.uid() = user_id);
     create policy profiles_select_own on public.arena_profiles for select to authenticated using (auth.uid() = user_id);
-    create policy profiles_update_own on public.arena_profiles for update to authenticated using (auth.uid() = user_id);`);
-  for (const t of ["arena_profiles", "arena_runs", "arena_events", "weekly_xp", "core_xp_ledger", "train_day_completions",
+    create policy profiles_update_own on public.arena_profiles for update to authenticated using (auth.uid() = user_id);
+    create policy profiles_insert_own on public.arena_profiles for insert to authenticated with check (auth.uid() = user_id);
+    grant insert on public.arena_profiles to authenticated;
+    grant all on public.arena_weekly_quest_claims to anon, authenticated;
+    create policy weekly_quest_claims_insert_own on public.arena_weekly_quest_claims for insert to authenticated with check (auth.uid() = user_id);
+    create policy weekly_quest_claims_select_own on public.arena_weekly_quest_claims for select to authenticated using (auth.uid() = user_id);`);
+  for (const t of ["arena_profiles", "arena_runs", "arena_events", "weekly_xp", "core_xp_ledger", "train_day_completions", "arena_weekly_quest_claims",
     "foundry_event_training_progress", "foundry_event_assignments"]) await c.query(`alter table public.${t} enable row level security`);
   const md5 = (await c.query(`select p.proname, md5(p.prosrc) md5 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = any($1)`, [Object.keys(PROD_FUNCTION_MD5)])).rows;
@@ -254,18 +310,50 @@ const OLD = {
   // origin/inner-main foundryTrainingService.ts:719,734,803 (all admin client)
   foundryLedger: (c: Client, f: FSeed) => asService(c, () => c.query(
     "select public.bty_foundry_award_daily_capped($1,$2,$3,10,$4,$5,3) as outcome", [f.user, f.event, f.progress, day.start, day.end])),
-  foundryCore: (c: Client, f: FSeed) => asService(c, () => c.query(
-    "update public.arena_profiles set core_xp_total=core_xp_total+10, updated_at=now() where user_id=$1", [f.user])),
+  // applyDirectCoreXp (old applyCoreXp.ts:106-157): a read, then an absolute write.
+  foundryCoreRead: (c: Client, f: FSeed) => asService(c, async () => Number((await c.query(
+    "select core_xp_total from public.arena_profiles where user_id=$1", [f.user])).rows[0].core_xp_total)),
+  foundryCoreWrite: (c: Client, f: FSeed, readCore: number) => asService(c, () => c.query(
+    "update public.arena_profiles set core_xp_total=$2, updated_at=now() where user_id=$1", [f.user, readCore + 10])),
   foundryMarker: (c: Client, f: FSeed) => asService(c, () => c.query(
     "update public.foundry_event_training_progress set linked_user_id=$2, xp_awarded_at=now() where id=$1 and xp_awarded_at is null", [f.progress, f.user])),
   foundryClaim: (c: Client, f: FSeed) => asService(c, () => c.query(OLD_CLAIM_SQL, claimParams(f))),
+  // applySeasonalXpToCore (applyCoreXp.ts:23-90) with the user client: a read, then an absolute write.
+  seasonalCoreRead: (c: Client, user: string) => asUser(c, user, async () => (await c.query(
+    "select core_xp_total, core_xp_buffer, sub_name, sub_name_renamed_in_code from public.arena_profiles where user_id=$1", [user])).rows[0] as Row),
+  seasonalCoreWrite: (c: Client, user: string, read: Row, xp: number) => {
+    const next = seasonalCoreOracle(read, xp);
+    return asUser(c, user, () => c.query(`update public.arena_profiles set core_xp_total=$2, core_xp_buffer=$3, tier=$4, code_index=$5,
+      stage=$6, code_hidden=$7, sub_name=$8 where user_id=$1`, [user, next.core, next.buffer, next.tier, next.code, next.stage, next.hidden, next.subName]));
+  },
+  beginnerProfile: (c: Client, s: Seed) => asUser(c, s.user, () => c.query("select public.ensure_arena_profile()")),
+  // Pre-fix run/complete weekly reflection quest (route.ts before this PR): read claim, pay, Core, claim.
+  questClaimRead: (c: Client, user: string, week: string) => asUser(c, user, async () => (await c.query(
+    "select user_id from public.arena_weekly_quest_claims where user_id=$1 and week_start=$2 and quest_type='reflection'", [user, week])).rows.length > 0),
+  questWeekly: (c: Client, user: string) => asService(c, () => c.query("select public.increment_weekly_xp($1,null,15)", [user])),
+  questClaimInsert: (c: Client, user: string, week: string) => asUser(c, user, () => c.query(
+    "insert into public.arena_weekly_quest_claims(user_id,week_start,quest_type) values($1,$2,'reflection')", [user, week])),
 };
+
+/** TypeScript oracle: applySeasonalXpToCore's arithmetic from src/lib/bty/arena/codes.ts. */
+function seasonalCoreOracle(read: Row, xp: number) {
+  const current = Math.max(0, Number(read.core_xp_total ?? 0));
+  const buffer = Math.max(0, Number(read.core_xp_buffer ?? 0));
+  const { coreGain, fractionalBuffer } = seasonalToCoreConversion(xp, current);
+  let nextBuffer = buffer + fractionalBuffer;
+  const fromBuffer = Math.floor(nextBuffer); nextBuffer -= fromBuffer;
+  const core = current + coreGain + fromBuffer;
+  const tier = tierFromCoreXp(core); const code = codeIndexFromTier(tier);
+  const defaults = (SUB_NAMES as Record<number, readonly string[] | null | undefined>)[code];
+  const subName = Boolean(read.sub_name_renamed_in_code) || defaults == null ? read.sub_name ?? null : defaults[subTierGroupFromTier(tier)];
+  return { core, buffer: nextBuffer, gain: core - current, tier, code, stage: Math.min(7, Math.floor(core / 100) + 1), hidden: core >= 700, subName };
+}
 
 type Seed = { user: string; run: string; scenario: string };
 type FSeed = { user: string; owner: string; event: string; participant: string; progress: string; org: string; assignment: string | null; hash: string };
 let day = { start: "", end: "", date: "", dueDate: "", dueAt: "" };
 
-async function seedRun(c: Client, type: "scenario" | "beginner", scenario = type === "beginner" ? "beginner-qa" : LEGACY_SCENARIO, user = randomUUID()): Promise<Seed> {
+async function seedRun(c: Client, type: "scenario" | "beginner", scenario = type === "beginner" ? "beginner-qa" : LEGACY_SCENARIO, user: string = randomUUID()): Promise<Seed> {
   const run = randomUUID();
   await c.query("insert into auth.users(id) values($1) on conflict do nothing", [user]);
   await c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,sub_name) values($1,11,7,199,$2,'QA existing') on conflict do nothing", [user, 2 / 3]);
@@ -277,12 +365,12 @@ async function seedHealingUser(c: Client): Promise<string> {
   await c.query("insert into public.train_day_completions(user_id,day) select $1, g from generate_series(1,28) g", [user]);
   return user;
 }
-async function seedFoundry(c: Client, claim = false): Promise<FSeed> {
-  const user = randomUUID(), owner = randomUUID(), event = randomUUID(), participant = randomUUID(), progress = randomUUID(), org = randomUUID();
+async function seedFoundry(c: Client, claim = false, user: string = randomUUID()): Promise<FSeed> {
+  const owner = randomUUID(), event = randomUUID(), participant = randomUUID(), progress = randomUUID(), org = randomUUID();
   const hash = randomBytes(32).toString("hex");
-  await c.query("insert into auth.users(id) values($1),($2)", [user, owner]);
+  await c.query("insert into auth.users(id) values($1),($2) on conflict do nothing", [user, owner]);
   await c.query("insert into public.foundry_events(id,owner_user_id) values($1,$2)", [event, owner]);
-  await c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,tier,sub_name,stage) values($1,11,7,199,$2,19,'QA name',2)", [user, 2 / 3]);
+  await c.query("insert into public.arena_profiles(user_id,lifetime_xp,weekly_xp,core_xp_total,core_xp_buffer,tier,sub_name,stage) values($1,11,7,199,$2,19,'QA name',2) on conflict do nothing", [user, 2 / 3]);
   await c.query("insert into public.foundry_event_participants(id,event_id,user_id) values($1,$2,$3)", [participant, event, claim ? null : user]);
   await c.query(`insert into public.foundry_event_training_progress(id,event_id,participant_id,video_completed_at,response_text,completed_at,linked_user_id,claim_secret_hash,claim_secret_expires_at)
     values($1,$2,$3,now(),'QA completion',now(),$4,$5,now()+interval '1 day')`, [progress, event, participant, claim ? null : user, claim ? hash : null]);
@@ -302,6 +390,24 @@ function claimParams(f: FSeed, over: Row = {}) {
 const choiceParams = (s: Seed, over: Row = {}) => [s.user, s.run, s.scenario, over.choiceId ?? "choice-a", 2, 82, JSON.stringify({ trust: 2 }), JSON.stringify({ qa: "new" })];
 const beginnerParams = (s: Seed) => [s.user, s.run, s.scenario, JSON.stringify(RESPONSES), 17, JSON.stringify(FEEDBACK)];
 const service = (c: Client, sql: string, args: unknown[]) => asService(c, async () => (await c.query(sql, args)).rows[0].result as Row);
+
+/** Reward totals that a payment changes; used to count actual payments, not RPC outcomes. */
+async function money(c: Client, user: string, run?: string): Promise<Row> {
+  const p = (await c.query("select lifetime_xp, weekly_xp, core_xp_total, core_xp_buffer from public.arena_profiles where user_id=$1", [user])).rows[0] ?? {};
+  const weekly = (await c.query("select coalesce(sum(xp_total),0)::int n from public.weekly_xp where user_id=$1", [user])).rows[0].n;
+  const runXp = run ? (await c.query("select total_xp from public.arena_runs where run_id=$1", [run])).rows[0].total_xp : null;
+  const ledger = (await c.query("select count(*)::int n, coalesce(sum(delta_xp),0)::int xp from public.core_xp_ledger where user_id=$1", [user])).rows[0];
+  return { lifetime: p.lifetime_xp ?? null, profileWeekly: p.weekly_xp ?? null, core: p.core_xp_total ?? null, buffer: p.core_xp_buffer == null ? null : Number(p.core_xp_buffer),
+    weeklyXpTotal: weekly, runTotalXp: runXp, ledgerRows: ledger.n, ledgerXp: ledger.xp };
+}
+const delta = (after: Row, before: Row) => Object.fromEntries(Object.keys(after).map(k =>
+  [k, typeof after[k] === "number" && typeof before[k] === "number" ? after[k] - before[k] : after[k]]));
+async function seedReflections(c: Client, user: string, count: number, at = "now()") {
+  const s = await seedRun(c, "scenario", LEGACY_SCENARIO, user);
+  for (let i = 0; i < count; i++) await c.query(`insert into public.arena_events(run_id,user_id,step,event_type,scenario_id,created_at)
+    values($1,$2,5,'REFLECTION_SELECTED',$3,${at})`, [s.run, user, s.scenario]);
+  return s;
+}
 
 async function snapshot(c: Client): Promise<Row> {
   const out: Row = {};
@@ -344,7 +450,10 @@ async function main() {
     bundleSha256: createHash("sha256").update(bundle).digest("hex"),
     sources: sources.map((s: Row) => ({ file: s.file, sha256: s.sha256 })), fixture: [] as Row[], checks: [] as Row[], residual: [] as Row[],
   };
+  evidence.expectedChecks = EXPECTED_CHECKS;
   const check = async (name: string, fn: () => Promise<Row | void>) => {
+    assert(EXPECTED_CHECKS.includes(name), `unlisted check: ${name}`);
+    assert(!evidence.checks.some((x: Row) => x.name === name), `duplicate check: ${name}`);
     const detail = await fn(); evidence.checks.push({ name, ...(detail ?? {}) }); console.log(`PASS ${name}`);
   };
   try {
@@ -352,7 +461,8 @@ async function main() {
     evidence.fixture = await bootstrap(c);
     const t = (await c.query("select date_trunc('day',now())::text s,(date_trunc('day',now())+interval '1 day')::text e,current_date::text d,(current_date+7)::text dd,(date_trunc('day',now())+interval '7 days')::text da")).rows[0];
     day = { start: t.s, end: t.e, date: t.d, dueDate: t.dd, dueAt: t.da };
-    const legacyIds = (await import("../src/lib/bty/scenario/legacy/bundledScenarios")).SCENARIOS.map((s: { scenarioId: string }) => s.scenarioId);
+    const legacyIds = SCENARIOS.map((s: { scenarioId: string }) => s.scenarioId);
+    const week = getWeekStartUTC();
 
     // ---------------- before cutover: the old release really splits its writes ----------------
     const hist: Row = {};
@@ -385,6 +495,18 @@ async function main() {
     await OLD.foundryLedger(c, paused.foundry);
     const ritualAt = new Date().toISOString();
     await OLD.healingMilestone(c, paused.ritual, ritualAt, "PRM");
+    // Several old requests on the same run/progress commit anchors before cutover.
+    const multi = { choice: await seedRun(c, "scenario"), beginner: await seedRun(c, "beginner"), beginnerFail: await seedRun(c, "beginner"),
+      foundry: await seedFoundry(c), foundryFail: await seedFoundry(c), lostOld: await seedFoundry(c) };
+    const lostNew = await seedFoundry(c, false, multi.lostOld.user);
+    for (let i = 0; i < 3; i++) await OLD.choiceEvent(c, multi.choice);
+    const beginnerAnchors: number[] = [];
+    for (const s of [multi.beginner, multi.beginnerFail]) for (let i = 0; i < 3; i++) beginnerAnchors.push((await OLD.beginnerDone(c, s)).rows.length);
+    const foundryAnchors: string[] = [];
+    for (const f of [multi.foundry, multi.foundryFail]) for (let i = 0; i < 2; i++) foundryAnchors.push((await OLD.foundryLedger(c, f)).rows[0].outcome);
+    await OLD.foundryLedger(c, multi.lostOld);
+    const residualUsers = new Set([paused.foundry.user, paused.beginner.user, multi.choice.user, multi.beginner.user,
+      multi.beginnerFail.user, multi.foundry.user, multi.foundryFail.user, multi.lostOld.user]);
     const historical = await snapshot(c);
 
     // ---------------- requests already inside the database at cutover ----------------
@@ -481,7 +603,8 @@ async function main() {
     });
     await check("residual (documented, unfenceable by row): shared XP/Core writes of a request whose anchor committed before cutover", async () => {
       const weeklyBefore = await count(c, "select count(*)::int n from public.weekly_xp where user_id=$1", [paused.beginner.user]);
-      await OLD.beginnerWeekly(c, paused.beginner); await OLD.foundryCore(c, paused.foundry);
+      await OLD.beginnerWeekly(c, paused.beginner);
+      await OLD.foundryCoreWrite(c, paused.foundry, await OLD.foundryCoreRead(c, paused.foundry));
       assert.equal(await count(c, "select count(*)::int n from public.weekly_xp where user_id=$1", [paused.beginner.user]), weeklyBefore + 1);
       evidence.residual.push({ path: "beginner increment_weekly_xp / Foundry applyDirectCoreXp after a pre-cutover anchor",
         why: "weekly_xp and arena_profiles are written identically by unchanged reward paths; no row-level predicate separates them",
@@ -589,13 +712,171 @@ async function main() {
           drop trigger qa_fail on public.user_healing_milestones; drop function public.qa_fail();`);
       }
     });
+
+    // ---------------- item 2: many old requests per anchor, resumed after cutover ----------------
+    await check("same legacy run: three pre-cutover anchors, resumed XP with a mid-failure and a retry pay exactly the surviving anchors", async () => {
+      const before = await money(c, multi.choice.user, multi.choice.run);
+      await OLD.choiceStep(c, multi.choice); await OLD.choiceXp(c, multi.choice);              // request 1 resumes
+      await c.query("begin"); await OLD.choiceXp(c, multi.choice); await c.query("rollback");   // request 2: XP call lost mid-transaction
+      await rejectedUnchanged(c, () => OLD.choiceEvent(c, multi.choice), FENCED);              // request 2 client retry: new event fenced, route stops
+      await OLD.choiceStep(c, multi.choice); await OLD.choiceXp(c, multi.choice);              // request 3 resumes
+      const paid = delta(await money(c, multi.choice.user, multi.choice.run), before);
+      const anchors = await count(c, "select count(*)::int n from public.arena_events where run_id=$1 and event_type='CHOICE_CONFIRMED'", [multi.choice.run]);
+      assert.equal(anchors, 3); assert.equal(paid.runTotalXp, 164); assert.equal(paid.lifetime, 164); assert.equal(paid.profileWeekly, 164);
+      await rejectedUnchanged(c, () => service(c, CHOICE_SQL, choiceParams(multi.choice)), /LEGACY_REWARD_REVIEW_REQUIRED/);
+      return { anchorsBeforeCutover: anchors, paymentsAfterCutover: paid.runTotalXp / 82, xpPerPayment: 82, runTotalXpDelta: paid.runTotalXp,
+        note: "each post-cutover payment belongs to an anchor committed before cutover; no anchor can be created after it" };
+    });
+    await check("same beginner run: one DONE anchor among three old requests pays once; a failed XP call and every retry pay nothing", async () => {
+      assert.deepEqual(beginnerAnchors, [1, 0, 0, 1, 0, 0]);
+      const before = await money(c, multi.beginner.user); const beforeFail = await money(c, multi.beginnerFail.user);
+      // Winner resumes: profile, weekly +30, Core read/write, reflection (fenced; the old route ignores that error).
+      await OLD.beginnerProfile(c, multi.beginner); await OLD.beginnerWeekly(c, multi.beginner);
+      const read = await OLD.seasonalCoreRead(c, multi.beginner.user); await OLD.seasonalCoreWrite(c, multi.beginner.user, read, 30);
+      await rejectedUnchanged(c, () => OLD.beginnerReflection(c, multi.beginner), FENCED);
+      // Second run: the winner's weekly call fails mid-transaction, the route returns 500 before Core.
+      await OLD.beginnerProfile(c, multi.beginnerFail);
+      await c.query("begin"); await OLD.beginnerWeekly(c, multi.beginnerFail); await c.query("rollback");
+      // Every retry and both losers re-read DONE and return the stored result without writes.
+      for (const s of [multi.beginner, multi.beginner, multi.beginnerFail, multi.beginnerFail]) {
+        assert.equal((await OLD.beginnerDone(c, s)).rows.length, 0);
+      }
+      const paid = delta(await money(c, multi.beginner.user), before), paidFail = delta(await money(c, multi.beginnerFail.user), beforeFail);
+      const oracle = seasonalCoreOracle(read, 30);
+      assert.equal(paid.weeklyXpTotal, 30); assert.equal(paid.core, oracle.gain);
+      assert.equal(paidFail.weeklyXpTotal, 0); assert.equal(paidFail.core, 0);
+      for (const s of [multi.beginner, multi.beginnerFail]) await rejectedUnchanged(c, () => service(c, BEGINNER_SQL, beginnerParams(s)), /LEGACY_REWARD_REVIEW_REQUIRED/);
+      return { completed: { payments: 1, weeklyXpDelta: paid.weeklyXpTotal, coreDelta: paid.core }, failedThenRetried: { payments: 0, weeklyXpDelta: 0, coreDelta: 0 } };
+    });
+    await check("same Foundry progress: one ledger anchor pays Core once; a failed Core write and every retry pay nothing", async () => {
+      assert.deepEqual(foundryAnchors, ["awarded", "already_awarded", "awarded", "already_awarded"]);
+      const before = await money(c, multi.foundry.user); const beforeFail = await money(c, multi.foundryFail.user);
+      await OLD.foundryCoreWrite(c, multi.foundry, await OLD.foundryCoreRead(c, multi.foundry));  // anchor owner resumes Core
+      await rejectedUnchanged(c, () => OLD.foundryMarker(c, multi.foundry), FENCED);                // its marker is fenced
+      const readFail = await OLD.foundryCoreRead(c, multi.foundryFail);
+      await c.query("begin"); await OLD.foundryCoreWrite(c, multi.foundryFail, readFail); await c.query("rollback"); // Core write lost
+      for (const f of [multi.foundry, multi.foundryFail]) {
+        // Client retries: the old capped award reports already_awarded, so old code skips Core; its marker stays fenced.
+        assert.equal((await OLD.foundryLedger(c, f)).rows[0].outcome, "already_awarded");
+        await rejectedUnchanged(c, () => OLD.foundryMarker(c, f), FENCED);
+      }
+      const paid = delta(await money(c, multi.foundry.user), before), paidFail = delta(await money(c, multi.foundryFail.user), beforeFail);
+      assert.equal(paid.core, 10); assert.equal(paid.ledgerRows, 0); assert.equal(paidFail.core, 0); assert.equal(paidFail.ledgerRows, 0);
+      for (const f of [multi.foundry, multi.foundryFail]) {
+        const r = await service(c, AWARD_SQL, [f.user, f.event, f.progress, day.start, day.end]).catch((e: Error) => ({ error: e.message }));
+        assert.match(JSON.stringify(r), /FOUNDRY_XP_REVIEW_REQUIRED/);
+      }
+      return { completed: { ledgerRows: 1, coreDelta: paid.core }, failedThenRetried: { ledgerRows: 1, coreDelta: 0 } };
+    });
+    await check("residual: an old absolute Core write interleaved with a new atomic award overwrites that award (under-payment, measured)", async () => {
+      const read = await OLD.foundryCoreRead(c, multi.lostOld);                       // old request read 199 before
+      const award = await service(c, AWARD_SQL, [lostNew.user, lostNew.event, lostNew.progress, day.start, day.end]);
+      assert.equal(award.outcome, "awarded");                                          // new award commits 209
+      await OLD.foundryCoreWrite(c, multi.lostOld, read);                              // old writes 199 + 10
+      const core = (await money(c, multi.lostOld.user)).core;
+      assert.equal(core, 209);
+      evidence.residual.push({ path: "old applyDirectCoreXp/applySeasonalXpToCore read-then-write racing any Core writer",
+        measured: { expectedCore: 219, actualCore: core }, effect: "one 10-point award overwritten (lost), never duplicated",
+        note: "pre-existing lost-update hazard of TypeScript Core writers, also present in unchanged routes" });
+      return { expectedCore: 219, actualCore: core };
+    });
+
+    // ---------------- item 3: weekly reflection quest +15 ----------------
+    await check("pre-fix quest flow (still in previous-release Workers) pays twice under concurrency and after a failed claim insert", async () => {
+      const racer = randomUUID(); await c.query("insert into auth.users(id) values($1)", [racer]); await seedReflections(c, racer, 3);
+      const before = await money(c, racer);
+      const sawClaim = [await OLD.questClaimRead(c, racer, week), await OLD.questClaimRead(c, racer, week)]; // both requests read first
+      for (let i = 0; i < 2; i++) { await OLD.questWeekly(c, racer); const r = await OLD.seasonalCoreRead(c, racer); await OLD.seasonalCoreWrite(c, racer, r, 15); }
+      await OLD.questClaimInsert(c, racer, week);
+      await rejected(OLD.questClaimInsert(c, racer, week), /duplicate key/);           // second insert fails; old route ignores it
+      const retry = randomUUID(); await c.query("insert into auth.users(id) values($1)", [retry]); await seedReflections(c, retry, 3);
+      const beforeRetry = await money(c, retry);
+      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15);
+      await c.query("begin"); await OLD.questClaimInsert(c, retry, week); await c.query("rollback");  // claim insert lost
+      assert.equal(await OLD.questClaimRead(c, retry, week), false);
+      await OLD.questWeekly(c, retry); await OLD.seasonalCoreWrite(c, retry, await OLD.seasonalCoreRead(c, retry), 15); await OLD.questClaimInsert(c, retry, week);
+      const race = delta(await money(c, racer), before), again = delta(await money(c, retry), beforeRetry);
+      assert.deepEqual(sawClaim, [false, false]); assert.equal(race.weeklyXpTotal, 30); assert.equal(again.weeklyXpTotal, 30);
+      return { concurrent: { payments: 2, weeklyXpDelta: race.weeklyXpTotal }, failedClaimThenRetry: { payments: 2, weeklyXpDelta: again.weeklyXpTotal } };
+    });
+    await check("atomic quest: five concurrent claims pay +15 exactly once with TypeScript-identical Core", async () => {
+      const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
+      await c.query("update public.arena_profiles set core_xp_total=199, core_xp_buffer=$2, sub_name='Spark' where user_id=$1", [u, 0.9]);
+      const read = (await c.query("select core_xp_total, core_xp_buffer, sub_name, sub_name_renamed_in_code from public.arena_profiles where user_id=$1", [u])).rows[0];
+      const before = await money(c, u);
+      const sessions5 = await Promise.all([1, 2, 3, 4, 5].map(i => open(`quest-${i}`)));
+      const results = await Promise.all(sessions5.map(x => service(x, QUEST_SQL, [u, week])));
+      const outcomes = results.map(r => r.outcome).sort();
+      assert.deepEqual(outcomes, ["already_claimed", "already_claimed", "already_claimed", "already_claimed", "awarded"]);
+      const paid = delta(await money(c, u), before); const oracle = seasonalCoreOracle(read, 15);
+      assert.equal(paid.weeklyXpTotal, 15); assert.equal(paid.core, oracle.gain);
+      const p = (await c.query("select core_xp_total, core_xp_buffer::float8 b, tier, code_index, stage, code_hidden, sub_name from public.arena_profiles where user_id=$1", [u])).rows[0];
+      assert.deepEqual([p.core_xp_total, p.b, p.tier, p.code_index, p.stage, p.code_hidden, p.sub_name],
+        [oracle.core, oracle.buffer, oracle.tier, oracle.code, oracle.stage, oracle.hidden, oracle.subName]);
+      assert.equal(await count(c, "select count(*)::int n from public.arena_weekly_quest_claims where user_id=$1", [u]), 1);
+      return { outcomes, payments: 1, weeklyXpDelta: paid.weeklyXpTotal, coreDelta: paid.core };
+    });
+    await check("atomic quest: a failure inside the transaction writes nothing and the retry pays once", async () => {
+      const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
+      await c.query(`create function public.qa_fail() returns trigger language plpgsql as $$ begin raise exception 'QA_INJECTED_FAILURE'; end $$;
+        create trigger qa_fail before update on public.arena_profiles for each row execute function public.qa_fail();`);
+      try { await rejectedUnchanged(c, () => service(c, QUEST_SQL, [u, week]), /QA_INJECTED_FAILURE/); }
+      finally { await c.query("drop trigger qa_fail on public.arena_profiles; drop function public.qa_fail();"); }
+      const before = await money(c, u);
+      const first = await service(c, QUEST_SQL, [u, week]); const replay = await service(c, QUEST_SQL, [u, week]);
+      assert.equal(first.outcome, "awarded"); assert.equal(replay.outcome, "already_claimed");
+      assert.equal(delta(await money(c, u), before).weeklyXpTotal, 15);
+    });
+    await check("atomic quest: eligibility, week bounds and caller role are enforced before any write", async () => {
+      const two = randomUUID(); await c.query("insert into auth.users(id) values($1)", [two]); await seedReflections(c, two, 2);
+      await seedReflections(c, two, 5, "now() - interval '8 days'");
+      const before = await snapshot(c);
+      assert.equal((await service(c, QUEST_SQL, [two, week])).outcome, "not_eligible");
+      assert.deepEqual(await snapshot(c), before);
+      const tuesday = new Date(Date.parse(`${week}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+      const future = new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10);
+      for (const bad of [tuesday, future]) await rejectedUnchanged(c, () => service(c, QUEST_SQL, [two, bad]), /INVALID_REWARD_INPUT/);
+      await rejectedUnchanged(c, () => asUser(c, two, () => c.query(QUEST_SQL, [two, week])), /permission denied/);
+    });
+    await check("atomic quest Core matches applySeasonalXpToCore across buffer and tier boundaries", async () => {
+      const cases: [number, number, boolean][] = [[0, 0, false], [199, 2 / 3, false], [199, 0.95, false], [200, 0.5, false], [249, 0.99, false], [699, 0.99, false], [998, 0.2, true]];
+      const results: Row[] = [];
+      for (const [core, buffer, renamed] of cases) {
+        const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
+        await c.query("update public.arena_profiles set core_xp_total=$2, core_xp_buffer=$3, sub_name=$4, sub_name_renamed_in_code=$5 where user_id=$1",
+          [u, core, buffer, renamed ? "Custom" : "Spark", renamed]);
+        const read = (await c.query("select core_xp_total, core_xp_buffer, sub_name, sub_name_renamed_in_code from public.arena_profiles where user_id=$1", [u])).rows[0];
+        assert.equal((await service(c, QUEST_SQL, [u, week])).outcome, "awarded");
+        const p = (await c.query("select core_xp_total, core_xp_buffer::float8 b, tier, code_index, stage, code_hidden, sub_name from public.arena_profiles where user_id=$1", [u])).rows[0];
+        const o = seasonalCoreOracle(read, 15);
+        assert.deepEqual([p.core_xp_total, p.b, p.tier, p.code_index, p.stage, p.code_hidden, p.sub_name], [o.core, o.buffer, o.tier, o.code, o.stage, o.hidden, o.subName], JSON.stringify({ core, buffer }));
+        results.push({ core, buffer, coreAfter: p.core_xp_total, bufferAfter: p.b });
+      }
+      return { cases: results };
+    });
+    await check("residual: a previous-release quest request racing the atomic claim can still add one extra +15 (measured)", async () => {
+      const u = randomUUID(); await c.query("insert into auth.users(id) values($1)", [u]); await seedReflections(c, u, 3);
+      const before = await money(c, u);
+      assert.equal(await OLD.questClaimRead(c, u, week), false);                       // old request reads first
+      assert.equal((await service(c, QUEST_SQL, [u, week])).outcome, "awarded");      // new release claims and pays
+      await OLD.questWeekly(c, u); await OLD.seasonalCoreWrite(c, u, await OLD.seasonalCoreRead(c, u), 15);
+      await rejected(OLD.questClaimInsert(c, u, week), /duplicate key/);
+      const paid = delta(await money(c, u), before);
+      assert.equal(paid.weeklyXpTotal, 30);
+      evidence.residual.push({ path: "previous-release run/complete weekly quest (preview URL or in-flight)", measured: { payments: 2, weeklyXpDelta: 30 },
+        why: "the old flow pays through increment_weekly_xp and an absolute Core write before its claim; both are shared with unchanged writers",
+        mitigation: "disable workers.dev preview URLs so no previous version serves; in-flight old requests are bounded to those already running" });
+      return { payments: 2, weeklyXpDelta: paid.weeklyXpTotal };
+    });
     await check("historical rows remain byte-identical after every fenced and atomic operation", async () => {
       const after = await snapshot(c);
       for (const table of SNAPSHOT_TABLES) for (const row of historical[table]) {
         const key = JSON.stringify(row);
-        // Residual check above appended Core to paused.foundry's profile; that profile is excluded explicitly.
-        if (table === "public.arena_profiles" && row.user_id === paused.foundry.user) continue;
-        assert(after[table].some((r: Row) => JSON.stringify(r) === key), `${table} historical row changed`);
+        // Residual checks resume old XP/Core writes for these users; their profile and weekly rows change by design.
+        if (["public.arena_profiles", "public.weekly_xp", "public.arena_runs"].includes(table) && residualUsers.has(row.user_id)) continue;
+        // lostNew was seeded before cutover and legitimately awarded afterwards by the atomic RPC.
+        if (table === "public.foundry_event_training_progress" && row.id === lostNew.progress) continue;
+        assert(after[table].some((r: Row) => JSON.stringify(r) === key), `${table} historical row changed: ${key}`);
       }
     });
 
@@ -608,6 +889,9 @@ async function main() {
       const s = await seedRun(c, "scenario"); await OLD.choiceEvent(c, s);
       assert.equal(await count(c, "select count(*)::int n from pg_proc where proname='bty_record_legacy_choice_reward'"), 1);
     });
+    const executed = evidence.checks.map((x: Row) => x.name);
+    evidence.unrun = EXPECTED_CHECKS.filter(name => !executed.includes(name));
+    assert.deepEqual(executed, EXPECTED_CHECKS, "every expected check body must execute exactly once, in order");
     evidence.result = "pass";
   } catch (error) {
     evidence.result = "fail"; evidence.error = (error as Error).stack ?? String(error); throw error;

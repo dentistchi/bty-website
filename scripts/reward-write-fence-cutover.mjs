@@ -8,7 +8,7 @@
  *
  * The apply bundle locks every fenced table first (waiting for transactions that
  * already hold write locks to end), refuses a partially applied ledger, applies
- * the three PR91 migrations and the fence together, records them in
+ * the three PR91 migrations, the fence and the atomic weekly quest together, records them in
  * supabase_migrations.schema_migrations and asserts the result before COMMIT.
  * A lock timeout or any assertion rolls the whole bundle back.
  */
@@ -24,6 +24,7 @@ export const CUTOVER_MIGRATIONS = [
   ["20261101000728", "healing_awakening_atomic_completion"],
   ["20261101001020", "foundry_core_atomic_rewards"],
   ["20261101120000", "reward_write_fence_v1"],
+  ["20261101130000", "weekly_reflection_quest_atomic"],
 ];
 // Order matters only for readability; one LOCK statement acquires all of them.
 export const FENCED_TABLES = [
@@ -45,6 +46,7 @@ const ATOMIC_RPCS = [
   "bty_record_legacy_choice_reward", "bty_complete_beginner_reward",
   "bty_complete_healing_awakening_act", "bty_complete_second_awakening",
   "bty_foundry_award_core_atomic", "bty_foundry_redeem_completion_claim_atomic",
+  "bty_claim_weekly_reflection_quest",
 ];
 
 const sha256 = text => createHash("sha256").update(text).digest("hex");
