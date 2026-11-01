@@ -343,6 +343,47 @@
       "rawSha256": "4f102714b30acfcaf59986f8aab4cdc4863ad72bc0176ac071a1da45dae746b4"
     },
     {
+      "path": "native-persistence-artifact.zip.gz",
+      "bytes": 21525,
+      "sha256": "79f37f8bdbb62dfde4e9d6b96dee06ca2eae0623101436d5bc38cb53a184d734",
+      "rawBytes": 21981,
+      "rawSha256": "69f502338830933b65959d1bc0c0553e7abf1498d218ed346742b35a6a09a3d2"
+    },
+    {
+      "path": "native-persistence-preflight.json",
+      "bytes": 535,
+      "sha256": "3a83b07b7b7c47a2561d65c704c4323a607add5d7d40ccf1ea7bf25412f34ed3"
+    },
+    {
+      "path": "native-persistence-runner.log.gz",
+      "bytes": 258,
+      "sha256": "9367647a3a5f3195ce6ecdcd6e99ba3fb32f8d059d4fc62114d1806a1bc9e582",
+      "rawBytes": 370,
+      "rawSha256": "6821518c09022078b04232cd5685c0786b12cc8a55ee539a2d96d4b6519b6232"
+    },
+    {
+      "path": "native-persistence-source-hashes.json",
+      "bytes": 37781,
+      "sha256": "716018df633a6a52249a229925b181c26ea7c3de0f98ae40576060a22a13a993"
+    },
+    {
+      "path": "native-persistence-vitest.json.gz",
+      "bytes": 4850,
+      "sha256": "4399b02a8a5590475b59d69a55ab8b7e9d6f258d6297ab0e2b96051f3fdd3fe3",
+      "rawBytes": 28261,
+      "rawSha256": "dd64c9e29b320b805b093b611e86878b450eb99493da436997ab0dd0321bf8de"
+    },
+    {
+      "path": "native-persistence-witnesses.json",
+      "bytes": 1883,
+      "sha256": "dfa429a35f1cd8f66a6471f20bac51b5f719cfecdeab523424e72e2368c27326"
+    },
+    {
+      "path": "native-persistence.json",
+      "bytes": 1239,
+      "sha256": "61911a786d6af2d67e0b39fa4ea5cecf417501db6b85deaa68fb46535c892e19"
+    },
+    {
       "path": "persistence-cli-guards.json",
       "bytes": 780,
       "sha256": "329d619838b95eeda02d6480c8ae5ec0aa358472931974925206112f96fc452a"
@@ -373,8 +414,8 @@
     },
     {
       "path": "verification.json",
-      "bytes": 5354,
-      "sha256": "c549a0a25a1b9bef1eceb25bd8b03ba7cc12d478e016b97649a155c6ec55dc70"
+      "bytes": 5787,
+      "sha256": "396061c665e80ec775ab8764738f622db9e21aea2338deeca96fe2a653b3a465"
     }
   ]
 }

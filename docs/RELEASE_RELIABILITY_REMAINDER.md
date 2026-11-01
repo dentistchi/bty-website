@@ -4,9 +4,9 @@ Status: application implementation frozen at `27ff4865`; production changes are
 not part of this task. Final full Vitest execution at `76549c19` exited 0:
 **16,074 reported passed / 0 failed / 409 explicitly skipped** in 1,399 files.
 Native atomic PostgreSQL, fresh build, final standalone types and independent
-browser checks also have observed passing results. A further 74 opt-in persistence
-SQL bodies were inactive in this full run; their separate native CI gate remains
-pending until its actual result is recorded.
+browser checks also have observed passing results. The 74 opt-in persistence SQL
+bodies were inactive in this full run, then actually executed in separate native
+CI: **74/74 with 72 scenario-database witnesses**, all 268 input hashes matching.
 The source extends Draft PR91; PR90's Clinical cases/router/content stay separate.
 
 ## What was reproduced and repaired
@@ -104,8 +104,8 @@ return without execution in this full run: Saved removal 15, Host Track retentio
 26, identity/integrity reconciliation 23 and Foundry history dismissal 10. The
 prior 15-body report counted only Saved. These are separate from the 42 historical
 or artifact omissions and 409 explicit skips. A dedicated disposable PostgreSQL
-gate must prove all 74 bodies execute, with 72 actual scenario-database witnesses;
-the 271 atomic reward checks do not cover these persistence bodies.
+gate separately proved all 74 bodies execute, with 72 actual scenario-database
+witnesses; the 271 atomic reward checks do not cover these persistence bodies.
 
 ## Observed independent verification
 
@@ -115,6 +115,19 @@ the 271 atomic reward checks do not cover these persistence bodies.
   Real independent connections and observed SQL lock waits cover four legacy,
   six Healing and five Foundry race groups. These representative schemas are not
   the complete production Supabase schema/triggers or PostgREST stack.
+  All three jobs also passed again at candidate `48fd3858` in
+  [run 41261258150](https://github.com/dentistchi/bty-website/actions/runs/41261258150).
+- Native persistence: **74/74 reported passes, zero skips**, Node 20.20.2 and
+  PostgreSQL 17.11 in [run 41261258186](https://github.com/dentistchi/bty-website/actions/runs/41261258186)
+  at `48fd3858` (local `82f63d94`). All four original files remain unchanged.
+  Beyond the pass report, the runner verifies a fresh empty service before tests
+  and exactly 72 actual child databases afterwards: Saved 14, Track retention 26,
+  integrity 23 and history 9. Two of the 74 tests inspect migration text; the other
+  72 execute their SQL scenarios. All 268 recorded source hashes match the local
+  source. The downloaded artifact matches GitHub's SHA256 digest and is preserved
+  alongside [the native receipt](release-reliability/native-persistence.json).
+  No application environment, Supabase credential or production service is used.
+  These SQL fixtures do not substitute the 409 skipped full-stack integration cases.
 - Browser: **57/57 checks** at 320/390/1280px: 21 Playwright tests, 24 Foundry states
   and 12 retry-to-awarded transitions. Zero skips/flakes/retries, unexpected HTTP
   requests or page errors. These execute actual client components with synthetic
@@ -164,5 +177,7 @@ write fallback. Other legacy Core writers remain outside these transaction paths
 No merge, production deploy/migration, auth session, secret or Mac service change
 is performed here. [Verification summary](release-reliability/verification.json)
 and [evidence hashes](release-reliability/evidence-manifest.json) record the observed
-results and their exact scope. The additional native persistence gate remains
-pending; no pass is inferred from its inactive full-suite wrappers.
+results and their exact scope. Native persistence has separate observed proof;
+its inactive full-suite wrappers are not used as SQL evidence. Later updates add
+only CI/evidence/documentation; application runtime and the full-run test files
+remain unchanged from their recorded verification sources.

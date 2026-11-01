@@ -1,0 +1,29 @@
+{
+  "scope": "Four unchanged cleanup migration/SQL test files on a fresh disposable PostgreSQL17 service; not Supabase/PostgREST or a live app check",
+  "passed": true,
+  "tests": 74,
+  "scenarioDatabases": 72,
+  "node": "v20.20.2",
+  "workflowSha": "ae488fd4649bdd143d92f0c49ba1fe0be26cd4cd",
+  "retainedDatabases": "Synthetic child databases stay until this job's fresh service container is destroyed; this runner never issues DROP",
+  "child": {
+    "code": 0,
+    "signal": null
+  },
+  "databaseCounts": {
+    "savrm": 14,
+    "hret": 26,
+    "integ": 23,
+    "fhd": 9
+  },
+  "run": "https://github.com/dentistchi/bty-website/actions/runs/41261258186",
+  "sourceHead": "48fd38584e86193a0db81c0e4b3a452790da8a82",
+  "equivalentLocalSource": "82f63d944d93ffc4fa6cae65eb478b935d11b69e",
+  "artifactId": 13065730680,
+  "artifactSha256": "69f502338830933b65959d1bc0c0553e7abf1498d218ed346742b35a6a09a3d2",
+  "sourceHashesMatched": 268,
+  "report": "native-persistence-vitest.json.gz",
+  "preflight": "native-persistence-preflight.json",
+  "witnesses": "native-persistence-witnesses.json",
+  "limitation": "Representative SQL fixtures, including two migration-text-only tests; not the entire Supabase stack or signed-in live application."
+}

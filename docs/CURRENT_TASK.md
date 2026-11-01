@@ -6,8 +6,10 @@ Integration checkpoint: application source frozen at `27ff4865`, final full suit
 at `76549c19` observed exit 0 (16,074 reported passed / 409 explicit skips).
 Independent browser 57/57, native atomic SQL 271/271, final types and fresh build
 pass within their documented scopes. The 74 older opt-in persistence SQL bodies
-were inactive in the full run; a separate guarded disposable CI job now requires
-their real execution and 72 database witnesses. That result remains pending.
+were inactive in the full run; a separate guarded PostgreSQL 17.11 CI job actually
+executed all 74 successfully and verified 72 scenario databases. Its 268 recorded
+input hashes match this source. Implementation and isolated verification are complete;
+production release gates and the separate Clinical PR90 remain outstanding.
 See `docs/RELEASE_RELIABILITY_REMAINDER.md` for exact identities and omitted proof.
 Three prepared migrations and every operational rollout gate remain unapplied.
 

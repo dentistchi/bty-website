@@ -83,13 +83,26 @@
     },
     "total": 271,
     "unrun": [],
-    "scope": "Three separate disposable PostgreSQL17.11 containers, synthetic source-column schema, real functions/migrations, multi-backend lock waits. Not the full production database/PostgREST stack."
+    "scope": "Three separate disposable PostgreSQL17.11 containers, synthetic source-column schema, real functions/migrations, multi-backend lock waits. Not the full production database/PostgREST stack.",
+    "candidateRerun": {
+      "source": "48fd38584e86193a0db81c0e4b3a452790da8a82",
+      "run": "https://github.com/dentistchi/bty-website/actions/runs/41261258150",
+      "jobs": {
+        "legacy": "success",
+        "healing": "success",
+        "foundry": "success"
+      }
+    }
   },
   "nativePersistence": {
-    "status": "pending actual disposable CI execution",
-    "expectedReportedTests": 74,
-    "expectedCreatedScenarioDatabases": 72,
-    "scope": "Four unchanged Saved/Track/integrity/history PG files; distinct from the271 atomic completion checks and409 explicitly skipped integration cases."
+    "status": "observed passed",
+    "tests": 74,
+    "scenarioDatabases": 72,
+    "report": "native-persistence.json",
+    "run": "https://github.com/dentistchi/bty-website/actions/runs/41261258186",
+    "source": "48fd38584e86193a0db81c0e4b3a452790da8a82",
+    "scope": "Four unchanged cleanup migration/SQL test files on a fresh disposable PostgreSQL17 service; not Supabase/PostgREST or a live app check",
+    "sourceHashesMatched": 268
   },
   "browser": {
     "checks": 57,
