@@ -27,10 +27,12 @@ describe("pinned repository-scope proof integrity", () => {
     expect(() => assertMatchingHistoricalFiles(["src/a.ts"], ["src/a.ts", "supabase/migrations/unexpected.sql"])).toThrow(/disagrees/);
     expect(() => assertMatchingHistoricalFiles(["src/a.ts"], [])).toThrow(/disagrees/);
   });
-  it("checks the bytes of all 23 observed later migrations without applying any SQL", () => {
+  it("checks the bytes of all 25 observed later migrations without applying any SQL", () => {
     const names = pinnedLaterSourceMigrations();
-    expect(names).toHaveLength(23);
+    expect(names).toHaveLength(25);
     expect(names).toContain("20261031222747_legacy_xp_atomic_reward_receipts.sql");
+    expect(names).toContain("20261101120000_reward_write_fence_v1.sql");
+    expect(names).toContain("20261101130000_weekly_reflection_quest_atomic.sql");
     expect(unpinnedMigrationSources(names)).toEqual([]);
   });
   it("leaves an unregistered future migration visible to every empty-list guard", () => {

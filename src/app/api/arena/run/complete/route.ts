@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import {
   getWeekStartUTC,
   REFLECTION_QUEST_TARGET,
-  REFLECTION_QUEST_BONUS_XP,
 } from "@/lib/bty/arena/weeklyQuest";
+import { claimWeeklyReflectionQuest } from "@/lib/bty/arena/weeklyQuestReward.server";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
 import { resolvePatternFamilyForContractTrigger } from "@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger";
 import { syncPatternStatesForUser } from "@/lib/bty/pattern-engine/syncPatternStates";
@@ -233,30 +233,17 @@ export async function POST(req: Request) {
     .in("event_type", ["REFLECTION_SELECTED", "BEGINNER_REFLECTION"])
     .gte("created_at", weekStartISO);
   if (!countErr && (reflectionCount ?? 0) >= REFLECTION_QUEST_TARGET) {
-    const { data: existingClaim } = await supabase
-      .from("arena_weekly_quest_claims")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .eq("week_start", weekStart)
-      .eq("quest_type", "reflection")
-      .maybeSingle();
-    if (!existingClaim) {
-      // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-      // UPSERT also applies the bonus when no weekly_xp row exists yet (the prior
-      // `if (wxRow)` guard silently dropped the bonus in that case).
-      const { error: bonusErr } = await adminForContract.rpc("increment_weekly_xp", {
-        p_user_id: user.id,
-        p_league_id: null,
-        p_delta: REFLECTION_QUEST_BONUS_XP,
-      });
-      if (!bonusErr) {
-        await applySeasonalXpToCore(supabase, user.id, REFLECTION_QUEST_BONUS_XP);
-      }
-      await supabase.from("arena_weekly_quest_claims").insert({
-        user_id: user.id,
-        week_start: weekStart,
-        quest_type: "reflection",
-      });
+    // One SQL transaction inserts the weekly claim first, then pays weekly XP and Core.
+    // Concurrent or retried completions cannot pay twice; a failure pays nothing and
+    // the next completion retries. The quest never fails the run completion itself.
+    const quest = await claimWeeklyReflectionQuest(adminForContract, { userId: user.id, weekStart });
+    if (!quest.ok) {
+      console.warn("[run/complete] weekly reflection quest not awarded", { runId, error: quest.error });
+    } else if (quest.claim.outcome === "awarded") {
+      const { coreBefore, coreAfter } = quest.claim;
+      try {
+        void syncAvatarStateAfterCoreXpChange(user.id, supabase, coreBefore, coreAfter).catch(() => {});
+      } catch { /* Derived avatar state is best effort; the reward is committed. */ }
     }
   }
 
