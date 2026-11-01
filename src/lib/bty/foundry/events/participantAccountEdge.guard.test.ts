@@ -38,7 +38,7 @@ describe("T10 — no projection may expose the account edge", () => {
     }
   });
 
-  it("exactly ONE read selects user_id — the session lookup that the compatibility rule needs", () => {
+  it("only registered account-resolution or owner-scoped internal reads select user_id", () => {
     const withUserId: string[] = [];
     for (const { file, src } of sources()) {
       for (const m of code(src).matchAll(/\.select\("([^"]*user_id[^"]*)"\)/g)) {
@@ -49,7 +49,7 @@ describe("T10 — no projection may expose the account edge", () => {
       }
     }
     /*
-      THREE, and each one is registered here deliberately — which is the whole point of this list.
+      FOUR, and each one is registered here deliberately — which is the whole point of this list.
 
       Two in `foundryEventService.ts`, the service that owns the table: the session lookup the
       compatibility rule reads, and the insert-returning select on the row it just created.
@@ -60,15 +60,20 @@ describe("T10 — no projection may expose the account edge", () => {
       reads the edge for the same reason the other two do: to return the row it just wrote to the
       caller who IS that account.
 
+      One in `hostQuizFollowUp.server.ts` resolves a participant only after proving training ownership,
+      and filters that participant by the owned event. The IDs stay server-side for an audit insert;
+      the learner-result DTO has an explicit allowlist tested separately in hostQuizFollowUp.test.ts.
+
       IT DOES NOT BECOME A PROJECTION. `/api/bty/foundry/teams/room/open` returns exactly
       { ok, joinToken, contentType, title, displayName, participantSession } — no user id, no
-      event id, no address — and a route test asserts that key set exactly. A fourth entry here
-      still means a new projection, and still must be reviewed.
+      event id, no address — and a route test asserts that key set exactly. Any further entry here
+      still needs an explicit privacy review.
     */
     expect(withUserId).toEqual([
       "accountParticipant.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
       "foundryEventService.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
       "foundryEventService.ts: id, event_id, display_name, status, joined_at, last_seen_at, user_id",
+      "hostQuizFollowUp.server.ts: id, event_id, display_name, user_id, microsoft_tenant_id, microsoft_aad_object_id",
     ]);
   });
 

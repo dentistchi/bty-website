@@ -13,7 +13,7 @@ import {
 } from "./historicalBoundaryReconstruction";
 import { assertReviewBoundaryAuthority, boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
-import { buildC18Subject, CASE_ID, CORPUS, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256 } from "../../../../../scripts/practice-c18-boundary-replay";
+import { buildC18Subject, CASE_ID, CORPUS, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, SYNTHETIC_C18_FIXTURE, SYNTHETIC_C18_FIXTURE_SHA256 } from "../../../../../scripts/practice-c18-boundary-replay";
 
 /**
  * The R2.23D-R4 c18 source artifact is untracked local evidence, so absence is RECORDED rather
@@ -123,7 +123,7 @@ describe(`HISTORICAL RECONSTRUCTION (${present() ? "c18 evidence present — ass
 describe("CORRECTED-BOUNDARY REPLAY — the exact program, on mocks", () => {
   const run = (env: Record<string, string>, args: string[]) => {
     try {
-      const stdout = execFileSync("npx", ["tsx", "scripts/practice-c18-boundary-replay.ts", ...args], {
+      const stdout = execFileSync(process.execPath, ["--import", "tsx", "scripts/practice-c18-boundary-replay.ts", ...args], {
         encoding: "utf8",
         env: { ...process.env, ...env },
         stdio: ["ignore", "pipe", "pipe"],
@@ -137,8 +137,7 @@ describe("CORRECTED-BOUNDARY REPLAY — the exact program, on mocks", () => {
   };
 
   it("2/3/16/18/36/37/38. one subject, one reviewer call, zero generation calls, one artifact", () => {
-    if (!present()) return expect(present()).toBe(false);
-    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKC18", "--artifact-dir", dir]);
+    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--synthetic-test-fixture", "--replay-run-id", "MOCKC18", "--artifact-dir", dir]);
     expect(r.code).toBe(0);
     // 2. the exact boundary text travels with the subject.
     expect(r.stdout).toContain(`ACTIVE BOUNDARY: ${BOUNDARY_ID}`);
@@ -150,24 +149,26 @@ describe("CORRECTED-BOUNDARY REPLAY — the exact program, on mocks", () => {
   });
 
   it("12/39. the artifact carries the complete boundary evidence, not just a label", () => {
-    if (!present()) return expect(present()).toBe(false);
-    run({ BTY_C18_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "reject"]);
+    run({ BTY_C18_REPLAY_MOCK: "1" }, ["--synthetic-test-fixture", "--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "reject"]);
     const f = readdirSync(dir).find((x) => x.endsWith(".json"))!;
     const a = JSON.parse(readFileSync(join(dir, f), "utf8"));
     expect(a.outcome).toBe("consistent_reject");
     expect(a.activeBoundaryIds).toEqual([BOUNDARY_ID]);
     expect(a.boundaryProvenance.confirmedBoundaries[0].statement).toBe(BOUNDARY_TEXT);
-    expect(a.boundaryProvenance.reconstructed).toBe(true);
+    expect(a.sourceKind).toBe("test-fixture");
+    expect(a.sourceArtifactSha256).toBe(SYNTHETIC_C18_FIXTURE_SHA256);
+    expect(a.boundaryProvenance.sourceKind).toBe("canonical_case_input");
+    expect(a.boundaryProvenance.reconstructed).toBe(false);
     expect(a.subjectDigests.boundaryProvenanceSha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(a.reconstructionDisclaimer).toContain("NOT evidence");
+    expect(a.reconstructionDisclaimer).toContain("SYNTHETIC TEST FIXTURE");
+    expect(a.reconstructionDisclaimer).toContain("HISTORICAL MEASUREMENT NOT PERFORMED");
     // The reviewer's own coverage and derived defects survive to the artifact.
     expect(a.reviewResponse.boundaryIdsConsidered).toEqual([BOUNDARY_ID]);
     expect(a.derivedDefects).toContain("choice_bypasses_boundary");
   });
 
   it("13. a consistent accept is never a product-quality pass", () => {
-    if (!present()) return expect(present()).toBe(false);
-    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "accept"]);
+    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--synthetic-test-fixture", "--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "accept"]);
     expect(r.stdout).toContain("consistent_accept 1");
     expect(r.stdout).toContain("PRODUCT QUALITY NOT MEASURED");
     expect(r.stdout).not.toContain("STRUCTURAL + SEMANTIC GATES PASS");
@@ -175,8 +176,7 @@ describe("CORRECTED-BOUNDARY REPLAY — the exact program, on mocks", () => {
   });
 
   it("14. a repeated contradiction stays a reviewer failure", () => {
-    if (!present()) return expect(present()).toBe(false);
-    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "contradiction"]);
+    const r = run({ BTY_C18_REPLAY_MOCK: "1" }, ["--synthetic-test-fixture", "--replay-run-id", "MOCKC18", "--artifact-dir", dir, "--mock-outcome", "contradiction"]);
     expect(r.stdout).toContain("repeated_contradiction 1");
     expect(r.stdout).not.toContain("consistent_accept 1");
   });
@@ -190,12 +190,25 @@ describe("CORRECTED-BOUNDARY REPLAY — the exact program, on mocks", () => {
   });
 
   it("15/17. zero generation entry points, and no credential reaches the artifact", () => {
-    if (!present()) return expect(present()).toBe(false);
     const src = readFileSync(join(process.cwd(), "scripts/practice-c18-boundary-replay.ts"), "utf8");
     expect(src).not.toMatch(/generateArenaScenarioDraft|generateWithLlm|buildTemplateScenarioDraft/);
-    run({ BTY_C18_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKC18", "--artifact-dir", dir]);
+    run({ BTY_C18_REPLAY_MOCK: "1" }, ["--synthetic-test-fixture", "--replay-run-id", "MOCKC18", "--artifact-dir", dir]);
     const f = readdirSync(dir).find((x) => x.endsWith(".json"))!;
     const raw = readFileSync(join(dir, f), "utf8").toLowerCase();
     for (const banned of ["sk-", "bearer ", "authorization", "api_key", "apikey", "x-request-id"]) expect(raw).not.toContain(banned);
   });
+});
+
+
+it("the pinned synthetic input cannot borrow the historical digest or tolerate mutation", () => {
+  const synthetic = buildC18Subject(process.cwd(), EVIDENCE_DIR, "synthetic-test-fixture");
+  expect(synthetic.sourceKind).toBe("test-fixture");
+  expect(synthetic.sourceArtifactSha256).toBe(SYNTHETIC_C18_FIXTURE_SHA256);
+  expect(synthetic.sourceArtifactSha256).not.toBe(SOURCE_ARTIFACT_SHA256);
+  expect(synthetic.subject.boundaryProvenance?.reconstructed).toBe(false);
+  const fixtureDir = join(dir, "scripts", "fixtures"); mkdirSync(fixtureDir, { recursive: true });
+  const target = join(dir, SYNTHETIC_C18_FIXTURE);
+  copyFileSync(join(process.cwd(), SYNTHETIC_C18_FIXTURE), target);
+  writeFileSync(target, readFileSync(target, "utf8") + " ");
+  expect(() => buildC18Subject(dir, EVIDENCE_DIR, "synthetic-test-fixture")).toThrow("synthetic fixture digest mismatch");
 });

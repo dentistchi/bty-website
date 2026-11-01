@@ -215,7 +215,7 @@ describe("REPLAY — four subjects, four immutable artifacts, zero generation", 
 describe("the exact replay program runs end to end on mocks", () => {
   const runCli = (env: Record<string, string>, args: string[]) => {
     try {
-      const stdout = execFileSync("npx", ["tsx", "scripts/practice-review-replay.ts", ...args], {
+      const stdout = execFileSync(process.execPath, ["--import", "tsx", "scripts/practice-review-replay.ts", ...args], {
         encoding: "utf8",
         env: { ...process.env, ...env },
         stdio: ["ignore", "pipe", "pipe"],

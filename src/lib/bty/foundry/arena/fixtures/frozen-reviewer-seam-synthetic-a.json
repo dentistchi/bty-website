@@ -1,0 +1,286 @@
+{
+  "fixtureVersion": "frozen-reviewer-seam/v1",
+  "sourceKind": "test-fixture",
+  "fixtureId": "c18-constrained-clinical",
+  "experimentId": "synthetic-a",
+  "draft": {
+    "present": true,
+    "parsed": {
+      "title": "Managing a Backed-Up Ward",
+      "opening": "You are a charge nurse on a busy ward, and the patient admissions have surged unexpectedly. You just learned that two patients require immediate treatment, but you must first verify two identifiers for each before proceeding. As the clock ticks, the waiting patients and their families are growing anxious, and there’s a risk of delays impacting care quality. You know you can't afford to compromise on verification, but the pressure to act quickly is intense.",
+      "primary": {
+        "choices": [
+          {
+            "id": "p1",
+            "label": "Verify identifiers for both patients now"
+          },
+          {
+            "id": "p2",
+            "label": "Notify the families and proceed with one patient"
+          }
+        ]
+      },
+      "tradeoff": {
+        "escalationText": "As you start your chosen approach, the hospital administrator calls to inquire about the delays in patient care, emphasizing that the hospital's reputation is at stake and urging a swift resolution. You feel the pressure mounting.",
+        "choices": [
+          {
+            "id": "ft1",
+            "label": "Continue with the current plan and explain to the administrator"
+          },
+          {
+            "id": "ft2",
+            "label": "Escalate the issue by requesting additional staff"
+          }
+        ]
+      },
+      "actionDecision": {
+        "prompt": "Choose how to proceed based on your earlier choice:",
+        "choices": [
+          {
+            "id": "fa1",
+            "label": "Continue with the verification process for both patients",
+            "isActionCommitment": true
+          },
+          {
+            "id": "fa2",
+            "label": "Proceed with treatment for the first patient only",
+            "isActionCommitment": false
+          }
+        ]
+      },
+      "branches": {
+        "p1": {
+          "resultingWorldState": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety, but you still face delays in the ward due to the surge in admissions.",
+          "escalationText": "The administrator is still concerned about the ongoing delays and requests a detailed report on the situation within the hour.",
+          "tradeoffChoices": [
+            {
+              "id": "p1-t1",
+              "label": "Prepare a detailed report for the administrator"
+            },
+            {
+              "id": "p1-t2",
+              "label": "Focus on patient care and delay the report"
+            }
+          ],
+          "actionDecision": {
+            "prompt": "Decide how to balance your priorities moving forward:",
+            "choices": [
+              {
+                "id": "p1-a1",
+                "label": "Finalize the report and communicate with the administrator",
+                "isActionCommitment": true
+              },
+              {
+                "id": "p1-a2",
+                "label": "Continue prioritizing patient care and defer the report",
+                "isActionCommitment": false
+              }
+            ]
+          }
+        },
+        "p2": {
+          "resultingWorldState": "You prioritized immediate treatment for one patient while notifying the family, but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+          "escalationText": "The administrator has been informed about the situation and is now pushing for an urgent review of the process to prevent future delays.",
+          "tradeoffChoices": [
+            {
+              "id": "p2-t1",
+              "label": "Prepare a summary of events for the administrator"
+            },
+            {
+              "id": "p2-t2",
+              "label": "Focus on caring for the second patient immediately"
+            }
+          ],
+          "actionDecision": {
+            "prompt": "Choose your next step to resolve the situation:",
+            "choices": [
+              {
+                "id": "p2-a1",
+                "label": "Finish the summary and send it to the administrator",
+                "isActionCommitment": true
+              },
+              {
+                "id": "p2-a2",
+                "label": "Immediately treat the second patient",
+                "isActionCommitment": false
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "constructions": {
+    "present": true,
+    "parsed": {
+      "p1": {
+        "legitimateValue": "operational continuity",
+        "acceptedCost": "the queue lengthens behind you",
+        "competentIntent": "a capable lead could protect operational continuity here, option 1",
+        "concreteAction": "Verify identifiers for both patients now",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the queue lengthens behind you that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "p2": {
+        "legitimateValue": "accuracy of the record",
+        "acceptedCost": "the decision takes longer to reach",
+        "competentIntent": "a capable lead could protect accuracy of the record here, option 2",
+        "concreteAction": "Notify the families and proceed with one patient",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the decision takes longer to reach that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "ft1": {
+        "legitimateValue": "the client relationship",
+        "acceptedCost": "another commitment slips this week",
+        "competentIntent": "a capable lead could protect the client relationship here, option 3",
+        "concreteAction": "Continue with the current plan and explain to the administrator",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up another commitment slips this week that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "ft2": {
+        "legitimateValue": "team capacity",
+        "acceptedCost": "you carry the exposure personally",
+        "competentIntent": "a capable lead could protect team capacity here, option 4",
+        "concreteAction": "Escalate the issue by requesting additional staff",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up you carry the exposure personally that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "fa1": {
+        "legitimateValue": "operational continuity",
+        "acceptedCost": "the queue lengthens behind you",
+        "competentIntent": "a capable lead could protect operational continuity here, option 5",
+        "concreteAction": "Continue with the verification process for both patients",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the queue lengthens behind you that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "fa2": {
+        "legitimateValue": "accuracy of the record",
+        "acceptedCost": "the decision takes longer to reach",
+        "competentIntent": "a capable lead could protect accuracy of the record here, option 6",
+        "concreteAction": "Proceed with treatment for the first patient only",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the decision takes longer to reach that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "p1-t1": {
+        "legitimateValue": "the client relationship",
+        "acceptedCost": "another commitment slips this week",
+        "competentIntent": "a capable lead could protect the client relationship here, option 7",
+        "concreteAction": "Prepare a detailed report for the administrator",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up another commitment slips this week that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "p1-t2": {
+        "legitimateValue": "team capacity",
+        "acceptedCost": "you carry the exposure personally",
+        "competentIntent": "a capable lead could protect team capacity here, option 8",
+        "concreteAction": "Focus on patient care and delay the report",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up you carry the exposure personally that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "p1-a1": {
+        "legitimateValue": "operational continuity",
+        "acceptedCost": "the queue lengthens behind you",
+        "competentIntent": "a capable lead could protect operational continuity here, option 9",
+        "concreteAction": "Finalize the report and communicate with the administrator",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the queue lengthens behind you that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "p1-a2": {
+        "legitimateValue": "accuracy of the record",
+        "acceptedCost": "the decision takes longer to reach",
+        "competentIntent": "a capable lead could protect accuracy of the record here, option 10",
+        "concreteAction": "Continue prioritizing patient care and defer the report",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the decision takes longer to reach that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "p2-t1": {
+        "legitimateValue": "the client relationship",
+        "acceptedCost": "another commitment slips this week",
+        "competentIntent": "a capable lead could protect the client relationship here, option 11",
+        "concreteAction": "Prepare a summary of events for the administrator",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up another commitment slips this week that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "p2-t2": {
+        "legitimateValue": "team capacity",
+        "acceptedCost": "you carry the exposure personally",
+        "competentIntent": "a capable lead could protect team capacity here, option 12",
+        "concreteAction": "Focus on caring for the second patient immediately",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up you carry the exposure personally that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      },
+      "p2-a1": {
+        "legitimateValue": "operational continuity",
+        "acceptedCost": "the queue lengthens behind you",
+        "competentIntent": "a capable lead could protect operational continuity here, option 13",
+        "concreteAction": "Finish the summary and send it to the administrator",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the queue lengthens behind you that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 2"
+      },
+      "p2-a2": {
+        "legitimateValue": "accuracy of the record",
+        "acceptedCost": "the decision takes longer to reach",
+        "competentIntent": "a capable lead could protect accuracy of the record here, option 14",
+        "concreteAction": "Immediately treat the second patient",
+        "boundaryCompliance": [
+          "c1_verify"
+        ],
+        "urgencySafetyBasis": "no urgent care is delayed; any pause is bounded and stated",
+        "whyNotDominated": "it gives up the decision takes longer to reach that the alternative keeps",
+        "distinguishesFromSibling": "different value and cost profile from option 1"
+      }
+    }
+  }
+}

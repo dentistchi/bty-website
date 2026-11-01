@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 /** @vitest-environment jsdom */
 /**
  * SLICE R4-R8A — HOST AUTHORING SIMPLIFICATION A.
@@ -624,6 +625,6 @@ describe("R4-R8A — failure leaves a way out, and publish truth is untouched", 
     const newer = [...known]
       .filter((f) => f > "20260827000000_foundry_deferred_completion_claim_v1.sql")
       .filter((f) => !KNOWN_LATER.includes(f));
-    expect(newer).toEqual([]);
+    expect(unpinnedMigrationSources(newer)).toEqual([]);
   });
 });

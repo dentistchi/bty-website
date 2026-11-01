@@ -1,6 +1,7 @@
 /**
  * C6 242 — GET /api/bty/awakening 401→200 스모크 1건.
  */
+import { healingReadClient } from "@/lib/bty/healing/__fixtures__/readClient";
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./awakening/route";
@@ -15,12 +16,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
 }));
 
 function supabaseActsEmpty() {
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({ data: [], error: null }),
-  };
-  return { from: vi.fn(() => chain) };
+  return healingReadClient().client;
 }
 
 describe("242 GET /api/bty/awakening smoke", () => {

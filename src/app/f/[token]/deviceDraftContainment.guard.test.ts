@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -59,7 +60,7 @@ describe("T14 — no server draft was built", () => {
       "20260927000000_foundry_host_followup_contacts_v1.sql",
     ];
     const newer = migs.filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
-    expect(newer, "R4-R5C4A must add no migration").toEqual([]);
+    expect(unpinnedMigrationSources(newer), "R4-R5C4A must add no migration").toEqual([]);
   });
 
   it("no draft column is written to any table", () => {

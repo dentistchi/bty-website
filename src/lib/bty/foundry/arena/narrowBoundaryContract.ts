@@ -194,6 +194,8 @@ export const PROMPT_EXPLANATORY_VOCABULARY = [
   "activeBoundaryCount",
   "decisionSurfaceCount",
   "candidateId",
+  // Retained request context, not a model-authored assessment field.
+  "concreteAction",
 ] as const;
 
 /**

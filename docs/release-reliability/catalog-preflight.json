@@ -1,0 +1,581 @@
+{
+  "scope": "Read-only information_schema and pg_proc metadata only; no learner rows, authentication sessions or mutations.",
+  "project": "mveycersmqfiuddslnrj",
+  "columns": [
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": "nextval('core_xp_ledger_id_seq'::regclass)"
+    },
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "delta_xp",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "source_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "source_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "core_xp_ledger",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "event_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "display_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "participant_session_token_hash",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'joined'::text"
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "joined_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "last_seen_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "removed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "microsoft_tenant_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_participants",
+      "column_name": "microsoft_aad_object_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "event_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "participant_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "video_started_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "video_completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "response_text",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "linked_user_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "xp_awarded_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "completion_state",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "reflection",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "reflection_version",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "reflection_generated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "document_last_page",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "document_pages_viewed",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "document_active_read_ms",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "document_read_completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "shared_understanding_response",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "shared_response_submitted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "host_review_status",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "host_reviewed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "host_reviewed_by",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "host_reviewed_by_snapshot",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "host_review_note",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "decision_response_text",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "decision_submitted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "learner_reflection_text",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "learner_reflection_submitted_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "written_guidance_read_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "discussion_self_reported_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "claim_secret_hash",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "claim_secret_expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "claim_consumed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_event_training_progress",
+      "column_name": "quiz_attempt_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "owner_user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "title",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "status",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'open'::text"
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "join_version",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": "1"
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "closed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "content_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": "'youtube'::text"
+    },
+    {
+      "table_name": "foundry_events",
+      "column_name": "program_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "train_day_completions",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "train_day_completions",
+      "column_name": "day",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "train_day_completions",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "user_advanced_unlocks",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "user_advanced_unlocks",
+      "column_name": "advanced_stat_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "user_advanced_unlocks",
+      "column_name": "unlocked_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "user_healing_awakening_acts",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "user_healing_awakening_acts",
+      "column_name": "act_id",
+      "data_type": "smallint",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "user_healing_awakening_acts",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "user_healing_milestones",
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "user_healing_milestones",
+      "column_name": "second_awakening_completed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "user_healing_milestones",
+      "column_name": "starter_unlock_granted",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    }
+  ],
+  "functions": [
+    {
+      "schema": "public",
+      "proname": "bty_foundry_award_daily_capped",
+      "arguments": "p_user_id uuid, p_event_id uuid, p_source_id text, p_xp integer, p_day_start timestamp with time zone, p_day_end timestamp with time zone, p_max_per_day integer",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "d65600d73c06b951b5431e2131ba89b8"
+    },
+    {
+      "schema": "public",
+      "proname": "bty_foundry_claim_assignment",
+      "arguments": "p_event_id uuid, p_participant_id uuid, p_auth_user_id uuid",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "f33aaee3c760c72c1e638c5853041cc6"
+    },
+    {
+      "schema": "public",
+      "proname": "bty_foundry_materialize_apply_window",
+      "arguments": "p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_apply_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone, p_action_bty_day date",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "bc436c90efe5991569fcb767520e0588"
+    },
+    {
+      "schema": "public",
+      "proname": "bty_foundry_materialize_followup",
+      "arguments": "p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "6c7ab0cf9c39c6388956ee110a36561c"
+    },
+    {
+      "schema": "public",
+      "proname": "bty_foundry_redeem_completion_claim",
+      "arguments": "p_claim_hash text, p_user_id uuid, p_timezone text, p_source_training_title text, p_assignment_id uuid, p_organization_id uuid, p_follow_up_days integer, p_fu_completion_bty_day date, p_fu_due_bty_day date, p_fu_due_at timestamp with time zone, p_apply_days integer, p_ap_completion_bty_day date, p_ap_due_bty_day date, p_ap_due_at timestamp with time zone, p_xp integer, p_xp_eligible boolean, p_day_start timestamp with time zone, p_day_end timestamp with time zone",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_md5": "fbb7649479c3ead3ef9b485880919530"
+    }
+  ]
+}

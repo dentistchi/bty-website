@@ -25,7 +25,8 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, isAbsolute } from "node:path";
+import { SYNTHETIC_REPLAY_AUTHORITY, type SyntheticReplaySubjectId } from "@/lib/bty/foundry/arena/fixtures/frozenReviewerSeamAuthority";
 
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
@@ -77,6 +78,7 @@ export type ReplayRow = {
 };
 
 export type ReplayResult = {
+  sourceKind: "historical-capture" | "test-fixture";
   subjectIdentity: {
     artifactPath: string;
     artifactSha256: string;
@@ -290,20 +292,19 @@ const complianceFieldCount = (value: unknown): number =>
  * Evidence is written before the first dependency invocation and re-persisted at every stage, so a
  * consumed subject can never leave zero evidence behind.
  */
-export async function runFrozenReviewerReplay(opts: {
-  subjectId: SubjectId;
+async function runReviewerReplayWithPinnedIdentity(opts: {
+  subjectId: string;
   subject: FrozenSubject;
   deps?: ReplayDeps;
   authority?: ReplayAuthority;
   outputRoot?: string;
   innerCommit?: string;
-}): Promise<ReplayResult> {
+}, expected: { artifactSha256: string; scenarioDigest: string }, sourceKind: "historical-capture" | "test-fixture"): Promise<ReplayResult> {
   const { subject, subjectId } = opts;
   const deps = opts.deps ?? productionReplayDeps;
   const outputRoot = opts.outputRoot ?? REPLAY_OUTPUT_ROOT;
 
   // --- pre-call authority: nothing below may run if the subject is not what was authorized ------
-  const expected = SUBJECT_AUTHORITY[subjectId];
   if (subject.artifactSha256 !== expected.artifactSha256) {
     throw new Error(`subject ${subjectId} artifact sha mismatch`);
   }
@@ -320,6 +321,8 @@ export async function runFrozenReviewerReplay(opts: {
   const counts = { narrowReview: 0, narrowRepair: 0, broadReview: 0 };
   const evidence: Record<string, unknown> = {
     marker: "REPLAY",
+    sourceKind,
+    historicalReplay: sourceKind === "historical-capture",
     subjectId,
     artifactPath: subject.artifactPath,
     artifactSha256: subject.artifactSha256,
@@ -409,6 +412,7 @@ export async function runFrozenReviewerReplay(opts: {
     persist();
 
     return {
+      sourceKind,
       subjectIdentity: {
         artifactPath: subject.artifactPath,
         artifactSha256: subject.artifactSha256,
@@ -430,6 +434,30 @@ export async function runFrozenReviewerReplay(opts: {
     persist();
     throw e;
   }
+}
+
+/** Historical API and CLI retain their fixed Run4/Run5 authority without fallback. */
+export async function runFrozenReviewerReplay(opts: {
+  subjectId: SubjectId; subject: FrozenSubject; deps?: ReplayDeps; authority?: ReplayAuthority;
+  outputRoot?: string; innerCommit?: string;
+}): Promise<ReplayResult> {
+  return runReviewerReplayWithPinnedIdentity(opts, SUBJECT_AUTHORITY[opts.subjectId], "historical-capture");
+}
+
+/** Explicit library-only test seam: fixed synthetic identities, injected reviewers and output. */
+export async function runSyntheticFrozenReviewerReplay(opts: {
+  subjectId: SyntheticReplaySubjectId; subject: FrozenSubject; deps: ReplayDeps;
+  outputRoot: string; authority?: ReplayAuthority; innerCommit?: string;
+}): Promise<ReplayResult> {
+  if (!Object.prototype.hasOwnProperty.call(SYNTHETIC_REPLAY_AUTHORITY, opts.subjectId)) {
+    throw new Error("unknown synthetic test fixture");
+  }
+  if (!opts.deps || typeof opts.deps.narrowReview !== "function" || typeof opts.deps.narrowRepair !== "function"
+    || typeof opts.deps.broadReview !== "function" || !opts.outputRoot || !isAbsolute(opts.outputRoot)
+    || resolve(opts.outputRoot).startsWith(resolve(REPLAY_OUTPUT_ROOT))) {
+    throw new Error("synthetic test fixture requires injected reviewers and an isolated absolute output root");
+  }
+  return runReviewerReplayWithPinnedIdentity(opts, SYNTHETIC_REPLAY_AUTHORITY[opts.subjectId], "test-fixture");
 }
 
 /** CLI entrypoint. Live output root is fixed; tests drive the library API with an injected root. */

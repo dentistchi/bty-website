@@ -13,9 +13,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
-  applyDirectCoreXp: vi.fn(async () => ({ newCoreTotal: 10 })),
-}));
+vi.mock("@/engine/avatar/avatar-state.service", () => ({ syncAvatarStateAfterCoreXpChange: vi.fn(async () => {}) }));
 vi.mock("./foundryFollowupService", () => ({ materializeFollowupObligation: vi.fn(async () => {}) }));
 vi.mock("./foundryApplyWindowService", () => ({
   materializeApplyWindow: vi.fn(async () => "skipped"),
@@ -25,6 +23,8 @@ vi.mock("./foundryAssignmentPublishService", () => ({
   claimAssignmentForParticipant: vi.fn(async () => "not_applicable"),
 }));
 
+import { fixtureUuid, simulateFoundryCoreAtomic } from "./__fixtures__/foundryAtomicRewardSim";
+
 import { finalizeCanonicalTrainingCompletion } from "./foundryTrainingService";
 
 beforeAll(() => {
@@ -32,11 +32,13 @@ beforeAll(() => {
 });
 
 type Row = Record<string, unknown>;
+const PROGRESS_ID = fixtureUuid(1);
 
 function makeFakeAdmin() {
   const tables: Record<string, Row[]> = {
+    foundry_events: [{ id: "ev-1", owner_user_id: "owner-1" }],
     foundry_event_training_progress: [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", completed_at: "2026-09-21T00:00:00Z", xp_awarded_at: null, linked_user_id: null, claim_secret_hash: null },
+      { id: PROGRESS_ID, event_id: "ev-1", participant_id: "pt-1", completed_at: "2026-09-21T00:00:00Z", xp_awarded_at: null, linked_user_id: null, claim_secret_hash: null },
     ],
     core_xp_ledger: [],
   };
@@ -71,9 +73,8 @@ function makeFakeAdmin() {
     return q;
   }
   const rpc = (name: string, p: Record<string, unknown>) => {
-    if (name !== "bty_foundry_award_daily_capped") return Promise.resolve({ data: null, error: null });
-    tables.core_xp_ledger.push({ user_id: p.p_user_id, source_id: p.p_source_id, source_type: "foundry_training_completion" });
-    return Promise.resolve({ data: "awarded", error: null });
+    if (name !== "bty_foundry_award_core_atomic") return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
+    return Promise.resolve(simulateFoundryCoreAtomic(tables, p));
   };
   return { admin: { from, rpc } as unknown as SupabaseClient, tables };
 }
@@ -88,7 +89,7 @@ async function finalize(admin: SupabaseClient, participantUserId: string | null,
   return finalizeCanonicalTrainingCompletion(admin, {
     event: EVENT,
     participant: participant(participantUserId),
-    progressId: "pr-1",
+    progressId: PROGRESS_ID,
     completedAt: "2026-09-21T00:00:00Z",
     authUserId,
     deviceTz: "Asia/Seoul",
@@ -104,7 +105,10 @@ describe("TEAMS-NATIVE: the account is credited directly, with nothing left to c
 
     expect(result.xpOverride).toBe("awarded");
     expect(tables.core_xp_ledger).toHaveLength(1);
-    expect(tables.core_xp_ledger[0]).toMatchObject({ user_id: "user-A", source_id: "pr-1" });
+    expect(tables.core_xp_ledger[0]!.delta_xp).toBe(10);
+    expect(tables.arena_profiles[0]!.core_xp_total).toBe(10);
+    expect(tables.foundry_xp_reward_receipts).toHaveLength(1);
+    expect(tables.core_xp_ledger[0]).toMatchObject({ user_id: "user-A", source_id: PROGRESS_ID });
 
     // THE ACCEPTANCE CONDITION: no deferred claim means no "Save my XP" / sign-in CTA.
     expect(result.claimCode).toBeUndefined();

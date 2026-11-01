@@ -15,6 +15,7 @@ const NOW = new Date("2026-07-22T12:00:00.000Z");
 const TZ = "UTC";
 
 type World = {
+  directory?: { linked_user_id: string; sync_status: string; account_enabled: boolean; user_type: string; is_provider: boolean; is_manager: boolean };
   hostGrants: Array<{ user_id: string; status: "active" | "revoked" }>;
   events: Array<{ id: string; title: string | null; owner_user_id: string; status?: string }>;
   historyDismissals?: Array<{ user_id: string; event_id: string }>;
@@ -63,6 +64,9 @@ function makeAdmin(world: World, throwOnTable?: string) {
         const userId = eqVal(ops, "user_id");
         const g = world.hostGrants.find((x) => x.user_id === userId && x.status === "active");
         return { data: g ? { status: "active" } : null };
+      }
+      case "bty_microsoft_directory_authority": {
+        return { data: world.directory?.linked_user_id === eqVal(ops, "linked_user_id") ? world.directory : null };
       }
       case "foundry_events": {
         const owner = eqVal(ops, "owner_user_id");
@@ -169,9 +173,8 @@ describe("getHostDailyAttention — eligibility & ownership (tests 1–6)", () =
     expect(await getHostDailyAttention(admin, "host-1", NOW, TZ, "en")).toEqual([]);
   });
 
-  it("(5) an org responsibility alone does not grant it — only an active Foundry Host grant does", async () => {
-    // The service never queries responsibility tables; a user without an active grant gets nothing,
-    // regardless of any Trainer/People-Manager responsibility they may hold.
+  it("(5) an unsynced org responsibility alone does not grant author capability", async () => {
+    // Unsynced responsibility claims are not trusted directory snapshots or explicit grants.
     const w = baseWorld();
     w.hostGrants = [];
     const { admin, selects } = makeAdmin(w);
@@ -349,11 +352,12 @@ describe("getHostDailyAttention — priority + privacy (tests 21–23 integrated
     expect(items.some((i) => i.eventId === "e9b")).toBe(false);
   });
 
-  it("a Host-gate failure yields no items and never reaches attention reads (structural, not masked)", async () => {
-    // If the eligibility read itself fails, the service rejects (the route's outer catch maps it to
-    // []). Critically, no attention/data read runs before ownership is proven — no unscoped rows.
+  it("an unavailable author gate fails closed before owned events or attention reads", async () => {
+    // The shared author capability is deliberately boolean and fails closed. No owned-event or
+    // attention read can run when none of its trusted authority sources grants capability.
     const { admin, selects } = makeAdmin(fullWorld(), "foundry_host_grants");
-    await expect(getHostDailyAttention(admin, "host-1", NOW, TZ, "en")).rejects.toThrow();
+    expect(await getHostDailyAttention(admin, "host-1", NOW, TZ, "en")).toEqual([]);
+    expect(selects.some((s) => s.table === "foundry_events")).toBe(false);
     expect(selects.some((s) => s.table === "foundry_participant_followups")).toBe(false);
     expect(selects.some((s) => s.table === "foundry_event_training_progress")).toBe(false);
   });
@@ -390,5 +394,34 @@ describe("prelaunch: personally removed closed training leaves Today", () => {
     w.historyDismissals=[{user_id:"host-1",event_id:"e2"}];
     const {admin}=makeAdmin(w);
     expect((await getHostDailyAttention(admin,"host-1",NOW,TZ,"en")).map(i=>i.eventId)).toEqual(["e1","e2"]);
+  });
+});
+
+
+describe("Host attention uses the canonical Foundry author capability", () => {
+  function authorWorld() {
+    const w = baseWorld();
+    w.followups = ["e1", "e2", "e9"].map((event_id, i) => ({ id: `canonical-${i}`,
+      event_id, progress_id: null, follow_up_days: 7, due_at: "2026-07-15T05:00:00Z",
+      status: "PENDING", source_training_title: null }));
+    return w;
+  }
+  it("accepts an eligible synced Microsoft manager and still scopes every item to owned events", async () => {
+    const w = authorWorld(); w.hostGrants = [];
+    w.directory = { linked_user_id: "host-1", sync_status: "success", account_enabled: true,
+      user_type: "Member", is_provider: false, is_manager: true };
+    const { admin } = makeAdmin(w); const items = await getHostDailyAttention(admin, "host-1", NOW, TZ, "en");
+    expect(items.length).toBeGreaterThan(0); expect(items.every(item => ["e1", "e2"].includes(item.eventId))).toBe(true);
+  });
+  it.each([
+    { sync_status: "failed" }, { account_enabled: false }, { user_type: "Guest" },
+    { is_provider: false, is_manager: false }, { linked_user_id: "another-user" },
+  ])("denies an untrusted or ineligible directory snapshot (%j) before reading owned events", async patch => {
+    const w = authorWorld(); w.hostGrants = [];
+    w.directory = { linked_user_id: "host-1", sync_status: "success", account_enabled: true,
+      user_type: "Member", is_provider: false, is_manager: true, ...patch };
+    const { admin, selects } = makeAdmin(w);
+    expect(await getHostDailyAttention(admin, "host-1", NOW, TZ, "en")).toEqual([]);
+    expect(selects.some(read => read.table === "foundry_events")).toBe(false);
   });
 });

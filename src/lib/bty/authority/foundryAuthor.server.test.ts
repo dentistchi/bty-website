@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hasFoundryAuthorCapability } from "./foundryAuthor.server";
 
-type Tables = Partial<Record<"bty_platform_admin_grants" | "foundry_host_grants" | "bty_microsoft_authority_snapshots", Record<string, unknown> | null>>;
+type Tables = Partial<Record<"bty_platform_admin_grants" | "foundry_host_grants" | "bty_microsoft_directory_authority", Record<string, unknown> | null>>;
 
-function authorityDb(tables: Tables, failedTable?: keyof Tables) {
+function authorityDb(tables: Tables, failedTable?: keyof Tables, reads: string[] = []) {
   return {
     from(table: keyof Tables) {
+      reads.push(table);
       return {
         select() {
           return {
@@ -24,7 +25,7 @@ function authorityDb(tables: Tables, failedTable?: keyof Tables) {
 }
 
 const userId = "user-1";
-const microsoft = (is_provider: boolean, is_manager = false): Tables => ({ bty_microsoft_directory_authority: { is_provider, is_manager, sync_status: "success", account_enabled: true, user_type: "Member" } } as Tables);
+const microsoft = (is_provider: boolean, is_manager = false): Tables => ({ bty_microsoft_directory_authority: { is_provider, is_manager, sync_status: "success", account_enabled: true, user_type: "Member" } });
 
 beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => {}));
 
@@ -41,7 +42,7 @@ describe("hasFoundryAuthorCapability", () => {
 
   it("does not grant automatic authority from absent or indeterminate snapshots", async () => {
     expect(await hasFoundryAuthorCapability(authorityDb({}), userId)).toBe(false);
-    expect(await hasFoundryAuthorCapability(authorityDb({ bty_microsoft_authority_snapshots: { is_provider: true, is_manager: false, sync_status: "indeterminate" } }), userId)).toBe(false);
+    expect(await hasFoundryAuthorCapability(authorityDb({ bty_microsoft_directory_authority: { is_provider: true, is_manager: false, sync_status: "indeterminate" } }), userId)).toBe(false);
   });
 
   it("never derives authority from display name, email, title, or metadata", async () => {
@@ -52,10 +53,17 @@ describe("hasFoundryAuthorCapability", () => {
     }
   });
 
-  it.each(["bty_platform_admin_grants", "foundry_host_grants", "bty_microsoft_authority_snapshots"] as const)(
+  it.each(["bty_platform_admin_grants", "foundry_host_grants", "bty_microsoft_directory_authority"] as const)(
     "fails closed when %s cannot be read",
     async (failedTable) => {
-      expect(await hasFoundryAuthorCapability(authorityDb({}, failedTable), userId)).toBe(false);
+      const tables: Tables = failedTable === "bty_microsoft_directory_authority" ? microsoft(true)
+        : { [failedTable]: { status: "active" } };
+      const reads: string[] = [];
+      // The identical source would grant without the injected database error.
+      // A misspelled/unread table can no longer make this denial pass vacuously.
+      expect(await hasFoundryAuthorCapability(authorityDb(tables), userId)).toBe(true);
+      expect(await hasFoundryAuthorCapability(authorityDb(tables, failedTable, reads), userId)).toBe(false);
+      expect(reads).toContain(failedTable);
     },
   );
 });

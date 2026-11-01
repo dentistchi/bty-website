@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { runReviewReplay, replayTerminalLabel, type ReplayDeps, type ReplayReviewResult, type ReplaySubject } from "@/lib/bty/foundry/arena/reviewReplay";
 import { writeReplayArtifact } from "@/lib/bty/foundry/arena/replayArtifact";
 import { buildReviewSubjectContract } from "@/lib/bty/foundry/arena/reviewSubjectContract";
-import { assertReviewBoundaryAuthority, boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
+import { assertReviewBoundaryAuthority, boundaryProvenanceSha256, buildBoundaryProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, scenarioDigest, subjectDigests, type ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
 import { PRACTICE_SAMPLING } from "@/lib/bty/foundry/arena/arenaScenarioGenerationService";
 import {
@@ -33,6 +33,11 @@ export const CASE_ID = "c18-constrained-clinical";
 export const SOURCE_ARTIFACT = "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json";
 export const SOURCE_ARTIFACT_SHA256 = "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb";
 export const SOURCE_ATTEMPT_INDEX = 2;
+/** A separate, pinned regression input; never a replacement for the missing live artifact. */
+export const SYNTHETIC_C18_FIXTURE = "scripts/fixtures/c18-boundary.synthetic.v1.json";
+export const SYNTHETIC_C18_FIXTURE_SHA256 = "afd0fc1244a8d84b89fad436dadd5ad5978b13fa1fa100e37caa1ae6371f77b9";
+export const SYNTHETIC_REPLAY_DISCLAIMER = "SYNTHETIC TEST FIXTURE · HISTORICAL MEASUREMENT NOT PERFORMED · LIVE PROVIDER NOT CALLED";
+export type C18ReplaySubject = ReplaySubject & { sourceKind: "historical-artifact" | "test-fixture" };
 
 function arg(name: string, fallback?: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -45,7 +50,9 @@ function arg(name: string, fallback?: string): string {
 }
 
 /** Build the ONE reconstructed subject, or refuse. Exported so the runner and tests share it. */
-export function buildC18Subject(repoRoot: string, evidenceDir: string): ReplaySubject {
+export function buildC18Subject(repoRoot: string, evidenceDir: string,
+  source: "historical" | "synthetic-test-fixture" = "historical"): C18ReplaySubject {
+  if (source === "synthetic-test-fixture") return buildSyntheticTestSubject(repoRoot);
   const provenance = reconstructHistoricalProvenance({
     sources: [
       extractFromCorpus(join(repoRoot, CORPUS), CASE_ID),
@@ -83,6 +90,7 @@ export function buildC18Subject(repoRoot: string, evidenceDir: string): ReplaySu
   if (!authority.ok) throw new Error(`boundary authority refused the subject: ${authority.codes.join(",")}`);
 
   return {
+    sourceKind: "historical-artifact",
     sourceRunId: "20260801T024949Z",
     sourcePassId: "pass2",
     sourceCaseId: CASE_ID,
@@ -91,6 +99,40 @@ export function buildC18Subject(repoRoot: string, evidenceDir: string): ReplaySu
     sourceArtifactSha256: SOURCE_ARTIFACT_SHA256,
     subject,
     triggeringErrors: ["review_verdict_contradicts_details"],
+  };
+}
+
+/** Explicit test injection only. There is no fallback from historical evidence to this input. */
+function buildSyntheticTestSubject(repoRoot: string): C18ReplaySubject {
+  const raw = readFileSync(join(repoRoot, SYNTHETIC_C18_FIXTURE), "utf8");
+  const artifactSha = createHash("sha256").update(raw).digest("hex");
+  if (artifactSha !== SYNTHETIC_C18_FIXTURE_SHA256) throw new Error("synthetic fixture digest mismatch");
+  const fixture = JSON.parse(raw) as { fixtureVersion: string; sourceKind: string; sourceReference: string;
+    caseId: string; boundary: { id: string; statement: string }; scenario: unknown };
+  if (fixture.fixtureVersion !== "c18-synthetic-replay/v1" || fixture.sourceKind !== "test-fixture"
+    || fixture.caseId !== CASE_ID || fixture.sourceReference !== "synthetic:c18-boundary-regression"
+    || fixture.boundary.id !== "c1_verify" || fixture.boundary.statement !== "Two identifiers must be verified before treatment") {
+    throw new Error("invalid synthetic fixture identity");
+  }
+  const provenance = buildBoundaryProvenance({
+    available: [{ ...fixture.boundary, provenance: "synthetic-test-fixture" }],
+    activeIds: [fixture.boundary.id], scopeConfirmed: true, sourceKind: "canonical_case_input",
+    sourceReference: fixture.sourceReference, sourceSha256: artifactSha,
+  });
+  const authority = assertReviewBoundaryAuthority(provenance, boundaryProvenanceSha256(provenance));
+  if (!authority.ok) throw new Error("synthetic fixture boundary authority refused");
+  return {
+    sourceKind: "test-fixture", sourceRunId: "synthetic-test-fixture", sourcePassId: "synthetic",
+    sourceCaseId: CASE_ID, sourceAttemptIndex: 0, sourceArtifactFile: SYNTHETIC_C18_FIXTURE,
+    sourceArtifactSha256: artifactSha, triggeringErrors: ["synthetic-regression-only"],
+    subject: {
+      scenario: fixture.scenario, scenarioSha256: scenarioDigest(fixture.scenario),
+      generationAttemptId: "synthetic-test-fixture/c18#0", caseId: CASE_ID,
+      boundaryProvenance: provenance, confirmedBoundaries: [fixture.boundary], activeBoundaryIds: [fixture.boundary.id],
+      language: "ko", generationModel: "synthetic-test-model", generationSampling: PRACTICE_SAMPLING.generation,
+      generationFinishReason: null, canonicalValidatorResult: null, deterministicGateResult: null,
+      reviewContractSha256: buildReviewSubjectContract().sha256,
+    },
   };
 }
 
@@ -114,10 +156,13 @@ async function main(): Promise<void> {
   const replayRunId = arg("replay-run-id");
   const dir = arg("artifact-dir");
   const evidenceDir = arg("evidence-dir", join(process.cwd(), ".eval-artifacts"));
-  const subject = buildC18Subject(process.cwd(), evidenceDir);
+  const synthetic = process.argv.includes("--synthetic-test-fixture");
+  if (synthetic && !useMock) throw new Error("synthetic test fixture requires mock mode");
+  const subject = buildC18Subject(process.cwd(), evidenceDir, synthetic ? "synthetic-test-fixture" : "historical");
+  const disclaimer = synthetic ? SYNTHETIC_REPLAY_DISCLAIMER : RECONSTRUCTION_DISCLAIMER;
   const digests = subjectDigests(subject.subject);
 
-  process.stdout.write(`${RECONSTRUCTION_DISCLAIMER}\n`);
+  process.stdout.write(`${disclaimer}\n`);
   process.stdout.write(`ACTIVE BOUNDARY: ${subject.subject.activeBoundaryIds.join(",")}\n`);
   process.stdout.write(`BOUNDARY TEXT:   ${subject.subject.confirmedBoundaries.map((b) => b.statement).join(" | ")}\n`);
   process.stdout.write(`${canonicalJson(digests)}\n`);
@@ -132,7 +177,7 @@ async function main(): Promise<void> {
     writeArtifact: (id, payload) => {
       // The artifact carries the boundary evidence, never just the outcome label.
       const enriched = JSON.stringify(
-        { ...JSON.parse(payload), boundaryProvenance: subject.subject.boundaryProvenance, activeBoundaryIds: subject.subject.activeBoundaryIds, subjectDigests: digests, reconstructionDisclaimer: RECONSTRUCTION_DISCLAIMER },
+        { ...JSON.parse(payload), sourceKind: subject.sourceKind, boundaryProvenance: subject.subject.boundaryProvenance, activeBoundaryIds: subject.subject.activeBoundaryIds, subjectDigests: digests, reconstructionDisclaimer: disclaimer },
         null,
         2,
       );

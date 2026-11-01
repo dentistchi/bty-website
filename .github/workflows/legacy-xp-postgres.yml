@@ -1,4 +1,4 @@
-name: Legacy XP native PostgreSQL
+name: App reward and completion PostgreSQL
 
 on:
   pull_request:
@@ -13,6 +13,17 @@ on:
       - src/lib/bty/arena/legacyRewardAcknowledgement*.ts
       - src/lib/bty/arena/legacy-xp-atomic.pg.test.ts
       - scripts/legacy-xp-postgres-qa.ts
+      - scripts/healing-atomic-postgres-qa.ts
+      - scripts/foundry-xp-postgres-qa.ts
+      - src/lib/bty/healing/**
+      - src/lib/bty/emotional-stats/**
+      - src/lib/bty/foundry/events/**
+      - src/app/api/bty/awakening/**
+      - src/app/api/bty/healing/progress/**
+      - src/app/api/emotional-stats/second-awakening/**
+      - supabase/migrations/**
+      - supabase/migrations/20261101000728_healing_awakening_atomic_completion.sql
+      - supabase/migrations/20261101001020_foundry_core_atomic_rewards.sql
       - src/domain/rules/xp.ts
       - src/domain/rules/level-tier.ts
       - src/domain/constants.ts
@@ -30,14 +41,31 @@ concurrency:
 
 jobs:
   native-postgres:
+    name: PostgreSQL — ${{ matrix.suite }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: legacy
+            database: bty_legacy_xp_atomic_qa
+            script: scripts/legacy-xp-postgres-qa.ts
+            migration: supabase/migrations/20261031222747_legacy_xp_atomic_reward_receipts.sql
+          - suite: healing
+            database: bty_healing_atomic_qa
+            script: scripts/healing-atomic-postgres-qa.ts
+            migration: supabase/migrations/20261101000728_healing_awakening_atomic_completion.sql
+          - suite: foundry
+            database: bty_foundry_xp_atomic_qa
+            script: scripts/foundry-xp-postgres-qa.ts
+            migration: supabase/migrations/20261101001020_foundry_core_atomic_rewards.sql
     timeout-minutes: 15
     services:
       postgres:
         image: postgres:17
         env:
           POSTGRES_USER: postgres
-          POSTGRES_DB: bty_legacy_xp_atomic_qa
+          POSTGRES_DB: ${{ matrix.database }}
           # Disposable service credential; never a repository/environment secret.
           POSTGRES_PASSWORD: legacy-xp-disposable-only
           # Both server and published port match the harness's mandatory guard.
@@ -45,7 +73,7 @@ jobs:
         ports:
           - 127.0.0.1:55473:55473
         options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -p 55473 -U postgres -d bty_legacy_xp_atomic_qa"
+          --health-cmd "pg_isready -h 127.0.0.1 -p 55473 -U postgres -d ${{ matrix.database }}"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -70,21 +98,25 @@ jobs:
       - name: Verify atomic rewards on separate PostgreSQL connections
         env:
           # Literal loopback URL, fixed port/name, fresh container database only.
-          LEGACY_XP_TEST_DATABASE_URL: postgresql://postgres:legacy-xp-disposable-only@127.0.0.1:55473/bty_legacy_xp_atomic_qa
+          LEGACY_XP_TEST_DATABASE_URL: postgresql://postgres:legacy-xp-disposable-only@127.0.0.1:55473/${{ matrix.database }}
+          HEALING_ATOMIC_TEST_DATABASE_URL: postgresql://postgres:legacy-xp-disposable-only@127.0.0.1:55473/${{ matrix.database }}
+          FOUNDRY_XP_TEST_DATABASE_URL: postgresql://postgres:legacy-xp-disposable-only@127.0.0.1:55473/${{ matrix.database }}
+          HEALING_ATOMIC_TEST_CONTAINER_SERVICE: '1'
+          FOUNDRY_XP_TEST_CONTAINER_SERVICE: '1'
           # The connected server reports its Docker bridge address. This opt-in
           # permits RFC1918 only and additionally requires GITHUB_ACTIONS=true.
           LEGACY_XP_TEST_CONTAINER_SERVICE: '1'
         run: |
           set -euo pipefail
-          node --import tsx scripts/legacy-xp-postgres-qa.ts --postgres \
-            --migration "$GITHUB_WORKSPACE/supabase/migrations/20261031222747_legacy_xp_atomic_reward_receipts.sql" \
-            2>&1 | tee legacy-xp-postgres-qa.log
+          node --import tsx "${{ matrix.script }}" --postgres \
+            --migration "$GITHUB_WORKSPACE/${{ matrix.migration }}" \
+            2>&1 | tee atomic-postgres-${{ matrix.suite }}.log
 
       - name: Preserve SQL verification log and JSON result
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: legacy-xp-postgres-${{ github.run_id }}-${{ github.run_attempt }}
-          path: legacy-xp-postgres-qa.log
+          name: atomic-postgres-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: atomic-postgres-${{ matrix.suite }}.log
           if-no-files-found: ignore
           retention-days: 7

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
@@ -39,6 +39,29 @@ type SecondAwakeningRes = {
   ritual?: SecondAwakeningRitual;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+const isCount = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+const isText = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+function isRitual(value: unknown): value is SecondAwakeningRitual {
+  if (!isRecord(value) || !isRecord(value.act1) || !isRecord(value.act2) || !isRecord(value.act3)) return false;
+  const { act1, act2, act3 } = value;
+  return isText(act1.name) && isCount(act1.sessionCount) && isCount(act1.repairLoopCount) && isCount(act1.oFnRCount)
+    && isText(act1.patternNote) && Array.isArray(act1.coreHighlight) && act1.coreHighlight.every(item =>
+      isRecord(item) && isText(item.statId) && isText(item.name) && typeof item.value === "number" && Number.isFinite(item.value))
+    && isText(act2.name) && isText(act2.identityStatement) && isText(act2.phaseIiIntro)
+    && isText(act3.name) && isText(act3.unlockLabel) && [null, "PRM", "SAG"].includes(act3.unlockGranted as string | null);
+}
+function isAwakening(value: unknown): value is SecondAwakeningRes {
+  return isRecord(value) && typeof value.eligible === "boolean" && typeof value.completed === "boolean"
+    && isCount(value.userDay) && isCount(value.sessionCount)
+    && ((!value.eligible || value.completed) || isRitual(value.ritual));
+}
+function isCompletion(value: unknown): boolean {
+  return isRecord(value) && value.ok === true && typeof value.idempotent === "boolean"
+    && (value.starterUnlockGranted === undefined || value.starterUnlockGranted === "PRM" || value.starterUnlockGranted === "SAG");
+}
+
 export default function SecondAwakeningPageClient() {
   const pathname = usePathname() ?? "";
   const locale = pathname.startsWith("/ko") ? "ko" : "en";
@@ -49,35 +72,60 @@ export default function SecondAwakeningPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    setError(null);
-    fetch("/api/emotional-stats/second-awakening")
-      .then((r) => r.json())
-      .then((d: SecondAwakeningRes) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError(locale === "ko" ? "2차 각성 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "Could not load Second Awakening. Wait a moment and reload.");
-        setLoading(false);
-      });
-  }, [locale]);
+  const loadRevision = useRef(0);
+  const submittingRef = useRef(false);
+  const readError = locale === "ko"
+    ? "2차 각성 정보를 불러오지 못했어요. 다시 시도해 주세요."
+    : "Could not load Second Awakening. Please try again.";
+  const writeError = locale === "ko"
+    ? "완료 상태를 확인하지 못했어요. 진행 내용은 그대로 남아 있습니다. 다시 시도해 주세요."
+    : "Could not confirm your completion. Your ritual is still here. Please try again.";
+  const reviewError = locale === "ko"
+    ? "이 완료 기록은 확인을 위한 검토가 필요합니다. 진행 내용은 그대로 남아 있습니다."
+    : "This completion needs review before it can be confirmed. Your ritual is still here.";
+  const retry = locale === "ko" ? "다시 시도" : "Retry";
 
-  const handleEnterNextPhase = () => {
-    if (!data?.eligible || data.completed || submitting) return;
+  const load = useCallback(async () => {
+    const revision = ++loadRevision.current;
+    setError(null);
+    setLoading(true);
+    try {
+      const response = await fetch("/api/emotional-stats/second-awakening", { credentials: "include" });
+      if (!response.ok) throw new Error("READ_FAILED");
+      const body: unknown = await response.json();
+      if (!isAwakening(body)) throw new Error("READ_INVALID");
+      if (revision === loadRevision.current) setData(body);
+    } catch {
+      if (revision === loadRevision.current) { setData(null); setError(readError); }
+    } finally {
+      if (revision === loadRevision.current) setLoading(false);
+    }
+  }, [readError]);
+  useEffect(() => {
+    void load();
+    return () => { loadRevision.current += 1; };
+  }, [load]);
+
+  const handleEnterNextPhase = async () => {
+    if (!data?.eligible || data.completed || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
-    fetch("/api/emotional-stats/second-awakening/complete", { method: "POST" })
-      .then((r) => r.json())
-      .then((body) => {
-        if (body.ok) {
-          setData((prev) =>
-            prev ? { ...prev, completed: true, ritual: prev.ritual } : prev
-          );
-          router.refresh();
-        }
-        setSubmitting(false);
-      })
-      .catch(() => setSubmitting(false));
+    setError(null);
+    try {
+      const response = await fetch("/api/emotional-stats/second-awakening/complete", { method: "POST", credentials: "include" });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isCompletion(body)) {
+        setError(response.status === 409 && isRecord(body) && body.code === "HEALING_COMPLETION_REVIEW_REQUIRED" ? reviewError : writeError);
+        return;
+      }
+      setData(prev => prev ? { ...prev, completed: true } : prev);
+      router.refresh();
+    } catch {
+      setError(writeError);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   };
 
   if (loading && !error) {
@@ -99,6 +147,7 @@ export default function SecondAwakeningPageClient() {
         <main className="min-h-screen bg-foundry-white flex flex-col items-center justify-center px-4" aria-label={tHealing.awakeningMainRegionAriaError}>
           <div className="flex flex-col items-center" role="region" aria-label={locale === "ko" ? "오류 안내 및 복귀" : "Error message and return"}>
             <p className="text-foundry-ink-soft text-center mb-4" role="alert">{error}</p>
+            <button type="button" onClick={() => void load()} className="mb-3 rounded-xl bg-foundry-purple px-6 py-3 font-medium text-white">{retry}</button>
             <Link href={locale === "ko" ? "/ko/bty/healing" : "/en/bty/healing"} className="rounded-xl px-6 py-3 font-medium border border-foundry-purple-muted text-foundry-purple hover:bg-foundry-purple/10 transition-colors" aria-label={locale === "ko" ? "Healing으로 돌아가기" : "Back to Healing"}>
             {locale === "ko" ? "Healing으로" : "Back to Healing"}
           </Link>
@@ -238,9 +287,9 @@ export default function SecondAwakeningPageClient() {
               <p className="text-sm text-foundry-ink mb-4">{ritual.act3.unlockLabel}</p>
               <button
                 type="button"
-                onClick={handleEnterNextPhase}
+                onClick={() => void handleEnterNextPhase()}
                 disabled={submitting}
-                aria-label={submitting ? (locale === "ko" ? "처리 중" : "Processing") : (locale === "ko" ? "다음 단계로" : "Enter next phase")}
+                aria-label={submitting ? (locale === "ko" ? "처리 중" : "Processing") : error ? retry : (locale === "ko" ? "다음 단계로" : "Enter next phase")}
                 className={cn(
                   "rounded-xl px-6 py-3 font-medium text-white",
                   "bg-foundry-purple hover:bg-foundry-purple-dark transition-colors",
@@ -249,8 +298,9 @@ export default function SecondAwakeningPageClient() {
               >
                 {submitting
                   ? (locale === "ko" ? "처리 중…" : "Processing…")
-                  : (locale === "ko" ? "Enter Next Phase" : "Enter Next Phase")}
+                  : error ? retry : "Enter Next Phase"}
               </button>
+              {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
               {submitting && (
                 <div className="mt-3" role="status" aria-busy="true" aria-label={locale === "ko" ? "다음 단계 처리 중" : "Processing next phase"}>
                   <CardSkeleton showLabel={false} lines={1} style={{ padding: "12px 16px" }} />

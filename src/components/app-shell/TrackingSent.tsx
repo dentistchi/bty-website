@@ -2,7 +2,7 @@
 
 import AnnouncementTrackingSummary from "./AnnouncementTrackingSummary";
 import type { HostAnnouncement } from "@/lib/bty/announcement/announcementService.server";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementFunnel } from "@/domain/announcement/trackedAnnouncement";
 import { funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
@@ -357,7 +357,10 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   /** Which run is expanded. One at a time: Today is a glance, not a console. */
   const [openId, setOpenId] = useState<string | null>(null);
+  // Today reselect and mutation rereads supersede every earlier snapshot, including failures.
+  const readGeneration = useRef(0);
   const load = useCallback(async () => {
+    const generation = ++readGeneration.current;
     /**
      * One request, and at most ONE retry after re-reading the session.
      *
@@ -375,6 +378,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
     };
 
     let res = await attempt();
+    if (generation !== readGeneration.current) return;
 
     if (res?.status === 401) {
       // Ask the client for the CURRENT session — this is what refreshes a rotated token — then
@@ -386,8 +390,10 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
       } catch {
         /* A session we cannot read is handled by the retry's own result. */
       }
+      if (generation !== readGeneration.current) return;
       res = await attempt();
     }
+    if (generation !== readGeneration.current) return;
 
     if (!res) {
       setState("error");
@@ -403,6 +409,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
     }
 
     const d = (await res.json().catch(() => null)) as { ok?: boolean; items?: HostItem[] } | null;
+    if (generation !== readGeneration.current) return;
     if (d?.ok !== true || !Array.isArray(d.items)) {
       setState("error");
       return;
@@ -508,6 +515,7 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
   */
   useEffect(() => {
     void load();
+    return () => { readGeneration.current++; };
   }, [load, refreshKey]);
 
   if (state === "error") {

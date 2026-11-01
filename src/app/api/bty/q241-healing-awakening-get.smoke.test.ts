@@ -1,6 +1,7 @@
 /**
  * C6 241 — Healing + Awakening GET 스모크: 401 → 200 (한 플로우).
  */
+import { healingReadClient } from "@/lib/bty/healing/__fixtures__/readClient";
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET as healingGET } from "./healing/route";
@@ -20,13 +21,7 @@ function req(path: string) {
 }
 
 function supabaseActsEmpty() {
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({ data: [], error: null }),
-    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-  };
-  return { from: vi.fn(() => chain) };
+  return healingReadClient().client;
 }
 
 describe("241 Healing/Awakening GET smoke", () => {

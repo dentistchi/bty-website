@@ -254,7 +254,7 @@ const CLI = "scripts/practice-live-stability.ts";
 
 function runCli(env: Record<string, string>, args: string[]): { code: number; stdout: string; stderr: string } {
   try {
-    const stdout = execFileSync("npx", ["tsx", CLI, ...args], {
+    const stdout = execFileSync(process.execPath, ["--import", "tsx", CLI, ...args], {
       encoding: "utf8",
       env: { ...process.env, ...env },
       stdio: ["ignore", "pipe", "pipe"],
@@ -375,7 +375,7 @@ describe("PART 9 — the exact tracked orchestrator, run end to end", () => {
 describe("PART 7 — the six case artifacts are the collation authority", () => {
   function runCollator(args: string[]): { code: number; stdout: string; stderr: string } {
     try {
-      const stdout = execFileSync("npx", ["tsx", "scripts/practice-stability-collate.ts", ...args], {
+      const stdout = execFileSync(process.execPath, ["--import", "tsx", "scripts/practice-stability-collate.ts", ...args], {
         encoding: "utf8",
         env: process.env,
         stdio: ["ignore", "pipe", "pipe"],

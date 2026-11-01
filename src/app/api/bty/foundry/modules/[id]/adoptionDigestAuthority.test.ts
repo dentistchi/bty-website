@@ -37,7 +37,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
   copyCookiesAndDebug: () => {},
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
-vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({ isActiveFoundryHost: async () => true }));
+vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({ isActiveExplicitFoundryHost: async () => true }));
 vi.mock("@/lib/bty/foundry/events/foundryModuleService", () => ({
   getOwnerDraft: (...a: unknown[]) => getOwnerDraft(...a),
   updateDraftStep: (...a: unknown[]) => updateDraftStep(...a),

@@ -11,7 +11,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, readdirSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { SYNTHETIC_C18_FIXTURE, SYNTHETIC_C18_FIXTURE_SHA256 } from "../../../../../scripts/practice-c18-boundary-replay";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -26,14 +28,8 @@ import { NARROW_BOUNDARY_SCHEMA_NAME } from "@/domain/foundry/arena-draft/narrow
 import { buildFieldRepairRequest } from "./narrowBoundaryContract";
 import { R248_ATTEMPT_1 } from "@/domain/foundry/arena-draft/r248LiveDtoFixture";
 
-const SOURCE = join(process.cwd(), ".eval-artifacts");
-const present = (): boolean => {
-  try {
-    return readdirSync(SOURCE).some((f) => f.startsWith("practice-generation.stability.live."));
-  } catch {
-    return false;
-  }
-};
+// Always-run tracked synthetic data; no unavailable historical artifact is substituted.
+const SOURCE = join(process.cwd(), "scripts/fixtures");
 
 let dir: string;
 beforeEach(() => {
@@ -58,6 +54,7 @@ type Observed = {
 const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}, patchKind: "canonical" | "captured-r252" = "canonical") =>
   runC18NarrowBoundaryReplay(
     {
+      subjectSource: "synthetic-test-fixture",
       review: async (s, a, surfaceRefs) => {
         o.reviewCalls.push({ attempt: a, surfaceRefs });
         return mockNarrowReview("incomplete-field-repair", s, a, surfaceRefs ? [...surfaceRefs] : undefined);
@@ -88,9 +85,43 @@ const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}, patchKind:
 
 const observed = (): Observed => ({ reviewCalls: [], repairCalls: [], events: [], artifacts: [] });
 
+describe("synthetic source authority", () => {
+  it("the actual CLI labels synthetic mock output and refuses live/default substitutions", () => {
+    const cli = (mock: boolean, synthetic: boolean, output: string) => spawnSync(process.execPath,
+      ["--import", "tsx", "scripts/practice-c18-narrow-boundary-replay.ts", "--replay-run-id", "synthetic-cli-proof",
+        "--artifact-dir", join(dir, output), "--evidence-dir", join(dir, "unavailable-real-captures"),
+        ...(synthetic ? ["--synthetic-test-fixture"] : [])],
+      { cwd: process.cwd(), encoding: "utf8", timeout: 30000,
+        env: { PATH: process.env.PATH, HOME: dir, NODE_ENV: "test", ...(mock ? { BTY_C18_NARROW_MOCK: "1" } : {}) } });
+    const synthetic = cli(true, true, "mock-output");
+    expect(synthetic.status, synthetic.stderr).toBe(0);
+    expect(synthetic.stdout).toContain("SYNTHETIC TEST FIXTURE");
+    expect(synthetic.stdout).toContain("NOT A REVIEWER MEASUREMENT");
+    const names = readdirSync(join(dir, "mock-output")); expect(names).toHaveLength(1);
+    const body = JSON.parse(readFileSync(join(dir, "mock-output", names[0]!), "utf8"));
+    expect(body).toMatchObject({ mode: "mock", sourceKind: "test-fixture", sourceRunId: "synthetic-test-fixture",
+      sourcePassId: "synthetic", sourceAttemptIndex: 0, sourceArtifactFile: SYNTHETIC_C18_FIXTURE,
+      sourceArtifactSha256: SYNTHETIC_C18_FIXTURE_SHA256, productQualityPass: null });
+    const live = cli(false, true, "denied-live");
+    expect(live.status).toBe(1); expect(live.stderr).toContain("synthetic test fixture requires mock mode");
+    expect(existsSync(join(dir, "denied-live"))).toBe(false);
+    const historical = cli(true, false, "missing-history");
+    expect(historical.status).toBe(1); expect(historical.stderr).toContain("ENOENT");
+    expect(existsSync(join(dir, "missing-history"))).toBe(false);
+  }, 30000);
+
+  it("refuses synthetic inputs on the live route before any dependency call", async () => {
+    let calls = 0;
+    const unexpected = () => { calls++; throw new Error("must not call a dependency"); };
+    await expect(runC18NarrowBoundaryReplay({ subjectSource: "synthetic-test-fixture",
+      review: async () => unexpected(), repair: async () => unexpected(), writeArtifact: unexpected,
+    }, process.cwd(), SOURCE, "denied", "live")).rejects.toThrow(/requires mock mode/);
+    expect(calls).toBe(0);
+  });
+});
+
 describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", () => {
   it("1,2 — the initial call is the full-row schema and its response is incomplete", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     expect(NARROW_BOUNDARY_SCHEMA_NAME).toBe("bty_practice_boundary_truth_review_v4");
@@ -100,7 +131,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("3,4,6 — a plan is built, digested, and carried into the patch request", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     expect(o.repairCalls).toHaveLength(1);
@@ -132,7 +162,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("R2.54 — the request offers COMPLETE canonical alternatives, not five independent scalar lists", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     const req = o.repairCalls[0]!.request as {
@@ -186,7 +215,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("5,7 — the second call uses the PATCH schema and its response is repairs[], never assessments[]", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     expect(FIELD_REPAIR_SCHEMA_NAME).toBe("bty_practice_boundary_field_repair_v1");
@@ -201,7 +229,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("8 — no SECOND full-row call occurs, and the first never carries a surface subset", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     const summary = await run(o);
     expect(o.reviewCalls).toHaveLength(1);
@@ -210,7 +237,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("9,10,11 — the field-level merge produces a complete matrix with no frozen mutation", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     const summary = await run(o);
     expect(summary.repairMode).toBe("field_patch");
@@ -220,7 +246,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("12 — the legacy event is never emitted", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     for (const e of o.events) expect(e).not.toContain("boundary_review_failed_subset_repair");
@@ -229,7 +254,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 
   it("the test FAILS if the entrypoint stops supplying repair", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     // Exactly the shape R2.51 found live: review present, repair absent.
     const summary = await run(o, { repair: undefined as unknown as NarrowReplayDeps["repair"] });
@@ -250,7 +274,6 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
  */
 describe("[R2.54][6] artifact /6 records the group decision and the merge boundary", () => {
   it("a VALID run records the matched alternative and a crossed merge boundary", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     expect(o.artifacts).toHaveLength(1);
@@ -312,7 +335,6 @@ describe("[R2.54][6] artifact /6 records the group decision and the merge bounda
   });
 
   it("an INVALID row is diagnosable from the artifact alone — the R2.52 selection, replayed", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     const summary = await run(o, {}, "captured-r252");
 
@@ -369,7 +391,6 @@ describe("[R2.54][6] artifact /6 records the group decision and the merge bounda
   });
 
   it("model reason PROSE never reaches the artifact", async () => {
-    if (!present()) return expect(present()).toBe(false);
     const o = observed();
     await run(o);
     const obs = (o.artifacts[0]! as { fieldRepairObservability: unknown }).fieldRepairObservability;
@@ -382,14 +403,13 @@ describe("[R2.54][6] artifact /6 records the group decision and the merge bounda
 });
 
 describe("[R2.52][7] the artifact proves which route ran", () => {
-  it("the WRITTEN version is bumped and historical /4 stays readable", () => {
+  it("the WRITTEN version is bumped and an explicit synthetic /4 shape stays readable", () => {
     expect(NARROW_REPLAY_ARTIFACT_VERSION).toBe("practice-narrow-boundary-replay/6");
-    // The retained R2.50 live artifact is /4 and must still parse.
-    const legacy = readdirSync(SOURCE).find((f) => f.includes("boundaryreplay.live.20260802T053740Z"));
-    if (!legacy) return expect(true).toBe(true);
-    const body = JSON.parse(readFileSync(join(SOURCE, legacy), "utf8")) as { artifactVersion: string; fieldRepairPlan: unknown };
-    expect(body.artifactVersion).toBe("practice-narrow-boundary-replay/4");
-    // And it records the defect: no plan, which under R2.52 would read as repairMode "unavailable".
-    expect(body.fieldRepairPlan).toBeNull();
+    const legacy = JSON.parse(readFileSync(join(process.cwd(), "src/lib/bty/foundry/arena/fixtures/narrow-replay-v4.synthetic.json"), "utf8")) as {
+      sourceKind: string; artifactVersion: string; fieldRepairPlan: unknown;
+    };
+    expect(legacy.sourceKind).toBe("test-fixture");
+    expect(legacy.artifactVersion).toBe("practice-narrow-boundary-replay/4");
+    expect(legacy.fieldRepairPlan).toBeNull();
   });
 });

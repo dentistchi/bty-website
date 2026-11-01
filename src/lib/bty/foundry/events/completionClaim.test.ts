@@ -89,6 +89,7 @@ describe("[claim code · T1-T4] the credential", () => {
 
 const MIGRATION = read("supabase/migrations/20260827000000_foundry_deferred_completion_claim_v1.sql");
 const SERVICE = read("src/lib/bty/foundry/events/completionClaimService.ts");
+const ATOMIC_RPC_CALL = 'admin.rpc("bty_foundry_redeem_completion_claim_atomic"';
 const ROUTE = read("src/app/api/bty/foundry/completion-claim/route.ts");
 
 describe("[claim · T5-T9] every precondition is in the one atomic statement", () => {
@@ -153,7 +154,9 @@ describe("[claim · FI] the whole claim is one transaction, or none of it", () =
       expect(FN, nested).toContain(nested);
     }
     // …and the service performs NO mutation after the call. This is the whole correction.
-    const afterRpc = SERVICE.slice(SERVICE.indexOf('admin.rpc("bty_foundry_redeem_completion_claim"'));
+    const rpcIndex = SERVICE.indexOf(ATOMIC_RPC_CALL);
+    expect(rpcIndex, "the atomic RPC must actually exist before slicing").toBeGreaterThan(-1);
+    const afterRpc = SERVICE.slice(rpcIndex);
     for (const mutation of ["materializeFollowupObligation", "materializeApplyWindow", "claimAssignmentForParticipant", "awardTrainingCoreXp", ".update("]) {
       expect(afterRpc, mutation).not.toContain(mutation);
     }
@@ -220,7 +223,11 @@ describe("[claim · FI] the whole claim is one transaction, or none of it", () =
   });
 
   it("the service prepares by READING only, and writes exactly once", () => {
-    const before = SERVICE.slice(SERVICE.indexOf("export async function redeemCompletionClaim"), SERVICE.indexOf('admin.rpc("bty_foundry_redeem_completion_claim"'));
+    const functionIndex = SERVICE.indexOf("export async function redeemCompletionClaim");
+    const rpcIndex = SERVICE.indexOf(ATOMIC_RPC_CALL);
+    expect(functionIndex).toBeGreaterThan(-1);
+    expect(rpcIndex).toBeGreaterThan(functionIndex);
+    const before = SERVICE.slice(functionIndex, rpcIndex);
     for (const mutation of [".update(", ".insert(", ".upsert(", ".delete("]) {
       expect(before, mutation).not.toContain(mutation);
     }

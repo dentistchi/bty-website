@@ -4,13 +4,14 @@
 import { NextRequest } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
+import { healingReadClient } from "@/lib/bty/healing/__fixtures__/readClient";
 
 const mockRequireUser = vi.fn();
 const mockCopyCookiesAndDebug = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
-  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
+  requireConsentedUser: async (...args: unknown[]) => ({ consentDenied: null, ...(await mockRequireUser(...args)) }),
   unauthenticated: vi.fn((_req: unknown, _base: unknown) =>
     new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 })
   ),
@@ -37,6 +38,7 @@ function supabaseActs(rows: { act_id: number }[]) {
 describe("GET /api/bty/healing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCopyCookiesAndDebug.mockReset();
     mockRequireUser.mockResolvedValue({ user: null, supabase: {}, base: {} });
   });
 
@@ -125,4 +127,49 @@ describe("GET /api/bty/healing", () => {
     expect(data.error).toBe("INTERNAL_ERROR");
     expect(data.detail).toBe("cookie copy failed");
   });
+});
+
+
+describe("Healing unavailable progress is retryable", () => {
+  beforeEach(() => { vi.clearAllMocks(); mockCopyCookiesAndDebug.mockReset(); });
+  it("does not silently downgrade an unavailable milestone to Phase I", async () => {
+    const { client } = healingReadClient({ milestoneError: { message: "private database details" } });
+    mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: client, base: {} });
+    const res = await GET(makeRequest()); expect(res.status).toBe(500);
+    const body = await res.json(); expect(body).not.toHaveProperty("phase");
+    expect(JSON.stringify(body)).not.toContain("private database details");
+  });
+  it("refuses consent before reading the user's phase", async () => {
+    const { client, reads } = healingReadClient();
+    mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: client, base: {},
+      consentDenied: new Response(JSON.stringify({ error: "consent_required" }), { status: 403 }) });
+    expect((await GET(makeRequest())).status).toBe(403); expect(reads).toEqual([]);
+  });
+});
+
+
+it("does not publish Phase I plus allActsComplete for three acts without their milestone", async () => {
+  mockCopyCookiesAndDebug.mockReset();
+  const { client } = healingReadClient({ acts: [1, 2, 3].map(act_id => ({ act_id })) });
+  mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: client, base: {} });
+  const res = await GET(makeRequest()); expect(res.status).toBe(409);
+  expect(await res.json()).toEqual({ error: "HEALING_COMPLETION_REVIEW_REQUIRED" });
+});
+
+
+it("returns review-required for a claimed starter that has no durable unlock", async () => {
+  mockCopyCookiesAndDebug.mockReset();
+  const { client } = healingReadClient({ milestone: { second_awakening_completed_at: "2026-07-01T12:00:00Z", starter_unlock_granted: "PRM" } });
+  mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: client, base: {} });
+  const res = await GET(makeRequest()); expect(res.status).toBe(409);
+  expect(await res.json()).toEqual({ error: "HEALING_COMPLETION_REVIEW_REQUIRED" });
+});
+
+
+it("does not publish a normal progress DTO for a non-prefix act history", async () => {
+  mockCopyCookiesAndDebug.mockReset();
+  const { client } = healingReadClient({ acts: [{ act_id: 2 }], trainDays: Array.from({ length: 28 }, (_, i) => i + 1) });
+  mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: client, base: {} });
+  const res = await GET(makeRequest()); expect(res.status).toBe(409);
+  expect(await res.json()).toEqual({ error: "HEALING_COMPLETION_REVIEW_REQUIRED" });
 });

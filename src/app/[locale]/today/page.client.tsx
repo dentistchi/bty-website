@@ -1,7 +1,9 @@
 "use client";
 
 /**
- * Today — BTY Daily OS surface (Slice 3). Ritual-first, not dashboard/score-first.
+ * Retained legacy Today body (Slice 3), not the canonical /app Today surface.
+ * Its route redirects to /[locale]/app; keeping the dormant reader defensive does
+ * not establish a live app repair. Ritual-first, not dashboard/score-first.
  *
  * Consumes the server layer as authority: GET /api/me/daily (gate) + GET /api/me/pulse
  * (relationship pulse). No local step progression, no client-side evidence interpretation.
@@ -40,6 +42,36 @@ const FALLBACK_PULSE: RelationshipPulse = {
   hasAnyEvidence: false,
 };
 
+const PULSE_BANDS = new Set(["quiet", "living", "connected", "deepening"]);
+const GATE_DESTINATIONS = new Map([
+  ["FORCED_RESET", "center"], ["ACTION_REQUIRED", "open_loop"], ["REEXPOSURE_DUE", "arena_reexposure"],
+  ["YESTERDAY_MIRROR", "today"], ["QUIET_INVITATION", "today"], ["FIRST_DAY", "today"], ["OPEN_DAY", "today"],
+]);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+const hasBand = (value: unknown): boolean => typeof value === "string" && PULSE_BANDS.has(value);
+function isGateSnapshot(value: unknown): value is DailyGateSnapshot {
+  return isRecord(value) && typeof value.gate === "string" && isRecord(value.destination)
+    && typeof value.destination.kind === "string" && GATE_DESTINATIONS.get(value.gate) === value.destination.kind;
+}
+function isPulse(value: unknown): value is RelationshipPulse {
+  if (!isRecord(value) || !hasBand(value.overall) || typeof value.hasAnyEvidence !== "boolean" || !isRecord(value.domains)) return false;
+  return ["self", "others", "ground"].every(key => {
+    const domain = (value.domains as Record<string, unknown>)[key];
+    return isRecord(domain) && hasBand(domain.band) && typeof domain.copyKey === "string";
+  });
+}
+function isIntelligence(value: unknown): value is TodayIntelligence {
+  return isRecord(value)
+    && typeof value.userState === "string" && typeof value.relationshipFocus === "string"
+    && typeof value.confidence === "string" && typeof value.fallbackMode === "string"
+    && ["new_user", "clean_start", "returning_no_yesterday_activity", "pending_action", "missed_action", "verified_action", "scenario_signal", "safe_fallback"].includes(String(value.userState))
+    && ["Self", "Others", "World", "CleanStart", "ContinuePending"].includes(String(value.relationshipFocus))
+    && ["none", "low", "medium", "high"].includes(String(value.confidence))
+    && ["none", "no_evidence", "unknown_axis", "ai_unavailable", "read_error"].includes(String(value.fallbackMode))
+    && Array.isArray(value.reasonCodes) && value.reasonCodes.every(code => typeof code === "string");
+}
+
 /**
  * Read a same-origin /api/me/* GET as JSON, fail-soft to `fallback`. Uses raw fetch
  * (like the /api/me/day/open POST below) — NOT arenaFetch, which is path-guarded to
@@ -47,11 +79,13 @@ const FALLBACK_PULSE: RelationshipPulse = {
  * a developer-visible console.warn (browser + Capacitor→Xcode) so a silent transport
  * failure can never masquerade as a legitimate zero-signal quiet day. No user-facing effect.
  */
-async function fetchMe<T>(path: string, fallback: T): Promise<T> {
+async function fetchMe<T>(path: string, fallback: T, valid: (value: unknown) => value is T): Promise<T> {
   try {
     const res = await fetch(path, { credentials: "include" });
     if (!res.ok) throw new Error(`HTTP_${res.status}`);
-    return (await res.json()) as T;
+    const data: unknown = await res.json();
+    if (!valid(data)) throw new Error("INVALID_RESPONSE");
+    return data;
   } catch (e) {
     console.warn(`[today] ${path} fell back:`, e instanceof Error ? e.message : e);
     return fallback;
@@ -70,21 +104,24 @@ export default function TodayHomeClient() {
   const [intel, setIntel] = React.useState<TodayIntelligence>(FALLBACK_INTEL);
 
   const mounted = React.useRef(true);
+  const loadRevision = React.useRef(0);
   React.useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      loadRevision.current += 1;
     };
   }, []);
 
   const load = React.useCallback(async () => {
+    const revision = ++loadRevision.current;
     setLoading(true);
     const [g, p, i] = await Promise.all([
-      fetchMe<DailyGateSnapshot>("/api/me/daily", FALLBACK_GATE),
-      fetchMe<RelationshipPulse>("/api/me/pulse", FALLBACK_PULSE),
-      fetchMe<TodayIntelligence>("/api/me/today-intelligence", FALLBACK_INTEL),
+      fetchMe<DailyGateSnapshot>("/api/me/daily", FALLBACK_GATE, isGateSnapshot),
+      fetchMe<RelationshipPulse>("/api/me/pulse", FALLBACK_PULSE, isPulse),
+      fetchMe<TodayIntelligence>("/api/me/today-intelligence", FALLBACK_INTEL, isIntelligence),
     ]);
-    if (!mounted.current) return;
+    if (!mounted.current || revision !== loadRevision.current) return;
     setGate(g ?? FALLBACK_GATE);
     setPulse(p ?? FALLBACK_PULSE);
     setIntel(i ?? FALLBACK_INTEL);

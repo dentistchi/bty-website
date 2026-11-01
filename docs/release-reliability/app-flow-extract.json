@@ -1,0 +1,84 @@
+{
+  "sourceCommit": "dbd0bedc90136ad3c7b8f89daf37ab6df846b357",
+  "sourceTree": "696e22381bbebefcfc5f32d85d13dc77792a67e7",
+  "scope": "Only three active app production modules and their isolated regressions, copied exactly. No Clinical source or case data.",
+  "paths": {
+    "src/components/app-shell/SavedForLater.tsx": {
+      "sha256": "6e2f7b1229681e766490271aba8760414b4b46dbd874f080fbbd4a6105475bed",
+      "gitBlobSha": "0637cfce59b6a7f0ca3c767f42b73f96f8440c05"
+    },
+    "src/components/app-shell/TrackingSent.tsx": {
+      "sha256": "a7073842f047d823e8c0848b0413e9913c3b36f6e029ba8acba7cf444e37f923",
+      "gitBlobSha": "936251b04c48cc040924dc204f31af3defa7ea0c"
+    },
+    "src/components/app-shell/arenaRoomActions.ts": {
+      "sha256": "dee5aca7fc910f08e5f060082f6ecd1c8b6b27aa09537ea9936a84696d6dea82",
+      "gitBlobSha": "f783dca1b63676a7ea52dc405d594aa813e9d72a"
+    },
+    "src/components/app-shell/SupersededLaneReads.test.tsx": {
+      "sha256": "0dc8d7fb243995238be382554e6d0701fb5db39e8f2b692edfb7fbbbc7f36a3d",
+      "gitBlobSha": "e99699f3b5e6696018ea09bce238c44eb211b928"
+    },
+    "src/components/app-shell/arenaRoomActions.test.ts": {
+      "sha256": "5ab4b8fe7ac52a8e008b8549694dde56f627bbb036752992b6a6434d2c226717",
+      "gitBlobSha": "7ce29f794e6674a26d7c72c0393ce3d77e186849"
+    },
+    "e2e/app-release-reliability.public.spec.ts": {
+      "sha256": "0158ef2b853036fdaa71e06fac6b9a0edda68c6e20cab9005b1a513ce1edce67",
+      "gitBlobSha": "2ea4c6b915bc456b33ee400c9eee27eeda3887a2"
+    }
+  },
+  "reachability": [
+    [
+      "src/app/[locale]/app/page.tsx",
+      "src/components/app-shell/BtyDailyAppShell.tsx",
+      "src/components/app-shell/TodayHome.tsx",
+      "src/components/app-shell/TrackingSent.tsx"
+    ],
+    [
+      "src/app/[locale]/app/page.tsx",
+      "src/components/app-shell/BtyDailyAppShell.tsx",
+      "src/components/app-shell/SavedForLater.tsx"
+    ],
+    [
+      "src/app/[locale]/app/page.tsx",
+      "src/components/app-shell/BtyDailyAppShell.tsx",
+      "src/components/app-shell/PracticeLanding.tsx",
+      "src/components/app-shell/ArenaRoom.tsx",
+      "src/components/app-shell/arenaRoomActions.ts"
+    ]
+  ],
+  "verification": {
+    "unitsBefore": {
+      "passed": 13,
+      "failed": 10
+    },
+    "relatedUnitsAfter": {
+      "passed": 240,
+      "failed": 0,
+      "files": 16
+    },
+    "browserBefore390": {
+      "savedTrackingFailed": 4,
+      "nativePracticeFailed": 1
+    },
+    "browserAfter": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "retries": 0,
+      "viewportWidths": [
+        320,
+        390,
+        1280
+      ]
+    },
+    "standaloneTypes": {
+      "exit": 0,
+      "node": "20.20.2",
+      "heapGiB": 8
+    },
+    "scope": "Isolated actual React components and Chromium with synthetic network fixtures; no app server, real auth, DB, real model or production writes."
+  }
+}

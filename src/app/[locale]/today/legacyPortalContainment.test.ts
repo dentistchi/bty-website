@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { historicalChangedFiles } from "@/test-support/repositoryScope";
 
 /**
  * THE LAST DOOR INTO THE OLD PRODUCT GENERATION.
@@ -132,12 +132,7 @@ describe("T6/T7 · contained, not migrated", () => {
     statement about one commit cannot be verified against a moving tree.
   */
   const CONTAINMENT_COMMIT = "ab8177e8e001c34b0da4c062b9773f025c7ccab5";
-  const changed = () =>
-    execFileSync("git", ["show", "--pretty=format:", "--name-only", CONTAINMENT_COMMIT], {
-      encoding: "utf8",
-    })
-      .split("\n")
-      .filter(Boolean);
+  const changed = () => historicalChangedFiles(CONTAINMENT_COMMIT);
 
   it("the containment commit's diff is non-empty, so T6/T6b cannot pass vacuously", () => {
     expect(changed().length).toBeGreaterThan(0);

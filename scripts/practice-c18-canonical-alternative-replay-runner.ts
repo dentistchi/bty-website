@@ -122,7 +122,7 @@ import { BOUNDARY_STAGE_ROUTING_CONTRACT, REPAIR_MODES } from "@/lib/bty/foundry
 import { NARROW_REPLAY_ARTIFACT_VERSION } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { DERIVED_APPLICABILITY, DERIVED_COMPLIANCE, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
 import { promptFieldDriftCount } from "@/lib/bty/foundry/arena/boundaryReviewStage";
-import { buildC18Subject, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, CASE_ID } from "./practice-c18-boundary-replay";
+import { buildC18Subject, CASE_ID, SYNTHETIC_REPLAY_DISCLAIMER } from "./practice-c18-boundary-replay";
 
 const REPO = "/Users/hanbit/Dev/btytrainingcenter/bty-app";
 const BRANCH = "inner-main";
@@ -142,9 +142,11 @@ function arg(name: string, fallback?: string): string {
   return v;
 }
 
-const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const head = execFileSync("git", ["-C", process.cwd(), "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const manifest = manifestDigest(buildContractManifest(head, process.env.LLM_MODEL ?? "gpt-4o-mini"));
-const broad = buildC18Subject(process.cwd(), join(process.cwd(), ".eval-artifacts"));
+const synthetic = process.argv.includes("--synthetic-test-fixture");
+if (synthetic && process.env.BTY_C18_REPLAY_MOCK !== "1") throw new Error("synthetic test fixture requires mock mode");
+const broad = buildC18Subject(process.cwd(), join(process.cwd(), ".eval-artifacts"), synthetic ? "synthetic-test-fixture" : "historical");
 const digests = subjectDigests(broad.subject);
 const provenance = broad.subject.boundaryProvenance!;
 const surfaces = enumerateBoundarySurfaces(broad.subject.scenario as ArenaScenarioDraft, {});
@@ -198,8 +200,9 @@ const runtime = [
 const binding = {
   head,
   manifestSha256: manifest,
-  sourceArtifact: SOURCE_ARTIFACT,
-  sourceArtifactSha256: SOURCE_ARTIFACT_SHA256,
+  sourceKind: broad.sourceKind,
+  sourceArtifact: broad.sourceArtifactFile,
+  sourceArtifactSha256: broad.sourceArtifactSha256,
   reconstructionSourceSha256: provenance.reconstructionSources.map((s) => s.sha256),
   reconstructedSubjectSha256: digests.reviewSubjectSha256,
   boundaryProvenanceSha256: boundaryProvenanceSha256(provenance),
@@ -735,7 +738,7 @@ const script = `#!/usr/bin/env bash
 # =============================================================================
 set -Eeuo pipefail
 
-REPO=${shq(REPO)}
+${synthetic ? `printf '%s\\n' ${shq(SYNTHETIC_REPLAY_DISCLAIMER + " · NOT AN EXECUTABLE LIVE CANARY")} >&2\nexit 64\n` : ""}REPO=${shq(REPO)}
 BRANCH=${shq(BRANCH)}
 EXPECT_HEAD=${shq(head)}
 EXPECTED_SUBJECTS=1

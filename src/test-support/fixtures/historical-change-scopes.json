@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "repository": "dentistchi/bty-website",
+  "provenance": "GitHub commit API via connected repository; fetched 2026-10-31. A file-scope proof only, not a reconstructed historical source tree.",
+  "snapshots": [
+    {
+      "commit": "ab8177e8e001c34b0da4c062b9773f025c7ccab5",
+      "url": "https://github.com/dentistchi/bty-website/commit/ab8177e8e001c34b0da4c062b9773f025c7ccab5",
+      "files": [
+        "src/app/[locale]/today/legacyPortalContainment.test.ts",
+        "src/app/[locale]/today/page.tsx"
+      ],
+      "diffSha256": "e0eb96b25d828774aa23fd73c6ad4443023d98f40f144c083741e66b404ac84e"
+    },
+    {
+      "commit": "e71b3c84112ec9ac453fe2ef48d471cda17296f5",
+      "url": "https://github.com/dentistchi/bty-website/commit/e71b3c84112ec9ac453fe2ef48d471cda17296f5",
+      "files": [
+        "src/app/f/[token]/FoundryDocumentClient.backToFoundry.test.tsx",
+        "src/app/f/[token]/FoundryDocumentClient.tsx",
+        "src/app/f/[token]/FoundryGuidanceClient.tsx",
+        "src/app/f/[token]/FoundryJoinClient.handoff.test.tsx",
+        "src/app/f/[token]/FoundryJoinClient.tsx",
+        "src/app/f/[token]/documentCompletionResilience.test.tsx",
+        "src/app/f/[token]/joinCompletionResilience.test.tsx",
+        "src/app/f/[token]/roomEntryExitContainment.test.tsx",
+        "src/components/foundry/event-rooms/FoundryFollowUpResponse.tsx"
+      ],
+      "diffSha256": "97c924874ed2abf2373e3732a3447a7ab9ba9f6ec7527b540936506536d8ae4f"
+    },
+    {
+      "commit": "1aa3d30784fa395a88f003c688379c15ea4e2183",
+      "url": "https://github.com/dentistchi/bty-website/commit/1aa3d30784fa395a88f003c688379c15ea4e2183",
+      "files": [
+        "src/components/foundry/event-rooms/FilesAndDocuments.tsx",
+        "src/components/foundry/event-rooms/FoundryEventControlRoom.tsx",
+        "src/components/foundry/event-rooms/FoundryParticipantRoster.tsx",
+        "src/components/foundry/event-rooms/FoundryTrainingOutcome.tsx",
+        "src/components/foundry/event-rooms/ManagerCanvas.tsx",
+        "src/components/foundry/event-rooms/ModuleBuilderShell.tsx",
+        "src/components/foundry/event-rooms/managerResponsiveLayout.test.tsx"
+      ],
+      "diffSha256": "899f5b0bf22a6e48fbec2a7669337fdf9e42681ba0abf4415e886bd231f9d1df"
+    }
+  ]
+}

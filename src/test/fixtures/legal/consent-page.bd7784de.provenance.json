@@ -1,0 +1,9 @@
+{
+  "repository": "dentistchi/bty-website",
+  "ref": "bd7784de",
+  "path": "src/app/[locale]/legal/accept/page.tsx",
+  "gitBlobSha": "41296c5558fb377bdbbc941e825ece09f03fe379",
+  "sha256": "07f3253c76ce86b16609bda7a0445aecc1e0c8bd691961efe64668313be39f67",
+  "sourceUrl": "https://github.com/dentistchi/bty-website/blob/bd7784de/src/app/[locale]/legal/accept/page.tsx",
+  "retrieval": "GitHub connector exact historical file; local Git object is not required"
+}

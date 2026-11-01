@@ -10,7 +10,7 @@ import { NextRequest } from "next/server";
 
 const requireUser = vi.fn();
 const getSupabaseAdmin = vi.fn();
-const isActiveFoundryHost = vi.fn();
+const isActiveExplicitFoundryHost = vi.fn();
 const resolveLeaderEligibility = vi.fn();
 const resolveOwnOrganizationId = vi.fn();
 const fetchFullNameMap = vi.fn();
@@ -18,7 +18,7 @@ const fetchFullNameMap = vi.fn();
 vi.mock("@/lib/authz", () => ({ requireUser: (...a: unknown[]) => requireUser(...a) }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => getSupabaseAdmin() }));
 vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
-  isActiveFoundryHost: (...a: unknown[]) => isActiveFoundryHost(...a),
+  isActiveExplicitFoundryHost: (...a: unknown[]) => isActiveExplicitFoundryHost(...a),
 }));
 vi.mock("@/lib/bty/arena/organizationResponsibilityService", () => ({
   resolveLeaderEligibility: (...a: unknown[]) => resolveLeaderEligibility(...a),
@@ -56,7 +56,7 @@ describe("GET leaders-preview — authorization", () => {
   it("rejects an authenticated NON-Host (eligibility is not a public read)", async () => {
     requireUser.mockResolvedValue({ ok: true, user: { id: "u1" } });
     getSupabaseAdmin.mockReturnValue({});
-    isActiveFoundryHost.mockResolvedValue(false);
+    isActiveExplicitFoundryHost.mockResolvedValue(false);
     const res = await GET(req());
     expect(res.status).toBe(403);
     expect(resolveLeaderEligibility).not.toHaveBeenCalled();
@@ -66,7 +66,7 @@ describe("GET leaders-preview — authorization", () => {
 describe("GET leaders-preview — scope + contract", () => {
   beforeEach(() => {
     requireUser.mockResolvedValue({ ok: true, user: { id: "host-1" } });
-    isActiveFoundryHost.mockResolvedValue(true);
+    isActiveExplicitFoundryHost.mockResolvedValue(true);
     fetchFullNameMap.mockResolvedValue(new Map([["u-hanbit", "Hanbit Chi"]]));
   });
 

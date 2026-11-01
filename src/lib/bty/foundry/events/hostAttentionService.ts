@@ -22,18 +22,17 @@ import {
  *                        (the NULL case is included because submit paths may not persist the literal
  *                         'NOT_REVIEWED'; a row with NO shared response is NEVER an unreviewed item)
  *
- * AUTHORIZATION: the caller must hold an ACTIVE Foundry Host grant, and only rows belonging to events
+ * AUTHORIZATION: the caller must satisfy the canonical Foundry author capability, and only rows belonging to events
  * where foundry_events.owner_user_id = ownerUserId are ever read (a foreign event resolves nothing —
- * never another Host's data). Canonical Trainer/People-Manager/Team-Lead responsibility keys do NOT
- * grant this in V1 (they are not sufficiently populated in live org data).
+ * never another author's data). Unsynced responsibility claims do not establish author capability.
  *
  * PRIVACY: the projection is a NAVIGATION SUMMARY. It never selects/returns response_text (private
  * Reflection), the full shared_understanding_response body, the Host private review note, Center
  * content, or any AI/inferred value — the SELECTs below are explicit safe allow-lists (the shared read
  * does not even select the response body; it only tests it for NULL).
  *
- * RESILIENCE: the Host gate + owned-event resolution are structural (a failure propagates so a real
- * authorization/schema defect is never silently masked as an empty inbox — Commander requirement).
+ * RESILIENCE: the canonical author gate is fail-closed: unavailable authority grants no capability
+ * and no event/attention read. Owned-event resolution precedes optional projections.
  * Each optional attention projection is independently fail-soft (an unavailable read → that category
  * contributes nothing, never a thrown 500 into Today).
  *
@@ -234,7 +233,7 @@ async function sharedReviewAttention(
 
 /**
  * The authenticated Host's deterministic Leadership Attention items, priority-ordered. Returns [] for
- * a non-Host / revoked Host / a Host who owns no events / a Host whose owned events have no obligations.
+ * a caller without author capability / an author who owns no events / an author whose events have no obligations.
  * Never includes another Host's rows and never any private body/note/reflection.
  */
 export async function getHostDailyAttention(
@@ -246,7 +245,7 @@ export async function getHostDailyAttention(
 ): Promise<HostAttentionItem[]> {
   if (!ownerUserId) return [];
 
-  // 1) Eligibility — ONLY an active Foundry Host grant (V1 authority model). Structural: not fail-soft.
+  // 1) Use the shared canonical author capability; unavailable authority fails closed.
   const isAuthor = await hasFoundryAuthorCapability(admin, ownerUserId);
   if (!isAuthor) return [];
 

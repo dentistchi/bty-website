@@ -1,5 +1,29 @@
 # Active application task contract
 
+## RELEASE-RELIABILITY-REMAINDER — 2026-10-31
+
+Dr. Chi requests completing the remaining failures autonomously. Continue from
+PR91 source a611a32 in an isolated integration worktree and extend that Draft PR;
+leave PR90 separate. Reproduce all failing categories rather than dismissing them
+as baseline. Correct stale transport/UI/historical test contracts without removing
+security/ownership assertions, skipping bodies, forging frozen evaluation inputs,
+or changing approved legal wording. Historical provenance fixtures must be pinned
+to observed repository facts. Synthetic unit fixtures have distinct identity and
+cannot stand in for unavailable historical/model validation.
+
+Repair reproduced user-flow failures (Today transport/read ordering, unavailable
+completion state, partial healing/Foundry XP writes) with honest failure/retry
+behavior. Additional additive SQL may be PREPARED and verified only in disposable
+local/CI databases, never applied to production in this task. Preserve existing
+reward amounts/day boundaries, Core permanence, learner records, consent and
+Microsoft tid+oid authority. Separate test-environment deficiencies from app bugs.
+
+Use frozen before/after probes, an exact full-suite identity comparison with
+Node20 and controlled browser/tool paths, final types/fresh build and isolated
+interactive checks. No deployment, merge, production DB/auth write, secret change
+or Mac model/tunnel restart. A passing synthetic fixture does not certify live
+Worker/Teams/iPhone or missing historical captures.
+
 ## LEGACY-XP-ATOMICITY — 2026-10-31
 
 Repair duplicate legacy CHOICE_CONFIRMED rewards and Beginner partial completion.

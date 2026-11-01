@@ -19,6 +19,7 @@ function mockRows(payload: unknown) {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("FoundryFollowupStatus", () => {
@@ -209,15 +210,16 @@ describe("FoundryFollowupStatus — the observation date is when they SAW it", (
     expect((await screen.findByTestId("host-sustained")).textContent).toMatch(/Jul 20.*Jul 27/);
   });
 
-  it("a pre-3.2M-5 payload still shows its only available date", async () => {
-    // Midday UTC on purpose: the legacy path formats an INSTANT in the reader's zone, so a
-    // UTC-midnight fixture would slide to the previous day in the Americas and make this test
-    // about timezones rather than about the fallback.
+  it.each([
+    ["UTC", /Aug 3/], ["America/Los_Angeles", /Aug 3/], ["Pacific/Kiritimati", /Aug 4/],
+  ])("a pre-3.2M-5 payload renders its filing instant in reader zone %s", async (tz, expected) => {
+    // A filing timestamp is an instant, unlike an occurrence day key; +14 crosses midnight.
+    vi.stubEnv("TZ", tz);
     renderRows([{ ...base, observation: {
       observed: true, observerCount: 1, latestAt: "2026-08-03T18:00:00Z",
       observerHistory: [{ outcome: "OBSERVED", at: "2026-08-03T18:00:00Z" }],
     } }]);
-    expect((await screen.findByTestId("host-observed")).textContent).toMatch(/Aug 3/);
+    expect((await screen.findByTestId("host-observed")).textContent).toMatch(expected);
   });
 });
 

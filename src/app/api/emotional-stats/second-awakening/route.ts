@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { isHealingCompletionReviewError } from "@/lib/bty/healing/healingCompletionRead.server";
 import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 /**
@@ -24,6 +25,11 @@ export async function GET(req: NextRequest) {
     copyCookiesAndDebug(base, out, req, true);
     return out;
   } catch (e) {
+    if (isHealingCompletionReviewError(e)) {
+      const review = NextResponse.json({ error: "HEALING_COMPLETION_REVIEW_REQUIRED" }, { status: 409 });
+      copyCookiesAndDebug(base, review, req, true);
+      return review;
+    }
     const out = NextResponse.json(
       { error: "Failed to load Second Awakening", eligible: false, completed: false },
       { status: 500 }

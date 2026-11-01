@@ -17,12 +17,24 @@ import { healingPathProgressBlockedUserDisplayKey } from "@/domain/healing";
 import type { Locale } from "@/lib/i18n";
 
 type AwakeningApi = {
-  ok?: boolean;
-  acts?: Record<string, string>;
-  eligible?: boolean;
+  ok: true;
+  acts: Record<string, string>;
+  eligible: boolean;
   trigger?: { day?: number; requires_min_sessions?: number };
-  completedActs?: number[];
+  completedActs: number[];
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+function isCompletedPrefix(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length <= 3 && value.every((id, index) => id === index + 1);
+}
+function isAwakening(value: unknown): value is AwakeningApi {
+  return isRecord(value) && value.ok === true && typeof value.eligible === "boolean"
+    && isRecord(value.acts) && ["1", "2", "3"].every(id => typeof (value.acts as Record<string, unknown>)[id] === "string"
+      && ((value.acts as Record<string, string>)[id]).trim().length > 0)
+    && isCompletedPrefix(value.completedActs);
+}
 
 const ACT_IDS = [1, 2, 3] as const;
 
@@ -51,33 +63,48 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
   const [toast, setToast] = React.useState<string | null>(null);
   const [pathBlockedHint, setPathBlockedHint] = React.useState<string | null>(null);
 
+  const readRevision = React.useRef(0);
+  const postingRef = React.useRef(false);
+  const toastTimer = React.useRef<number | null>(null);
+  const retry = lang === "ko" ? "다시 시도" : "Retry";
+  const writeError = lang === "ko"
+    ? "진행 상황을 확인하지 못했어요. 다시 시도해 주세요."
+    : "Could not confirm your progress. Please try again.";
+  const reviewError = lang === "ko"
+    ? "이 완료 기록은 확인을 위한 검토가 필요합니다. 진행 상황은 그대로 남아 있습니다."
+    : "This completion needs review before it can be confirmed. Your progress is unchanged.";
   const showToast = React.useCallback((msg: string) => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     setToast(msg);
-    window.setTimeout(() => setToast(null), 4500);
+    toastTimer.current = window.setTimeout(() => { setToast(null); toastTimer.current = null; }, 4500);
   }, []);
 
-  const load = React.useCallback(() => {
+  const load = React.useCallback(async () => {
+    const revision = ++readRevision.current;
     setLoading(true);
     setErr(null);
-    fetch("/api/bty/awakening", { credentials: "include" })
-      .then(async (r) => {
-        const j = (await r.json().catch(() => ({}))) as AwakeningApi;
-        if (!r.ok) {
-          setErr(th.awakeningActsLoadError);
-          setData(null);
-        } else {
-          setData(j);
-        }
-      })
-      .catch(() => {
-        setErr(th.awakeningActsLoadError);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [th.awakeningActsLoadError]);
+    let failureCopy = th.awakeningActsLoadError;
+    try {
+      const response = await fetch("/api/bty/awakening", { credentials: "include" });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isAwakening(body)) {
+        if (response.status === 409 && isRecord(body) && body.error === "HEALING_COMPLETION_REVIEW_REQUIRED") failureCopy = reviewError;
+        throw new Error("READ_FAILED");
+      }
+      if (revision === readRevision.current) setData(body);
+    } catch {
+      if (revision === readRevision.current) { setErr(failureCopy); setData(null); }
+    } finally {
+      if (revision === readRevision.current) setLoading(false);
+    }
+  }, [th.awakeningActsLoadError, reviewError]);
 
   React.useEffect(() => {
-    load();
+    void load();
+    return () => {
+      readRevision.current += 1;
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    };
   }, [load]);
 
   const completed = new Set(data?.completedActs ?? []);
@@ -89,7 +116,8 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
   const actsMap = data?.acts ?? {};
 
   async function recordNext() {
-    if (nextAct == null || posting || data?.eligible === false) return;
+    if (nextAct == null || postingRef.current || data?.eligible !== true) return;
+    postingRef.current = true;
     setPathBlockedHint(null);
     setPosting(true);
     try {
@@ -99,24 +127,20 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actId: nextAct }),
       });
-      const body = (await r.json().catch(() => ({}))) as {
-        ok?: boolean;
-        completedActs?: number[];
-        error?: string;
-      };
-      if (r.status === 200 && body.ok && Array.isArray(body.completedActs)) {
+      const body: unknown = await r.json().catch(() => null);
+      if (r.status === 200 && isRecord(body) && body.ok === true && isCompletedPrefix(body.completedActs) && body.completedActs.includes(nextAct)) {
         setPathBlockedHint(null);
         showToast(th.awakeningProgressToastOk);
-        setData((prev) =>
-          prev
-            ? { ...prev, completedActs: body.completedActs as number[] }
-            : prev
-        );
-      } else if (r.status === 409) {
+        const completedActs = body.completedActs;
+        setData(prev => prev ? { ...prev, completedActs } : prev);
+      } else if (r.status === 409 && isRecord(body) && body.error === "ACT_ALREADY_COMPLETED") {
         showToast(th.awakeningProgressToast409);
-        load();
+        void load();
+      } else if (r.status === 409 && isRecord(body) && body.error === "HEALING_COMPLETION_REVIEW_REQUIRED") {
+        showToast(reviewError);
+        setPathBlockedHint(reviewError);
       } else if (r.status === 400) {
-        const code = body.error;
+        const code = isRecord(body) ? body.error : undefined;
         if (code === "ACT_PREREQUISITE") {
           const msg = healingPathProgressBlockedCopy(
             lang,
@@ -135,11 +159,12 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
           showToast(th.awakeningProgressToast400);
         }
       } else {
-        showToast(th.awakeningProgressToastNetwork);
+        showToast(writeError);
       }
     } catch {
-      showToast(th.awakeningProgressToastNetwork);
+      showToast(writeError);
     } finally {
+      postingRef.current = false;
       setPosting(false);
     }
   }
@@ -166,9 +191,10 @@ export function AwakeningActsTrack({ locale }: { locale: string }) {
         </p>
       )}
       {err && !loading && (
-        <p className="mt-3 text-xs text-red-700" role="alert">
-          {err}
-        </p>
+        <div className="mt-3">
+          <p className="text-xs text-red-700" role="alert">{err}</p>
+          <button type="button" onClick={() => void load()} className="mt-2 rounded-lg border border-bty-border px-3 py-1.5 text-sm">{retry}</button>
+        </div>
       )}
 
       {!loading && !err && data?.ok && (

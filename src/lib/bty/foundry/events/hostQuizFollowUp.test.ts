@@ -26,7 +26,7 @@ const QUIZ = {
 };
 
 type Rows = {
-  event?: { id: string; title: string } | null;
+  event?: { id: string; title: string; owner_user_id?: string } | null;
   participant?: Record<string, unknown> | null;
   attempt?: Record<string, unknown> | null;
   quiz?: Record<string, unknown> | null;
@@ -37,6 +37,7 @@ function fakeAdmin(rows: Rows) {
   const touched: string[] = [];
   const selected: string[] = [];
   const inserted: { table: string; row: Record<string, unknown> }[] = [];
+  const filters: { table: string; column: string; value: unknown }[] = [];
   const admin = {
     from(table: string) {
       touched.push(table);
@@ -46,20 +47,22 @@ function fakeAdmin(rows: Rows) {
         : table === "foundry_event_quiz_attempts" ? rows.attempt ?? null
         : table === "foundry_event_quizzes" ? rows.quiz ?? null
         : null;
+      const queryFilters: { column: string; value: unknown }[] = [];
       const chain: Record<string, unknown> = {
         select(cols: string) { selected.push(cols); return chain; },
-        eq() { return chain; },
-        maybeSingle: async () => ({ data: result }),
+        eq(column: string, value: unknown) { queryFilters.push({ column, value }); filters.push({ table, column, value }); return chain; },
+        maybeSingle: async () => ({ data: result && queryFilters.some(({ column, value }) =>
+          column in result && result[column as keyof typeof result] !== value) ? null : result }),
         insert: async (row: Record<string, unknown>) => { inserted.push({ table, row }); return { error: null }; },
       };
       return chain;
     },
   };
-  return { admin: admin as never, touched, selected, inserted };
+  return { admin: admin as never, touched, selected, inserted, filters };
 }
 
 const OWNED: Rows = {
-  event: { id: "e1", title: "Morning Office Opening" },
+  event: { id: "e1", title: "Morning Office Opening", owner_user_id: "host" },
   participant: { id: "p1", event_id: "e1", display_name: "Ann", user_id: "u-ann", microsoft_tenant_id: "t-1", microsoft_aad_object_id: "oid-ann" },
   attempt: { answers: [{ questionId: "q1", choiceId: "a" }, { questionId: "q2", choiceId: "a" }], correct_count: 1, total_count: 2, submitted_at: "2026-09-22T10:00:00Z" },
   quiz: { quiz_snapshot: QUIZ },
@@ -105,6 +108,31 @@ describe("readLearnerResultDetail", () => {
     const { admin } = fakeAdmin({ ...OWNED, participant: null });
     const result = await readLearnerResultDetail(admin, { eventId: "e1", ownerUserId: "host", participantId: "p-other" });
     expect(result).toEqual({ ok: false, reason: "not_found" });
+  });
+
+  it("keeps the internal account/Teams coordinates out of the exact Host-facing detail DTO", async () => {
+    const { admin, filters } = fakeAdmin(OWNED);
+    const result = await readLearnerResultDetail(admin, { eventId: "e1", ownerUserId: "host", participantId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Expected owned result");
+    expect(Object.keys(result.detail).sort()).toEqual([
+      "canMessageInTeams", "correctCount", "displayName", "missed", "participantId",
+      "scorePercent", "submittedAt", "totalCount", "trainingTitle",
+    ]);
+    expect(filters).toContainEqual({ table: "foundry_events", column: "owner_user_id", value: "host" });
+    expect(filters).toContainEqual({ table: "foundry_event_participants", column: "event_id", value: "e1" });
+  });
+
+  it("the owner filter refuses the same stored event for another caller", async () => {
+    const { admin } = fakeAdmin(OWNED);
+    expect(await readLearnerResultDetail(admin, { eventId: "e1", ownerUserId: "foreign-host", participantId: "p1" }))
+      .toEqual({ ok: false, reason: "not_owner" });
+  });
+
+  it("the event filter refuses a participant row actually belonging to another training", async () => {
+    const { admin } = fakeAdmin({ ...OWNED, participant: { ...OWNED.participant, event_id: "foreign-event" } });
+    expect(await readLearnerResultDetail(admin, { eventId: "e1", ownerUserId: "host", participantId: "p1" }))
+      .toEqual({ ok: false, reason: "not_found" });
   });
 
   it("reports canMessageInTeams false for a learner who joined on the web", async () => {

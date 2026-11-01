@@ -1,3 +1,4 @@
+import { readConfirmedFoundryXpStatus } from "./foundryXpAtomic.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isParticipantAccountCompatible, mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 import { readContentType, isGuidanceContentType } from "@/domain/foundry/events/content-type";
@@ -60,8 +61,8 @@ import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJ
  * Converges on the SAME canonical spine as YouTube training: the same
  * foundry_events / foundry_event_participants rows, the same
  * foundry_event_training_progress row (document_* columns), and — crucially — the
- * SAME XP integrity path (`awardTrainingCoreXp` → bty_foundry_award_daily_capped
- * RPC → applyDirectCoreXp), attributed identically as
+ * SAME XP integrity path (`awardTrainingCoreXp` → bty_foundry_award_core_atomic
+ * RPC), attributed identically as
  * source_type='foundry_training_completion' / source_id=progress.id. No new event
  * table, no new completion table, no new XP ledger. Only the evidence gate
  * differs: reading participation (all pages + a page-aware minimum active time)
@@ -607,7 +608,7 @@ async function docSnapshotFor(
   const content = await getDocContent(admin, event.id);
   const journey = toPublicJourney(await readEventJourney(admin, event.id));
   const followUpDays = await readEventFollowUpDays(admin, event.id);
-  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride, journey, followUpDays);
+  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride ?? await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id), journey, followUpDays);
 }
 
 /** The unified public snapshot for a DOCUMENT room (pre-join and every stage). */
@@ -663,7 +664,7 @@ export async function getPublicDocumentSnapshot(
     name has no reason to travel on a request that is not showing the join field. Once someone has
     joined there is nothing to prefill, so a snapshot WITH a participant never carries it.
   */
-  const snap = buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, followUpDays);
+  const snap = buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id), journey, followUpDays);
   return snap.participant ? snap : { ...snap, suggested_name: suggestedName ?? null };
 }
 
@@ -880,13 +881,7 @@ export async function completeDocumentTraining(
   let xpOverride: PublicXpStatus | undefined;
   if (linkableUserId) {
     const outcome = await awardTrainingCoreXp(admin, linkableUserId, r.event.id, r.event.owner_user_id, progressId);
-    if (outcome === "awarded") {
-      await admin
-        .from("foundry_event_training_progress")
-        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
-        .eq("id", progressId)
-        .is("xp_awarded_at", null);
-    }
+
     xpOverride = outcomeToXpStatus(outcome);
   }
 
@@ -1019,22 +1014,12 @@ export async function claimDocumentXp(
   */
   await invalidateDeferredClaim(admin, prog.id);
 
-  if (prog.xp_awarded_at) {
-    return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim, ...applyNarration(applyWindowResult) };
-  }
-
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
-  if (outcome === "awarded") {
-    await admin
-      .from("foundry_event_training_progress")
-      .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
-      .eq("id", prog.id)
-      .is("xp_awarded_at", null);
-  }
 
   return {
     ok: true,
     snapshot: await docSnapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)),
     assignmentClaim,
+    ...applyNarration(applyWindowResult),
   };
 }

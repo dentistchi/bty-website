@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Mock the canonical Core XP primitive so the test never touches arena_profiles/avatar.
-vi.mock("@/lib/bty/arena/applyCoreXp", () => ({
-  applyDirectCoreXp: vi.fn(async () => ({ newCoreTotal: 10 })),
-}));
+// Avatar refresh is derived; XP is modeled at the private atomic RPC boundary below.
+vi.mock("@/engine/avatar/avatar-state.service", () => ({ syncAvatarStateAfterCoreXpChange: vi.fn(async () => {}) }));
 
 // Control the embeddability gate; keep the real allow/reason helpers. Default
 // "embeddable" so the existing create-based setups proceed.
@@ -14,7 +12,7 @@ vi.mock("./youtubeEmbed", async (importOriginal) => {
   return { ...actual, resolveYoutubeEmbeddable: async () => embedState.value };
 });
 
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { fixtureUuid, simulateFoundryCoreAtomic } from "./__fixtures__/foundryAtomicRewardSim";
 import { createEvent, joinEvent } from "./foundryEventService";
 import { simulateClaimAssignment, seedAssignment, readAssignment } from "./__fixtures__/assignmentClaimSim";
 import {
@@ -31,7 +29,8 @@ beforeAll(() => {
   process.env.FOUNDRY_ROOM_QR_SECRET = "test-foundry-training-secret-0123456789";
 });
 
-const awardSpy = applyDirectCoreXp as unknown as ReturnType<typeof vi.fn>;
+// Observe only fresh committed atomic awards, never a separate TS Core updater.
+const awardSpy = vi.fn();
 // Program resolve-or-create RPC result (Slice 3.2C-R1). Default: a Host WITH one
 // active-primary org → a resolved Program. A test may set an org error to prove
 // Quick creation fails closed.
@@ -61,7 +60,7 @@ function makeFakeAdmin() {
     core_xp_ledger: [],
   };
   let counter = 0;
-  const nid = (t: string) => `${t}-${++counter}`;
+  const nid = (t: string) => t === "pr" ? fixtureUuid(++counter) : `${t}-${++counter}`;
 
   function defaults(table: string, r: Row): Row {
     const now = new Date().toISOString();
@@ -200,8 +199,7 @@ function makeFakeAdmin() {
     }
   }
 
-  // Simulate the atomic award RPC (mirrors bty_foundry_award_daily_capped SQL):
-  // idempotency by source_id, one-per-(user,event), per-day cap; inserts ledger.
+  // Model the private RPC transport: ledger, Core, marker and immutable receipt together.
   function rpc(name: string, p: Record<string, unknown>) {
     if (name === "bty_foundry_claim_assignment") {
       // record the call so a test can prove the assignment claim runs even on the
@@ -213,39 +211,8 @@ function makeFakeAdmin() {
     if (name === "bty_foundry_resolve_or_create_program") {
       return Promise.resolve(programRpcState.result);
     }
-    if (name !== "bty_foundry_award_daily_capped") {
-      return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
-    }
-    const led = tables.core_xp_ledger;
-    const SRC = "foundry_training_completion";
-    if (led.some((l) => l.source_type === SRC && l.source_id === p.p_source_id)) {
-      return Promise.resolve({ data: "already_awarded", error: null });
-    }
-    const eventAwarded = led.some((l) => {
-      if (l.source_type !== SRC || l.user_id !== p.p_user_id) return false;
-      const pr = tables.foundry_event_training_progress.find((x) => x.id === l.source_id);
-      return pr && pr.event_id === p.p_event_id;
-    });
-    if (eventAwarded) return Promise.resolve({ data: "event_already_awarded", error: null });
-    const count = led.filter(
-      (l) =>
-        l.user_id === p.p_user_id &&
-        l.source_type === SRC &&
-        (l.created_at as string) >= (p.p_day_start as string) &&
-        (l.created_at as string) < (p.p_day_end as string),
-    ).length;
-    if (count >= (p.p_max_per_day as number)) {
-      return Promise.resolve({ data: "daily_limit", error: null });
-    }
-    led.push({
-      id: nid("led"),
-      user_id: p.p_user_id,
-      delta_xp: p.p_xp,
-      source_type: SRC,
-      source_id: p.p_source_id,
-      created_at: new Date().toISOString(),
-    });
-    return Promise.resolve({ data: "awarded", error: null });
+    if (name !== "bty_foundry_award_core_atomic") return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
+    return Promise.resolve(simulateFoundryCoreAtomic(tables, p, awardSpy));
   }
 
   return {
@@ -422,7 +389,9 @@ describe("XP: authenticated award vs anonymous claim", () => {
     expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
     expect(done.ok && done.snapshot.xp_status).toBe("awarded");
     expect(awardSpy).toHaveBeenCalledTimes(1);
-    expect(awardSpy).toHaveBeenCalledWith(admin, AUTH, 10);
+    expect(awardSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: AUTH, deltaXp: 10 }));
+    expect(tables.arena_profiles.find((p) => p.user_id === AUTH)?.core_xp_total).toBe(10);
+    expect(tables.foundry_xp_reward_receipts).toHaveLength(1);
     // Exactly one ledger row, attributed to Foundry training.
     expect(tables.core_xp_ledger).toHaveLength(1);
     expect(tables.core_xp_ledger[0].source_type).toBe("foundry_training_completion");

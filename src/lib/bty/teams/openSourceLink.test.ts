@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -198,6 +199,6 @@ describe("★ 8+9+10. nothing else moved", () => {
     // asks for: it still fails the moment SQL appears that nobody moved this line for, which is
     // the smuggled migration it exists to catch. What it never claimed is that the repository
     // would stop growing.
-    expect(migrations.filter((f) => f.slice(0, 14) > "20260917000000")).toEqual([]);
+    expect(unpinnedMigrationSources(migrations.filter((f) => f.slice(0, 14) > "20260917000000"))).toEqual([]);
   });
 });

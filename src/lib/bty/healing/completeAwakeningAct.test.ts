@@ -2,6 +2,22 @@ import { describe, it, expect, vi } from "vitest";
 import { completeHealingAwakeningAct, getHealingAwakeningProgress } from "./completeAwakeningAct";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+const atomic = vi.hoisted(() => ({ options: {} as {
+  selectRows?: { act_id: number }[]; eligible?: boolean;
+}, calls: [] as unknown[] }));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ rpc: async (fn: string, args: { p_user_id: string; p_act_id: number }) => {
+  atomic.calls.push({ fn, args });
+  const acts = (atomic.options.selectRows ?? []).map(row => row.act_id);
+  const error = acts.includes(args.p_act_id) ? "ACT_ALREADY_COMPLETED" : acts.length !== args.p_act_id - 1 ? "ACT_PREREQUISITE"
+    : atomic.options.eligible === false ? "NOT_ELIGIBLE" : null;
+  return error ? { data: null, error: { code: "P0001", message: error } } : { error: null, data: {
+    policyVersion: "healing-completion/v1", operation: "act", userId: args.p_user_id, actId: args.p_act_id,
+    completedActs: [...acts, args.p_act_id], actCompletedAt: "2026-07-01T12:00:00Z",
+    completedAt: args.p_act_id === 3 ? "2026-07-01T12:00:00Z" : null, idempotent: false,
+  } };
+} }) }));
+
+
 function mockSupabase(chain: {
   selectRows?: { act_id: number }[];
   selectError?: { message: string };
@@ -9,6 +25,7 @@ function mockSupabase(chain: {
   /** Second Awakening gate (getSecondAwakening) = train 완주, distinct day == 28. Default: eligible. */
   eligible?: boolean;
 }): SupabaseClient {
+  atomic.options = chain; atomic.calls.length = 0;
   const eligible = chain.eligible ?? true;
   // 결정3 / B2: eligibility driven by DISTINCT train_day_completions count == 28.
   const trainDays = eligible ? Array.from({ length: 28 }, (_, i) => i + 1) : [];
@@ -98,6 +115,7 @@ describe("completeHealingAwakeningAct", () => {
   it("200 after act 1", async () => {
     const r = await completeHealingAwakeningAct(mockSupabase({ selectRows: [] }), "u1", 1);
     expect(r).toMatchObject({ ok: true, completedActs: [1] });
+    expect(atomic.calls).toEqual([{ fn: "bty_complete_healing_awakening_act", args: { p_user_id: "u1", p_act_id: 1 } }]);
   });
 
   it("403 NOT_ELIGIBLE when train 완주 gate unmet (distinct day < 28)", async () => {

@@ -17,6 +17,12 @@ function mockSupabase(opts: {
   sessions?: number;
   firstSessionDaysAgo?: number | null;
   milestoneCompleted?: boolean;
+  milestoneStarter?: "PRM" | "SAG";
+  missingStarter?: boolean;
+  milestoneError?: { message: string };
+  statsError?: { message: string };
+  eventsError?: { message: string };
+  trainError?: { message: string };
 }): SupabaseClient {
   const trainDays = opts.trainDays ?? [];
   const sessions = opts.sessions ?? 0;
@@ -55,7 +61,7 @@ function mockSupabase(opts: {
       return {
         select: () => ({
           eq: () =>
-            Promise.resolve({ data: trainDays.map((d) => ({ day: d })), error: null }),
+            Promise.resolve({ data: trainDays.map((d) => ({ day: d })), error: opts.trainError ?? null }),
         }),
       };
     }
@@ -65,8 +71,9 @@ function mockSupabase(opts: {
           eq: () => ({
             maybeSingle: () =>
               Promise.resolve({
-                data: opts.milestoneCompleted
-                  ? { second_awakening_completed_at: new Date().toISOString() }
+                error: opts.milestoneError ?? null,
+                data: opts.milestoneCompleted || opts.milestoneStarter
+                  ? { second_awakening_completed_at: opts.milestoneCompleted ? new Date().toISOString() : null, starter_unlock_granted: opts.milestoneStarter ?? null }
                   : null,
               }),
           }),
@@ -74,10 +81,12 @@ function mockSupabase(opts: {
       };
     }
     if (table === "user_emotional_stats" || table === "emotional_events") {
-      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: table === "user_emotional_stats" ? opts.statsError ?? null : opts.eventsError ?? null }) }) };
     }
     if (table === "user_advanced_unlocks") {
-      return { upsert: () => Promise.resolve({ error: null }) };
+      const query = { select: () => query, eq: () => query,
+        maybeSingle: async () => ({ data: opts.missingStarter ? null : { advanced_stat_name: opts.milestoneStarter }, error: null }) };
+      return query;
     }
     throw new Error("unexpected table: " + table);
   };
@@ -119,4 +128,41 @@ describe("secondAwakening", () => {
       expect(result.completed).toBe(true);
     });
   });
+});
+
+
+describe("Second Awakening milestone read failure", () => {
+  it("never grants eligibility when already-completed state is unavailable", async () => {
+    const client = mockSupabase({ trainDays: Array.from({ length: 28 }, (_, i) => i + 1),
+      milestoneError: { message: "private database details" } });
+    await expect(getSecondAwakening(client, "owned-user")).rejects.toThrow("AWAKENING_PROGRESS_UNAVAILABLE");
+  });
+});
+
+
+describe("Second Awakening never grants from unavailable eligibility or unlock inputs", () => {
+  it.each(["statsError", "eventsError", "trainError"] as const)("refuses a failed %s source rather than treating it as empty", async source => {
+    const client = mockSupabase({ trainDays: Array.from({ length: 28 }, (_, i) => i + 1),
+      [source]: { message: "private database details" } });
+    await expect(getSecondAwakening(client, "owned-user")).rejects.toThrow("AWAKENING_PROGRESS_UNAVAILABLE");
+  });
+});
+
+
+it("can read a healthy completed milestone without requiring fresh train or unlock data", async () => {
+  const result = await getSecondAwakening(mockSupabase({ milestoneCompleted: true,
+    trainError: { message: "unavailable" }, statsError: { message: "unavailable" }, eventsError: { message: "unavailable" } }), "owned-user");
+  expect(result).toMatchObject({ eligible: false, completed: true });
+});
+
+
+it("does not classify a stored starter without its durable unlock as a healthy completed ritual", async () => {
+  await expect(getSecondAwakening(mockSupabase({ milestoneCompleted: true, milestoneStarter: "PRM", missingStarter: true }), "owned-user"))
+    .rejects.toThrow("HEALING_COMPLETION_REVIEW_REQUIRED");
+});
+
+
+it("does not reopen a marker with a claimed starter but no completion timestamp", async () => {
+  await expect(getSecondAwakening(mockSupabase({ milestoneStarter: "PRM", trainDays: Array.from({ length: 28 }, (_, i) => i + 1) }), "owned-user"))
+    .rejects.toThrow("HEALING_COMPLETION_REVIEW_REQUIRED");
 });
