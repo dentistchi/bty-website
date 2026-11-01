@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotCommit": "daea15d6c771db48c63d8040ac81ccf327b13caf",
+  "snapshotCommit": "b6cba9629888332ed57da28589b5e0ea7817e944",
   "meaning": "Observed later source files, not semantic approval or production application. Unknown additions and changed registered bytes still fail guards.",
   "entries": [
     {
@@ -94,6 +94,10 @@
     {
       "file": "20261101001020_foundry_core_atomic_rewards.sql",
       "sha256": "318e331b272b6d57803afc1733cce26d3bb6ac49613d494458b146dc745a06f9"
+    },
+    {
+      "file": "20261101120000_reward_write_fence_v1.sql",
+      "sha256": "4b4825e319b3fa09ccad646b256f6d655b8e01d3ba1b80ceb489bd71a465f418"
     }
   ]
 }
