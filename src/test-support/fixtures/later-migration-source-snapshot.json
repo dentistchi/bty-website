@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotCommit": "b6cba9629888332ed57da28589b5e0ea7817e944",
+  "snapshotCommit": "f9782ed2bff32d3b6961e0125db55c091d76291f",
   "meaning": "Observed later source files, not semantic approval or production application. Unknown additions and changed registered bytes still fail guards.",
   "entries": [
     {
@@ -98,6 +98,10 @@
     {
       "file": "20261101120000_reward_write_fence_v1.sql",
       "sha256": "4b4825e319b3fa09ccad646b256f6d655b8e01d3ba1b80ceb489bd71a465f418"
+    },
+    {
+      "file": "20261101130000_weekly_reflection_quest_atomic.sql",
+      "sha256": "45c53f4b32da210e526f3e2736bbd59a8b1ad7eb2868d333e146eb698ca793be"
     }
   ]
 }
