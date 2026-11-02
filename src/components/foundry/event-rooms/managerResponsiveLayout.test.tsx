@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { historicalChangedFiles } from "@/test-support/repositoryScope";
 import { join } from "node:path";
 import { useState } from "react";
 import { ManagerCanvas } from "./ManagerCanvas";
@@ -285,10 +285,7 @@ describe("R4-R4B · 8/9/10 · nothing else moved", () => {
       `legacyPortalContainment.test.ts` T6/T6b for the identical reason.
     */
     const SLICE_COMMIT = "1aa3d30784fa395a88f003c688379c15ea4e2183";
-    const all = execSync(`git show --pretty=format: --name-only ${SLICE_COMMIT}`, { encoding: "utf8" })
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const all = historicalChangedFiles(SLICE_COMMIT);
     expect(all.length, "the slice commit's diff must be non-empty, or this proves nothing").toBeGreaterThan(0);
     const changed = all.filter((f) => f.startsWith("src/app/f")).join("\n");
     expect(changed, `learner rooms modified:\n${changed}`).toBe("");

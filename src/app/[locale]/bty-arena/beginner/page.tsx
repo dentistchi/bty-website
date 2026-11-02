@@ -14,6 +14,10 @@ import { arenaFetch } from "@/lib/http/arenaFetch";
 import { REFLECT_USER_TEXT_MAX_CHARS } from "@/lib/bty/arena/reflectLimits";
 import { getMessages, reflectHintLabel } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import {
+  legacyRewardFailureMessage,
+  requireBeginnerCompletionAcknowledgement,
+} from "@/lib/bty/arena/legacyRewardAcknowledgement";
 
 type BeginnerStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -230,23 +234,19 @@ export default function BeginnerArenaPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await arenaFetch<{
-          ok: boolean;
-          beginner_maturity_score: number;
-          band: string;
-          label: string;
-          message: string;
-        }>("/api/arena/beginner-complete", {
-          json: {
-            runId,
-            scenarioId: scenario.scenarioId,
-            emotionIndex: emotionIndex ?? 0,
-            riskIndex: riskIndex ?? 0,
-            integrityIndex: integrityIndex ?? 0,
-            decisionIndex: decisionIndex ?? 0,
-            reflectionText: reflectionText.trim() || null,
-          },
-        });
+        const res = requireBeginnerCompletionAcknowledgement(
+          await arenaFetch<unknown>("/api/arena/beginner-complete", {
+            json: {
+              runId,
+              scenarioId: scenario.scenarioId,
+              emotionIndex: emotionIndex ?? 0,
+              riskIndex: riskIndex ?? 0,
+              integrityIndex: integrityIndex ?? 0,
+              decisionIndex: decisionIndex ?? 0,
+              reflectionText: reflectionText.trim() || null,
+            },
+          }),
+        );
         setCompleted({
           score: res.beginner_maturity_score,
           band: res.band,
@@ -254,7 +254,7 @@ export default function BeginnerArenaPage() {
           message: res.message,
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : ui.failedToComplete);
+        setError(legacyRewardFailureMessage(e, locale));
       } finally {
         setLoading(false);
       }
@@ -268,6 +268,7 @@ export default function BeginnerArenaPage() {
     integrityIndex,
     decisionIndex,
     reflectionText,
+    locale,
     startRun,
     sendEvent,
   ]);
@@ -518,7 +519,7 @@ export default function BeginnerArenaPage() {
         )}
 
         {error && (
-          <p style={{ marginTop: 12, color: "#c00", fontSize: 14 }}>{error}</p>
+          <p role="alert" style={{ marginTop: 12, color: "#c00", fontSize: 14 }}>{error}</p>
         )}
       </div>
     </main>

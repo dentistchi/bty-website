@@ -1,3 +1,4 @@
+import { readConfirmedFoundryXpStatus } from "./foundryXpAtomic.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isParticipantAccountCompatible, mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 import type { FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
@@ -45,7 +46,7 @@ import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJ
  * The third and fourth approved V1 material types, on the SAME canonical spine as the other
  * two: the same `foundry_events` row, the same `foundry_event_participants`, the same
  * `foundry_event_training_progress` row, and the same XP path
- * (`awardTrainingCoreXp` → `bty_foundry_award_daily_capped` → `applyDirectCoreXp`), attributed
+ * (`awardTrainingCoreXp` → `bty_foundry_award_core_atomic`), attributed
  * identically as `source_type='foundry_training_completion'`. No new event table, no new
  * completion table, no new XP ledger, and — the boundary this slice was given — NO NEW CONTENT
  * TABLE.
@@ -415,7 +416,7 @@ async function guidanceSnapshotFor(
   const content = await readGuidanceContent(admin, event.id);
   const journey = toPublicJourney(await readEventJourney(admin, event.id));
   const followUpDays = await readEventFollowUpDays(admin, event.id);
-  return buildGuidanceSnapshot(event, contentType, participant, progress, content, true, xpOverride, journey, followUpDays);
+  return buildGuidanceSnapshot(event, contentType, participant, progress, content, true, xpOverride ?? await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id), journey, followUpDays);
 }
 
 export async function getPublicGuidanceSnapshot(
@@ -461,7 +462,7 @@ export async function getPublicGuidanceSnapshot(
     progress,
     content,
     tokenVersion === event.join_version,
-    undefined,
+    await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id),
     journey,
     participant ? await readEventFollowUpDays(admin, event.id) : null,
   );
@@ -655,13 +656,7 @@ export async function completeGuidanceTraining(
   let xpOverride: PublicXpStatus | undefined;
   if (linkableUserId) {
     const outcome = await awardTrainingCoreXp(admin, linkableUserId, r.event.id, r.event.owner_user_id, progressId);
-    if (outcome === "awarded") {
-      await admin
-        .from("foundry_event_training_progress")
-        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
-        .eq("id", progressId)
-        .is("xp_awarded_at", null);
-    }
+
     xpOverride = outcomeToXpStatus(outcome);
   }
 
@@ -773,27 +768,12 @@ export async function claimGuidanceXp(
   */
   await invalidateDeferredClaim(admin, prog.id);
 
-  if (prog.xp_awarded_at) {
-    return {
-      ok: true,
-      snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, "awarded"),
-      assignmentClaim,
-      ...applyNarration(applyWindowResult),
-    };
-  }
-
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
-  if (outcome === "awarded") {
-    await admin
-      .from("foundry_event_training_progress")
-      .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
-      .eq("id", prog.id)
-      .is("xp_awarded_at", null);
-  }
 
   return {
     ok: true,
     snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, outcomeToXpStatus(outcome)),
     assignmentClaim,
+    ...applyNarration(applyWindowResult),
   };
 }

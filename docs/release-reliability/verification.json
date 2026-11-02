@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-31 America/Los_Angeles",
+  "applicationSourceFrozen": "27ff4865acd8f21166c2dc48e226ed8343fe1023",
+  "finalTestSource": "76549c19583bcf057dd4cd7efe9a49958106439f",
+  "sourceDifference": "Only documentation/evidence and request-readiness assertions in LeadersEligibilityPreview.render.test.tsx and centerConsentToggle.test.tsx after application freeze. Runtime production files unchanged.",
+  "fullSuite": {
+    "command": "env -i PATH=<Node20.20.2>:<installed npm/npx>:/usr/local/bin:/usr/bin:/bin HOME=<task-only-home> NODE_ENV=test CI=1 PLAYWRIGHT_BROWSERS_PATH=/tmp/bty-case-detail-browsers NODE_OPTIONS=--max-old-space-size=8192 node node_modules/vitest/vitest.mjs run --maxWorkers=1 --minWorkers=1 --reporter=json --outputFile=<separate report>",
+    "controlledBaseline": {
+      "reportedPassed": 15601,
+      "failed": 143,
+      "explicitSkipped": 409,
+      "total": 16153,
+      "success": false,
+      "reportedFiles": 1386,
+      "failedFiles": 43,
+      "durationSeconds": 688.483
+    },
+    "firstAfter": {
+      "reportedPassed": 16073,
+      "failed": 1,
+      "explicitSkipped": 409,
+      "total": 16483,
+      "success": false,
+      "reportedFiles": 1399,
+      "failedFiles": 1,
+      "durationSeconds": 700.071
+    },
+    "secondAfter": {
+      "reportedPassed": 16073,
+      "failed": 1,
+      "explicitSkipped": 409,
+      "total": 16483,
+      "success": false,
+      "reportedFiles": 1399,
+      "failedFiles": 1,
+      "durationSeconds": 691.353
+    },
+    "finalAfter": {
+      "reportedPassed": 16074,
+      "failed": 0,
+      "explicitSkipped": 409,
+      "total": 16483,
+      "success": true,
+      "reportedFiles": 1399,
+      "failedFiles": 0,
+      "durationSeconds": 683.787
+    },
+    "finalObservedExit": 0,
+    "explicitSkippedByScope": {
+      "PostgreSQL_PostgREST": 401,
+      "Supabase_integration": 6,
+      "actualModel": 2
+    },
+    "omittedHistoricalOrInstalledFileBranchesInReportedPasses": {
+      "C18Boundary": 7,
+      "C18Narrow": 9,
+      "stabilityForensics": 7,
+      "stabilityRunner": 13,
+      "fullRetention": 3
+    },
+    "omittedOptionalArtifactBranchesInReportedPasses": {
+      "compiledCss": 1,
+      "teamsZip": 2
+    },
+    "inactiveOptInSqlBodiesDuringThisFullRun": {
+      "savedRemove": 15,
+      "hostTrackRetention": 26,
+      "integrityReconciliation": 23,
+      "foundryHistoryDismissal": 10
+    },
+    "conditionalProofScope": "39 historical/installed-file plus3 optional-artifact branches are a bounded seven-file inspection, not exhaustive branch coverage. A further74 opt-in SQL bodies return without execution when BTY_PG_TEST_URL is absent. Separate native persistence verification is required and must not be inferred from these reported passes.",
+    "baselineEnvironmentCorrection": "Eight viewport setup failures in the earlier151-failure report disappear with the correct installed tool path. Controlled baseline has143 failures; this is not eight app bug fixes.",
+    "identityComparison": "full-assertion-comparison.json"
+  },
+  "nativePostgreSQL": {
+    "run": "https://github.com/dentistchi/bty-website/actions/runs/41258285658",
+    "source": "5d287b4faa8867ddb6011fede8fe8ea58b08718d",
+    "equivalentLocalSource": "4691a2229ff9f15a811626a504bfcf55d4775a2e",
+    "passed": {
+      "legacy": 123,
+      "healing": 58,
+      "foundry": 90
+    },
+    "total": 271,
+    "unrun": [],
+    "scope": "Three separate disposable PostgreSQL17.11 containers, synthetic source-column schema, real functions/migrations, multi-backend lock waits. Not the full production database/PostgREST stack.",
+    "candidateRerun": {
+      "source": "48fd38584e86193a0db81c0e4b3a452790da8a82",
+      "run": "https://github.com/dentistchi/bty-website/actions/runs/41261258150",
+      "jobs": {
+        "legacy": "success",
+        "healing": "success",
+        "foundry": "success"
+      }
+    }
+  },
+  "nativePersistence": {
+    "status": "observed passed",
+    "tests": 74,
+    "scenarioDatabases": 72,
+    "report": "native-persistence.json",
+    "run": "https://github.com/dentistchi/bty-website/actions/runs/41261258186",
+    "source": "48fd38584e86193a0db81c0e4b3a452790da8a82",
+    "scope": "Four unchanged cleanup migration/SQL test files on a fresh disposable PostgreSQL17 service; not Supabase/PostgREST or a live app check",
+    "sourceHashesMatched": 268
+  },
+  "browser": {
+    "checks": 57,
+    "playwrightTests": 21,
+    "foundryStates": 24,
+    "retryTransitions": 12,
+    "widths": [
+      320,
+      390,
+      1280
+    ],
+    "skips": 0,
+    "flakes": 0,
+    "retries": 0,
+    "scope": "Isolated real-client synthetic-HTTP browser checks, cleared process environment. No app environment, Next server, DB, auth session, model, production API or source edits."
+  },
+  "standaloneTypecheck": {
+    "observedExit": 0,
+    "source": "76549c19583bcf057dd4cd7efe9a49958106439f",
+    "receipt": "types-verified.json"
+  },
+  "freshBuild": {
+    "observedExit": 0,
+    "source": "27ff4865acd8f21166c2dc48e226ed8343fe1023",
+    "receipt": "build-verification.json"
+  },
+  "productionChanges": {
+    "deploy": false,
+    "merge": false,
+    "migration": false,
+    "authSession": false,
+    "learnerWrite": false,
+    "secret": false,
+    "MacServiceRestart": false
+  },
+  "remainingGates": [
+    "Explicit operational authorization; fence and prove old writers drained on every route/domain/version/alias before applying three reviewed migrations and reopening writes.",
+    "Target full-schema and signed-in Worker/Teams/physical-iPhone integration.",
+    "PR90 remains separate; its fictional Clinical data needs clinical review and actual local-model validation.",
+    "Missing historical captures and optional Teams ZIP/compiled-CSS branches are not verified by runner pass counts."
+  ]
+}

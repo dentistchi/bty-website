@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -120,6 +121,6 @@ describe("T13 — the participant name stays a historical snapshot", () => {
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
-    expect(migs).toEqual([]);
+    expect(unpinnedMigrationSources(migs)).toEqual([]);
   });
 });

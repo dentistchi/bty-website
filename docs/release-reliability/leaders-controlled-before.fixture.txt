@@ -1,0 +1,90 @@
+/** @vitest-environment jsdom */
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { ModuleBuilderShell } from "./ModuleBuilderShell";
+
+/**
+ * Slice 3.1B-2 — the Leaders eligibility preview must be REALLY MOUNTED in the audience
+ * step, not merely present in source. (3.1B-1 shipped a sub-editor that never rendered
+ * because no test opened it; this file exists so that cannot recur.)
+ *
+ * It also pins the product contract the copy must state: this is a preview that does NOT
+ * assign, invite, or restrict, and a zero count never silently becomes Everyone.
+ */
+
+const jsonRes = (body: unknown, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body,
+});
+
+/** Draft server parked on the AUDIENCE step (step 2), plus the preview endpoint. */
+function mockServers(preview: { eligibleCount: number; members: Array<{ displayName: string | null }> } | { error: true }) {
+  const draft = {
+    id: "d-1",
+    status: "draft",
+    current_step: 2,
+    answers: { problem: "p", audienceType: "leaders" } as Record<string, unknown>,
+    module_version: 1,
+    parent_module_id: null,
+    document_asset_ref_present: false,
+    attachment: null,
+    assets: [],
+    created_at: "t",
+    updated_at: "t",
+  };
+  global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    const u = String(url);
+    if (u.includes("/audience/leaders-preview")) {
+      if ("error" in preview) return Promise.resolve(jsonRes({ error: "nope" }, 500));
+      return Promise.resolve(
+        jsonRes({ ok: true, preview: true, assigns: false, ...preview }),
+      );
+    }
+    if (u.includes("/modules/d-1")) {
+      if (init?.method === "PATCH") return Promise.resolve(jsonRes({ ok: true }));
+      return Promise.resolve(jsonRes({ draft }));
+    }
+    return Promise.resolve(jsonRes({ ok: true }));
+  }) as unknown as typeof fetch;
+}
+
+const renderShell = () =>
+  render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+
+describe("controlled deferred-draft readiness regression", () => {
+  it("does not mistake preview DOM mount for the request having started", async () => {
+    mockServers({ eligibleCount: 1, members: [{ displayName: "Hanbit Chi" }] });
+    const original = global.fetch;
+    let releaseDraft!: () => void;
+    const draftGate = new Promise<void>(resolve => { releaseDraft = resolve; });
+    global.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/modules/d-1") && !init?.method) await draftGate;
+      return original(url, init);
+    }) as unknown as typeof fetch;
+    let markMounted!: () => void;
+    const mounted = new Promise<void>(resolve => { markMounted = resolve; });
+    const observer = new MutationObserver(() => {
+      if (screen.queryByTestId("leaders-eligibility-preview")) { observer.disconnect(); markMounted(); }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    try {
+      renderShell();
+      expect(screen.queryByTestId("leaders-eligibility-preview")).toBeNull();
+      releaseDraft();
+      await mounted;
+      expect(screen.getByTestId("leaders-eligibility-preview")).toBeTruthy();
+      // Exactly the old mount-then-single-read contract; no production timing alteration.
+      const calls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+      const previewCall = calls.find((c) => String(c[0]).includes("leaders-preview"));
+      expect(previewCall).toBeTruthy();
+      expect(String(previewCall![0])).toBe("/api/bty/foundry/audience/leaders-preview");
+    } finally { observer.disconnect(); }
+  });
+});

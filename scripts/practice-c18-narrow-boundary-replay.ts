@@ -38,7 +38,7 @@ import { poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates
 import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import { RECONSTRUCTION_DISCLAIMER } from "@/lib/bty/foundry/arena/historicalBoundaryReconstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
-import { buildC18Subject, CASE_ID, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, SOURCE_ATTEMPT_INDEX } from "./practice-c18-boundary-replay";
+import { buildC18Subject, CASE_ID, SYNTHETIC_REPLAY_DISCLAIMER } from "./practice-c18-boundary-replay";
 
 const MOCK_ENV = "BTY_C18_NARROW_MOCK";
 // R2.34 — re-exported from the ONE canonical source; never redeclared here.
@@ -69,6 +69,8 @@ export type NarrowReplayDeps = {
    * real frozen subject. Never used by the live path — the runner passes no mutation.
    */
   mutateDraft?: (draft: ArenaScenarioDraft) => ArenaScenarioDraft;
+  /** Explicit pinned data source for isolated mock tests; never allowed for live review. */
+  subjectSource?: "synthetic-test-fixture";
 };
 
 export type NarrowReplaySummary = {
@@ -118,7 +120,8 @@ export async function runC18NarrowBoundaryReplay(
   mode: "mock" | "live",
 ): Promise<NarrowReplaySummary> {
   const log = deps.log ?? (() => undefined);
-  const broad = buildC18Subject(repoRoot, evidenceDir);
+  if (deps.subjectSource && mode !== "mock") throw new Error("synthetic test fixture requires mock mode");
+  const broad = buildC18Subject(repoRoot, evidenceDir, deps.subjectSource ?? "historical");
   const subject = broad.subject;
   const provenance = subject.boundaryProvenance!;
   const provenanceSha = boundaryProvenanceSha256(provenance);
@@ -154,10 +157,12 @@ export async function runC18NarrowBoundaryReplay(
       sourceRunId: broad.sourceRunId,
       sourcePassId: broad.sourcePassId,
       sourceCaseId: broad.sourceCaseId,
-      sourceAttemptIndex: SOURCE_ATTEMPT_INDEX,
-      sourceArtifactFile: SOURCE_ARTIFACT,
-      sourceArtifactSha256: SOURCE_ARTIFACT_SHA256,
-      reconstructionDisclaimer: RECONSTRUCTION_DISCLAIMER,
+      sourceAttemptIndex: broad.sourceAttemptIndex,
+      sourceArtifactFile: broad.sourceArtifactFile,
+      sourceArtifactSha256: broad.sourceArtifactSha256,
+      sourceKind: broad.sourceKind,
+      reconstructionDisclaimer: broad.sourceKind === "test-fixture"
+        ? SYNTHETIC_REPLAY_DISCLAIMER : RECONSTRUCTION_DISCLAIMER,
       productQualityPass: null,
       productQualityAuthority: "human_only",
       subjectDigests: digests,
@@ -427,12 +432,14 @@ async function main(): Promise<void> {
   const dir = arg("artifact-dir");
   const evidenceDir = arg("evidence-dir", join(process.cwd(), ".eval-artifacts"));
   const mode: "mock" | "live" = useMock ? "mock" : "live";
+  const synthetic = process.argv.includes("--synthetic-test-fixture");
+  if (synthetic && !useMock) throw new Error("synthetic test fixture requires mock mode");
 
-  const broad = buildC18Subject(process.cwd(), evidenceDir);
+  const broad = buildC18Subject(process.cwd(), evidenceDir, synthetic ? "synthetic-test-fixture" : "historical");
   const all = enumerateBoundarySurfaces(broad.subject.scenario as ArenaScenarioDraft, {});
   const reachable = reviewableSurfaces(all);
   const excluded = compatibilitySurfaces(all);
-  process.stdout.write(`${RECONSTRUCTION_DISCLAIMER}\n`);
+  process.stdout.write(`${synthetic ? SYNTHETIC_REPLAY_DISCLAIMER : RECONSTRUCTION_DISCLAIMER}\n`);
   process.stdout.write(`ACTIVE BOUNDARY: ${broad.subject.activeBoundaryIds.join(",")}\n`);
   process.stdout.write(`BOUNDARY TEXT:   ${broad.subject.confirmedBoundaries.map((b) => b.statement).join(" | ")}\n`);
   process.stdout.write(`REACHABLE DECISION SURFACES (${reachable.length}):\n${reachable.map((s) => `  ${s.coordinate}  [${s.reachability}] lineage=${s.lineage.join("<-") || "root"}`).join("\n")}\n`);
@@ -440,6 +447,7 @@ async function main(): Promise<void> {
 
   const summary = await runC18NarrowBoundaryReplay(
     {
+      subjectSource: synthetic ? "synthetic-test-fixture" : undefined,
       review: async (s, a, surfaceRefs) => {
         if (useMock) return mockNarrowReview(arg("mock-outcome", "pass"), s, a, surfaceRefs ? [...surfaceRefs] : undefined);
         const { reviewBoundarySurfaces } = await import("@/lib/bty/foundry/arena/narrowBoundaryReviewer");
@@ -457,7 +465,7 @@ async function main(): Promise<void> {
       writeArtifact: (payload, subjectSha) =>
         writeReplayArtifact(
           dir,
-          { mode, replayRunId, sourcePassId: "pass2", sourceCaseId: CASE_ID, sourceAttemptIndex: SOURCE_ATTEMPT_INDEX, reviewSubjectSha256: subjectSha },
+          { mode, replayRunId, sourcePassId: broad.sourcePassId, sourceCaseId: broad.sourceCaseId, sourceAttemptIndex: broad.sourceAttemptIndex, reviewSubjectSha256: subjectSha },
           payload,
           BOUNDARY_REPLAY_ARTIFACT_KIND,
         ),
@@ -502,7 +510,9 @@ async function main(): Promise<void> {
   if (summary.authorityCodes.length) process.stdout.write(`AUTHORITY CODES: ${summary.authorityCodes.join(", ")}\n`);
   process.stdout.write(`\nALLOWED OUTCOMES:\n${renderAllowedOutcomes().map((l) => `  ${l}`).join("\n")}\n`);
   process.stdout.write(`ARTIFACT: ${summary.artifactPath} ${summary.artifactSha256}\n`);
-  process.stdout.write("A PASS IS A REVIEWER MEASUREMENT · NEVER A PRODUCT-QUALITY PASS\n");
+  process.stdout.write(useMock
+    ? "MOCK RESULT · NOT A REVIEWER MEASUREMENT OR PRODUCT-QUALITY PASS\n"
+    : "A PASS IS A REVIEWER MEASUREMENT · NEVER A PRODUCT-QUALITY PASS\n");
   if (summary.outcome === "boundary_reviewer_terminal_failure" || summary.outcome === "boundary_review_authority_failure") process.exitCode = 4;
 }
 

@@ -1,6 +1,7 @@
 /**
  * Q3: GET bty/healing, bty/awakening — 200·401 batch.
  */
+import { healingReadClient } from "@/lib/bty/healing/__fixtures__/readClient";
 import { NextRequest, NextResponse } from "next/server";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -19,13 +20,7 @@ const { GET: getHealing } = await import("./healing/route");
 const { GET: getAwakening } = await import("./awakening/route");
 
 function supabaseActsEmpty() {
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({ data: [], error: null }),
-    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-  };
-  return { from: vi.fn(() => chain) };
+  return healingReadClient().client;
 }
 
 describe("Q3 GET bty/healing · bty/awakening — 200·401", () => {

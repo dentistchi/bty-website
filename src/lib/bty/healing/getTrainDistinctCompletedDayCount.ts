@@ -22,7 +22,7 @@ export async function getTrainDistinctCompletedDayCount(
     .select("day")
     .eq("user_id", userId);
 
-  if (error || !data) return 0;
+  if (error || !Array.isArray(data)) throw new Error("AWAKENING_PROGRESS_UNAVAILABLE");
 
   const distinct = new Set(
     data

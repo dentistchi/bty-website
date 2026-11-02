@@ -10,9 +10,11 @@
  * @see `src/app/api/bty/errors.ts` BtyApiErrorResponse
  */
 import { NextRequest, NextResponse } from "next/server";
+import { assertStoredStarterConsistency, isHealingCompletionReviewError } from "@/lib/bty/healing/healingCompletionRead.server";
 import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   AWAKENING_ACT_NAMES,
+  isHealingAwakeningCompletionHistoryValid,
   HEALING_PHASE_I_LABEL,
   HEALING_PHASE_II_LABEL,
   HEALING_PHASE_RING_TYPE,
@@ -32,20 +34,24 @@ export async function GET(req: NextRequest) {
   try {
     const actsRes = await getUserCompletedAwakeningActs(supabase, user.id);
     if (!actsRes.ok) {
-      return btyErrorResponse(500, "INTERNAL_ERROR", actsRes.error);
+      return btyErrorResponse(500, "INTERNAL_ERROR", "HEALING_PROGRESS_UNAVAILABLE");
     }
     const completed = actsRes.completedActs;
+    if (!isHealingAwakeningCompletionHistoryValid(completed)) return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
     const nextId = nextHealingAwakeningActAfter(completed);
     const nextName = nextId != null ? AWAKENING_ACT_NAMES[nextId] : null;
 
-    const { data: milestone } = await supabase
+    const { data: milestone, error: milestoneError } = await supabase
       .from("user_healing_milestones")
-      .select("second_awakening_completed_at")
+      .select("second_awakening_completed_at, starter_unlock_granted")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (milestoneError) return btyErrorResponse(500, "INTERNAL_ERROR", "HEALING_PROGRESS_UNAVAILABLE");
+    await assertStoredStarterConsistency(supabase, user.id, milestone);
     const isPhaseII = !!(milestone as { second_awakening_completed_at: string | null } | null)
       ?.second_awakening_completed_at;
 
+    if (completed.length === 3 && !isPhaseII) return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
     const phase: HealingPhaseLabel = isPhaseII ? HEALING_PHASE_II_LABEL : HEALING_PHASE_I_LABEL;
     const res = NextResponse.json({
       ok: true,
@@ -64,6 +70,7 @@ export async function GET(req: NextRequest) {
     copyCookiesAndDebug(base, res, req, true);
     return res;
   } catch (e) {
+    if (isHealingCompletionReviewError(e)) return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
     const message = e instanceof Error ? e.message : String(e);
     return btyErrorResponse(500, "INTERNAL_ERROR", message);
   }

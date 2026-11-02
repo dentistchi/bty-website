@@ -4,8 +4,8 @@
  *
  * Tests the 2C-2 suppression in `src/components/bty/navigation/BottomNav.tsx`
  * during FORCED_RESET sub-mode (v1.1.1 §5.5.2 + §8-7). Covers:
- * - Forced-reset inactive → grid-cols-3 with Center / Arena / My Page tabs
- * - Forced-reset active → grid-cols-1 with only Center tab
+ * - Forced-reset inactive → five contained legacy tabs (Today / Center / Arena / Foundry / Me)
+ * - Forced-reset active → grid-cols-1 with only Center tab; all other four suppressed
  * - Loading state → renders normally (NOT-suppressed default)
  * - `<nav>` element + aria-label preserved for a11y in both states
  */
@@ -48,33 +48,40 @@ function findGridContainer(): HTMLElement {
 }
 
 describe("BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-7)", () => {
-  it("renders 3 tabs (Center / btyARENA / My Page) with grid-cols-3 when forced-reset inactive", () => {
+  it("renders the current five contained legacy tabs with grid-cols-5 when forced-reset inactive", () => {
     mockUseForcedResetActive.mockReturnValue(false);
     render(<BottomNav locale="en" />);
     expect(screen.getByText("Center")).toBeTruthy();
-    expect(screen.getByText("btyARENA")).toBeTruthy();
-    expect(screen.getByText("My Page")).toBeTruthy();
-    expect(screen.getAllByRole("link")).toHaveLength(3);
-    expect(findGridContainer().className).toContain("grid-cols-3");
+    expect(screen.getByText("Arena")).toBeTruthy();
+    expect(screen.getByText("Today")).toBeTruthy();
+    expect(screen.getByText("Foundry")).toBeTruthy();
+    expect(screen.getByText("Me")).toBeTruthy();
+    expect(screen.getAllByRole("link")).toHaveLength(5);
+    expect(findGridContainer().className).toContain("grid-cols-5");
     expect(findGridContainer().className).not.toContain("grid-cols-1");
+    expect(screen.getAllByRole("link").map(link => link.getAttribute("href"))).toEqual([
+      "/en/today", "/en/center", "/en/bty-arena", "/en/bty/foundry", "/en/my-page",
+    ]);
   });
 
-  it("renders only Center tab with grid-cols-1 when forced-reset active (Arena + My Page suppressed)", () => {
+  it("renders only Center tab with grid-cols-1 when forced-reset active (all other routes suppressed)", () => {
     mockUseForcedResetActive.mockReturnValue(true);
     render(<BottomNav locale="en" />);
     expect(screen.getByText("Center")).toBeTruthy();
-    expect(screen.queryByText("btyARENA")).toBeNull();
-    expect(screen.queryByText("My Page")).toBeNull();
+    expect(screen.queryByText("Arena")).toBeNull();
+    expect(screen.queryByText("Me")).toBeNull();
+    expect(screen.queryByText("Today")).toBeNull();
+    expect(screen.queryByText("Foundry")).toBeNull();
     expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(findGridContainer().className).toContain("grid-cols-1");
-    expect(findGridContainer().className).not.toContain("grid-cols-3");
+    expect(findGridContainer().className).not.toContain("grid-cols-5");
   });
 
-  it("loading state renders 3 tabs (NOT-suppressed default; hook returns false initially)", () => {
+  it("loading state renders five legacy tabs (NOT-suppressed default; hook returns false initially)", () => {
     mockUseForcedResetActive.mockReturnValue(false);
     render(<BottomNav locale="en" />);
-    expect(screen.getAllByRole("link")).toHaveLength(3);
-    expect(findGridContainer().className).toContain("grid-cols-3");
+    expect(screen.getAllByRole("link")).toHaveLength(5);
+    expect(findGridContainer().className).toContain("grid-cols-5");
   });
 
   it("preserves <nav> element + aria-label in suppressed state (a11y)", () => {
@@ -88,7 +95,9 @@ describe("BottomNav — FORCED_RESET sub-mode suppression (v1.1.1 §5.5.2 + §8-
     mockPathname.mockReturnValue("/ko/center");
     render(<BottomNav locale="ko" />);
     expect(screen.getByText("Center")).toBeTruthy();
-    expect(screen.queryByText("btyARENA")).toBeNull();
-    expect(screen.queryByText("My Page")).toBeNull();
+    expect(screen.queryByText("Arena")).toBeNull();
+    expect(screen.queryByText("Me")).toBeNull();
+    expect(screen.queryByText("Today")).toBeNull();
+    expect(screen.queryByText("Foundry")).toBeNull();
   });
 });

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getActiveLeague } from "./activeLeague";
-import { applySeasonalXpToCore } from "./applyCoreXp";
+import { awardActivityXp } from "./sharedXp.server";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 
 /** Arena daily XP cap (run complete + activity). Single source for run/complete route and recordActivityXp. */
 export const ARENA_DAILY_XP_CAP = 1200;
@@ -72,28 +73,16 @@ export async function recordActivityXp(
   const xpWriter = getSupabaseAdmin();
   if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
 
-  const { error: insErr } = await supabase.from("activity_xp_events").insert({
-    user_id: userId,
-    activity_type: activityType,
-    xp: deltaCapped,
-  });
-  if (insErr) return { ok: false, error: insErr.message };
-
-  await supabase.rpc("ensure_arena_profile");
-
   const league = await getActiveLeague(supabase, xpWriter);
   const leagueId: string | null = league?.league_id ?? null;
 
-  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-  const { error: wxErr } = await xpWriter.rpc("increment_weekly_xp", {
-    p_user_id: userId,
-    p_league_id: leagueId,
-    p_delta: deltaCapped,
-  });
-  if (wxErr) return { ok: false, error: wxErr.message };
-
-  const coreResult = await applySeasonalXpToCore(supabase, userId, deltaCapped);
-  if ("error" in coreResult) return { ok: false, error: coreResult.error };
+  // The activity event (cap basis), weekly XP and seasonal Core commit together.
+  const result = await awardActivityXp(userId, activityType, deltaCapped, leagueId);
+  if (!result.ok) return { ok: false, error: result.error };
+  const { coreBefore, coreAfter } = result.award;
+  void syncAvatarStateAfterCoreXpChange(userId, supabase, coreBefore, coreAfter).catch((err) =>
+    console.warn("[recordActivityXp] avatar state sync", err),
+  );
 
   return { ok: true, xp: deltaCapped };
 }

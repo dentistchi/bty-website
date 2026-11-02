@@ -7,7 +7,7 @@
  * the generic error, with no auto-retry and no second write. pending/rejected stay editable.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, act } from "@testing-library/react";
 import FieldActionForm from "./FieldActionForm";
 
 const BASE = {
@@ -19,13 +19,14 @@ const SUBMITTED = { ...BASE, status: "submitted" };
 const PENDING = { ...BASE, status: "pending", who: null, what: null, how: null, stepWhen: null };
 const REJECTED = { ...BASE, status: "rejected", revisionNote: "Name a specific person." };
 
-function mockFetch(opts: { loadContract: unknown; submitStatus?: number; submitBody?: unknown; onSubmit?: () => void }) {
+function mockFetch(opts: { loadContract: unknown; loadReady?: Promise<void>; submitStatus?: number; submitBody?: unknown; onSubmit?: () => void }) {
   vi.stubGlobal("fetch", vi.fn((url: string) => {
     if (String(url).includes("/submit-validation")) {
       opts.onSubmit?.();
       return Promise.resolve(new Response(JSON.stringify(opts.submitBody ?? {}), { status: opts.submitStatus ?? 200 }));
     }
-    return Promise.resolve(new Response(JSON.stringify({ ok: true, contract: opts.loadContract }), { status: 200 }));
+    const response = new Response(JSON.stringify({ ok: true, contract: opts.loadContract }), { status: 200 });
+    return opts.loadReady ? opts.loadReady.then(() => response) : Promise.resolve(response);
   }));
 }
 
@@ -78,10 +79,17 @@ describe("FieldActionForm — existing-state-aware UX", () => {
   });
 
   it("(7) pending → editable authoring form", async () => {
-    mockFetch({ loadContract: PENDING });
+    let finishLoad!: () => void;
+    const loadReady = new Promise<void>(resolve => { finishLoad = resolve; });
+    mockFetch({ loadContract: PENDING, loadReady });
     render(<FieldActionForm locale="en" assignmentId="a1" onBack={() => {}} />);
     expect(await screen.findByTestId("field-action-form")).toBeTruthy();
-    expect(screen.getByTestId("field-action-who")).toBeTruthy();
+    expect(screen.getByTestId("field-action-loading")).toBeTruthy();
+    expect(screen.queryByTestId("field-action-who")).toBeNull();
+    // The outer section exists during loading; the editable field is the readiness signal.
+    const editableWho = screen.findByTestId("field-action-who");
+    await act(async () => { finishLoad(); });
+    expect(await editableWho).toBeTruthy();
   });
 
   it("(8,10,11) 409+approved → approved message, not generic; submit called once; no new contract", async () => {

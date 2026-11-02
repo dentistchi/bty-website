@@ -1,3 +1,4 @@
+import { awardRunXp } from "@/lib/bty/arena/sharedXp.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateChoice } from "@/lib/bty/arena/engine";
@@ -279,12 +280,10 @@ async function syncRunProgressAndXp(
 
   if (xp > 0) {
     if (!xpWriter) return { error: "XP_WRITER_UNAVAILABLE", status: 503 };
-    const { error: rpcErr } = await xpWriter.rpc("increment_arena_xp", {
-      p_user_id: userId,
-      p_run_id: runId,
-      p_xp: xp,
-    });
-    if (rpcErr) return { error: rpcErr.message };
+    // bty_award_run_xp_v2: the database refuses the former increment_arena_xp name
+    // from callers outside this release's writers.
+    const award = await awardRunXp(userId, runId, xp);
+    if (!award.ok) return { error: award.error };
   }
   return null;
 }

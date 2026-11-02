@@ -1,7 +1,14 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const state=vi.hoisted(()=>({owned:true,admin:true,serviceError:false,userCalls:[] as unknown[],serviceCalls:[] as unknown[],writes:[] as Record<string,unknown>[]}));
 vi.mock('@/lib/legal/activeConsent',()=>({isConsentCurrent:async()=>true,consentRequiredResponse:()=>Response.json({error:'consent'},{status:403})}));
-vi.mock('@/lib/supabase-admin',()=>({getSupabaseAdmin:()=>state.admin?{rpc:async(fn:string,args:unknown)=>{state.serviceCalls.push({fn,args});return{error:state.serviceError?{message:'database refused award'}:null}}}:null}));
+vi.mock('@/lib/supabase-admin',()=>({getSupabaseAdmin:()=>state.admin?{rpc:async(fn:string,args:Record<string,unknown>)=>{
+ state.serviceCalls.push({fn,args});
+ return{data:state.serviceError?null:{
+  policyVersion:'legacy-xp-atomic/v1',kind:'legacy_choice',runId:args.p_run_id,scenarioId:args.p_scenario_id,
+  receiptId:'00000000-0000-4000-8000-000000000010',eventId:'00000000-0000-4000-8000-000000000011',
+  replayed:false,choiceId:args.p_choice_id,xp:args.p_xp,step:args.p_step,
+ },error:state.serviceError?{message:'database refused award'}:null};
+}}:null}));
 vi.mock('@/lib/bty/arena/supabaseServer',()=>({getSupabaseServerClient:async()=>({
  auth:{getUser:async()=>({data:{user:{id:'00000000-0000-4000-8000-000000000001'}}})},
  rpc:async(fn:string,args:unknown)=>{state.userCalls.push({fn,args});return{error:null}},
@@ -15,9 +22,13 @@ beforeEach(()=>{state.owned=true;state.admin=true;state.serviceError=false;state
 describe('trusted XP server boundary',()=>{
  it('ignores forged choice XP/deltas and awards only canonical legacy value through service-role client',async()=>{
   const r=await POST(request());expect(r.status).toBe(200);
-  expect(state.writes[0]).toMatchObject({xp:82,deltas:{integrity:1,communication:3,insight:3,resilience:1,gratitude:2}});
+  expect(state.writes).toEqual([]);
   expect(state.userCalls).toEqual([]);
-  expect(state.serviceCalls).toEqual([{fn:'increment_arena_xp',args:{p_user_id:'00000000-0000-4000-8000-000000000001',p_run_id:'00000000-0000-4000-8000-000000000002',p_xp:82}}]);
+  expect(state.serviceCalls).toEqual([{fn:'bty_record_legacy_choice_reward',args:{
+   p_user_id:'00000000-0000-4000-8000-000000000001',p_run_id:'00000000-0000-4000-8000-000000000002',
+   p_scenario_id:'patient_refuses_treatment_001',p_choice_id:'B',p_step:2,p_xp:82,
+   p_deltas:{integrity:1,communication:3,insight:3,resilience:1,gratitude:2},p_meta:null,
+  }}]);
  });
  it('does not award forged XP on a non-reward capture event',async()=>{
   const r=await POST(request({eventType:'SCENARIO_STARTED',step:1}));expect(r.status).toBe(200);
@@ -33,6 +44,6 @@ describe('trusted XP server boundary',()=>{
   const r=await POST(request({choiceId:'not-a-catalog-choice'}));expect(r.status).toBe(400);expect(state.writes).toEqual([]);expect(state.serviceCalls).toEqual([]);
  });
  it('does not report success when the configured award RPC fails',async()=>{
-  state.serviceError=true;const r=await POST(request());expect(r.status).toBe(500);expect(state.userCalls).toEqual([]);
+  state.serviceError=true;const r=await POST(request());expect(r.status).toBe(500);expect(state.userCalls).toEqual([]);expect(state.writes).toEqual([]);
  });
 });

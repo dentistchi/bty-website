@@ -1,5 +1,6 @@
 "use client";
 
+import { CompletionXpRecovery } from "./CompletionXpRecovery";
 import ApplyActionDayPicker from "@/components/foundry/event-rooms/ApplyActionDayPicker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
@@ -53,7 +54,7 @@ type Stage =
   | "removed"
   | "inactive";
 
-type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none" | "unavailable" | "review_required";
 
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
@@ -505,6 +506,7 @@ export default function FoundryJoinClient({
   const [reflectError, setReflectError] = useState(false);
   const [decisionError, setDecisionError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [xpClaimFailed, setXpClaimFailed] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
   const [sharedError, setSharedError] = useState(false);
@@ -827,16 +829,19 @@ export default function FoundryJoinClient({
       if (busyRef.current) return;
       busyRef.current = true;
       setBusy(true);
+      reconciledRef.current = true;
       try {
-        const { ok, status, settled, data } = await post("/progress/claim-xp", { tz: deviceTz() });
-        if (ok) applyResult(data);
-        else if (status === 401) {
+        const { ok, status, data } = await post("/progress/claim-xp", { tz: deviceTz() });
+        if (ok && applyResult(data)) {
+          setXpClaimFailed((data as { xp_status?: unknown }).xp_status === "unavailable");
+        } else if (status === 401) {
           // Need to sign in first — return here afterward.
           const next = encodeURIComponent(`/f/${token}`);
           window.location.href = `/${locale}/bty/login?next=${next}`;
-        } else if (!settled) {
-          // Never a false failure over a claim that may have landed — ask instead.
-          await load();
+        } else {
+          // An uncertain or refused response never replaces the durable completion.
+          const current = await load();
+          setXpClaimFailed(current?.xp_status !== "awarded" && current?.xp_status !== "review_required");
         }
       } finally {
         busyRef.current = false;
@@ -1054,7 +1059,9 @@ export default function FoundryJoinClient({
               {t.assignmentNoMatch}
             </p>
           ) : null}
-          {xp === "awarded" ? (
+          {xp === "unavailable" || xp === "review_required" || (xp === "claimable" && xpClaimFailed) ? (
+            <CompletionXpRecovery status={xp === "review_required" ? "review_required" : "unavailable"} locale={locale} busy={busy} failed={xpClaimFailed && !busy} onRetry={() => void onClaim(false)} />
+          ) : xp === "awarded" ? (
             <>
               <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
               <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { CompletionXpRecovery } from "./CompletionXpRecovery";
 import ApplyActionDayPicker from "@/components/foundry/event-rooms/ApplyActionDayPicker";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { resolveRoomLocale, resolveRoomLocaleOnClient } from "./roomLocale";
@@ -58,7 +59,7 @@ type Stage =
   | "removed"
   | "inactive";
 
-type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none" | "unavailable" | "review_required";
 
 type GuidanceInfo = {
   material_text: string;
@@ -500,6 +501,7 @@ export default function FoundryGuidanceClient({
   const [reflectError, setReflectError] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [xpClaimFailed, setXpClaimFailed] = useState(false);
   const busyRef = useRef(false);
   const [claimed, setClaimed] = useState(false);
 
@@ -745,7 +747,8 @@ export default function FoundryGuidanceClient({
     try {
       const r = await post("/claim-xp", { tz: deviceTz() });
       if (!r.settled) {
-        await load();
+        const current = await load();
+        setXpClaimFailed(current?.xp_status !== "awarded" && current?.xp_status !== "review_required");
         return;
       }
       if (r.status === 401) {
@@ -766,8 +769,15 @@ export default function FoundryGuidanceClient({
         window.location.href = `/${locale}/bty/login?next=${encodeURIComponent(`/f/${token}`)}`;
         return;
       }
-      if (applyResult(r.data)) setClaimed(true);
-      else await load();
+      if (r.ok && applyResult(r.data)) {
+        const status = (r.data as { xp_status?: unknown }).xp_status;
+        setClaimed(status === "awarded");
+        setXpClaimFailed(status === "unavailable");
+      } else {
+        const current = await load();
+        setClaimed(current?.xp_status === "awarded");
+        setXpClaimFailed(current?.xp_status !== "awarded" && current?.xp_status !== "review_required");
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -892,8 +902,13 @@ export default function FoundryGuidanceClient({
               nothing here to press. Absent for every non-quiz training, which renders exactly as before.
             */}
             {quizResult ? <LearnerQuizResultSummary result={quizResult} locale={locale} /> : null}
-            {claimed ? (
-              <p className="mt-2 text-sm text-white/70">{t.savedBody}</p>
+            {xp === "unavailable" || xp === "review_required" || (xp === "claimable" && xpClaimFailed) ? (
+              <CompletionXpRecovery status={xp === "review_required" ? "review_required" : "unavailable"} locale={locale} busy={busy} failed={xpClaimFailed && !busy} onRetry={() => void onClaim()} />
+            ) : claimed ? (
+              <>
+                <p className="mt-2 text-sm text-white/70">{t.savedBody}</p>
+                {xp === "awarded" ? <p className="mt-2 text-sm text-emerald-300/90">{t.xpAwarded}</p> : null}
+              </>
             ) : xp === "awarded" ? (
               <>
                 <p className="mt-2 text-sm text-emerald-300/90">{t.xpAwarded}</p>

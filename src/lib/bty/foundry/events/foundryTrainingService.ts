@@ -24,7 +24,7 @@ import {
   embedCheckAllowsCreate,
   embedCheckReason,
 } from "./youtubeEmbed";
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { awardFoundryCoreAtomic, foundryOutcomeToXpStatus, readConfirmedFoundryXpStatus, readFoundryRewardTimezone, type FoundryAwardOutcome, type FoundryXpStatus } from "./foundryXpAtomic.server";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow, applyNarration, type MaterializeApplyResult } from "./foundryApplyWindowService";
@@ -32,7 +32,7 @@ import { issueCompletionClaim, invalidateDeferredClaim } from "./completionClaim
 import { publishedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { isFollowUpDays, type FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
-import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
+import { userDayWindow } from "@/domain/daily/userDayWindow";
 import { participantDraftNamespace } from "./participant-draft-namespace";
 import {
   getOwnerEventSnapshot,
@@ -49,7 +49,7 @@ import {
  * Extends the base Event Rooms service with: training content (one video + one
  * prompt per event), participant progress (watch → respond → complete), and the
  * Core XP loop. Core XP is awarded through the CANONICAL path only
- * (core_xp_ledger idempotency insert + applyDirectCoreXp), attributed as
+ * (one atomic ledger/Core/receipt transaction), attributed as
  * source_type='foundry_training_completion' / source_id=progress.id. Never
  * writes an XP total itself. The completion response is PRIVATE — it is read by
  * these service routes for validation only and never returned to the manager.
@@ -285,7 +285,7 @@ export async function getOwnerTrainingSnapshot(
 // Public: employee training progress
 // ---------------------------------------------------------------------------
 
-export type PublicXpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+export type PublicXpStatus = FoundryXpStatus;
 
 export type PublicTrainingSnapshot = {
   event: { title: string; status: FoundryEventStatus } | null;
@@ -592,7 +592,7 @@ export async function getPublicTrainingSnapshot(
     name has no reason to travel on a request that is not showing the join field. Once someone has
     joined there is nothing to prefill, so a snapshot WITH a participant never carries it.
   */
-  const snap = buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, practice, followUpDays);
+  const snap = buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id), journey, practice, followUpDays);
   return snap.participant ? snap : { ...snap, suggested_name: suggestedName ?? null };
 }
 
@@ -607,15 +607,14 @@ async function snapshotFor(
   const journey = await getEventJourney(admin, event.id);
   const followUpDays = await readEventFollowUpDays(admin, event.id);
   const practice = await publishedPracticeForEvent(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey, practice, followUpDays);
+  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride ?? await readConfirmedFoundryXpStatus(admin, progress, event.owner_user_id), journey, practice, followUpDays);
 }
 
 /** Compute the caller's canonical BTY-day window [start, end) (05:00 user-local). */
 async function btyDayWindow(admin: SupabaseClient, userId: string): Promise<{ start: string; end: string }> {
-  const { timezone } = await resolveUserTzContext(admin, userId, null);
+  const timezone = await readFoundryRewardTimezone(admin, userId, null);
   const now = new Date();
-  const start = userDayStartInstant(now, timezone, 5);
-  const end = userDayStartInstant(new Date(start.getTime() + 86_400_000 + 1), timezone, 5);
+  const { start, end } = userDayWindow(now, timezone, 5);
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
@@ -688,59 +687,20 @@ export async function completeVideo(
   return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant) };
 }
 
-export type AwardOutcome = "awarded" | "already_awarded" | "owner_ineligible" | "daily_limit";
+export type AwardOutcome = FoundryAwardOutcome;
 
-/** Map an award outcome to the public xp_status the client renders. */
 export function outcomeToXpStatus(outcome: AwardOutcome): PublicXpStatus {
-  if (outcome === "owner_ineligible") return "owner_ineligible";
-  if (outcome === "daily_limit") return "daily_limit";
-  return "awarded"; // awarded | already_awarded (via this or another participant)
+  return foundryOutcomeToXpStatus(outcome);
 }
 
-/**
- * Award 10 Core XP through the integrity gate:
- *  - the event OWNER never earns XP from their own event (owner_ineligible),
- *  - one award per (user, event), one per completion, max 3 per canonical BTY day,
- *    all enforced race-safely in the SECURITY DEFINER RPC (advisory-locked),
- *  - the authoritative total + avatar bump stays in the canonical applyDirectCoreXp,
- *    called ONLY on a fresh 'awarded' result.
- * Never writes an XP total directly; never logs identifiers.
- */
+/** Ledger, canonical Core projection, marker and receipt share one private transaction. */
 export async function awardTrainingCoreXp(
-  admin: SupabaseClient,
-  userId: string,
-  eventId: string,
-  ownerUserId: string,
-  progressId: string,
+  admin: SupabaseClient, userId: string, eventId: string, ownerUserId: string, progressId: string,
 ): Promise<AwardOutcome> {
-  if (userId === ownerUserId) return "owner_ineligible";
-
-  const window = await btyDayWindow(admin, userId);
-  const { data, error } = await admin.rpc("bty_foundry_award_daily_capped", {
-    p_user_id: userId,
-    p_event_id: eventId,
-    p_source_id: progressId,
-    p_xp: FOUNDRY_TRAINING_XP,
-    p_day_start: window.start,
-    p_day_end: window.end,
-    p_max_per_day: 3,
-  });
-
-  if (error) return "already_awarded"; // fail-safe: never double-award on RPC error
-  const result = String(data);
-
-  if (result === "awarded") {
-    // Fresh ledger row committed atomically — now bump the authoritative total + avatar.
-    const bump = await applyDirectCoreXp(admin, userId, FOUNDRY_TRAINING_XP);
-    if ("error" in bump) {
-      // Ledger row exists (XP is audited); total bump can be reconciled — treat as awarded.
-      return "awarded";
-    }
-    return "awarded";
-  }
-  if (result === "daily_limit") return "daily_limit";
-  // already_awarded | event_already_awarded → the user already holds this event's XP
-  return "already_awarded";
+  try {
+    const window = await btyDayWindow(admin, userId);
+    return await awardFoundryCoreAtomic(admin, { userId, eventId, progressId, ...window });
+  } catch { return "unavailable"; }
 }
 
 /**
@@ -799,11 +759,7 @@ export async function finalizeCanonicalTrainingCompletion(
   let xpOverride: PublicXpStatus | undefined;
   if (linkableUserId) {
     const outcome = await awardTrainingCoreXp(admin, linkableUserId, event.id, event.owner_user_id, progressId);
-    if (outcome === "awarded") {
-      await admin.from("foundry_event_training_progress")
-        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
-        .eq("id", progressId).is("xp_awarded_at", null);
-    }
+
     xpOverride = outcomeToXpStatus(outcome);
   }
 
@@ -955,13 +911,6 @@ export async function completeTraining(
   let xpOverride: PublicXpStatus | undefined;
   if (linkableUserId) {
     const outcome = await awardTrainingCoreXp(admin, linkableUserId, r.event.id, r.event.owner_user_id, progressId);
-    if (outcome === "awarded") {
-      await admin
-        .from("foundry_event_training_progress")
-        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
-        .eq("id", progressId)
-        .is("xp_awarded_at", null);
-    }
     xpOverride = outcomeToXpStatus(outcome);
   }
 
@@ -1129,22 +1078,12 @@ export async function claimXp(
   */
   await invalidateDeferredClaim(admin, prog.id);
 
-  if (prog.xp_awarded_at) {
-    return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim, ...applyNarration(applyWindowResult) };
-  }
-
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
-  if (outcome === "awarded") {
-    await admin
-      .from("foundry_event_training_progress")
-      .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
-      .eq("id", prog.id)
-      .is("xp_awarded_at", null);
-  }
 
   return {
     ok: true,
     snapshot: await snapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)),
     assignmentClaim,
+    ...applyNarration(applyWindowResult),
   };
 }

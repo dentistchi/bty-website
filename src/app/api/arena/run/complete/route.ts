@@ -1,13 +1,14 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { applySeasonalXpToCore } from "@/lib/bty/arena/applyCoreXp";
 import {
   getWeekStartUTC,
   REFLECTION_QUEST_TARGET,
-  REFLECTION_QUEST_BONUS_XP,
 } from "@/lib/bty/arena/weeklyQuest";
+import { claimWeeklyReflectionQuest } from "@/lib/bty/arena/weeklyQuestReward.server";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
 import { resolvePatternFamilyForContractTrigger } from "@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger";
 import { syncPatternStatesForUser } from "@/lib/bty/pattern-engine/syncPatternStates";
@@ -72,13 +73,18 @@ export async function POST(req: Request) {
 
   const { data: existing, error: selErr } = await supabase
     .from("arena_runs")
-    .select("run_id, status, scenario_id, difficulty, meta")
+    .select("run_id, run_type, status, scenario_id, difficulty, meta")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
   if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // Beginner completion has its own atomic reward receipt; it cannot also claim
+  // the general scenario completion reward or mutate its progression here.
+  if ((existing as { run_type?: string }).run_type === "beginner") {
+    return NextResponse.json({ error: "NOT_SCENARIO_RUN" }, { status: 409 });
+  }
 
   const scenarioId = (existing as { scenario_id?: string }).scenario_id ?? "";
   const runMeta = (
@@ -138,12 +144,16 @@ export async function POST(req: Request) {
       nbaLogId: null,
       patternFamily,
     });
+    // A retry of an already rewarded run repays nothing, but it does retry a weekly
+    // quest whose earlier attempt failed; the claim row keeps that to one award.
+    const weeklyQuest = await settleWeeklyReflectionQuest(supabase, adminForContract, user.id, runId);
     const nextSnap = snapshotForNextScenarioReady();
     return NextResponse.json({
       ok: true,
       runId,
       status: "DONE",
       idempotent: true,
+      weeklyQuest,
       actionContractCreated: ensured.ok && ensured.created,
       contractId: ensured.contractId,
       myPageRefetchRequired: true,
@@ -196,7 +206,7 @@ export async function POST(req: Request) {
       },
     });
     if (!rewards.ok) {
-      return NextResponse.json({ error: rewards.error }, { status: 500 });
+      return NextResponse.json({ error: rewards.error }, { status: rewards.error === "REWARD_WRITES_PAUSED" ? 503 : 500 });
     }
     arenaCoreXp = rewards.coreXp;
     deltaCapped = rewards.deltaApplied;
@@ -218,42 +228,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // Weekly reflection quest: 3 reflections in a week (Monday UTC) grant +15 Seasonal XP once.
-  const weekStart = getWeekStartUTC();
-  const weekStartISO = `${weekStart}T00:00:00.000Z`;
-  const { count: reflectionCount, error: countErr } = await supabase
-    .from("arena_events")
-    .select("event_id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .in("event_type", ["REFLECTION_SELECTED", "BEGINNER_REFLECTION"])
-    .gte("created_at", weekStartISO);
-  if (!countErr && (reflectionCount ?? 0) >= REFLECTION_QUEST_TARGET) {
-    const { data: existingClaim } = await supabase
-      .from("arena_weekly_quest_claims")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .eq("week_start", weekStart)
-      .eq("quest_type", "reflection")
-      .maybeSingle();
-    if (!existingClaim) {
-      // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-      // UPSERT also applies the bonus when no weekly_xp row exists yet (the prior
-      // `if (wxRow)` guard silently dropped the bonus in that case).
-      const { error: bonusErr } = await adminForContract.rpc("increment_weekly_xp", {
-        p_user_id: user.id,
-        p_league_id: null,
-        p_delta: REFLECTION_QUEST_BONUS_XP,
-      });
-      if (!bonusErr) {
-        await applySeasonalXpToCore(supabase, user.id, REFLECTION_QUEST_BONUS_XP);
-      }
-      await supabase.from("arena_weekly_quest_claims").insert({
-        user_id: user.id,
-        week_start: weekStart,
-        quest_type: "reflection",
-      });
-    }
-  }
+  const weeklyQuest = await settleWeeklyReflectionQuest(supabase, adminForContract, user.id, runId);
 
   const nextSnap = snapshotForNextScenarioReady();
   return NextResponse.json({
@@ -264,9 +239,50 @@ export async function POST(req: Request) {
     coreXp: arenaCoreXp,
     weeklyXp: deltaCapped,
     xpDeferredToContractVerification: isContractGated,
+    weeklyQuest,
     actionContractCreated: ensured.ok && ensured.created,
     contractId: ensured.contractId,
     myPageRefetchRequired: true,
     ...arenaRouterSnapshotJsonFields(nextSnap),
   });
+}
+
+/**
+ * Weekly reflection quest: 3 reflections in a week (Monday UTC) grant +15 Seasonal XP once.
+ * One SQL transaction inserts the weekly claim first, then pays weekly XP and Core, so
+ * concurrent or retried completions cannot pay twice and a failure pays nothing. The
+ * quest never fails the run completion itself; any later completion of this or another
+ * run retries it.
+ */
+async function settleWeeklyReflectionQuest(
+  supabase: SupabaseClient,
+  admin: SupabaseClient,
+  userId: string,
+  runId: string,
+): Promise<"awarded" | "already_claimed" | "not_eligible" | "failed"> {
+  const weekStart = getWeekStartUTC();
+  const weekStartISO = `${weekStart}T00:00:00.000Z`;
+  const { count: reflectionCount, error: countErr } = await supabase
+    .from("arena_events")
+    .select("event_id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("event_type", ["REFLECTION_SELECTED", "BEGINNER_REFLECTION"])
+    .gte("created_at", weekStartISO);
+  if (countErr) {
+    console.warn("[run/complete] weekly reflection count unavailable", { runId, error: countErr.message });
+    return "failed";
+  }
+  if ((reflectionCount ?? 0) < REFLECTION_QUEST_TARGET) return "not_eligible";
+  const quest = await claimWeeklyReflectionQuest(admin, { userId, weekStart });
+  if (!quest.ok) {
+    console.warn("[run/complete] weekly reflection quest not awarded", { runId, error: quest.error });
+    return "failed";
+  }
+  if (quest.claim.outcome === "awarded") {
+    const { coreBefore, coreAfter } = quest.claim;
+    try {
+      void syncAvatarStateAfterCoreXpChange(userId, supabase, coreBefore, coreAfter).catch(() => {});
+    } catch { /* Derived avatar state is best effort; the reward is committed. */ }
+  }
+  return quest.claim.outcome;
 }

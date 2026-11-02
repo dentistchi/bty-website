@@ -1,0 +1,59 @@
+{
+  "scope": "Retained protected Healing clients, actual React components with synthetic in-memory network. Auth chrome/router substituted; no session, DB, rewards, clinical data or external service writes.",
+  "before": {
+    "frozenTestsCommit": "716e679",
+    "tests": 33,
+    "passed": 3,
+    "failed": 30,
+    "report": "release-healing-ui-before-corrected.json"
+  },
+  "after": {
+    "tests": 34,
+    "passed": 34,
+    "failed": 0,
+    "extraCase": "GET review-required 409 contract",
+    "report": "release-healing-ui-delivery.json"
+  },
+  "browser": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0,
+    "viewportWidths": [
+      320,
+      390,
+      1280
+    ],
+    "clients": [
+      "second-awakening",
+      "awakening-acts"
+    ],
+    "report": "release-healing-browser-final.json"
+  },
+  "types": {
+    "node": "20.20.2",
+    "heapGiB": 8,
+    "exit": 0,
+    "report": "release-healing-ui-types-final.log"
+  },
+  "contracts": {
+    "secondCompletion": "HTTP200; ok===true; idempotent:boolean; optional starterUnlockGranted PRM/SAG",
+    "progressCompletion": "HTTP200; ok===true; ordered unique 1..3 prefix containing requested act",
+    "duplicateOnly": "409 ACT_ALREADY_COMPLETED triggers canonical reread",
+    "review": "409 HEALING_COMPLETION_REVIEW_REQUIRED preserves unconfirmed state with review copy"
+  },
+  "measurementCorrections": [
+    "The first cancelled UI run used unsupported DOM matchers; final frozen before measurement uses plain Vitest matchers.",
+    "Post-fix review feedback intentionally appears in persistent guidance and toast; the text selector now accepts both without removing progress/GET-count assertions.",
+    "New ByRole exact options were replaced with anchored name matchers after TypeScript rejected the unsupported option.",
+    "Initial browser build lacked resolveDir for synthetic chrome modules; only the harness resolver was fixed before the final six browser cases ran."
+  ],
+  "sha256": {
+    "src/app/[locale]/bty/(protected)/healing/awakening/page.client.tsx": "8ef27f18a3e9ec5fc712088928726271a980395d84cab6d6f3b550d67a509f6d",
+    "src/components/bty/healing/AwakeningActsTrack.tsx": "6ad6ff1faece31d9984b5fe162e98a50498475a8b7e97638ce4462ad174a7e1c",
+    "src/app/[locale]/bty/(protected)/healing/awakening/page.client.reliability.test.tsx": "6417f332dd0c889bc0554f4f896639953658eb3828320a2a418025fcfc8dffff",
+    "src/components/bty/healing/AwakeningActsTrack.reliability.test.tsx": "7fc2f239dd76941bbd8d0bc9dbde266cc5dc890d52c1c05f09cc9624cc579245",
+    "e2e/healing-client-reliability.public.spec.ts": "753f16b8e47c209bd3ece0bf1cac09a7fcdf53b996dd4f721dde517e108e3256"
+  }
+}

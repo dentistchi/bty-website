@@ -1,5 +1,59 @@
 # Active application task contract
 
+## RELEASE-RELIABILITY-REMAINDER — 2026-10-31
+
+Integration checkpoint: application source frozen at `27ff4865`, final full suite
+at `76549c19` observed exit 0 (16,074 reported passed / 409 explicit skips).
+Independent browser 57/57, native atomic SQL 271/271, final types and fresh build
+pass within their documented scopes. The 74 older opt-in persistence SQL bodies
+were inactive in the full run; a separate guarded PostgreSQL 17.11 CI job actually
+executed all 74 successfully and verified 72 scenario databases. Its 268 recorded
+input hashes match this source. Implementation and isolated verification are complete;
+production release gates and the separate Clinical PR90 remain outstanding.
+See `docs/RELEASE_RELIABILITY_REMAINDER.md` for exact identities and omitted proof.
+Three prepared migrations and every operational rollout gate remain unapplied.
+
+Dr. Chi requests completing the remaining failures autonomously. Continue from
+PR91 source a611a32 in an isolated integration worktree and extend that Draft PR;
+leave PR90 separate. Reproduce all failing categories rather than dismissing them
+as baseline. Correct stale transport/UI/historical test contracts without removing
+security/ownership assertions, skipping bodies, forging frozen evaluation inputs,
+or changing approved legal wording. Historical provenance fixtures must be pinned
+to observed repository facts. Synthetic unit fixtures have distinct identity and
+cannot stand in for unavailable historical/model validation.
+
+Repair reproduced user-flow failures (Today transport/read ordering, unavailable
+completion state, partial healing/Foundry XP writes) with honest failure/retry
+behavior. Additional additive SQL may be PREPARED and verified only in disposable
+local/CI databases, never applied to production in this task. Preserve existing
+reward amounts/day boundaries, Core permanence, learner records, consent and
+Microsoft tid+oid authority. Separate test-environment deficiencies from app bugs.
+
+Use frozen before/after probes, an exact full-suite identity comparison with
+Node20 and controlled browser/tool paths, final types/fresh build and isolated
+interactive checks. No deployment, merge, production DB/auth write, secret change
+or Mac model/tunnel restart. A passing synthetic fixture does not certify live
+Worker/Teams/iPhone or missing historical captures.
+
+## LEGACY-XP-ATOMICITY — 2026-10-31
+
+Repair duplicate legacy CHOICE_CONFIRMED rewards and Beginner partial completion.
+Use one private SQL transaction for reward, progress, reflection and an immutable
+receipt keyed globally by run ID. Replay identical business inputs with frozen
+results; reject changed inputs and historical events without receipts for review.
+No inference, backfill or rewriting old learner records. Require receipt validation
+before client progression, retain inputs on failure, and preserve canonical choices,
+Clinical/Practice and Learning Rewards v1. Prepare an additive migration but do not
+apply it, deploy, merge, change secrets or mint sessions in this task.
+
+Validate frozen API/client regressions, exact legacy Core conversion parity, SQL
+rollback and ACLs, typecheck, full-suite baseline identities and a fresh build.
+PGlite SQL semantics do not establish native multi-connection lock correctness;
+report unrun native races explicitly. Rollout requires fencing old split writers
+on every domain/alias and verifying in-flight requests are drained before writes
+resume. Code deployment at 100% alone is not sufficient proof of that boundary.
+This independent branch starts from inner-main 50e7a311; leave Draft PR90 unchanged.
+
 ## CLINICAL-DISCOVERY-NATURAL-QUESTIONS — 2026-10-30
 
 The live Case 005 screenshot rejects “What did we do” in Examine or test even

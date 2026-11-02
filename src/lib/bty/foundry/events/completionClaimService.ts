@@ -1,3 +1,4 @@
+import { rewardWritesPaused } from "@/lib/bty/rewardWritePause";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   generateClaimCode,
@@ -8,8 +9,8 @@ import {
 import { isFollowUpDays, computeFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
 import { journeyActionDecision } from "@/domain/foundry/module/journey";
 import { computeApplyWindow, APPLY_WINDOW_DAYS } from "@/domain/foundry/apply-window/applyWindow";
-import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
-import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
+import { userDayWindow } from "@/domain/daily/userDayWindow";
+import { parseFoundryAwardAcknowledgement, readFoundryRewardTimezone, syncFoundryAvatarAfterAward, foundryOutcomeToXpStatus, type FoundryXpStatus } from "./foundryXpAtomic.server";
 import { FOUNDRY_TRAINING_XP } from "@/domain/foundry/events/foundry-training";
 import { mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 
@@ -29,9 +30,10 @@ import { mayAttributeToAccount } from "@/domain/foundry/events/participant-accou
  * path could repair, which is precisely the population this feature does not serve. Idempotent
  * downstream functions cannot rescue an operation that can never be retried.
  *
- * Redemption is now ONE call to `bty_foundry_redeem_completion_claim`, which invokes the same four
- * plpgsql authorities in-process so they share its transaction. This file performs NO mutation
- * after it: everything below the RPC is read-only preparation above it.
+ * Redemption is ONE call to `bty_foundry_redeem_completion_claim_atomic`, which reuses the shipped
+ * claim authorities with their ledger-only XP path disabled, then commits Core and both receipts
+ * in the outer transaction. Preparation is strictly read-only. There is no claim/reward mutation
+ * after it; only a best-effort derived avatar refresh may run after a fresh committed receipt.
  */
 
 /** What the terminal needs in order to show the learner something they can keep. */
@@ -92,9 +94,9 @@ export async function invalidateDeferredClaim(admin: SupabaseClient, progressId:
 
 
 export type RedeemResult =
-  | { ok: true; progressId: string; eventId: string }
-  /** One reason for every refusal. The endpoint must not distinguish them to the caller. */
-  | { ok: false; reason: "invalid" };
+  | { ok: true; progressId: string; eventId: string; xpStatus: FoundryXpStatus }
+  /** Credential refusals remain indistinguishable; infrastructure/review never assert payment. */
+  | { ok: false; reason: "invalid" | "unavailable" | "review_required" };
 
 /**
  * Spend a claim code on behalf of a signed-in account.
@@ -112,9 +114,10 @@ export type RedeemResult =
  * decision, so this asks the database for the row's ID under a non-empty predicate rather than
  * reading `decision_response_text` into the claim path.
  *
- * ONE REFUSAL REASON, DELIBERATELY. Invalid, expired, already spent, already owned and never
- * existed are indistinguishable from outside — telling them apart would let someone probe which
- * codes are real. The endpoint adds rate limiting; between them a 60-bit code is not guessable.
+ * Invalid, expired and foreign-account credentials remain indistinguishable. An identical owned
+ * claim may replay only its frozen receipt inside the original expiry. Infrastructure failures
+ * and ambiguous historical XP are not successful claims or assertions that a credential is bad.
+ * The endpoint retains rate limiting and never exposes the raw database error.
  */
 export async function redeemCompletionClaim(
   admin: SupabaseClient,
@@ -124,59 +127,69 @@ export async function redeemCompletionClaim(
 ): Promise<RedeemResult> {
   const normalized = normalizeClaimCode(rawCode);
   if (!normalized || !authUserId) return { ok: false, reason: "invalid" };
+  // Recovery switch: the claim stays unspent and redeemable once writes resume.
+  if (rewardWritesPaused()) return { ok: false, reason: "unavailable" };
   const claimHash = hashClaimCode(normalized);
 
   try {
     // --- read-only preparation ------------------------------------------------
-    const { data: prog } = await admin
+    const { data: prog, error: progressError } = await admin
       .from("foundry_event_training_progress")
-      .select("id, event_id, participant_id, completed_at")
+      .select("id, event_id, participant_id, completed_at, linked_user_id, claim_secret_expires_at")
       .eq("claim_secret_hash", claimHash)
-      .is("linked_user_id", null)
-      .is("claim_consumed_at", null)
-      .maybeSingle<{ id: string; event_id: string; participant_id: string; completed_at: string | null }>();
-    if (!prog?.completed_at) return { ok: false, reason: "invalid" };
+      .maybeSingle<{ id: string; event_id: string; participant_id: string; completed_at: string | null; linked_user_id: string | null; claim_secret_expires_at: string | null }>();
+    if (progressError) return { ok: false, reason: "unavailable" };
+    if (!prog?.completed_at || (prog.linked_user_id !== null && prog.linked_user_id !== authUserId)
+      || !prog.claim_secret_expires_at || Date.parse(prog.claim_secret_expires_at) <= Date.now()) return { ok: false, reason: "invalid" };
 
-    const { data: participant } = await admin
+    const { data: participant, error: participantError } = await admin
       .from("foundry_event_participants")
       .select("user_id")
       .eq("id", prog.participant_id)
       .maybeSingle<{ user_id: string | null }>();
+    if (participantError) return { ok: false, reason: "unavailable" };
+    if (!participant) return { ok: false, reason: "invalid" };
     if (!mayAttributeToAccount(participant?.user_id ?? null, authUserId)) return { ok: false, reason: "invalid" };
 
-    const { data: ev } = await admin
+    const { data: ev, error: eventError } = await admin
       .from("foundry_events")
       .select("title, owner_user_id")
       .eq("id", prog.event_id)
       .maybeSingle<{ title: string | null; owner_user_id: string | null }>();
+    if (eventError) return { ok: false, reason: "unavailable" };
+    if (!ev?.owner_user_id) return { ok: false, reason: "invalid" };
     const title = (ev?.title ?? "Foundry training").trim().slice(0, 120) || "Foundry training";
 
-    const { data: mod } = await admin
+    const { data: mod, error: moduleError } = await admin
       .from("foundry_event_module")
       .select("module_snapshot")
       .eq("event_id", prog.event_id)
       .maybeSingle<{ module_snapshot: { followUpDays?: unknown; realityGroundedJourneyV1?: unknown } | null }>();
+    if (moduleError) return { ok: false, reason: "unavailable" };
 
-    const { data: asn } = await admin
+    const { data: asn, error: assignmentError } = await admin
       .from("foundry_event_assignments")
       .select("id, organization_id")
       .eq("event_id", prog.event_id)
       .eq("user_id_snapshot", authUserId)
+      .neq("status", "revoked")
       .maybeSingle<{ id: string; organization_id: string | null }>();
+    if (assignmentError) return { ok: false, reason: "unavailable" };
 
     /*
       Apply eligibility WITHOUT reading the learner's decision: the predicate lives in the query,
       so only the row id comes back.
     */
-    const { data: hasDecision } = await admin
+    const { data: hasDecision, error: decisionError } = await admin
       .from("foundry_event_training_progress")
       .select("id")
       .eq("id", prog.id)
       .not("decision_response_text", "is", null)
       .neq("decision_response_text", "")
       .maybeSingle<{ id: string }>();
+    if (decisionError) return { ok: false, reason: "unavailable" };
 
-    const { timezone } = await resolveUserTzContext(admin, authUserId, deviceTz ?? null);
+    const timezone = await readFoundryRewardTimezone(admin, authUserId, deviceTz ?? null);
 
     const followUpDays = mod?.module_snapshot?.followUpDays;
     const fu = isFollowUpDays(followUpDays)
@@ -193,11 +206,10 @@ export async function redeemCompletionClaim(
       path uses; recomputed here rather than imported because that helper is file-private.
     */
     const nowMs = Date.now();
-    const dayStart = userDayStartInstant(new Date(nowMs), timezone, 5);
-    const dayEnd = userDayStartInstant(new Date(dayStart.getTime() + 86_400_000 + 1), timezone, 5);
+    const { start: dayStart, end: dayEnd } = userDayWindow(new Date(nowMs), timezone, 5);
 
     // --- the one write --------------------------------------------------------
-    const { data, error } = await admin.rpc("bty_foundry_redeem_completion_claim", {
+    const { data, error } = await admin.rpc("bty_foundry_redeem_completion_claim_atomic", {
       p_claim_hash: claimHash,
       p_user_id: authUserId,
       p_timezone: timezone,
@@ -217,10 +229,20 @@ export async function redeemCompletionClaim(
       p_day_start: dayStart.toISOString(),
       p_day_end: dayEnd.toISOString(),
     });
-    const row = Array.isArray(data) ? data[0] : null;
-    if (error || !row) return { ok: false, reason: "invalid" };
-    return { ok: true, progressId: row.progress_id as string, eventId: row.event_id as string };
+    if (error) return { ok: false, reason: error.message === "FOUNDRY_XP_REVIEW_REQUIRED" ? "review_required" : "unavailable" };
+    if (data?.outcome === "invalid") return { ok: false, reason: "invalid" };
+    if (!data || Array.isArray(data) || data.policyVersion !== "foundry-claim-atomic/v1"
+      || data.progressId !== prog.id || data.eventId !== prog.event_id || typeof data.replayed !== "boolean"
+      || typeof data.claimReceiptId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.claimReceiptId)
+      || typeof data.expiresAt !== "string" || !Number.isFinite(Date.parse(data.expiresAt))
+      || Date.parse(data.expiresAt) > Date.parse(prog.claim_secret_expires_at)
+      || Date.parse(data.expiresAt) <= Date.now()) return { ok: false, reason: "unavailable" };
+    const xp = parseFoundryAwardAcknowledgement(data.xp, { userId: authUserId, eventId: prog.event_id, progressId: prog.id });
+    if (!xp) return { ok: false, reason: "unavailable" };
+    if (xp.outcome === "review_required") return { ok: false, reason: "review_required" };
+    syncFoundryAvatarAfterAward(admin, xp, data.replayed);
+    return { ok: true, progressId: prog.id, eventId: prog.event_id, xpStatus: foundryOutcomeToXpStatus(xp.outcome) };
   } catch {
-    return { ok: false, reason: "invalid" };
+    return { ok: false, reason: "unavailable" };
   }
 }

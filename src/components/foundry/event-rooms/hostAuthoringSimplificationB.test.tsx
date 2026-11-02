@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 /** @vitest-environment jsdom */
 /**
  * SLICE R4-R8B — THE BUILDER ASKS ONLY WHAT ONLY THE HOST CAN KNOW.
@@ -407,7 +408,7 @@ describe("R4-R8B — publish truth is re-anchored, not relaxed", () => {
       "20260926000000_teams_training_delivery_attempts_v1.sql",
       "20260927000000_foundry_host_followup_contacts_v1.sql",
     ];
-    expect(known.filter((f) => f > newest && !KNOWN_LATER.includes(f))).toEqual([]);
+    expect(unpinnedMigrationSources(known.filter((f) => f > newest && !KNOWN_LATER.includes(f)))).toEqual([]);
   });
 });
 

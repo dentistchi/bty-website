@@ -1,0 +1,95 @@
+/** @vitest-environment jsdom */
+/**
+ * Center → Today personalization, the toggle that could not be turned on (Slice A0.2).
+ *
+ * TWO FAULTS, and the second one hid the first:
+ *   the read/write route builds its client in a factory that had no bearer transport, so in the
+ *   Teams tab both calls 401'd;
+ *   and the UI collapsed every read failure into `setConsent(false)`, so a refusal rendered as a
+ *   confident OFF and the switch looked simply broken.
+ *
+ * The transport is repaired centrally (`bearerTransport.test.ts`). These assert the surface: a
+ * preference we could not read is never shown as OFF, and a failed save says so.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import CenterRealityFeed from "@/components/center/CenterRealityFeed";
+
+const PREFS = "/api/me/conversation-preferences";
+
+/** Records PATCH bodies so the write contract can be asserted. */
+let patched: unknown[];
+
+function stub(prefsGet: () => Response | Promise<Response>, prefsPatch: () => Response = () => new Response("{}", { status: 200 })) {
+  patched = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: unknown, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes(PREFS)) {
+        if (init?.method === "PATCH") {
+          patched.push(JSON.parse(String(init.body)));
+          return prefsPatch();
+        }
+        return prefsGet();
+      }
+      // Everything else the feed loads is irrelevant here.
+      return new Response(JSON.stringify({ ok: true, entries: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }),
+  );
+}
+
+const on = () =>
+  new Response(JSON.stringify({ personalizeTodayFromReflections: true }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+const off = () =>
+  new Response(JSON.stringify({ personalizeTodayFromReflections: false }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
+const toggle = () => screen.getByTestId("center-consent-toggle");
+
+beforeEach(() => vi.clearAllMocks());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+
+describe("controlled deferred preference readiness", () => {
+  it.each(["read off", "enable", "failed save", "boolean-only request"])("%s waits for the resolved preference", async (kind) => {
+    let deliver!: (value: Response) => void;
+    const read = new Promise<Response>(resolve => { deliver = resolve; });
+    stub(() => read, kind === "failed save" ? () => new Response("{}", { status: 401 }) : undefined);
+    render(<CenterRealityFeed locale="en" />);
+    expect(toggle().getAttribute("aria-checked")).toBe("false");
+    expect(toggle().hasAttribute("disabled")).toBe(true);
+    const ready = waitFor(() => expect(toggle().getAttribute("aria-checked")).toBe("false"));
+    // The real read resolves in the next task; no component or scheduler is mocked.
+    setTimeout(() => deliver(off()), 0);
+    await ready;
+    if (kind === "read off") {
+      expect(toggle().hasAttribute("disabled")).toBe(false);
+      expect(screen.queryByTestId("center-consent-error")).toBeNull();
+      return;
+    }
+    fireEvent.click(toggle());
+    if (kind === "failed save") {
+      await waitFor(() => expect(screen.getByTestId("center-consent-error")).toBeTruthy());
+      expect(screen.getByTestId("center-consent-error").textContent).toContain("Couldn't save that.");
+      expect(toggle().getAttribute("aria-checked")).toBe("false");
+      expect(toggle().hasAttribute("disabled")).toBe(false);
+    } else {
+      await waitFor(() => expect(patched.length).toBe(1));
+      expect(patched).toEqual([{ personalizeTodayFromReflections: true }]);
+      expect(Object.keys(patched[0] as object)).toEqual(["personalizeTodayFromReflections"]);
+    }
+  });
+});

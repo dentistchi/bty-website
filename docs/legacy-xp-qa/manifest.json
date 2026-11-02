@@ -1,0 +1,110 @@
+{
+  "boundaries-before.json.gz": {
+    "sha256": "05471593574361dd7d2bf014876b571676bdc3c6cae36a57bdf0beefc8090268",
+    "bytes": 996
+  },
+  "client-before.log.gz": {
+    "sha256": "ee3e8dac546a5e63e141d241020ab87b72c3a0e4b9cd0612c7195cfa9b61d984",
+    "bytes": 4373
+  },
+  "field-action-fixed-run1.json.gz": {
+    "sha256": "f6432ccc1ea70542d478a14edf3a044cd4702d679ace242e70bb52b776ee900e",
+    "bytes": 869
+  },
+  "field-action-fixed-run2.json.gz": {
+    "sha256": "4f51e417d25c33778ca8929ff4f02fadd952c18d7d57b9c499f2de5aa435a983",
+    "bytes": 871
+  },
+  "field-action-fixed-run3.json.gz": {
+    "sha256": "9c3f44624c8669c23348c9e40aafb7e2cd9be762feabfad7f3fa908f56ca6255",
+    "bytes": 875
+  },
+  "field-action-held-fetch-before.json.gz": {
+    "sha256": "ee152c1a97d01ce0e2fd235a1d435b1f925eed06ddd8d95e2d6b48fde83983de",
+    "bytes": 1416
+  },
+  "focused-delivery.json.gz": {
+    "sha256": "0b72cf285914cfcca21a88c92a8279ea301f49e3d0703dfea094e36d1cf0c110",
+    "bytes": 14001
+  },
+  "focused-final.json.gz": {
+    "sha256": "a4facca9dfad65ba3acad4f4860baedeceba3d489f832cff7a502f84a71ec7a0",
+    "bytes": 13439
+  },
+  "full-after.json.gz": {
+    "sha256": "f3737e16b753cb92127696c8a0734a107a5175b4b652d28938c389bab148d76e",
+    "bytes": 783645
+  },
+  "full-baseline.json.gz": {
+    "sha256": "a2847d72bfe78f55336274292a22475f542e95e09f4577821a0769902be31550",
+    "bytes": 777081
+  },
+  "full-comparison.json": {
+    "sha256": "dfdda38fbf64c7e51a39304fe466efb940d589d6c5ee7b248b10bc90c969d20e",
+    "bytes": 3787
+  },
+  "helper-independent.json.gz": {
+    "sha256": "b27773bfb8a86be667039e603b5b78609bea077a745d67d842a54b8d3c112a95",
+    "bytes": 1145
+  },
+  "native-ci-first-failure.log.gz": {
+    "sha256": "1cdebe07062edcf4c6f45a17cae45a671bbd2264fdccb815b272f33202d9c27d",
+    "bytes": 10316
+  },
+  "native-ci-result.json": {
+    "sha256": "9bcca5cdf6315b430260673d12e7758d536de073dd90ce3741225c686e592d47",
+    "bytes": 8557
+  },
+  "native-ci-success.log.gz": {
+    "sha256": "7d046ed6a1168b4f03503d48b532ea20b820eb705601a0ff46d0ffff014259c7",
+    "bytes": 17094
+  },
+  "postgres-semantics-final.json": {
+    "sha256": "f45ba8feaf79e30c46a60867f562a9f70e9a6a8d784ffc7a7d060a60182cd654",
+    "bytes": 8518
+  },
+  "postgres-semantics-final.log.gz": {
+    "sha256": "2689f877783aac2806da2a587f5a6a96f3b7ac2469d9290167f842407e2bb2ae",
+    "bytes": 1924
+  },
+  "postgres-semantics.json": {
+    "sha256": "b030c37766468b20e02ba2f1f49d5995127200101460d6c10c6123122cf83779",
+    "bytes": 8428
+  },
+  "postgres-semantics.log.gz": {
+    "sha256": "a34fa48fb41f6e2fe814ec2b6122cd01796d8cf99b428698b5484486f74aee59",
+    "bytes": 1874
+  },
+  "receipt-edges.json.gz": {
+    "sha256": "eeaed849a71c42e47e767fb4a1b52c5342d47374eceb40044c71ca08d78354d7",
+    "bytes": 1468
+  },
+  "routes-before.json.gz": {
+    "sha256": "767aed5597390573220dddce4889ad6a2855b3df08bbdbdb2503c6e74c4a24c9",
+    "bytes": 5412
+  },
+  "routes-independent-after.json.gz": {
+    "sha256": "11cfda5cc73e925e1fef2e6e709c7b2f99747aa6d363d57834b7942366b606de",
+    "bytes": 3934
+  },
+  "runtime-hashes.json": {
+    "sha256": "d97d2d05168ccd91a0a308b52911bc275d7f55e2d0d18371f06d8cf09175a2de",
+    "bytes": 3402
+  },
+  "xp-build-artifact-gate.log.gz": {
+    "sha256": "61e3e86446d4b749d9e9d41c916a37c759c551577c94c51d8a5d59d771b0727b",
+    "bytes": 246
+  },
+  "xp-build-install-trust-retry.log.gz": {
+    "sha256": "fbd10521560978bcd3066ccfa979679b5e232a6da3b70db647c81184869e7a13",
+    "bytes": 723
+  },
+  "xp-build-public-scan.log.gz": {
+    "sha256": "6bc729350055ada2ef7d65d1b8bc835cc4d3439471f9f8875a86fc00c81335f5",
+    "bytes": 285
+  },
+  "xp-build.log.gz": {
+    "sha256": "5f2b466cf2c65ede855bc81725f4d552bf3df7378e5d6a0b84f6e85fae200ee2",
+    "bytes": 6301
+  }
+}

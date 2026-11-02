@@ -145,7 +145,7 @@ const entrySource = () => readFileSync(join(process.cwd(), ENTRY), "utf8");
 /** Run the actual CLI. `reject: false` so a nonzero exit is an assertion, not a throw. */
 function runEntry(env: Record<string, string>): { code: number; stdout: string; stderr: string } {
   try {
-    const stdout = execFileSync("npx", ["tsx", ENTRY], {
+    const stdout = execFileSync(process.execPath, ["--import", "tsx", ENTRY], {
       encoding: "utf8",
       env: { ...process.env, ...env },
       stdio: ["ignore", "pipe", "pipe"],

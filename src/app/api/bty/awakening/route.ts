@@ -9,9 +9,11 @@
  * - **500:** `{ error: "INTERNAL_ERROR", detail?: string }` — `btyErrorResponse`.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isHealingCompletionReviewError } from "@/lib/bty/healing/healingCompletionRead.server";
 import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   AWAKENING_ACT_NAMES,
+  isHealingAwakeningCompletionHistoryValid,
   AWAKENING_TRIGGER_DAY,
   AWAKENING_TRIGGER_MIN_SESSIONS,
 } from "@/domain/healing";
@@ -27,11 +29,15 @@ export async function GET(req: NextRequest) {
   try {
     const progress = await getUserCompletedAwakeningActs(supabase, user.id);
     if (!progress.ok) {
-      return btyErrorResponse(500, "INTERNAL_ERROR", progress.error);
+      return btyErrorResponse(500, "INTERNAL_ERROR", "AWAKENING_PROGRESS_UNAVAILABLE");
     }
 
+    if (!isHealingAwakeningCompletionHistoryValid(progress.completedActs)) return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
     const awakening = await getSecondAwakening(supabase, user.id);
 
+    if (progress.completedActs.length === 3 && !awakening.completed) {
+      return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
+    }
     const res = NextResponse.json({
       ok: true,
       acts: AWAKENING_ACT_NAMES,
@@ -46,6 +52,7 @@ export async function GET(req: NextRequest) {
     copyCookiesAndDebug(base, res, req, true);
     return res;
   } catch (e) {
+    if (isHealingCompletionReviewError(e)) return btyErrorResponse(409, "HEALING_COMPLETION_REVIEW_REQUIRED");
     const message = e instanceof Error ? e.message : String(e);
     return btyErrorResponse(500, "INTERNAL_ERROR", message);
   }

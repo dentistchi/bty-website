@@ -1,0 +1,446 @@
+{
+  "screens": 24,
+  "pendingAwardTransitions": 12,
+  "scope": "Real room clients and Tailwind; fixed synthetic HTTP fixtures, PDF canvas stubbed; no database, auth session, model or production endpoint",
+  "runtimeHashes": {
+    "src/app/f/[token]/CompletionXpRecovery.tsx": "db942a1e63782b6024d51d6d43b821a5b6a77f24cc2303f8bac635805f8b9b86",
+    "src/app/f/[token]/FoundryJoinClient.tsx": "acc84a82d05478d21b84e5e2ffa451af5410a3da0586090801899921bc38b66d",
+    "src/app/f/[token]/FoundryDocumentClient.tsx": "4640ceec99593f576e4d937aaad0c23d97e85a31b0ded8df53abb8d189209f8e",
+    "src/app/f/[token]/FoundryGuidanceClient.tsx": "8873a8ef3c1a956af36591a5369af78c9997bbf3468655f1e57e4a0f7e8cb270",
+    "src/app/f/[token]/snapshotMerge.ts": "d3a85c559ac6bcdfb6d7c4bb3fef5c6d6042c16dce8c4e5fe5fc20abe20c9de2"
+  },
+  "checks": [
+    {
+      "width": 320,
+      "kind": "video",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 422,
+        "bottom": 590,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "video",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 441,
+        "bottom": 571,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "document",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 428,
+        "bottom": 596,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "document",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 447,
+        "bottom": 577,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "guidance",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 384,
+        "bottom": 552,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "guidance",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 403,
+        "bottom": 533,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "discussion",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 384,
+        "bottom": 552,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 320,
+      "kind": "discussion",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 296,
+        "top": 403,
+        "bottom": 533,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "video",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 434,
+        "bottom": 578,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "video",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 453,
+        "bottom": 559,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "document",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 440,
+        "bottom": 584,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "document",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 459,
+        "bottom": 565,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "guidance",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 396,
+        "bottom": 540,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "guidance",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 415,
+        "bottom": 521,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "discussion",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 396,
+        "bottom": 540,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 390,
+      "kind": "discussion",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 24,
+        "right": 366,
+        "top": 415,
+        "bottom": 521,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "video",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 425,
+        "bottom": 569,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "video",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 456,
+        "bottom": 538,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "document",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 426,
+        "bottom": 570,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "document",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 457,
+        "bottom": 539,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "guidance",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 396,
+        "bottom": 540,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "guidance",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 427,
+        "bottom": 509,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "discussion",
+      "status": "unavailable",
+      "claims": 1,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 396,
+        "bottom": 540,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": 8.005064194225275
+      },
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "kind": "discussion",
+      "status": "review_required",
+      "claims": 0,
+      "metrics": {
+        "left": 440,
+        "right": 840,
+        "top": 427,
+        "bottom": 509,
+        "overflow": 0,
+        "color": "rgba(255, 255, 255, 0.85)",
+        "background": "rgba(255, 255, 255, 0.04)",
+        "textContrast": 11.093262830591486,
+        "buttonContrast": null
+      },
+      "pass": true
+    }
+  ]
+}

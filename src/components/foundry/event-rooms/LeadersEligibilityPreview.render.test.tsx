@@ -101,9 +101,13 @@ describe("Leaders eligibility preview is mounted in the audience step", () => {
     mockServers({ eligibleCount: 1, members: [{ displayName: "Hanbit Chi" }] });
     renderShell();
     await waitFor(() => expect(screen.getByTestId("leaders-eligibility-preview")).toBeTruthy());
-    const calls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const previewCall = calls.find((c) => String(c[0]).includes("leaders-preview"));
-    expect(previewCall).toBeTruthy();
-    expect(String(previewCall![0])).toBe("/api/bty/foundry/audience/leaders-preview");
+    // The loading container mounts before its passive effect starts the fetch.
+    // Wait for the intended request itself, retaining the exact server-owned URL.
+    await waitFor(() => {
+      const calls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+      const previewCall = calls.find((c) => String(c[0]).includes("leaders-preview"));
+      expect(previewCall).toBeTruthy();
+      expect(String(previewCall![0])).toBe("/api/bty/foundry/audience/leaders-preview");
+    });
   });
 });

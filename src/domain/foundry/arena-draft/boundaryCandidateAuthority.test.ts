@@ -33,7 +33,8 @@ import {
 import { GOVERNING_RULE_KINDS, TRUTH_STATE_IDS, classifyTruthState, deriveMechanism, truthStateCoverage, truthStateTableSha256 } from "./boundaryTruthStates";
 import { GOVERNED_ACTION_STATUSES, NO_CANDIDATE, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS } from "./boundaryTruthContractTypes";
 import { checkPromptFieldParity, instructiveRemovedFieldMentions } from "./promptFieldParity";
-import { NARROW_BOUNDARY_SYSTEM_PROMPT, PROMPT_EXPLANATORY_VOCABULARY } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
+import { buildNarrowBoundaryRequest, buildNarrowBoundarySubject, NARROW_BOUNDARY_SYSTEM_PROMPT, PROMPT_EXPLANATORY_VOCABULARY } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
+import { buildBoundaryProvenance, boundaryProvenanceSha256 } from "./boundaryProvenance";
 import { C18_BOUNDARY, C18_REACHABLE_SURFACES, C18_SCENARIO } from "./c18BoundaryFixture";
 
 const segments = buildContextSegments(C18_SCENARIO, C18_REACHABLE_SURFACES);
@@ -328,6 +329,25 @@ describe("[30-31] prompt / schema parity", () => {
     expect(parity.unknownTokens).toEqual([]);
     expect(parity.ok).toBe(true);
     expect(instructiveRemovedFieldMentions(NARROW_BOUNDARY_SYSTEM_PROMPT, REMOVED_MODEL_AUTHORED_FIELDS)).toEqual([]);
+  });
+
+  it("allows concreteAction only as supplied request context while still rejecting unknown output fields", () => {
+    const provenance = buildBoundaryProvenance({ available: [{ ...C18_BOUNDARY, provenance: "synthetic test authority" }],
+      activeIds: [C18_BOUNDARY.id], scopeConfirmed: true, sourceKind: "canonical_case_input",
+      sourceReference: "tracked C18 fixture", sourceSha256: "1".repeat(64) });
+    const request = buildNarrowBoundaryRequest(buildNarrowBoundarySubject({
+      scenarioSha256: "2".repeat(64), reviewSubjectSha256: "3".repeat(64),
+      boundaryProvenance: provenance, boundaryProvenanceSha256: boundaryProvenanceSha256(provenance),
+      boundaries: [C18_BOUNDARY], surfaces: C18_REACHABLE_SURFACES, draft: C18_SCENARIO,
+      language: "en", generationAttemptId: "synthetic-parity", caseId: "c18-constrained-clinical",
+    }));
+    expect(request.surfaces.length).toBeGreaterThan(0);
+    expect(request.surfaces.every(surface => typeof surface.concreteAction === "string")).toBe(true);
+    expect(fields).not.toContain("concreteAction");
+    expect(checkPromptFieldParity(NARROW_BOUNDARY_SYSTEM_PROMPT, fields,
+      PROMPT_EXPLANATORY_VOCABULARY.filter(field => field !== "concreteAction")).unknownTokens).toEqual(["concreteAction"]);
+    expect(checkPromptFieldParity(NARROW_BOUNDARY_SYSTEM_PROMPT + " Fill inventedAuthorityField.", fields,
+      PROMPT_EXPLANATORY_VOCABULARY).unknownTokens).toEqual(["inventedAuthorityField"]);
   });
 
   it("[31] every state rule in the prompt comes from the canonical table", () => {

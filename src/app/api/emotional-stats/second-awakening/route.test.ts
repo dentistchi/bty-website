@@ -71,3 +71,11 @@ describe("GET /api/emotional-stats/second-awakening", () => {
     expect(mockGetSecondAwakening).toHaveBeenCalledWith({}, "u1");
   });
 });
+
+
+it("distinguishes a historical completion inconsistency from a transient load failure", async () => {
+  mockRequireUser.mockResolvedValue({ user: { id: "owned-user" }, supabase: {}, base: new Response() });
+  mockGetSecondAwakening.mockRejectedValueOnce(new Error("HEALING_COMPLETION_REVIEW_REQUIRED"));
+  const res = await GET(new NextRequest("http://localhost/api/emotional-stats/second-awakening"));
+  expect(res.status).toBe(409); expect(await res.json()).toEqual({ error: "HEALING_COMPLETION_REVIEW_REQUIRED" });
+});

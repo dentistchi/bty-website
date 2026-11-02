@@ -355,7 +355,7 @@ describe("canonical reward loop integration", () => {
     const privateRpcCalls: Array<{ fn: string; args?: Record<string, unknown> }> = [];
     const userXpCalls: string[] = [];
     client.rpc = async (fn?: string) => {
-      if (fn === "increment_arena_xp" || fn === "increment_weekly_xp") {
+      if (fn?.startsWith("increment_") || fn?.startsWith("bty_award_") || fn?.startsWith("bty_apply_")) {
         userXpCalls.push(fn);
         throw new Error("privileged RPC used the user client");
       }
@@ -366,29 +366,33 @@ describe("canonical reward loop integration", () => {
       return adminRpc ? adminRpc(fn, args) : { error: null };
     } } as never);
     adminFrom.mockImplementation((table: string) => client.from(table));
+    // Simulates the release's atomic SQL writers: one call commits the run anchor,
+    // weekly XP and Core together (bty_apply_arena_run_rewards_v2) or weekly XP and
+    // Core together (bty_award_xp_v2).
+    const addWeekly = (uid: string, delta: number) => {
+      const idx = state.weeklyXp.findIndex((r) => r.user_id === uid && (r.league_id ?? null) === null);
+      if (idx >= 0) state.weeklyXp[idx] = { ...state.weeklyXp[idx], xp_total: Number(state.weeklyXp[idx].xp_total ?? 0) + delta };
+      else state.weeklyXp.push({ id: `wx${state.weeklyXp.length + 1}`, user_id: uid, league_id: null, xp_total: delta });
+    };
+    const addCore = (uid: string, gain: number) => {
+      const before = Number(state.arenaProfiles.find((r) => r.user_id === uid)?.core_xp_total ?? 0);
+      state.arenaProfiles = state.arenaProfiles.map((r) => (r.user_id === uid ? { ...r, core_xp_total: before + gain } : r));
+      return { policyVersion: "shared-xp/v2", weeklyXpTotal: null, coreBefore: before, coreAfter: before + gain, coreGain: gain, coreBufferAfter: 0 };
+    };
     adminRpc = async (fn?: string, args?: Record<string, unknown>) => {
-      if (fn === "increment_weekly_xp") {
-        const uid = args?.p_user_id as string | undefined;
-        const lid = (args?.p_league_id ?? null) as string | null;
-        const delta = Number(args?.p_delta ?? 0);
-        if (uid && delta !== 0) {
-          const idx = state.weeklyXp.findIndex(
-            (r) => r.user_id === uid && (r.league_id ?? null) === lid,
-          );
-          if (idx >= 0) {
-            state.weeklyXp[idx] = {
-              ...state.weeklyXp[idx],
-              xp_total: Number(state.weeklyXp[idx].xp_total ?? 0) + delta,
-            };
-          } else {
-            state.weeklyXp.push({
-              id: `wx${state.weeklyXp.length + 1}`,
-              user_id: uid,
-              league_id: lid,
-              xp_total: delta,
-            });
-          }
+      const uid = args?.p_user_id as string;
+      if (fn === "bty_apply_arena_run_rewards_v2") {
+        const runId = args?.p_run_id as string;
+        if (state.arenaEvents.some((e) => e.user_id === uid && e.run_id === runId && e.event_type === "RUN_COMPLETED_APPLIED")) {
+          return { data: { policyVersion: "shared-xp/v2", applied: false }, error: null };
         }
+        state.arenaEvents.push({ user_id: uid, run_id: runId, event_type: "RUN_COMPLETED_APPLIED", step: 7, xp: 0 });
+        addWeekly(uid, Number(args?.p_weekly_delta ?? 0));
+        return { data: { ...addCore(uid, Number(args?.p_core_xp ?? 0)), applied: true }, error: null };
+      }
+      if (fn === "bty_award_xp_v2") {
+        addWeekly(uid, Number(args?.p_weekly_delta ?? 0));
+        return { data: addCore(uid, Number(args?.p_direct_core_xp ?? 0)), error: null };
       }
       return { error: null };
     };
@@ -397,16 +401,6 @@ describe("canonical reward loop integration", () => {
       created: true,
       contractId: "c1",
     });
-    mockApplyDirectCoreXp.mockImplementation(
-      async (_supabase, userId: string, coreGain: number) => {
-        state.arenaProfiles = state.arenaProfiles.map((r) =>
-          r.user_id === userId
-            ? { ...r, core_xp_total: Number(r.core_xp_total ?? 0) + coreGain }
-            : r,
-        );
-        return { newCoreTotal: Number(state.arenaProfiles[0]?.core_xp_total ?? 0) };
-      },
-    );
 
     const { POST: runCompletePOST } = await import("@/app/api/arena/run/complete/route");
     const { POST: qrValidatePOST } = await import("@/app/api/arena/leadership-engine/qr/validate/route");
@@ -442,7 +436,9 @@ describe("canonical reward loop integration", () => {
       }),
     );
     expect(qrRes.status).toBe(200);
-    expect(mockApplyDirectCoreXp).toHaveBeenCalledWith(expect.anything(), "u1", 21);
+    expect(privateRpcCalls.find((call) => call.fn === "bty_apply_arena_run_rewards_v2")?.args).toEqual({
+      p_user_id: "u1", p_run_id: "run1", p_scenario_id: expect.any(String), p_weekly_delta: 13, p_core_xp: 21,
+    });
     const weeklyAfterQr = state.weeklyXp.find((r) => r.user_id === "u1");
     expect(Number(weeklyAfterQr?.xp_total ?? 0)).toBe(113);
     expect(state.leActivationLog.length).toBeGreaterThan(0);
@@ -573,7 +569,8 @@ describe("canonical reward loop integration", () => {
     expect(noChangeBody.reflection.core_xp).toBe(0);
     expect(noChangeBody.reflection.weekly_xp).toBe(1);
     expect(userXpCalls).toEqual([]);
-    expect(privateRpcCalls.filter(call => call.fn === "increment_weekly_xp").map(call => call.args?.p_delta)).toEqual([13, 8, 3, 1]);
+    expect(privateRpcCalls.filter(call => call.fn === "increment_weekly_xp" || call.fn === "increment_arena_xp")).toEqual([]);
+    expect(privateRpcCalls.filter(call => call.fn.startsWith("bty_a")).map(call => call.args?.p_weekly_delta)).toEqual([13, 8, 3, 1]);
     expect(Number(state.weeklyXp.find(row => row.user_id === "u1")?.xp_total)).toBe(125);
   });
 });

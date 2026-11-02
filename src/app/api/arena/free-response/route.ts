@@ -1,3 +1,4 @@
+import { awardRunXp } from "@/lib/bty/arena/sharedXp.server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
@@ -77,13 +78,17 @@ export async function POST(req: Request) {
 
   const { data: run, error: runErr } = await supabase
     .from("arena_runs")
-    .select("run_id, user_id, status")
+    .select("run_id, user_id, run_type, status")
     .eq("run_id", runId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
   if (!run) return NextResponse.json({ error: "RUN_NOT_FOUND" }, { status: 404 });
+  // Beginner runs award their fixed reward through beginner-complete only.
+  if ((run as { run_type?: string }).run_type === "beginner") {
+    return NextResponse.json({ error: "NOT_SCENARIO_RUN" }, { status: 409 });
+  }
 
   const { count, error: countErr } = await supabase
     .from("arena_events")
@@ -118,13 +123,8 @@ export async function POST(req: Request) {
 
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
-  const { error: rpcErr } = await xpWriter.rpc("increment_arena_xp", {
-    p_user_id: user.id,
-    p_run_id: runId,
-    p_xp: FREE_RESPONSE_XP,
-  });
-
-  if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+  const award = await awardRunXp(user.id, runId, FREE_RESPONSE_XP);
+  if (!award.ok) return NextResponse.json({ error: award.error }, { status: award.error === "REWARD_WRITES_PAUSED" ? 503 : 500 });
 
   return NextResponse.json({
     ok: true,

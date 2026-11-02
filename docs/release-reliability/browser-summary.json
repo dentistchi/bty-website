@@ -1,0 +1,328 @@
+{
+  "startHead": "27ff4865acd8f21166c2dc48e226ed8343fe1023",
+  "endHead": "4691a2229ff9f15a811626a504bfcf55d4775a2e",
+  "existingTrackedFilesChanged": [],
+  "newTrackedFilesAddedByParentDuringRun": [
+    "b'docs/RELEASE_RELIABILITY_REMAINDER.md'",
+    "b'docs/release-reliability/catalog-preflight.json'"
+  ],
+  "sourceIdentity": "All 4,603 initially tracked files and all 20 tested runtime/spec files match frozen startHead bytes. Parent committed two docs only during run.",
+  "statusBefore": "?? node_modules\n?? src/components/foundry/event-rooms/.grammar-harness/\n",
+  "statusAfter": "?? node_modules\n?? src/components/foundry/event-rooms/.grammar-harness/\n",
+  "stats": {
+    "startTime": "2026-11-01T00:43:26.800Z",
+    "duration": 27667.790999999997,
+    "expected": 21,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 966
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 805
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 761
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 1113
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 749
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 726
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 782
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 657
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved triage rolls back, retries, and survives the earlier mount response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 674
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Saved removal preserves a failed item, retries, and cannot be undone by an old read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 732
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking removal retries and rejects a late success, failure, or malformed read",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 816
+        }
+      ]
+    },
+    {
+      "file": "app-release-reliability.public.spec.ts",
+      "title": "Tracking keeps the newer read error until Retry succeeds despite an old successful response",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 708
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "second distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 620
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 800
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "second distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 725
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 10137
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "second distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 653
+        }
+      ]
+    },
+    {
+      "file": "healing-client-reliability.public.spec.ts",
+      "title": "acts distinguishes failed reads, failed writes, review and successful retry",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 554
+        }
+      ]
+    },
+    {
+      "file": "practice-completion-reliability.public.spec.ts",
+      "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 864
+        }
+      ]
+    },
+    {
+      "file": "practice-completion-reliability.public.spec.ts",
+      "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 724
+        }
+      ]
+    },
+    {
+      "file": "practice-completion-reliability.public.spec.ts",
+      "title": "rejects a malformed HTTP200, preserves the player, retries, then returns only after canonical completion",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "duration": 894
+        }
+      ]
+    }
+  ],
+  "playwrightRetries": 0,
+  "publicFoundryScreens": 24,
+  "publicFoundryAwardTransitions": 12,
+  "combinedFlowChecks": 57,
+  "minimumTextContrast": 11.093262830591486,
+  "minimumButtonContrast": 8.005064194225275,
+  "runtimeHashes": {
+    "e2e/app-release-reliability.public.spec.ts": "0158ef2b853036fdaa71e06fac6b9a0edda68c6e20cab9005b1a513ce1edce67",
+    "e2e/practice-completion-reliability.public.spec.ts": "6feff458bbda2d503860345c18c1962a98374f07ae2ae371ea00d793b4066b0a",
+    "e2e/healing-client-reliability.public.spec.ts": "753f16b8e47c209bd3ece0bf1cac09a7fcdf53b996dd4f721dde517e108e3256",
+    "scripts/qa/public-foundry-xp.browser.mjs": "4ad2529abc7ecf4a809fd751d8f90cde56aa60b10dcda576e137c009b74baedc",
+    "src/components/app-shell/SavedForLater.tsx": "6e2f7b1229681e766490271aba8760414b4b46dbd874f080fbbd4a6105475bed",
+    "src/components/app-shell/TrackingSent.tsx": "a7073842f047d823e8c0848b0413e9913c3b36f6e029ba8acba7cf444e37f923",
+    "src/components/app-shell/TodaySwipeAction.tsx": "475785f93e85eb14c6d6d42a0b842d5010757b4e69736b7aa73bc9e57085e4e2",
+    "src/components/app-shell/SwipeAction.tsx": "61dec9e878a7fa675a161676f9d333100cfc31de542a00f83a7b0af084dccc58",
+    "src/components/app-shell/TrackConversation.tsx": "9007f33a7c7b7e8e713e62edebb032bf365416364c01758ba283f75166d80ac6",
+    "src/components/app-shell/AnnouncementTrackingSummary.tsx": "1362575039f0a1293956decf871459a33e91c172ca85118b5ebcfed1205eef28",
+    "src/components/app-shell/ArenaRoom.tsx": "302284a0452afb2828d926fe219f5e6ecc9236556f41e669b5dc369a77267344",
+    "src/components/bty-arena/practice/ArenaPracticePlayer.tsx": "1cdba2acd77fabbc9276e1ea99b397abffea3078685431fd626c06306c87432d",
+    "src/components/bty-arena/EliteArenaStep2Context.tsx": "2b62ea1cd8f6f02c1f197e014252e6c3a334c884de97c8149c02d5300e241150",
+    "src/app/[locale]/bty/(protected)/healing/awakening/page.client.tsx": "8ef27f18a3e9ec5fc712088928726271a980395d84cab6d6f3b550d67a509f6d",
+    "src/components/bty/healing/AwakeningActsTrack.tsx": "6ad6ff1faece31d9984b5fe162e98a50498475a8b7e97638ce4462ad174a7e1c",
+    "src/app/f/[token]/CompletionXpRecovery.tsx": "db942a1e63782b6024d51d6d43b821a5b6a77f24cc2303f8bac635805f8b9b86",
+    "src/app/f/[token]/FoundryJoinClient.tsx": "acc84a82d05478d21b84e5e2ffa451af5410a3da0586090801899921bc38b66d",
+    "src/app/f/[token]/FoundryDocumentClient.tsx": "4640ceec99593f576e4d937aaad0c23d97e85a31b0ded8df53abb8d189209f8e",
+    "src/app/f/[token]/FoundryGuidanceClient.tsx": "8873a8ef3c1a956af36591a5369af78c9997bbf3468655f1e57e4a0f7e8cb270",
+    "src/app/f/[token]/snapshotMerge.ts": "d3a85c559ac6bcdfb6d7c4bb3fef5c6d6042c16dce8c4e5fe5fc20abe20c9de2"
+  },
+  "nodeVersion": "v20.20.2",
+  "nodeSha256": "6295488653f0d93b0a157841746fef7e72cc4328cfb60c4bbe0ca2668a836ffd",
+  "chromiumVersion": "Chromium 131.0.6778.33",
+  "chromiumSha256": "ca54e4dd0b4c7f8dd9b923df8f4fe6d21f703179592f4135d7821eef24558e2c",
+  "scope": "Isolated real-client synthetic-HTTP browser checks, cleared process environment. No app environment, Next server, DB, auth session, model, production API or source edits."
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
 import SwipeAction from "@/components/app-shell/SwipeAction";
@@ -370,6 +370,8 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   /** Which card's decision failed to save. Scoped to one row — never a screen-level error. */
   const [failedId, setFailedId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  // An earlier lifecycle read must not undo a decision made after the current read.
+  const readGeneration = useRef(0);
   /** ONE ROW OPEN AT A TIME, owned here: there is only one slot to be open in. */
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
   /** Which conversations are open. Local only — a reading position is not worth persisting. */
@@ -384,10 +386,13 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   }, []);
 
   const load = useCallback(async (): Promise<boolean> => {
+    const generation = ++readGeneration.current;
     try {
       const res = await fetch("/api/bty/action-capture/mine", { credentials: "include", cache: "no-store" });
+      if (generation !== readGeneration.current) return false;
       if (!res.ok) return false;
       const d = (await res.json()) as { ok?: boolean; items?: SavedCapture[] };
+      if (generation !== readGeneration.current) return false;
       if (d?.ok !== true || !Array.isArray(d.items)) return false;
       setItems(d.items);
       return true;
@@ -403,6 +408,7 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     });
     return () => {
       alive = false;
+      readGeneration.current++;
     };
   }, [load]);
 

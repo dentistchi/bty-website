@@ -52,6 +52,10 @@ import { isEliteChainScenarioId } from "@/lib/bty/arena/postLoginEliteEntry";
 import { ArenaChoiceHttpError, postArenaChoice } from "@/lib/bty/arena/binding/postArenaChoice";
 import { getScenarioById, type RuntimeFlowContext } from "@/data/scenario";
 import { pushSignalIfNew } from "@/features/arena/logic/signalStorage";
+import {
+  legacyRewardFailureMessage,
+  requireLegacyChoiceAcknowledgement,
+} from "@/lib/bty/arena/legacyRewardAcknowledgement";
 
 // ── exported types ──────────────────────────────────────────────
 export type ArenaPhase =
@@ -1300,7 +1304,7 @@ const eb =
         difficulty: c.difficulty,
         hiddenDelta: c.hiddenDelta ?? {},
       });
-      const xp = evalResult.xp;
+      let xp = evalResult.xp;
       const msg =
         SYSTEM_MESSAGES.find((m) => m.id === evalResult.systemMessageId) ??
         SYSTEM_MESSAGES.find((m) => m.id === "arch_init")!;
@@ -1345,16 +1349,27 @@ const eb =
           return;
         }
       } else {
-        await postArenaEvent({
-          runId: rid,
-          scenarioId: current.scenarioId,
-          step: 2,
-          eventType: "CHOICE_CONFIRMED",
-          choiceId: c.choiceId,
-          xp,
-          deltas: c.hiddenDelta ?? null,
-          meta: { intent: c.intent },
-        });
+        setToast(null);
+        try {
+          const acknowledgement = requireLegacyChoiceAcknowledgement(
+            await arenaFetch<unknown>("/api/arena/event", {
+              json: {
+                runId: rid,
+                scenarioId: current.scenarioId,
+                step: 2,
+                eventType: "CHOICE_CONFIRMED",
+                choiceId: c.choiceId,
+                xp,
+                deltas: c.hiddenDelta ?? null,
+                meta: { intent: c.intent },
+              },
+            }),
+          );
+          xp = acknowledgement.xp;
+        } catch (e) {
+          setToast(legacyRewardFailureMessage(e, locale));
+          return;
+        }
       }
 
       setLastXp(xp);

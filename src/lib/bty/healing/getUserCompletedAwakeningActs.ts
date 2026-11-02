@@ -14,7 +14,7 @@ export async function getUserCompletedAwakeningActs(
     .eq("user_id", userId)
     .order("act_id", { ascending: true });
 
-  if (error) return { ok: false, error: error.message };
+  if (error || !Array.isArray(rows)) return { ok: false, error: "AWAKENING_PROGRESS_UNAVAILABLE" };
 
   const completed = (rows ?? []).map((r) =>
     Number((r as { act_id: number }).act_id)

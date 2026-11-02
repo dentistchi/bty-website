@@ -1,0 +1,125 @@
+{
+  "sourceCommit": "27ff4865acd8f21166c2dc48e226ed8343fe1023",
+  "sourceTree": "0ec0b2b4c8f278c4894c8e17bea0b95ae81842e4",
+  "runtimeManifestSha256": "a0163d23f537886206af176b414100469777db8813d76bbec3dd4274251aff4a",
+  "runtimeManifestEntries": 3677,
+  "runtimeManifestPaths": [
+    "src",
+    "package.json",
+    "package-lock.json",
+    "next.config.ts",
+    "next.config.mjs",
+    "next.config.js",
+    "open-next.config.ts",
+    "wrangler.toml",
+    "tsconfig.json",
+    "scripts/check-env.mjs",
+    "scripts/copy-pdf-worker.mjs",
+    "public"
+  ],
+  "nodeVersion": "v20.20.2",
+  "realNpmCi": true,
+  "npmCiExit": 0,
+  "npmCiPackages": 1357,
+  "installLog": "/workspace/scratch/44e2cc16edbd/release-build-install.log",
+  "buildLog": "/workspace/scratch/44e2cc16edbd/release-build.log",
+  "buildEnvironment": "Fresh task HOME; exact offline Supabase placeholders and requested build flags; no app env files, proxy, credentials, or external sessions. Install retained platform proxy/CA only.",
+  "nextSubcommandHeapMB": 4096,
+  "outerHeapMB": 8192,
+  "productionChanges": false,
+  "buildExit": 0,
+  "nextCompiledSuccessfully": true,
+  "staticPagesGenerated": 353,
+  "integratedTypeValidation": "passed",
+  "lint": "skipped by existing Next config; no lint pass claimed",
+  "artifactGate": {
+    "artifactRoot": "/workspace/scratch/44e2cc16edbd/bty-release-build/.open-next",
+    "emittedJavaScriptFiles": 3629,
+    "unsafeCount": 0,
+    "implementationCount": 2,
+    "safeImplementationCount": 2,
+    "decision": {
+      "ok": true
+    },
+    "importOnly": true,
+    "deploymentInvoked": false
+  },
+  "handlerPatches": [
+    {
+      "file": ".open-next/server-functions/default/handler.mjs",
+      "returnsNull": true
+    },
+    {
+      "file": ".open-next/server-functions/default/node_modules/next/dist/server/next-server.js",
+      "returnsNull": true
+    }
+  ],
+  "serverFunctionDirectories": [
+    "default"
+  ],
+  "publicScan": {
+    "artifactRoot": "/workspace/scratch/44e2cc16edbd/bty-release-build/.open-next/assets",
+    "textFiles": 743,
+    "priorMarkerCount": 301,
+    "markerCount": 320,
+    "markersByKind": {
+      "author-original": 23,
+      "author-paraphrase": 23,
+      "patient-answer": 251,
+      "private-reward-sql": 4,
+      "new-private-atomic-sql": 6,
+      "private-test-fixture": 13
+    },
+    "matchCount": 0,
+    "matches": [],
+    "limitation": "Selected literal prefixes and SQL identifiers only; not exhaustive disclosure proof."
+  },
+  "cleanTrackedTreeAfter": true,
+  "runtimeManifestUnchanged": true,
+  "environmentFilesAbsentBeforeAndAfter": true,
+  "nodeModulesIsSymlink": false,
+  "buildWarnings": [
+    "Existing Next15.5.28 unsupported release; pre-existing repo flag used",
+    "Browserslist data9months old",
+    "metadataBase absent; build falls back localhost:3000",
+    "webpack big-string cache serialization warning"
+  ],
+  "deployed": false,
+  "migrationsApplied": false,
+  "liveAuthOrDatabaseCalls": false,
+  "evidence": [
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-install.log",
+      "sha256": "608b05cba39fbf3afe111d75d350750faa6b795c741f4199d6fb57706ddf39ac"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build.log",
+      "sha256": "0125f4f147241b7c1b271e293021fb3b8ddddf9b7b83ffe5564f5a109c5b6cfa"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-artifact-gate.log",
+      "sha256": "5c80b8d1e07d699b26eb1886093898e75f6cf0bd5a5fd1c57edce2f3ea8eee52"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-handler-patch.log",
+      "sha256": "4debdbf21ba90cd836d9b4b513571a90a420b99923d70195bddb4ccadf4edf73"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-public-scan.log",
+      "sha256": "d06f19db416ae385d252386f482e1f1c4081dfecc4ff1f8195133e8cb87c4cfe"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-public-scan.mjs",
+      "sha256": "30dfbaab55bb033dd5eabdf3bd8f1a151c171afa6fff0cba7e8a0e0494b030f4"
+    },
+    {
+      "path": "/workspace/scratch/44e2cc16edbd/release-build-runtime-manifest.txt",
+      "sha256": "a0163d23f537886206af176b414100469777db8813d76bbec3dd4274251aff4a"
+    }
+  ],
+  "artifactHashes": {
+    ".open-next/worker.js": "d05223bf4d44c84108a102ab62aa3bc9c5568f0c3ac2064c37be5cc65c64bc45",
+    ".open-next/server-functions/default/handler.mjs": "daaef9044337d2bb5984511f47e31ab2570919f9aa521fc758ca1ec366972540",
+    "package-lock.json": "b20af534db7ef8ffeb02dce07bfabf1d141ac4f425abf7b62e021aee1a68c167"
+  }
+}

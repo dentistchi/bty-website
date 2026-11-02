@@ -1,0 +1,44 @@
+{
+  "cause": "Initial unknown consent correctly renders aria-checked=false but disabled; prior tests mistake false for a loaded OFF value and may click the disabled control, so no PATCH/save error occurs.",
+  "repair": "Four OFF-state readiness waits require both checked=false and enabled; error, rollback, saving completion and boolean-only privacy assertions retained.",
+  "unchangedComponentSha256": "05fbd23eb8fab2878f9c2d619853f5e559dac65e01719af8adf74d28f8e5045f",
+  "observations": {
+    "before": {
+      "numPassedTests": 9,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "controlled-before": {
+      "numPassedTests": 2,
+      "numFailedTests": 2,
+      "numPendingTests": 0
+    },
+    "controlled-held-before": {
+      "numPassedTests": 0,
+      "numFailedTests": 4,
+      "numPendingTests": 0
+    },
+    "controlled-held-after": {
+      "numPassedTests": 4,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-1": {
+      "numPassedTests": 9,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-2": {
+      "numPassedTests": 9,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-3": {
+      "numPassedTests": 9,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    }
+  },
+  "controlledFixture": "Synthetic GET held100ms; only fixture response latency changed. No test timeout/retry increase, no production component edit. Zero-delay exploratory probe separately preserved.",
+  "scope": "jsdom synthetic fetch only, no DB/auth/model/live requests."
+}

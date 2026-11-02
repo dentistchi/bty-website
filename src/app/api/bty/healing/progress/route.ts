@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
     copyCookiesAndDebug(base, res, req, true);
     return res;
   }
-  const fail = result as { status: 500; error: string };
-  const res = NextResponse.json({ error: fail.error }, { status: 500 });
+  const fail = result as { status: 409 | 500; error: string };
+  const res = NextResponse.json({ error: fail.error }, { status: fail.status });
   copyCookiesAndDebug(base, res, req, true);
   return res;
 }
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     copyCookiesAndDebug(base, res, req, true);
     return res;
   }
-  const failure = result as { status: 400 | 403 | 409 | 500; error: string };
+  const failure = result as { status: 400 | 403 | 409 | 500 | 503; error: string };
   const res = NextResponse.json({ error: failure.error }, { status: failure.status });
   copyCookiesAndDebug(base, res, req, true);
   return res;

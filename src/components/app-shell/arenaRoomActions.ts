@@ -109,7 +109,9 @@ export async function completePractice(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ runId }),
     });
-    return { ok: res.ok };
+    if (!res.ok) return { ok: false };
+    const data = (await res.json()) as { completed?: unknown } | null;
+    return { ok: data?.completed === true };
   } catch {
     return { ok: false };
   }

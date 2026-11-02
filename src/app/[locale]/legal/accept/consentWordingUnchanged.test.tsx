@@ -1,6 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect } from "vitest";
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { render } from "@testing-library/react";
 import { ConsentDocumentView } from "./ConsentDocumentView";
 import { activeConsentDocument } from "@/domain/legal/consent-document";
@@ -13,21 +15,21 @@ import { activeConsentDocument } from "@/domain/legal/consent-document";
  * it carefully" is not evidence. This compares the words the PREVIOUS shipped page rendered
  * against the words the NEW renderer produces.
  *
- * The old side is read from git at the last commit before this slice — the actual deployed
- * source, not a copy — and reduced to its text by stripping JSX tags. The new side is really
+ * The old side is the exact historical file fetched at the shipped ref, frozen as a
+ * fixture and checked against its Git blob SHA before reducing the text. This
+ * avoids depending on whichever historical Git objects a checkout happens to contain. The new side is really
  * rendered. Both are reduced to a WORD SEQUENCE, so only whitespace amount is ignored: a single
  * added, removed or reordered word in either language fails this test.
  */
 
-/** The commit that was live before R9A (R8F-R1's deployed source). */
-const BASELINE = "bd7784de";
+/** Exact historical GitHub blob at bd7784de, before the document-authority slice. */
+const BASELINE_BLOB = "41296c5558fb377bdbbc941e825ece09f03fe379";
 
 function oldPageSource(): string {
-  return execFileSync("git", ["show", `${BASELINE}:src/app/[locale]/legal/accept/page.tsx`], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  const bytes = readFileSync(path.resolve(process.cwd(), "src/test/fixtures/legal/consent-page.bd7784de.txt"));
+  const blob = createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+  expect(blob).toBe(BASELINE_BLOB);
+  return bytes.toString("utf8");
 }
 
 /** Words only: strip JSX tags, drop expression braces, collapse all whitespace. */

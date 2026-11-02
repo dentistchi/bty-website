@@ -1,0 +1,27 @@
+{
+  "server": {
+    "database": "postgres",
+    "user": "postgres",
+    "host": "172.18.0.2",
+    "port": 55473,
+    "versionNumber": 170011,
+    "version": "PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
+  },
+  "databases": [
+    "postgres",
+    "template0",
+    "template1"
+  ],
+  "publicRelations": [],
+  "publicFunctions": [],
+  "publicTypes": [],
+  "userSchemas": [
+    "public"
+  ],
+  "userRoles": [
+    "postgres"
+  ],
+  "extensions": [
+    "plpgsql"
+  ]
+}

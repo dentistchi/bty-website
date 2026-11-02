@@ -7,17 +7,19 @@
  * `create` that throws, so any live path would fail loudly rather than silently succeed, and every
  * reviewer dependency is injected as a canned function.
  *
- * Phase 1 proves the SEAM, not a reviewer verdict: that a retained Run-4/Run-5 artifact can be
+ * Synthetic fixtures prove the SEAM, not a historical replay or reviewer verdict: an explicitly marked test artifact can be
  * loaded, hash-verified and projected into the EXISTING narrow and broad reviewer requests without
  * running Plan or Render, and that the narrow projection still cannot see the forced
- * `boundaryCompliance` claim while the broad projection still can.
+ * `boundaryCompliance` claim while the broad projection still can. Historical Run4/Run5 remain unavailable;
+ * their CLI identity gates are independently tested and have no synthetic fallback.
  */
 
-import { readFileSync, existsSync, mkdirSync, writeFileSync, mkdtempSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { vi, describe, it, expect } from "vitest";
+import { vi, describe, it, expect, afterEach } from "vitest";
 
 // --- mock the shared LLM seam: any live provider path must throw, never succeed -------------
 const mockCreate = vi.fn(() => {
@@ -43,6 +45,7 @@ import {
   buildReplayNarrowSubject,
   buildReplayBroadRequest,
   runFrozenReviewerReplay,
+  runSyntheticFrozenReviewerReplay,
   parseReplayArgs,
   SUBJECT_AUTHORITY,
   evidencePathFor,
@@ -50,10 +53,14 @@ import {
 } from "../../../../../scripts/practice-frozen-reviewer-replay";
 import { noBoundaryProvenance, boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 
+import { SYNTHETIC_REPLAY_AUTHORITY } from "./fixtures/frozenReviewerSeamAuthority";
+
 const ROOT = process.cwd();
 
 /** A fresh injected output root per call. Tests must never write into `.eval-artifacts`. */
-const tmpRoot = (): string => mkdtempSync(join(tmpdir(), "replay-evidence-"));
+const tempRoots: string[] = [];
+const tmpRoot = (): string => { const root = mkdtempSync(join(tmpdir(), "replay-evidence-")); tempRoots.push(root); return root; };
+afterEach(() => { for (const root of tempRoots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 const readEvidence = (root: string, id: string): Record<string, unknown> =>
   JSON.parse(readFileSync(evidencePathFor(root, id), "utf8")) as Record<string, unknown>;
 
@@ -63,13 +70,12 @@ function noBoundaryAuthority(fixtureId: string) {
   const prov = noBoundaryProvenance("boundary:none", "0".repeat(64));
   return { ...base, constraints: [], boundaries: [], provenance: prov, provenanceSha256: boundaryProvenanceSha256(prov) };
 }
-const RUN4 =
-  ".eval-artifacts/reviewer-observer-live-04/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-04-c18.c18-constrained-clinical.plan_render_v1.1.json";
-const RUN5 =
-  ".eval-artifacts/reviewer-observer-live-05/c18-constrained-clinical/retention-v1/practice-retention.reviewer-observer-live-05-c18.c18-constrained-clinical.plan_render_v1.1.json";
-const RUN4_SHA = "e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b";
-const RUN5_SHA = "46d6882b78f7064de68310b8312fd4b0f9ab5c6f603150ed682a4f8f383b4fd8";
-const RUN4_SCENARIO_DIGEST = "c917a9d33b581154768e19269c91a1553dd23da07c92b58b7d705cfed30e1390";
+// These are tracked synthetic seam inputs, not replacements for the unavailable captures.
+const SYNTHETIC_A = SYNTHETIC_REPLAY_AUTHORITY["synthetic-a"].artifactPath;
+const SYNTHETIC_B = SYNTHETIC_REPLAY_AUTHORITY["synthetic-b"].artifactPath;
+const SYNTHETIC_A_SHA = SYNTHETIC_REPLAY_AUTHORITY["synthetic-a"].artifactSha256;
+const SYNTHETIC_B_SHA = SYNTHETIC_REPLAY_AUTHORITY["synthetic-b"].artifactSha256;
+const SYNTHETIC_A_SCENARIO_DIGEST = SYNTHETIC_REPLAY_AUTHORITY["synthetic-a"].scenarioDigest;
 const CONFIRMED_ID = "c1_verify";
 
 /** PRE-implementation body hash of `reviewConstraintCompliance`, excluding its declaration line. */
@@ -118,19 +124,19 @@ function cannedDeps(): { deps: ReplayDeps; seen: Record<string, unknown[]> } {
   return { deps, seen };
 }
 
-describe("frozen reviewer replay — phase 1 seam", () => {
-  it("A. loads the exact Run-4 frozen subject and reproduces its scenario digest", () => {
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
-    expect(s.artifactSha256).toBe(RUN4_SHA);
-    expect(s.scenarioSha256).toBe(RUN4_SCENARIO_DIGEST);
-    expect(scenarioDigest(s.draft)).toBe(RUN4_SCENARIO_DIGEST);
+describe("frozen reviewer replay — synthetic phase 1 seam", () => {
+  it("A. loads the exact tracked synthetic subject and reproduces its own scenario digest", () => {
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
+    expect(s.artifactSha256).toBe(SYNTHETIC_A_SHA);
+    expect(s.scenarioSha256).toBe(SYNTHETIC_A_SCENARIO_DIGEST);
+    expect(scenarioDigest(s.draft)).toBe(SYNTHETIC_A_SCENARIO_DIGEST);
     expect(s.fixtureId).toBe("c18-constrained-clinical");
     expect(Object.keys(s.constructions)).toHaveLength(14);
   });
 
   it("B. never invokes Plan, Render or any generation function", async () => {
     const { deps } = cannedDeps();
-    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: tmpRoot() });
+    await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: tmpRoot() });
     expect(mockCreate).not.toHaveBeenCalled();
 
     // Structural: the harness source must not reference a generation entrypoint at all.
@@ -141,7 +147,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   });
 
   it("C. the narrow reviewer subject carries acceptedCost and never boundaryCompliance", () => {
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
     const a = deriveReplayAuthority(s.fixtureId);
     const subject = buildReplayNarrowSubject(s, a);
     const serialized = JSON.stringify(subject);
@@ -150,7 +156,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   });
 
   it("D. the broad reviewer request carries the complete frozen construction, claim included", () => {
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
     const a = deriveReplayAuthority(s.fixtureId);
     const req = buildReplayBroadRequest(s, a);
     expect(req.visibleChoices).toHaveLength(14);
@@ -161,11 +167,11 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   });
 
   it("E. narrow and broad consume one replay-local identity from a single frozen load", async () => {
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
     const { deps, seen } = cannedDeps();
-    const r = await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps, outputRoot: tmpRoot() });
-    expect(r.subjectIdentity.artifactSha256).toBe(RUN4_SHA);
-    expect(r.subjectIdentity.scenarioSha256).toBe(RUN4_SCENARIO_DIGEST);
+    const r = await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: s, deps, outputRoot: tmpRoot() });
+    expect(r.subjectIdentity.artifactSha256).toBe(SYNTHETIC_A_SHA);
+    expect(r.subjectIdentity.scenarioSha256).toBe(SYNTHETIC_A_SCENARIO_DIGEST);
     const narrowSubject = (seen.narrow[0] as { subject: { scenarioSha256: string } }).subject;
     expect(narrowSubject.scenarioSha256).toBe(r.subjectIdentity.scenarioSha256);
     if (seen.broad.length > 0) {
@@ -175,7 +181,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   });
 
   it("F. canned reviewer output preserves every evidence field the existing parsers produce", () => {
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
     const choices = enumerateChoices(s.draft);
 
     // Start from the TRACKED accept fixture so the review is valid by construction, then make the
@@ -208,8 +214,9 @@ describe("frozen reviewer replay — phase 1 seam", () => {
 
   it("G. replay accounting is inert: no sequence allocation, no DB recorder, no submission accounting", async () => {
     const { deps } = cannedDeps();
-    const r = await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: tmpRoot() });
+    const r = await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: tmpRoot() });
     expect(r.accountingMode).toBe("inert");
+    expect(r.sourceKind).toBe("test-fixture");
     const src = readFileSync(resolve(ROOT, "scripts/practice-frozen-reviewer-replay.ts"), "utf8");
     expect(src).not.toContain("generationCallSequence");
     expect(src).not.toContain("GenerationAccounting");
@@ -218,7 +225,7 @@ describe("frozen reviewer replay — phase 1 seam", () => {
 
   it("H. a wrong artifact sha refuses before any reviewer is invoked", async () => {
     const wrong = "0".repeat(64);
-    expect(() => loadFrozenSubject(RUN4, wrong)).toThrow(/sha/i);
+    expect(() => loadFrozenSubject(SYNTHETIC_A, wrong)).toThrow(/sha/i);
     const { seen } = cannedDeps();
     expect(seen.narrow).toHaveLength(0);
     expect(seen.broad).toHaveLength(0);
@@ -226,9 +233,9 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   });
 
   it("I. production broadReviewAllowed is computed and broad rows are markable OFF_PIPELINE", async () => {
-    for (const [path, sha] of [[RUN4, RUN4_SHA], [RUN5, RUN5_SHA]] as const) {
+    for (const [path, sha] of [[SYNTHETIC_A, SYNTHETIC_A_SHA], [SYNTHETIC_B, SYNTHETIC_B_SHA]] as const) {
       const { deps } = cannedDeps();
-      const r = await runFrozenReviewerReplay({ subjectId: path === RUN4 ? "run4" : "run5", subject: loadFrozenSubject(path, sha), deps, outputRoot: tmpRoot() });
+      const r = await runSyntheticFrozenReviewerReplay({ subjectId: path === SYNTHETIC_A ? "synthetic-a" : "synthetic-b", subject: loadFrozenSubject(path, sha), deps, outputRoot: tmpRoot() });
       expect(typeof r.broadReviewAllowed).toBe("boolean");
       expect(r.rows.every((row) => row.mode === "REPLAY")).toBe(true);
       const broadRows = r.rows.filter((row) => row.stage === "broad");
@@ -255,18 +262,18 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     expect(REPLAY_OUTPUT_ROOT).toBe(".eval-artifacts/reviewer-replay-01");
     const root = tmpRoot();
     const { deps } = cannedDeps();
-    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
-    expect(existsSync(evidencePathFor(root, "run4"))).toBe(true);
+    await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: root });
+    expect(existsSync(evidencePathFor(root, "synthetic-a"))).toBe(true);
     expect(existsSync(resolve(ROOT, REPLAY_OUTPUT_ROOT))).toBe(false);
   });
 
   it("L. a pre-existing subject evidence file refuses before any reviewer dependency call", async () => {
     const root = tmpRoot();
     mkdirSync(resolve(root), { recursive: true });
-    writeFileSync(evidencePathFor(root, "run4"), "{}", "utf8");
+    writeFileSync(evidencePathFor(root, "synthetic-a"), "{}", "utf8");
     const { deps, seen } = cannedDeps();
     await expect(
-      runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root }),
+      runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: root }),
     ).rejects.toThrow(/exist/i);
     expect(seen.narrow).toHaveLength(0);
     expect(seen.broad).toHaveLength(0);
@@ -280,9 +287,9 @@ describe("frozen reviewer replay — phase 1 seam", () => {
       throw new TypeError("canned broad failure");
     };
     await expect(
-      runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root }),
+      runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: root }),
     ).rejects.toThrow(/canned broad failure/);
-    const e = readEvidence(root, "run4");
+    const e = readEvidence(root, "synthetic-a");
     expect(e.consumed).toBe(true);
     expect(e.narrowStage).toBeDefined();
     expect(e.failingStage).toBe("broad");
@@ -295,25 +302,25 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   it("N. the CLI parser rejects bad argv before any dependency call", () => {
     const ok = [
       "--subject", "run4",
-      "--artifact", RUN4,
-      "--expected-sha", RUN4_SHA,
-      "--expected-scenario-digest", RUN4_SCENARIO_DIGEST,
+      "--artifact", SYNTHETIC_A,
+      "--expected-sha", SYNTHETIC_A_SHA,
+      "--expected-scenario-digest", SYNTHETIC_A_SCENARIO_DIGEST,
     ];
     expect(parseReplayArgs(ok).subject).toBe("run4");
     expect(() => parseReplayArgs(ok.slice(0, 6))).toThrow(/required|missing/i);
     expect(() => parseReplayArgs([...ok, "--unknown", "x"])).toThrow(/unknown/i);
     expect(() => parseReplayArgs([...ok, "--subject", "run5"])).toThrow(/duplicate/i);
     expect(() => parseReplayArgs([...ok, "--subjects", "run4,run5"])).toThrow(/unknown|batch/i);
-    expect(() => parseReplayArgs(["--subject", "run3", "--artifact", RUN4, "--expected-sha", RUN4_SHA, "--expected-scenario-digest", RUN4_SCENARIO_DIGEST])).toThrow(/subject/i);
-    expect(SUBJECT_AUTHORITY.run4.artifactSha256).toBe(RUN4_SHA);
-    expect(SUBJECT_AUTHORITY.run5.artifactSha256).toBe(RUN5_SHA);
+    expect(() => parseReplayArgs(["--subject", "run3", "--artifact", SYNTHETIC_A, "--expected-sha", SYNTHETIC_A_SHA, "--expected-scenario-digest", SYNTHETIC_A_SCENARIO_DIGEST])).toThrow(/subject/i);
+    expect(SUBJECT_AUTHORITY.run4.artifactSha256).toBe("e52cc7896da89bcdb745bc4f2c4c7acae652810e359e72a7897102f7cf25644b");
+    expect(SUBJECT_AUTHORITY.run5.artifactSha256).toBe("46d6882b78f7064de68310b8312fd4b0f9ab5c6f603150ed682a4f8f383b4fd8");
   });
 
   it("O. broad is called exactly once whether the narrow gate is true or false", async () => {
     // gate FALSE — the real c18 authority with the canned narrow transport failure
     const rootF = tmpRoot();
     const f = cannedDeps();
-    const rf = await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps: f.deps, outputRoot: rootF });
+    const rf = await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps: f.deps, outputRoot: rootF });
     expect(rf.broadReviewAllowed).toBe(false);
     expect(f.seen.broad).toHaveLength(1);
     expect(rf.rows.find((r) => r.stage === "broad")?.pipeline).toBe("OFF_PIPELINE");
@@ -321,8 +328,8 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     // gate TRUE — a no-boundary authority makes the production stage return not-applicable
     const rootT = tmpRoot();
     const t = cannedDeps();
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
-    const rt = await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps: t.deps, outputRoot: rootT, authority: noBoundaryAuthority(s.fixtureId) });
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
+    const rt = await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: s, deps: t.deps, outputRoot: rootT, authority: noBoundaryAuthority(s.fixtureId) });
     expect(rt.broadReviewAllowed).toBe(true);
     expect(t.seen.broad).toHaveLength(1);
     expect(rt.rows.find((r) => r.stage === "broad")?.pipeline).toBe("ON_PIPELINE");
@@ -332,8 +339,8 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   it("P. recorded call counts equal the actual injected dependency invocations", async () => {
     const root = tmpRoot();
     const { deps, seen } = cannedDeps();
-    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
-    const e = readEvidence(root, "run4");
+    await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: root });
+    const e = readEvidence(root, "synthetic-a");
     const counts = e.callCounts as { narrowReview: number; narrowRepair: number; broadReview: number };
     expect(counts.narrowReview).toBe(seen.narrow.length);
     expect(counts.narrowRepair).toBe(seen.repair.length);
@@ -347,12 +354,12 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     const root = tmpRoot();
     const { deps, seen } = cannedDeps();
     let consumedSeenInsideFirstDep: unknown = "unset";
-    const s = loadFrozenSubject(RUN4, RUN4_SHA);
+    const s = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
     deps.broadReview = async () => {
-      consumedSeenInsideFirstDep = readEvidence(root, "run4").consumed;
+      consumedSeenInsideFirstDep = readEvidence(root, "synthetic-a").consumed;
       return { kind: "canned", parsed: null } as never;
     };
-    await runFrozenReviewerReplay({ subjectId: "run4", subject: s, deps, outputRoot: root, authority: noBoundaryAuthority(s.fixtureId) });
+    await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: s, deps, outputRoot: root, authority: noBoundaryAuthority(s.fixtureId) });
     expect(seen.narrow).toHaveLength(0);
     expect(consumedSeenInsideFirstDep).toBe(true);
 
@@ -360,9 +367,9 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     const root2 = tmpRoot();
     const d2 = cannedDeps();
     await expect(
-      runFrozenReviewerReplay({ subjectId: "run4", subject: { ...s, scenarioSha256: "0".repeat(64) }, deps: d2.deps, outputRoot: root2 }),
+      runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: { ...s, scenarioSha256: "0".repeat(64) }, deps: d2.deps, outputRoot: root2 }),
     ).rejects.toThrow();
-    expect(existsSync(evidencePathFor(root2, "run4"))).toBe(false);
+    expect(existsSync(evidencePathFor(root2, "synthetic-a"))).toBe(false);
     expect(d2.seen.narrow).toHaveLength(0);
     expect(d2.seen.broad).toHaveLength(0);
   });
@@ -370,8 +377,8 @@ describe("frozen reviewer replay — phase 1 seam", () => {
   it("R. evidence retains both exact requests, their hashes and boundaryCompliance counts", async () => {
     const root = tmpRoot();
     const { deps } = cannedDeps();
-    await runFrozenReviewerReplay({ subjectId: "run4", subject: loadFrozenSubject(RUN4, RUN4_SHA), deps, outputRoot: root });
-    const e = readEvidence(root, "run4");
+    await runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: root });
+    const e = readEvidence(root, "synthetic-a");
     expect(e.narrowRequest).toBeDefined();
     expect(e.broadRequest).toBeDefined();
     expect(String(e.narrowRequestSha256)).toMatch(/^[0-9a-f]{64}$/);
@@ -380,10 +387,45 @@ describe("frozen reviewer replay — phase 1 seam", () => {
     expect(counts.narrowRequest).toBe(0);
     expect(counts.broadRequest).toBe(14);
     expect(e.marker).toBe("REPLAY");
-    expect(e.subjectId).toBe("run4");
-    expect(e.artifactSha256).toBe(RUN4_SHA);
-    expect(e.scenarioSha256).toBe(RUN4_SCENARIO_DIGEST);
+    expect(e.subjectId).toBe("synthetic-a");
+    expect(e.sourceKind).toBe("test-fixture");
+    expect(e.historicalReplay).toBe(false);
+    expect(e.artifactSha256).toBe(SYNTHETIC_A_SHA);
+    expect(e.scenarioSha256).toBe(SYNTHETIC_A_SCENARIO_DIGEST);
   });
+
+  it("historical identities never accept a synthetic subject or invoke reviewers", async () => {
+    const { deps, seen } = cannedDeps();
+    await expect(runFrozenReviewerReplay({ subjectId: "run4",
+      subject: loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA), deps, outputRoot: tmpRoot() })).rejects.toThrow(/artifact sha mismatch/);
+    expect(seen.narrow).toEqual([]); expect(seen.broad).toEqual([]);
+    expect(() => parseReplayArgs(["--subject", "synthetic-a", "--artifact", SYNTHETIC_A,
+      "--expected-sha", SYNTHETIC_A_SHA, "--expected-scenario-digest", SYNTHETIC_A_SCENARIO_DIGEST])).toThrow(/subject/);
+  });
+
+  it("synthetic seams require explicit reviewers and an isolated output root", async () => {
+    const subject = loadFrozenSubject(SYNTHETIC_A, SYNTHETIC_A_SHA);
+    await expect(runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject,
+      deps: undefined as never, outputRoot: tmpRoot() })).rejects.toThrow(/requires injected/);
+    await expect(runSyntheticFrozenReviewerReplay({ subjectId: "synthetic-a", subject,
+      deps: cannedDeps().deps, outputRoot: REPLAY_OUTPUT_ROOT })).rejects.toThrow(/isolated absolute output/);
+  });
+
+  it("the historical CLI fails closed on missing captures and a wrong expected hash", () => {
+    const run = (artifact: string, sha: string, digest: string = SUBJECT_AUTHORITY.run4.scenarioDigest) => spawnSync(process.execPath, ["--import", "tsx",
+      "scripts/practice-frozen-reviewer-replay.ts", "--subject", "run4", "--artifact", artifact,
+      "--expected-sha", sha, "--expected-scenario-digest", digest], {
+      cwd: ROOT, encoding: "utf8", timeout: 30000,
+      env: { PATH: process.env.PATH, HOME: tmpRoot(), NODE_ENV: "test" },
+    });
+    const missing = run(join(tmpRoot(), "absent-historical.json"), SUBJECT_AUTHORITY.run4.artifactSha256);
+    expect(missing.status).toBe(1); expect(missing.stderr).toMatch(/REPLAY FAILED:.*ENOENT/);
+    const mismatch = run(SYNTHETIC_A, SUBJECT_AUTHORITY.run4.artifactSha256);
+    expect(mismatch.status).toBe(1); expect(mismatch.stderr).toMatch(/REPLAY FAILED:.*sha mismatch/);
+    const selfConsistentForgery = run(SYNTHETIC_A, SYNTHETIC_A_SHA, SYNTHETIC_A_SCENARIO_DIGEST);
+    expect(selfConsistentForgery.status).toBe(1);
+    expect(selfConsistentForgery.stderr).toMatch(/REPLAY FAILED: subject run4 artifact sha mismatch/);
+  }, 30000);
 
   it("S. the harness references no generation symbol at all", () => {
     const src = readFileSync(resolve(ROOT, "scripts/practice-frozen-reviewer-replay.ts"), "utf8");

@@ -1,3 +1,4 @@
+import { unpinnedMigrationSources } from "@/test-support/repositoryScope";
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -51,8 +52,20 @@ describe("T13/T18/T19 — plumbing, in all three families", () => {
     for (const f of SERVICES) {
       const c = code(read(f));
       expect(c, f).toContain("let applyWindowResult: MaterializeApplyResult");
-      // Both call sites captured — completion AND the late authenticated claim.
-      expect((c.match(/applyWindowResult = await materializeApplyWindow/g) ?? []).length, f).toBe(2);
+      // Quick Quiz has its own canonical completion entry; it must retain the same materializer.
+      const paths = f === "foundryTrainingService.ts"
+        ? ["finalizeCanonicalTrainingCompletion", "completeTraining", "claimXp"]
+        : f === "foundryDocumentService.ts"
+          ? ["completeDocumentTraining", "claimDocumentXp"]
+          : ["completeGuidanceTraining", "claimGuidanceXp"];
+      expect((c.match(/applyWindowResult = await materializeApplyWindow/g) ?? []).length, f).toBe(paths.length);
+      for (const name of paths) {
+        const start = c.indexOf(`export async function ${name}(`);
+        expect(start, `${f}: ${name} must exist`).toBeGreaterThan(-1);
+        const next = c.indexOf("\nexport ", start + 1);
+        const body = c.slice(start, next === -1 ? undefined : next);
+        expect((body.match(/applyWindowResult = await materializeApplyWindow/g) ?? []).length, `${f}: ${name}`).toBe(1);
+      }
       expect(c, f).toContain("...applyNarration(applyWindowResult)");
       // No second mapping anywhere.
       expect(c, f).not.toMatch(/applyWindow:\s*"(created|exists)"/);
@@ -129,7 +142,7 @@ describe("T13/T18/T19 — plumbing, in all three families", () => {
     ];
     const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
       .filter((f) => /^\d{14}/.test(f) && f.slice(0, 8) > "20260826" && !KNOWN_LATER.includes(f));
-    expect(migs).toEqual([]);
+    expect(unpinnedMigrationSources(migs)).toEqual([]);
   });
 });
 

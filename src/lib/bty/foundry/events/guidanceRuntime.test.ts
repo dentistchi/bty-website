@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fixtureUuid, simulateFoundryCoreAtomic } from "./__fixtures__/foundryAtomicRewardSim";
 
 /**
  * R4-R2G — GUIDANCE RUNTIME. Publish → frozen content → learner declaration → completion → XP.
@@ -67,6 +68,7 @@ type Row = Record<string, unknown>;
 type Tables = Record<string, Row[]>;
 
 function makeFakeAdmin(tables: Tables) {
+  tables.foundry_events ??= [{ ...EVENT }];
   function from(table: string) {
     const rows = tables[table] ?? (tables[table] = []);
     const q: Record<string, unknown> = {
@@ -132,7 +134,7 @@ function makeFakeAdmin(tables: Tables) {
       },
       maybeSingle(this: Record<string, unknown>) {
         if (this._op === "insert" && this._insert) {
-          const row = { id: `p-${rows.length + 1}`, ...(this._insert as Row) };
+          const row = { id: fixtureUuid(rows.length + 1), ...(this._insert as Row) };
           rows.push(row);
           return Promise.resolve({ data: { ...row }, error: null });
         }
@@ -167,7 +169,8 @@ function makeFakeAdmin(tables: Tables) {
     };
     return q;
   }
-  return { from, rpc: () => Promise.resolve({ data: null, error: null }) } as unknown as SupabaseClient;
+  return { from, rpc: (name: string, p: Row) => Promise.resolve(name === "bty_foundry_award_core_atomic"
+    ? simulateFoundryCoreAtomic(tables, p) : { data: null, error: { message: "unknown rpc" } }) } as unknown as SupabaseClient;
 }
 
 const OWNER = "owner-1";
@@ -208,7 +211,19 @@ const PARTICIPANT = { id: "pt-1", event_id: "ev-1", display_name: "Ari", status:
 beforeEach(() => {
   vi.clearAllMocks();
   getOwnerRoomSnapshot.mockResolvedValue({ event: { id: "ev-1" }, participants: [], joined_count: 0, completed_count: 0 });
-  awardTrainingCoreXp.mockResolvedValue("awarded");
+  // The mocked collaborator models its atomic receipt/marker side effect too; completion
+  // orchestration must not depend on the removed separate TS timestamp write.
+  awardTrainingCoreXp.mockImplementation(async (admin: SupabaseClient, userId: string, eventId: string, _owner: string, progressId: string) => {
+    const { data, error } = await admin.rpc("bty_foundry_award_core_atomic", {
+      p_user_id: userId, p_event_id: eventId, p_progress_id: progressId,
+      p_day_start: "2000-01-01T00:00:00.000Z", p_day_end: "2100-01-01T00:00:00.000Z",
+    });
+    return error ? "unavailable" : data.outcome;
+  });
+  linkLearnerIdentity.mockImplementation(async (admin: SupabaseClient, progressId: string, userId: string | null) => {
+    if (userId) await admin.from("foundry_event_training_progress").update({ linked_user_id: userId })
+      .eq("id", progressId).is("linked_user_id", null);
+  });
   readEventJourney.mockResolvedValue(undefined);
   resolvePublic.mockResolvedValue({ ok: true, event: EVENT, participant: PARTICIPANT, tokenVersionCurrent: true });
 });
@@ -338,7 +353,7 @@ describe("R4-R2G · the exposure declaration (F2, F7, F16)", () => {
 
   it("is write-once: a repeat declaration does not move the recorded instant", async () => {
     const tables = roomWith("written_guidance", [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", written_guidance_read_at: "2026-01-01T00:00:00.000Z", discussion_self_reported_at: null, completed_at: null },
+      { id: fixtureUuid(1), event_id: "ev-1", participant_id: "pt-1", written_guidance_read_at: "2026-01-01T00:00:00.000Z", discussion_self_reported_at: null, completed_at: null },
     ]);
     const admin = makeFakeAdmin(tables);
 
@@ -386,7 +401,7 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
 
   it("REFUSES before the learner has declared — the server checks its own column", async () => {
     const tables = room("live_discussion", [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", completed_at: null, discussion_self_reported_at: null, written_guidance_read_at: null },
+      { id: fixtureUuid(1), event_id: "ev-1", participant_id: "pt-1", completed_at: null, discussion_self_reported_at: null, written_guidance_read_at: null },
     ]);
     const admin = makeFakeAdmin(tables);
 
@@ -400,7 +415,7 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
 
   it("D3 — after declaring, the ordinary completion closes the room and awards Core XP once", async () => {
     const tables = room("written_guidance", [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", completed_at: null, written_guidance_read_at: "2026-01-01T00:00:00.000Z", discussion_self_reported_at: null, xp_awarded_at: null },
+      { id: fixtureUuid(1), event_id: "ev-1", participant_id: "pt-1", completed_at: null, written_guidance_read_at: "2026-01-01T00:00:00.000Z", discussion_self_reported_at: null, xp_awarded_at: null },
     ]);
     const admin = makeFakeAdmin(tables);
 
@@ -410,6 +425,10 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
     const prog = tables.foundry_event_training_progress[0];
     expect(prog.completed_at).toBeTruthy();
     expect(prog.response_text).toBe("I will ask one question.");
+    expect(prog.linked_user_id).toBe("user-1");
+    expect(prog.xp_awarded_at).toBeTruthy();
+    expect(tables.arena_profiles[0].core_xp_total).toBe(10);
+    expect(tables.foundry_xp_reward_receipts).toHaveLength(1);
     // The SAME canonical XP path as YouTube and PDF — one call, one award.
     expect(awardTrainingCoreXp).toHaveBeenCalledTimes(1);
     // And the ordinary post-completion lineage, exactly as the other content types produce it.
@@ -419,7 +438,7 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
 
   it("still requires a response — a declaration is not an answer", async () => {
     const tables = room("written_guidance", [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", completed_at: null, written_guidance_read_at: "t", discussion_self_reported_at: null },
+      { id: fixtureUuid(1), event_id: "ev-1", participant_id: "pt-1", completed_at: null, written_guidance_read_at: "t", discussion_self_reported_at: null },
     ]);
     const admin = makeFakeAdmin(tables);
 
@@ -430,7 +449,7 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
 
   it("is idempotent — a second completion neither re-awards nor overwrites the answer", async () => {
     const tables = room("written_guidance", [
-      { id: "pr-1", event_id: "ev-1", participant_id: "pt-1", completed_at: "2026-01-02T00:00:00.000Z", response_text: "first", written_guidance_read_at: "t", discussion_self_reported_at: null, xp_awarded_at: "t" },
+      { id: fixtureUuid(1), event_id: "ev-1", participant_id: "pt-1", completed_at: "2026-01-02T00:00:00.000Z", response_text: "first", written_guidance_read_at: "t", discussion_self_reported_at: null, xp_awarded_at: "t" },
     ]);
     const admin = makeFakeAdmin(tables);
 
@@ -475,7 +494,7 @@ describe("R4-R5B1 · assignment completion truth — guidance / discussion", () 
       ],
       foundry_event_training_progress: [
         {
-          id: "pr-1",
+          id: fixtureUuid(1),
           event_id: "ev-1",
           participant_id: "pt-1",
           completed_at: null,
@@ -591,7 +610,7 @@ describe("Quick Training Authoring V1 · a quiz-backed guidance room refuses the
       ],
       foundry_event_training_progress: [
         {
-          id: "pr-1",
+          id: fixtureUuid(1),
           event_id: "ev-1",
           participant_id: "pt-1",
           completed_at: null,

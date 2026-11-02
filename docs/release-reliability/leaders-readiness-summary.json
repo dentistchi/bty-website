@@ -1,0 +1,38 @@
+{
+  "cause": "Preview container is rendered in loading state before passive useEffect starts the eligibility request. Old test treats DOM mount as request readiness.",
+  "repair": "Wait for the same request-presence and exact URL assertions; production component unchanged.",
+  "unchangedComponentSha256": "1a4999a6862ef8422581751da7ed9212417fd124e0a3dd95dda4c3ccd9ae091d",
+  "observations": {
+    "before": {
+      "numPassedTests": 6,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "controlled-before": {
+      "numPassedTests": 0,
+      "numFailedTests": 1,
+      "numPendingTests": 0
+    },
+    "controlled-after": {
+      "numPassedTests": 1,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-1": {
+      "numPassedTests": 6,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-2": {
+      "numPassedTests": 6,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "after-3": {
+      "numPassedTests": 6,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    }
+  },
+  "scope": "Synthetic fetch and jsdom only; no application or production source/DB/auth/model changes."
+}

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
+import { historicalChangedFiles } from "@/test-support/repositoryScope";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 
 vi.mock("./PdfReader", () => ({ PdfReader: () => null }));
@@ -389,9 +390,8 @@ describe("T11 — this slice changed copy and navigation only", () => {
     same repair applied to `legacyPortalContainment` T6/T6b and `managerResponsiveLayout` test 11.
     Third time: a scope guard must name a commit, never a relative ref.
   */
-  const SLICE_COMMIT = "e71b3c84";
-  const changed = execSync(`git show --pretty=format: --name-only ${SLICE_COMMIT}`, { encoding: "utf8" })
-    .split("\n").map((s) => s.trim()).filter(Boolean);
+  const SLICE_COMMIT = "e71b3c84112ec9ac453fe2ef48d471cda17296f5";
+  const changed = historicalChangedFiles(SLICE_COMMIT);
 
   it("the comparison is non-vacuous", () => {
     expect(changed.length).toBeGreaterThan(0);

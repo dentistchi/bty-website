@@ -24,9 +24,9 @@ afterEach(cleanup);
 
 describe("T1 — the learner sees current work first", () => {
   const c = code(read("FoundryEventRooms.tsx"));
-  const learner = c.slice(c.indexOf('if (access === "non_host")'), c.indexOf('if (access === "loading")'));
+  const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
 
-  it("the non_host branch renders Required Learning BEFORE the doors", () => {
+  it("the non_author branch renders Required Learning BEFORE the doors", () => {
     expect(learner.indexOf("{requiredLearning}")).toBeGreaterThan(-1);
     expect(learner.indexOf("{requiredLearning}")).toBeLessThan(learner.indexOf("{learnDoors}"));
   });
@@ -140,7 +140,7 @@ describe("T6/T7/T10 — nothing else moved", () => {
     expect(r).toContain('data-testid="required-empty"');
     // The door is outside the Required Learning section, so an empty section never hides it.
     const c = code(read("FoundryEventRooms.tsx"));
-    const learner = c.slice(c.indexOf('if (access === "non_host")'), c.indexOf('if (access === "loading")'));
+    const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
     expect(learner).toContain("{learnDoors}");
   });
 

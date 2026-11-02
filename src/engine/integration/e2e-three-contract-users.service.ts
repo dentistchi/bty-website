@@ -200,7 +200,6 @@ async function seedCommonPublicRows(
   const { error: apErr } = await admin.from("arena_profiles").upsert(
     {
       user_id: userId,
-      core_xp_total: coreXp,
       lifetime_xp: 0,
       weekly_xp: 0,
       streak: 0,
@@ -212,6 +211,9 @@ async function seedCommonPublicRows(
     { onConflict: "user_id" },
   );
   if (apErr) throw new Error(`${email} arena_profiles: ${apErr.message}`);
+  // Core is writable only through release functions; fixtures use the dedicated seed RPC.
+  const { error: coreErr } = await admin.rpc("bty_e2e_set_core_xp", { p_user_id: userId, p_core: coreXp });
+  if (coreErr) throw new Error(`${email} arena_profiles core seed: ${coreErr.message}`);
   console.log(`[e2e-three-contract] ${email} arena_profiles upsert core_xp_total=${coreXp} arena_status=ACTIVE account_status=ACTIVE`);
 
   await admin.from("weekly_xp").delete().eq("user_id", userId);

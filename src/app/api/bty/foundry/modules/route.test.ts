@@ -18,7 +18,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
 vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
-  isActiveFoundryHost: async () => hostActive(),
+  isActiveExplicitFoundryHost: async () => hostActive(),
 }));
 vi.mock("@/lib/bty/foundry/events/foundryModuleService", () => ({
   createDraft: (...a: unknown[]) => createDraft(...a),

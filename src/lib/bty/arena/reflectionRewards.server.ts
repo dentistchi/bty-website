@@ -1,7 +1,7 @@
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PatternShiftBand, ValidationResultOrigin } from "@/domain/leadership-engine/patternShift";
-import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { applyArenaRunRewardsAtomic, awardSharedXp } from "@/lib/bty/arena/sharedXp.server";
+import { syncAvatarStateAfterCoreXpChange } from "@/engine/avatar/avatar-state.service";
 import { getArenaTodayTotal, capArenaDailyDelta } from "@/lib/bty/arena/activityXp";
 import {
   getDifficultyBase,
@@ -32,24 +32,6 @@ type RewardApplyResult =
       ok: false;
       error: string;
     };
-
-async function upsertWeeklyXp(
-  xpWriter: SupabaseClient,
-  userId: string,
-  delta: number,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  // Atomic weekly_xp increment (UPSERT) — prevents read-modify-write lost writes.
-  // This path is always the global pool (league_id IS NULL). Shared by
-  // applyArenaRunRewardsOnVerifiedCompletion (main QR-verified completion) and
-  // applyReexposureOutcomeReflection.
-  const { error } = await xpWriter.rpc("increment_weekly_xp", {
-    p_user_id: userId,
-    p_league_id: null,
-    p_delta: delta,
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
-}
 
 export async function applyArenaRunRewardsOnVerifiedCompletion(params: {
   supabase: SupabaseClient;
@@ -117,56 +99,15 @@ export async function applyArenaRunRewardsOnVerifiedCompletion(params: {
   const todayArenaTotal = await getArenaTodayTotal(supabase, userId);
   const deltaCapped = capArenaDailyDelta(arenaWeeklyXp, todayArenaTotal);
 
-  const xpWriter = getSupabaseAdmin();
-  if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
-
-  // Insert sentinel BEFORE XP operations so a partial failure on retry cannot double-apply.
-  const { error: markErr } = await supabase.from("arena_events").insert({
-    user_id: userId,
-    run_id: run.run_id,
-    event_type: "RUN_COMPLETED_APPLIED",
-    step: 7,
-    scenario_id: run.scenario_id ?? "unknown",
-    xp: 0,
+  // The RUN_COMPLETED_APPLIED anchor, weekly XP, Core and the ARENA ledger row
+  // commit in one transaction under the run's row lock, so a failure pays nothing
+  // and a retry or concurrent completion pays exactly once.
+  const reward = await applyArenaRunRewardsAtomic({
+    userId, runId: run.run_id, scenarioId: run.scenario_id, weeklyXp: deltaCapped, coreXp: arenaCoreXp,
   });
-  if (markErr) return { ok: false, error: markErr.message };
-
-  await supabase.rpc("ensure_arena_profile");
-  const weekly = await upsertWeeklyXp(xpWriter, userId, deltaCapped);
-  if (!weekly.ok) return weekly;
-
-  const core = await applyDirectCoreXp(supabase, userId, arenaCoreXp);
-  if ("error" in core) return { ok: false, error: core.error };
-
-  // STAB-02-P1: Arena run reward → core_xp_ledger audit row.
-  // applyDirectCoreXp updates arena_profiles.core_xp_total but does not
-  // write core_xp_ledger. The Arena-side ledger row is inserted here at
-  // the caller so applyDirectCoreXp stays untouched (Lab path also calls
-  // applyDirectCoreXp via awardLabXP and already writes its own ledger
-  // row at lab-xp.service.ts:77; confining the insert here avoids any
-  // double-insert across the two callers). Idempotency is enforced by
-  // the partial unique index core_xp_ledger_user_source_uq
-  // (user_id, source_type, source_id) — retries surface Postgres
-  // error code 23505 which is treated as benign (ON CONFLICT DO NOTHING
-  // semantics). arena_profiles.core_xp_total remains the authoritative
-  // lifetime total; the ledger is audit-only, so a non-23505 failure
-  // is logged but not thrown — the user's XP state is already correct.
-  if (arenaCoreXp > 0) {
-    const { error: ledgerErr } = await supabase.from("core_xp_ledger").insert({
-      user_id: userId,
-      delta_xp: arenaCoreXp,
-      source_type: "ARENA",
-      source_id: run.run_id,
-    });
-    if (ledgerErr && ledgerErr.code !== "23505") {
-      console.warn("[reflectionRewards] core_xp_ledger insert non-fatal failure", {
-        userId,
-        runId: run.run_id,
-        code: ledgerErr.code,
-        message: ledgerErr.message,
-      });
-    }
-  }
+  if (!reward.ok) return { ok: false, error: reward.error };
+  if (!reward.applied) return { ok: true, applied: false, coreXp: 0, weeklyXp: 0, deltaApplied: 0 };
+  void syncAvatarStateAfterCoreXpChange(userId, supabase, reward.award.coreBefore, reward.award.coreAfter).catch(() => {});
 
   return {
     ok: true,
@@ -205,15 +146,11 @@ export async function applyReexposureOutcomeReflection(params: {
       ? { coreXp: 0, weeklyXp: 0, verified: false }
       : profileByOutcome[validationResult];
 
-  if (outcome.weeklyXp > 0) {
-    const xpWriter = getSupabaseAdmin();
-    if (!xpWriter) return { ok: false, error: "XP_WRITER_UNAVAILABLE" };
-    const weekly = await upsertWeeklyXp(xpWriter, userId, outcome.weeklyXp);
-    if (!weekly.ok) return weekly;
-  }
-  if (outcome.coreXp > 0) {
-    const core = await applyDirectCoreXp(supabase, userId, outcome.coreXp);
-    if ("error" in core) return { ok: false, error: core.error };
+  if (outcome.weeklyXp > 0 || outcome.coreXp > 0) {
+    // Weekly XP and direct Core commit together.
+    const award = await awardSharedXp({ userId, weeklyXp: outcome.weeklyXp, directCoreXp: outcome.coreXp });
+    if (!award.ok) return { ok: false, error: award.error };
+    void syncAvatarStateAfterCoreXpChange(userId, supabase, award.award.coreBefore, award.award.coreAfter).catch(() => {});
   }
 
   const nowIso = new Date().toISOString();

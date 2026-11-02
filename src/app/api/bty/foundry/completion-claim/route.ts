@@ -65,6 +65,10 @@ export async function POST(req: NextRequest) {
     user.id,
     typeof body?.tz === "string" ? body.tz : null,
   );
-  if (!result.ok) return priv({ ok: false, error: "invalid" }, 400);
-  return priv({ ok: true, eventId: result.eventId });
+  if (!result.ok) {
+    if (result.reason === "unavailable") return priv({ ok: false, error: "unavailable" }, 503);
+    if (result.reason === "review_required") return priv({ ok: false, error: "review_required" }, 409);
+    return priv({ ok: false, error: "invalid" }, 400);
+  }
+  return priv({ ok: true, eventId: result.eventId, xp_status: result.xpStatus });
 }

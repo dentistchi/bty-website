@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execFileSync } from "node:child_process";
+import { buildSync } from "esbuild";
+import { createRequire } from "node:module";
 import { mkdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -36,6 +38,7 @@ try {
 }
 
 const ROOT = process.cwd();
+const require = createRequire(import.meta.url);
 let dir = "";
 let built = false;
 
@@ -64,14 +67,16 @@ function build(focus: string): void {
      <body><div id="root"></div><script src="./bundle.js"></script></body></html>`,
   );
   try {
-    execFileSync("npx", ["esbuild", join(dir, "entry.tsx"), "--bundle", `--outfile=${join(dir, "bundle.js")}`,
-      "--define:process.env.NODE_ENV=\"production\"", "--jsx=automatic", `--tsconfig=${join(ROOT, "tsconfig.json")}`,
-      "--format=iife", "--log-level=error"], { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+    buildSync({
+      absWorkingDir: ROOT, entryPoints: [join(dir, "entry.tsx")], bundle: true,
+      outfile: join(dir, "bundle.js"), define: { "process.env.NODE_ENV": JSON.stringify("production") },
+      jsx: "automatic", tsconfig: join(ROOT, "tsconfig.json"), format: "iife", logLevel: "error",
+    });
   } catch (e) {
     throw new Error(`esbuild failed:\n${String((e as { stderr?: Buffer }).stderr ?? e)}`);
   }
   if (!built) {
-    execFileSync("npx", ["tailwindcss", "-c", join(ROOT, "tailwind.config.ts"), "-i", join(ROOT, "src/app/globals.css"),
+    execFileSync(process.execPath, [require.resolve("tailwindcss/lib/cli.js"), "-c", join(ROOT, "tailwind.config.ts"), "-i", join(ROOT, "src/app/globals.css"),
       "-o", join(dir, "app.css"), "--content", "./src/components/**/*.tsx", "--minify"],
       { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
     built = true;

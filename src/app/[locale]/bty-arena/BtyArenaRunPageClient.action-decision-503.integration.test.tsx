@@ -161,6 +161,10 @@ describe("BtyArenaRunPageClient — AD1 503 snapshot integration", () => {
       }
 
       if (url.includes("/api/arena/event") && method === "POST") {
+        if (JSON.parse(String(init?.body ?? "{}")).eventType === "CHOICE_CONFIRMED") {
+          return Promise.resolve(jsonRes({ ok: true, reExposureDueCandidate: false, xp: 10,
+            receiptId: "27e9d375-a6d1-45e1-9b97-f7d3e75a576f", idempotent: false }));
+        }
         return Promise.resolve(jsonRes({ ok: true }));
       }
 

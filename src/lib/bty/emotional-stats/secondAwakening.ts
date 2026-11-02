@@ -12,6 +12,8 @@ import { CORE_STATS } from "./coreStats";
 import type { CoreStatId } from "./coreStats";
 import { getUnlockedAdvancedStats } from "./unlock";
 import type { UserCoreValues } from "./unlock";
+import { assertStoredStarterConsistency, isHealingCompletionReviewError } from "@/lib/bty/healing/healingCompletionRead.server";
+import { completeAtomicRitual } from "@/lib/bty/healing/healingCompletion.server";
 import { getTrainDistinctCompletedDayCount } from "@/lib/bty/healing/getTrainDistinctCompletedDayCount";
 
 /** 결정3 / B2: train 완주 = 28 distinct completed days. */
@@ -72,14 +74,20 @@ export async function getSecondAwakening(
 
   const completedCount = sessionCount ?? 0;
 
-  const { data: milestone } = await supabase
+  const { data: milestone, error: milestoneError } = await supabase
     .from("user_healing_milestones")
     .select("second_awakening_completed_at, starter_unlock_granted")
     .eq("user_id", userId)
     .maybeSingle();
 
+  // An unavailable completion source cannot establish that the ritual is still open.
+  if (milestoneError) throw new Error("AWAKENING_PROGRESS_UNAVAILABLE");
+
+  await assertStoredStarterConsistency(supabase, userId, milestone);
   const completed = !!(milestone as { second_awakening_completed_at: string | null } | null)
     ?.second_awakening_completed_at;
+
+  if (completed) return { eligible: false, completed: true, userDay, sessionCount: completedCount };
 
   // 결정3 / B2: eligibility = train 완주 (distinct completed day count == 28).
   // DISTINCT count, NOT max(day). userDay / sessionCount above remain for display.
@@ -95,10 +103,11 @@ export async function getSecondAwakening(
     };
   }
 
-  const { data: coreRows } = await supabase
+  const { data: coreRows, error: coreError } = await supabase
     .from("user_emotional_stats")
     .select("stat_id, value")
     .eq("user_id", userId);
+  if (coreError) throw new Error("AWAKENING_PROGRESS_UNAVAILABLE");
   const userCoreValues: UserCoreValues = {};
   for (const r of coreRows ?? []) {
     const row = r as { stat_id: string; value: number };
@@ -107,10 +116,11 @@ export async function getSecondAwakening(
     }
   }
 
-  const { data: eventRows } = await supabase
+  const { data: eventRows, error: eventError } = await supabase
     .from("emotional_events")
     .select("event_id")
     .eq("user_id", userId);
+  if (eventError) throw new Error("AWAKENING_PROGRESS_UNAVAILABLE");
   const eventCounts: Record<string, number> = {};
   for (const r of eventRows ?? []) {
     const id = (r as { event_id: string }).event_id;
@@ -171,30 +181,22 @@ export async function getSecondAwakening(
 export async function completeSecondAwakening(
   supabase: SupabaseClient,
   userId: string
-): Promise<{ ok: boolean; starterUnlockGranted?: "PRM" | "SAG" }> {
-  const result = await getSecondAwakening(supabase, userId);
-  if (!result.eligible || result.completed || !result.ritual)
-    return { ok: false };
-
-  const starter = result.ritual.act3.unlockGranted;
-  const now = new Date().toISOString();
-
-  const { error: upsertErr } = await supabase.from("user_healing_milestones").upsert(
-    {
-      user_id: userId,
-      second_awakening_completed_at: now,
-      starter_unlock_granted: starter ?? null,
-    },
-    { onConflict: "user_id" }
-  );
-  if (upsertErr) return { ok: false };
-
-  if (starter) {
-    await supabase.from("user_advanced_unlocks").upsert(
-      { user_id: userId, advanced_stat_name: starter, unlocked_at: now },
-      { onConflict: "user_id,advanced_stat_name" }
-    );
+): Promise<{ ok: true; starterUnlockGranted?: "PRM" | "SAG"; idempotent: boolean } |
+  { ok: false; status: 400 | 403 | 409 | 500 | 503; error: string }> {
+  let result: SecondAwakeningResult;
+  try { result = await getSecondAwakening(supabase, userId); }
+  catch (error) {
+    return isHealingCompletionReviewError(error)
+      ? { ok: false, status: 409, error: "HEALING_COMPLETION_REVIEW_REQUIRED" }
+      : { ok: false, status: 500, error: "AWAKENING_PROGRESS_UNAVAILABLE" };
   }
-
-  return { ok: true, starterUnlockGranted: starter ?? undefined };
+  if ((!result.eligible && !result.completed) || (!result.completed && !result.ritual)) {
+    return { ok: false, status: 400, error: "NOT_ELIGIBLE" };
+  }
+  // Replay of a healthy canonical milestone never recomputes or regrants an unlock.
+  const starter = result.completed ? null : result.ritual!.act3.unlockGranted;
+  const completion = await completeAtomicRitual(userId, starter);
+  if (!completion.ok) return completion;
+  return { ok: true, starterUnlockGranted: completion.value.starterUnlockGranted ?? undefined,
+    idempotent: completion.value.idempotent };
 }

@@ -1,0 +1,24 @@
+{
+  "node": "v20.20.2",
+  "sourceSha256": "7b51a9dd2d7f461b89c92e376f49b9dd99ff05ffc9c6ee03f66630eaea5b4a3f",
+  "scope": "Local syntax and actual CLI refusal, no PG connection attempted",
+  "negativeInvocations": [
+    {
+      "env": {},
+      "exit": 1,
+      "stdout": "",
+      "stderr": "This profile requires GitHub Actions and its fresh PostgreSQL service\n",
+      "outputDirectoryCreated": false
+    },
+    {
+      "env": {
+        "GITHUB_ACTIONS": "true",
+        "BTY_PG_TEST_URL": "postgresql://postgres:cleanup-disposable-only@remote.invalid:55473/postgres?application_name=bty_cleanup_qa"
+      },
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Only the fixed disposable cleanup database URL is permitted\n",
+      "outputDirectoryCreated": false
+    }
+  ]
+}

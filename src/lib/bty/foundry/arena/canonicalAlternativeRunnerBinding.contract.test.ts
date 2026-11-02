@@ -21,6 +21,7 @@ import { FIELD_REPAIR_OBSERVABILITY_VERSION, FIELD_REPAIR_VALUE_MAX, STANDALONE_
 import { NARROW_REPLAY_ARTIFACT_VERSION } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { groupAlternativeContractSha256 } from "@/domain/foundry/arena-draft/boundaryGroupAlternatives";
 import { truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { SYNTHETIC_C18_FIXTURE_SHA256, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256 } from "../../../../../scripts/practice-c18-boundary-replay";
 import { R252_LIVE_ARTIFACT_SHA256 } from "@/domain/foundry/arena-draft/r252LiveDtoFixture";
 
 const REPO = process.cwd();
@@ -29,7 +30,7 @@ const RUNNER = join(REPO, BOUNDARY_REPLAY_RUNNER_PATH);
 /** One preparation invocation, shared. `--binding-json` is the mode that proves imports resolve. */
 let binding: Record<string, unknown> | null = null;
 const bindingJson = (): Record<string, unknown> => {
-  binding ??= JSON.parse(execFileSync("npx", ["--yes", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--binding-json"], { cwd: REPO, encoding: "utf8" })) as Record<
+  binding ??= JSON.parse(execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--synthetic-test-fixture", "--binding-json"], { cwd: REPO, encoding: "utf8", env: { ...process.env, BTY_C18_REPLAY_MOCK: "1" } })) as Record<
     string,
     unknown
   >;
@@ -67,6 +68,9 @@ describe("[R2.54] the manifest names a runner that exists and runs", () => {
 describe("[R2.54] the preparation mode invokes the intended code", () => {
   it("`--binding-json` runs, so every import in the bound runner resolves", () => {
     const b = bindingJson();
+    expect(b.sourceKind).toBe("test-fixture");
+    expect(b.sourceArtifactSha256).toBe(SYNTHETIC_C18_FIXTURE_SHA256);
+    expect(b.sourceArtifactSha256).not.toBe(SOURCE_ARTIFACT_SHA256);
     expect(typeof b.head).toBe("string");
     expect((b.head as string)).toHaveLength(40);
     expect((b.manifestSha256 as string)).toHaveLength(64);
@@ -121,7 +125,7 @@ describe("[R2.54] the preparation mode invokes the intended code", () => {
     const dir = mkdtempSync(join(tmpdir(), "r254-runner-"));
     try {
       const out = join(dir, "canary.sh");
-      execFileSync("npx", ["--yes", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--out", out], { cwd: REPO, encoding: "utf8" });
+      execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--synthetic-test-fixture", "--out", out], { cwd: REPO, encoding: "utf8", env: { ...process.env, BTY_C18_REPLAY_MOCK: "1" } });
       expect(existsSync(out)).toBe(true);
       expect(statSync(out).mode & 0o100).toBeGreaterThan(0); // owner-executable
       execFileSync("bash", ["-n", out], { cwd: REPO }); // throws on a syntax error
@@ -136,7 +140,7 @@ describe("[R2.54] artifact /6 is reachable through the bound preparation path", 
     const dir = mkdtempSync(join(tmpdir(), "r254-canary-"));
     try {
       const out = join(dir, "canary.sh");
-      execFileSync("npx", ["--yes", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--out", out], { cwd: REPO, encoding: "utf8" });
+      execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--synthetic-test-fixture", "--out", out], { cwd: REPO, encoding: "utf8", env: { ...process.env, BTY_C18_REPLAY_MOCK: "1" } });
       return readFileSync(out, "utf8");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -216,7 +220,7 @@ describe("[R2.54] the preparation path stops before any credential or provider u
     const dir = mkdtempSync(join(tmpdir(), "r254-cred-"));
     try {
       const out = join(dir, "canary.sh");
-      execFileSync("npx", ["--yes", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--out", out], { cwd: REPO, encoding: "utf8" });
+      execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--synthetic-test-fixture", "--out", out], { cwd: REPO, encoding: "utf8", env: { ...process.env, BTY_C18_REPLAY_MOCK: "1" } });
       return readFileSync(out, "utf8");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -250,5 +254,48 @@ describe("[R2.54] the preparation path stops before any credential or provider u
     expect(b.databaseCalls).toBe(0);
     expect(b.deploymentActions).toBe(0);
     expect(b.automaticTransportRetries).toBe(0);
+  });
+});
+
+
+describe("synthetic preparation cannot become historical or live evidence", () => {
+  it("keeps historical preparation fail-closed when its exact captured artifact is missing", () => {
+    try {
+      const out = execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH, "--binding-json"],
+        { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+      // A real evidence-bearing checkout may legitimately run the historical path.
+      expect(existsSync(join(REPO, ".eval-artifacts", SOURCE_ARTIFACT))).toBe(true);
+      expect(JSON.parse(out)).toMatchObject({ sourceKind: "historical-artifact", sourceArtifactSha256: SOURCE_ARTIFACT_SHA256 });
+    } catch (error) {
+      const e = error as { status?: number; stderr?: string };
+      expect(e.status).not.toBe(0);
+      expect(e.stderr).toMatch(/ENOENT|source artifact digest mismatch/);
+    }
+  });
+
+  it("refuses a synthetic flag outside the explicit mock mode", () => {
+    expect(() => execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH,
+      "--synthetic-test-fixture", "--binding-json"], { cwd: REPO, encoding: "utf8",
+      env: { ...process.env, BTY_C18_REPLAY_MOCK: "0" }, stdio: ["ignore", "pipe", "pipe"] }))
+      .toThrow(/synthetic test fixture requires mock mode/);
+  });
+
+  it("a generated synthetic canary stops before any live path or credential prompt", () => {
+    const dir = mkdtempSync(join(tmpdir(), "synthetic-canary-"));
+    try {
+      const out = join(dir, "canary.sh");
+      execFileSync(process.execPath, ["--import", "tsx", BOUNDARY_REPLAY_RUNNER_PATH,
+        "--synthetic-test-fixture", "--out", out], { cwd: REPO, encoding: "utf8",
+        env: { ...process.env, BTY_C18_REPLAY_MOCK: "1" } });
+      try {
+        execFileSync("bash", [out], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+        throw new Error("synthetic canary unexpectedly entered its live body");
+      } catch (error) {
+        const e = error as { status?: number; stderr?: string };
+        expect(e.status).toBe(64);
+        expect(e.stderr).toContain("SYNTHETIC TEST FIXTURE");
+        expect(e.stderr).toContain("NOT AN EXECUTABLE LIVE CANARY");
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

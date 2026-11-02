@@ -11,7 +11,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
   copyCookiesAndDebug: () => {},
 }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
-vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({ isActiveFoundryHost: async () => hostActive() }));
+vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({ isActiveExplicitFoundryHost: async () => hostActive() }));
 vi.mock("@/lib/bty/foundry/events/foundryPublishService", () => ({ publishDraft: (...a: unknown[]) => publishDraft(...a) }));
 
 let POST: typeof import("./route").POST;

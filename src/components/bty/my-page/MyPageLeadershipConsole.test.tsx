@@ -206,11 +206,11 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      screen.getByRole("button", { name: /complete by qr/i });
+      screen.getByRole("button", { name: /show qr for verification/i });
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
 
     const qrPost = fetchMock.mock.calls.find(
@@ -254,11 +254,11 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      screen.getByRole("button", { name: /complete by qr/i });
+      screen.getByRole("button", { name: /show qr for verification/i });
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
 
     const qrNode = screen.getByTestId("qr-code-mock");
@@ -301,16 +301,16 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      screen.getByRole("button", { name: /complete by qr/i });
+      screen.getByRole("button", { name: /show qr for verification/i });
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
     expect(screen.getByTestId("qr-code-mock").getAttribute("data-value")).toContain("first-token");
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
     expect(screen.getByTestId("qr-code-mock").getAttribute("data-value")).toContain("second-token");
   });
@@ -324,11 +324,11 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      screen.getByRole("button", { name: /complete by qr/i });
+      screen.getByRole("button", { name: /show qr for verification/i });
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
 
     const qrPosts = fetchMock.mock.calls.filter(
@@ -364,11 +364,11 @@ describe("MyPageLeadershipConsole", () => {
     });
 
     await waitFor(() => {
-      screen.getByRole("button", { name: /complete by qr/i });
+      screen.getByRole("button", { name: /show qr for verification/i });
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /complete by qr/i }));
+      fireEvent.click(screen.getByRole("button", { name: /show qr for verification/i }));
     });
 
     const qrPost = fetchMock.mock.calls.find(

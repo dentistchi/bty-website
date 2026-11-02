@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "snapshotCommit": "7578ec74665af60ae7fa0f9517e47e4c05b4d631",
+  "meaning": "Observed later source files, not semantic approval or production application. Unknown additions and changed registered bytes still fail guards.",
+  "entries": [
+    {
+      "file": "20260919131044_clinical_reasoning_trace_v1.sql",
+      "sha256": "08dd69b92ab8e37b368f1c7f2d44d4d44eda21fe1a2b8368c0d1086b5b57db81"
+    },
+    {
+      "file": "20260919191433_clinical_encounter_v2_cases.sql",
+      "sha256": "fa95569a18a65c96fffccc39249d35faf477c6b84478ecfd49a775e94460fdba"
+    },
+    {
+      "file": "20260919195623_clinical_encounter_author_reference_trace.sql",
+      "sha256": "11ed14882557a3a7c97cbaeec23f3eda761cba83a5bb3c3c697457ae5eb5ef22"
+    },
+    {
+      "file": "20260920210152_clinical_encounter_attempt_lifecycle.sql",
+      "sha256": "5fba2b9cefffd98a85c1a41c6d8f55e322b41d67ee688ac2612cbdfad144e168"
+    },
+    {
+      "file": "20260921000000_bty_microsoft_authority_v1.sql",
+      "sha256": "7e61e0364fbb5b88480bd805c91bd869f3fe9ef9c30963ad270e3daedab5f5e8"
+    },
+    {
+      "file": "20260922000000_bty_microsoft_directory_authority_v1.sql",
+      "sha256": "27573337bedbf7d83ac9ee1a8a4cc21ef7eff6176582b953d754d282a288a097"
+    },
+    {
+      "file": "20260923000000_foundry_event_quiz_v1.sql",
+      "sha256": "72b672f324ca06ffdd041e3827323514e231897d18cbe2ce42269f0674387aaf"
+    },
+    {
+      "file": "20260924000000_quick_training_quiz_authoring_v1.sql",
+      "sha256": "7f0b4a5805de6149cbfa7c5ac991217083ccfdb1b38f7050c378cd57355808ce"
+    },
+    {
+      "file": "20260924161342_practice_generation_reviewer_diagnostics_v1.sql",
+      "sha256": "53ed08830bb158f30a2191f4f3ea99013f960e6b828184f87e7b52f4054dabc5"
+    },
+    {
+      "file": "20260925000000_practice_generation_system_block_recovery_v1.sql",
+      "sha256": "fea8a6f201372854df9f2762dd83c76a001bc33cd3597ff8419a5bab21950e40"
+    },
+    {
+      "file": "20260925000000_teams_chat_native_training_v1.sql",
+      "sha256": "4523edf138ab2fc60a70b2c33a6d1b0ceb1a1949a9b02c89ecd264ef54d1337e"
+    },
+    {
+      "file": "20260926000000_practice_generation_recoverable_blocks_v1.sql",
+      "sha256": "b6f3359cface3c3ca8c3170f7d4870cec209431937d3a882c6e7ba2545a5d1d9"
+    },
+    {
+      "file": "20260926000000_teams_training_delivery_attempts_v1.sql",
+      "sha256": "4f0e1c2e9b2654433f323cc71456d15d78c85390bfce0cea61d452220b28745b"
+    },
+    {
+      "file": "20260927000000_foundry_host_followup_contacts_v1.sql",
+      "sha256": "b074e380f00a795e9360d05f3845fc32b9eefe46a3884d22c7656302c8037d42"
+    },
+    {
+      "file": "20260927051100_announcement_tracking_modes_v1.sql",
+      "sha256": "9e334e76261e3577684690965cdd4dd3a10e68c979ed2a24de6ebf835d465257"
+    },
+    {
+      "file": "20260928000000_bty_track_collaboration_authority_alignment_v1.sql",
+      "sha256": "1440660d3d074d9df7613e884f29bc2fa971447a315f7c909a5a0ccd3af809c9"
+    },
+    {
+      "file": "20260929000000_foundry_apply_action_day_v1.sql",
+      "sha256": "6d0d1a7a30fe8bdcb235d067a8d30a32f3565910491fb2366d047f74b25863b5"
+    },
+    {
+      "file": "20261023201720_clinical_author_pilot_api_owned.sql",
+      "sha256": "05de06196e4150eedba912aa6165671f091d085b979c4d4efcb840200d5f5e8f"
+    },
+    {
+      "file": "20261030175508_restrict_xp_writes_to_server.sql",
+      "sha256": "9f6335262b418264fc7aec37ae2f9278d686b8d0aee561256eb618cc57e62eab"
+    },
+    {
+      "file": "20261030221620_learning_rewards_v1_atomic_ledger.sql",
+      "sha256": "bd3f150e3bdffbc42e92911815d7e91cfa169446e95aff041f83625449dcb908"
+    },
+    {
+      "file": "20261031222747_legacy_xp_atomic_reward_receipts.sql",
+      "sha256": "39a97061117ff83054fcbc53486c4190d58f00abd2bcf777ac2a44a75bd0cb64"
+    },
+    {
+      "file": "20261101000728_healing_awakening_atomic_completion.sql",
+      "sha256": "d1d9f2cc68ad36cbad0bcd1494091bfb5fe91c1d136e5c97c4429ccdd0a89d6f"
+    },
+    {
+      "file": "20261101001020_foundry_core_atomic_rewards.sql",
+      "sha256": "318e331b272b6d57803afc1733cce26d3bb6ac49613d494458b146dc745a06f9"
+    },
+    {
+      "file": "20261101120000_reward_write_fence_v1.sql",
+      "sha256": "4b4825e319b3fa09ccad646b256f6d655b8e01d3ba1b80ceb489bd71a465f418"
+    },
+    {
+      "file": "20261101130000_weekly_reflection_quest_atomic.sql",
+      "sha256": "45c53f4b32da210e526f3e2736bbd59a8b1ad7eb2868d333e146eb698ca793be"
+    },
+    {
+      "file": "20261101140000_shared_reward_write_fence.sql",
+      "sha256": "589a508f837942659035c80739b070f7a435b1d778da25d658217b5a74127777"
+    }
+  ]
+}
