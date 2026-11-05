@@ -1,5 +1,9 @@
 # AI Patient Founder pilot — dedicated OpenAI spend-control handoff
 
+Historical Founder-pilot handoff. The approved 2026-11-05 access rollout is in
+`docs/AI_PATIENT_ACCESS_ROLLOUT.md`. Dedicated provider and usage controls remain;
+the new explicit `all_consented` access mode supersedes Founder-only admission.
+
 Status: **code prepared, NOT merged/deployed; OpenAI project/key/hard limit NOT configured or verified here.**
 
 ## Why this change exists
@@ -41,4 +45,8 @@ Official guide: https://developers.openai.com/api/docs/guides/spend-limits
 
 ## Rollback
 
-To immediately close the pilot, remove/revoke the Founder entries from `AI_PATIENT_ALLOWED_USER_IDS` through the authorized secret-management procedure. Verify the AI Patient door is hidden and paid endpoints reject access. This does not change other BTY app functions.
+For the current release, first set `AI_PATIENT_ACCESS_MODE=allowlist` in the
+deployment configuration. The retained ID allowlist then controls access; an
+empty list closes the feature to everyone. Clearing the list alone does not
+close `all_consented` mode. Verify unavailable UI and paid-endpoint refusal after
+the authorized release. See the current rollout document for the complete path.

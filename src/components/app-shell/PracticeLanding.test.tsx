@@ -29,7 +29,7 @@ describe("PracticeLanding", () => {
   it("shows Clinical cases directly between Practice situations and Action plans", () => {
     render(<PracticeLanding {...base} />);
     const doors = within(screen.getByTestId("practice-landing")).getAllByRole("button");
-    // The AI patient pilot door is absent until the server confirms access (see below).
+    // The AI patient door is absent until the server confirms access (see below).
     expect(doors.map(door => door.dataset.testid)).toEqual([
       "practice-arena-entry", "practice-clinical-entry", "practice-field-actions", "practice-live",
     ]);
@@ -114,11 +114,11 @@ describe("PracticeLanding", () => {
   });
 });
 
-describe("PracticeLanding — AI patient pilot door", () => {
+describe("PracticeLanding — AI patient availability", () => {
   const stubAccess = (body: unknown, status = 200) =>
     vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url).endsWith("/api/arena/ai-patient/access") ? Response.json(body, { status }) : Response.json({}))));
 
-  it("appears first, only after the server says this user is on the pilot allowlist", async () => {
+  it("appears first, only after the server confirms availability for this user", async () => {
     stubAccess({ enabled: true });
     render(<PracticeLanding {...base} />);
     expect(screen.queryByTestId("practice-ai-patient-entry")).toBeNull(); // not before the answer
@@ -129,7 +129,7 @@ describe("PracticeLanding — AI patient pilot door", () => {
   });
 
   it.each([
-    ["not on the allowlist", { enabled: false }, 200],
+    ["unavailable", { enabled: false }, 200],
     ["signed out", { error: "UNAUTHENTICATED" }, 401],
     ["a malformed answer", { enabled: "yes" }, 200],
   ])("stays hidden when %s", async (_label, body, status) => {
@@ -139,12 +139,14 @@ describe("PracticeLanding — AI patient pilot door", () => {
     expect(screen.queryByTestId("practice-ai-patient-entry")).toBeNull();
   });
 
-  it("explains a confirmed unavailable pilot without offering entry or loading case content", async () => {
+  it("explains confirmed unavailability without offering entry or loading case content", async () => {
     stubAccess({ enabled: false });
     render(<PracticeLanding {...base} />);
     const door = await screen.findByTestId("practice-ai-patient-unavailable");
     expect(door.textContent).toContain("AI patient: Case Acceptance 01");
-    expect(door.textContent).toContain("This pilot isn't available for this account right now.");
+    expect(door.textContent).toContain("AI patient practice isn't available for this account right now.");
+    expect(door.textContent).toContain("Unavailable");
+    expect(door.textContent).not.toContain("Limited pilot");
     expect(door.hasAttribute("disabled")).toBe(true);
     fireEvent.click(door);
     expect(screen.getByTestId("practice-landing")).toBeTruthy();

@@ -1,5 +1,34 @@
 # Active application task contract
 
+## AI-PATIENT-ALL-CONSENTED — 2026-11-05
+
+Dr. Chi explicitly approved opening AI Patient to every signed-in BTY user with
+current required consent, alongside the employee Practice/Track release. This
+supersedes the restricted-pilot access condition in the preceding task below.
+Do not require an Arena membership, Foundry enrollment or individual invitation.
+
+Use the server-only `AI_PATIENT_ACCESS_MODE=all_consented` policy on the existing
+access check and every paid endpoint. Record the approved release mode in
+`wrangler.toml` so a deploy preserves it. Unset/empty or `allowlist` retains the
+existing ID allowlist; an unknown value refuses everyone. Keep the allowlist
+secret for rollback. Authentication, current-consent checks, fictional-case
+acknowledgement, sealed-session ownership, dedicated provider/session keys,
+existing scenarios and per-user usage limits remain in force.
+
+Prepare code and isolated tests, including the real consent gate and every paid
+route's refusal/budget behavior. Show general unavailability in the UI rather
+than implying all accounts still require a pilot invitation. Do not change SQL,
+learner records, identities, secrets or budgets. Operational rollout follows the
+separately authorized release procedure; local tests do not establish a live
+Worker, model or Teams result. See `docs/AI_PATIENT_ACCESS_ROLLOUT.md`.
+
+Observed isolated verification: the pre-change policy/route regression run had
+21 failed and 41 passed assertions. After implementation, all 357 tests in the
+15-file AI Patient/Practice/consent scope pass, including six tests through the
+real authentication/consent gate. Node 20 TypeScript exits 0 with a 6 GB heap;
+the diff whitespace check exits 0. The full suite and fresh build remain for
+integration verification. No live service, model, database or secret was changed.
+
 ## EMPLOYEE-PRACTICE-TRACK-UX — 2026-11-05
 
 Dr. Chi reports a missing AI Patient entry for a colleague, an unclear empty

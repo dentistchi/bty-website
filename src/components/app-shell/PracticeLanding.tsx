@@ -37,7 +37,7 @@ const COPY: Record<Locale, {
   aiPatient: string;
   aiPatientSub: string;
   aiPatientUnavailable: string;
-  pilot: string;
+  unavailable: string;
   arena: string;
   arenaSub: string;
   clinical: string;
@@ -56,8 +56,8 @@ const COPY: Record<Locale, {
     title: "Practice it before you need it.",
     aiPatient: "AI patient: Case Acceptance 01",
     aiPatientSub: "Talk with a fictional patient, then get coaching.",
-    aiPatientUnavailable: "This pilot isn't available for this account right now.",
-    pilot: "Limited pilot",
+    aiPatientUnavailable: "AI patient practice isn't available for this account right now.",
+    unavailable: "Unavailable",
     arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
     clinical: "Clinical cases",
@@ -76,8 +76,8 @@ const COPY: Record<Locale, {
     title: "필요해지기 전에 미리 연습하세요.",
     aiPatient: "AI 환자: Case Acceptance 01",
     aiPatientSub: "가상의 환자와 대화하고 코칭을 받습니다 (영어).",
-    aiPatientUnavailable: "현재 이 계정에서는 이 파일럿을 이용할 수 없습니다.",
-    pilot: "제한된 파일럿",
+    aiPatientUnavailable: "현재 이 계정에서는 AI 환자 연습을 이용할 수 없습니다.",
+    unavailable: "이용 불가",
     arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
     clinical: "임상 케이스",
@@ -174,8 +174,8 @@ export default function PracticeLanding({
    */
   const [practiceSurface, setPracticeSurface] = useState<PracticeSurface>("index_loading");
   /**
-   * Open the pilot only after the server confirms access. A confirmed false explains the
-   * limited pilot without offering entry; an unresolved/failed check makes no access claim.
+   * Open AI Patient only after the server confirms availability. A confirmed false explains
+   * unavailability without offering entry; an unresolved/failed check makes no access claim.
    */
   const [aiPatientEnabled, setAiPatientEnabled] = useState<boolean | null>(null);
   useEffect(() => {
@@ -279,7 +279,7 @@ export default function PracticeLanding({
         {aiPatientEnabled === true ? (
           <DoorRow testId="practice-ai-patient-entry" title={t.aiPatient} sub={t.aiPatientSub} onClick={() => setView("aiPatient")} />
         ) : aiPatientEnabled === false ? (
-          <DoorRow testId="practice-ai-patient-unavailable" title={t.aiPatient} sub={t.aiPatientUnavailable} badge={t.pilot} disabled />
+          <DoorRow testId="practice-ai-patient-unavailable" title={t.aiPatient} sub={t.aiPatientUnavailable} badge={t.unavailable} disabled />
         ) : null}
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
         <DoorRow testId="practice-clinical-entry" title={t.clinical} sub={t.clinicalSub} onClick={() => setView("clinical")} />
