@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/arena/ai-patient/access — whether to show the AI patient door to THIS user.
- * Display only: every AI patient route re-checks the allowlist itself. No budget is spent here.
+ * Display only: every AI patient route re-checks the access policy itself. No budget is spent here.
  */
 export async function GET() {
   const gate = await requireConsentedArenaAccess();

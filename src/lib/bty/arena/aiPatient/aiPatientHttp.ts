@@ -2,7 +2,7 @@
  * AI PATIENT — shared request plumbing for the four thin routes.
  *
  * Every route: authenticated learner with CURRENT consent (the same gate as published practices),
- * on the pilot allowlist, within their per-user budget for that action — then the sealed session
+ * admitted by the configured access policy, within their per-user budget — then the sealed session
  * opened for THAT user. No route reads or writes a database row about the conversation itself.
  */
 
@@ -19,7 +19,7 @@ export const jsonError = (error: string, status: number) => NextResponse.json({ 
 
 /**
  * The gate every AI patient route passes before doing anything paid: signed in with current consent,
- * on the pilot allowlist (server-side; the hidden door is only a convenience), then one unit of this
+ * admitted by the server's access policy (the UI is only a convenience), then one unit of this
  * user's budget for `action`.
  */
 export async function requireLearner(action: AiPatientAction): Promise<{ ok: true; userId: string } | { ok: false; response: NextResponse }> {

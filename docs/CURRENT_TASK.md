@@ -1,5 +1,72 @@
 # Active application task contract
 
+## AI-PATIENT-ALL-CONSENTED — 2026-11-05
+
+Dr. Chi explicitly approved opening AI Patient to every signed-in BTY user with
+current required consent, alongside the employee Practice/Track release. This
+supersedes the restricted-pilot access condition in the preceding task below.
+Do not require an Arena membership, Foundry enrollment or individual invitation.
+
+Use the server-only `AI_PATIENT_ACCESS_MODE=all_consented` policy on the existing
+access check and every paid endpoint. Record the approved release mode in
+`wrangler.toml` so a deploy preserves it. Unset/empty or `allowlist` retains the
+existing ID allowlist; an unknown value refuses everyone. Keep the allowlist
+secret for rollback. Authentication, current-consent checks, fictional-case
+acknowledgement, sealed-session ownership, dedicated provider/session keys,
+existing scenarios and per-user usage limits remain in force.
+
+Prepare code and isolated tests, including the real consent gate and every paid
+route's refusal/budget behavior. Show general unavailability in the UI rather
+than implying all accounts still require a pilot invitation. Do not change SQL,
+learner records, identities, secrets or budgets. Operational rollout follows the
+separately authorized release procedure; local tests do not establish a live
+Worker, model or Teams result. See `docs/AI_PATIENT_ACCESS_ROLLOUT.md`.
+
+Observed isolated verification: the pre-change policy/route regression run had
+21 failed and 41 passed assertions. After implementation, all 357 tests in the
+15-file AI Patient/Practice/consent scope pass, including six tests through the
+real authentication/consent gate. Node 20 TypeScript exits 0 with a 6 GB heap;
+the diff whitespace check exits 0. The full suite and fresh build remain for
+integration verification. No live service, model, database or secret was changed.
+
+## EMPLOYEE-PRACTICE-TRACK-UX — 2026-11-05
+
+Dr. Chi reports a missing AI Patient entry for a colleague, an unclear empty
+Practice situations screen, Track validation that feels broken, and an overly
+complicated mobile tracking card. Make availability and required inputs explicit,
+keep the primary progress summary short, and connect successfully saved Track
+requests to the existing Teams recipient notification service.
+
+Practice discovery must match the existing detail/start authority: creator,
+approved Arena member, or the identified learner's completed source Training.
+Do not fabricate training, enrollments, assignments, consent or completion.
+AI Patient remains a restricted pilot; explain confirmed unavailability without
+changing the allowlist, model budget, secrets or clinical content.
+
+Only a committed, owned Track can schedule initial Teams notifications. Fetch
+the frozen audience from storage and preserve existing delivery leases and
+ambiguous-send handling. A scheduled callback is not proof of delivery. No real
+messages may be sent for verification. Background execution is not a durable
+reminder queue: later timed reminders require a separately keyed durable claim,
+a scheduler and completion/closure checks, rather than resetting notified_at.
+Teams and operating-system notification settings still control popup visibility.
+
+Prepare an isolated branch/PR against inner-main 7a88ebeb. Do not merge, deploy,
+change production configuration or permissions, activate an employee account,
+or write learner records. Leave Clinical PR90 separate.
+
+Observed isolated verification: Node 20 TypeScript exits 0. The full Vitest run
+exits 0 with 16,139 passed and 409 skipped; all 1,407 file results are successful.
+The skipped opt-in native database/live-service checks were not executed and do
+not establish production delivery or persistence. Eighteen isolated Chromium
+checks pass, including both tracking modes at 320/390/1280px, collapsed recipient
+details, the absent legacy duplicate row and no horizontal overflow. Browser
+requests use synthetic fixtures and abort every unexpected request. Independent
+source reviews find no blocking access or notification-claim regression.
+Fresh cf:build with loopback-only public placeholders exits 0 and generates all
+353 pages. The generated OpenNext artifact guard exits 0 with zero unsafe matches
+and both middleware implementations verified safe. This build is not deployed.
+
 ## RELEASE-RELIABILITY-REMAINDER — 2026-10-31
 
 Integration checkpoint: application source frozen at `27ff4865`, final full suite

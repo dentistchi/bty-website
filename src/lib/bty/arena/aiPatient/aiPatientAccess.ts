@@ -1,9 +1,10 @@
 /**
- * AI PATIENT — who may use it, and how much (pilot controls).
+ * AI PATIENT — server-side access policy and per-user usage limits.
  *
- * ACCESS. V1 is a Founder-only pilot. Access is an explicit allowlist of BTY user ids in
- * `AI_PATIENT_ALLOWED_USER_IDS` (comma-separated), checked on EVERY route. Unset or empty means
- * nobody: the feature is closed by default and opening it is a deliberate configuration change.
+ * ACCESS. Callers authenticate and check CURRENT consent before this policy runs.
+ * `AI_PATIENT_ACCESS_MODE=all_consented` opens access to those users. Unset/empty or `allowlist`
+ * retains the explicit `AI_PATIENT_ALLOWED_USER_IDS` policy; an empty allowlist admits nobody.
+ * Unknown modes refuse everyone. Every route checks the same policy on every request.
  *
  * COST. The session is sealed, not stored, so an old session can be sent again until it expires.
  * Rather than a session store, every paid call is counted PER USER in the existing KV limiter, so the
@@ -23,7 +24,14 @@ export function aiPatientAllowedUserIds(): Set<string> {
   );
 }
 
-export const isAiPatientAllowed = (userId: string): boolean => aiPatientAllowedUserIds().has(userId.trim().toLowerCase());
+export function isAiPatientAllowed(userId: string): boolean {
+  const id = userId.trim().toLowerCase();
+  if (!id) return false;
+  const mode = (process.env.AI_PATIENT_ACCESS_MODE ?? "").trim();
+  if (mode === "all_consented") return true;
+  if (mode !== "" && mode !== "allowlist") return false;
+  return aiPatientAllowedUserIds().has(id);
+}
 
 export type AiPatientAction = "start" | "turn" | "speech" | "feedback";
 

@@ -31,10 +31,6 @@ export const PEOPLE_PICKER_CURRENT_CONTEXT = "graph.microsoft.com/users?scope=cu
 export const TRACK_FIELD_FRAMING = "hostFraming" as const;
 export const TRACK_FIELD_RECIPIENTS = "recipients" as const;
 
-const COPY = {
-  framingPlaceholder: "In your own words",
-} as const;
-
 /**
  * The dialog Teams renders for `composeExtension/fetchTask` on the Track command.
  *
@@ -43,9 +39,9 @@ const COPY = {
  * successful, so this integration returns cards.
  */
 export function trackDialogCard(locale: "en" | "ko" = "en", retry?: {
-  trackingMode: TrackingMode;
+  trackingMode?: TrackingMode;
   hostFraming: string;
-}) {
+}, validationMessage?: string) {
   const t = TRACKING_COPY[locale];
   return {
     title: t.title,
@@ -59,29 +55,34 @@ export function trackDialogCard(locale: "en" | "ko" = "en", retry?: {
         // 1.4 supports required inputs; the server validates independently.
         version: "1.4",
         body: [
-          { type: "TextBlock", text: locale === "ko" ? "추적 방식 (필수)" : "Tracking mode (required)", wrap: true },
+          ...(validationMessage ? [{ type: "TextBlock", text: validationMessage, color: "Attention", wrap: true }] : []),
           { type: "Input.ChoiceSet", id: "trackingMode", style: "expanded", isMultiSelect: false, isRequired: true,
-            ...(retry ? { value: retry.trackingMode } : {}),
+            label: locale === "ko" ? "어떤 확인이 필요한가요? (필수)" : "What do you need? (required)",
+            ...(retry?.trackingMode ? { value: retry.trackingMode } : {}),
             errorMessage: locale === "ko" ? "추적 방식을 선택하세요." : "Choose a tracking mode.",
             choices: [{ title: t.acknowledgment, value: "acknowledgment" }, { title: t.response, value: "response" }] },
-          { type: "TextBlock", text: locale === "ko" ? "공지에 대한 안내" : "What should recipients know?", wrap: true, weight: "Bolder" },
           {
             type: "Input.Text",
             id: TRACK_FIELD_FRAMING,
             ...(retry ? { value: retry.hostFraming } : {}),
+            label: locale === "ko" ? "상대방에게 보낼 안내 (필수)" : "Message to recipients (required)",
+            isRequired: true,
+            errorMessage: locale === "ko" ? "무엇을 확인하거나 답변하면 되는지 짧게 적어 주세요." : "Write a short message explaining what they should confirm or reply to.",
             isMultiline: true,
             maxLength: 1000,
-            placeholder: locale === "ko" ? "직접 작성해 주세요" : COPY.framingPlaceholder,
+            placeholder: locale === "ko" ? "예: 이 내용을 읽고 확인 버튼을 눌러 주세요." : "Please review this update and confirm you've read it.",
           },
-          { type: "TextBlock", text: locale === "ko" ? "추적할 다른 사람" : "Who should be included?", wrap: true, weight: "Bolder" },
           // Keep validation in the editable setup card, not a terminal receipt.
           // Preserve mode/framing but clear the rejected audience for a new selection.
-          ...(retry ? [{ type: "TextBlock", color: "Attention", wrap: true,
+          ...(retry && !validationMessage ? [{ type: "TextBlock", color: "Attention", wrap: true,
             text: locale === "ko" ? "Track할 다른 사람을 선택하세요." : "Choose someone else to track.",
           }] : []),
           {
             type: "Input.ChoiceSet",
             id: TRACK_FIELD_RECIPIENTS,
+            label: locale === "ko" ? "알림을 받을 사람 (필수)" : "People to notify (required)",
+            isRequired: true,
+            errorMessage: locale === "ko" ? "본인 이외의 사람을 한 명 이상 선택하세요." : "Choose at least one other person.",
             // Empty static choices + a dynamic dataset is the documented People Picker shape.
             choices: [],
             "choices.data": { type: "Data.Query", dataset: PEOPLE_PICKER_CURRENT_CONTEXT },
@@ -98,7 +99,8 @@ export function trackDialogCard(locale: "en" | "ko" = "en", retry?: {
 export const TRACK_CONFIRM_HEIGHT = 170;
 
 /** The one-line confirmation after a successful Track. Calm, and it states the denominator. */
-export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en", alreadyExisted = false) {
+export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en", alreadyExisted = false,
+  notificationStatus?: "scheduled" | "unavailable") {
   const people = count === 1 ? "1 person" : `${count} people`;
   return {
     // No `title` — see the note on the Save confirmation. Teams already attributes this to BTY.
@@ -111,7 +113,7 @@ export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en",
       The SETUP dialog above is untouched at medium/medium: it holds a people picker and a text
       input, and shrinking it would be a different change with a different risk.
     */
-    height: TRACK_CONFIRM_HEIGHT,
+    height: notificationStatus ? 230 : TRACK_CONFIRM_HEIGHT,
     width: "small",
     card: {
       contentType: ADAPTIVE_CARD,
@@ -135,6 +137,12 @@ export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en",
             isSubtle: true,
             spacing: "Small",
           },
+          ...(notificationStatus ? [{ type: "TextBlock", wrap: true, isSubtle: true, spacing: "Small",
+            text: notificationStatus === "scheduled"
+              ? (locale === "ko" ? "Teams 알림 전송을 준비하고 있습니다." : "Teams notifications are being prepared.")
+              : (locale === "ko" ? "추적은 저장됐지만 Teams 알림 전송을 시작하지 못했습니다. 다시 Track하면 재시도합니다."
+                : "Tracking saved. Teams notifications have not started. Try tracking again to retry."),
+          }] : []),
         ],
       },
     },

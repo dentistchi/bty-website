@@ -14,19 +14,23 @@ vi.mock("@/lib/bty/llm/client", () => ({
 
 const adminFrom = vi.fn();
 let gateUser: string | null = "user-a";
+let gateConsented = true;
+let gateApprovedMember = true;
 vi.mock("@/lib/bty/foundry/arena/arenaPracticeGate", () => ({
   requireConsentedArenaAccess: async () =>
-    gateUser
-      ? { ok: true, access: { userId: gateUser, admin: { from: adminFrom }, isApprovedMember: true } }
-      : { ok: false, response: NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 }) },
+    !gateUser
+      ? { ok: false, response: NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 }) }
+      : !gateConsented
+        ? { ok: false, response: NextResponse.json({ error: "consent_required" }, { status: 403 }) }
+        : { ok: true, access: { userId: gateUser, admin: { from: adminFrom }, isApprovedMember: gateApprovedMember } },
 }));
 
 /** The real KV limiter is replaced by a counter the tests can read and fill. */
-const budgetCalls: Array<{ endpoint: string; identifier: string }> = [];
+const budgetCalls: Array<{ endpoint: string; identifier: string; limit: number; windowSeconds: number }> = [];
 let budgetRefuse: string | null = null;
 vi.mock("@/lib/rate-limit", () => ({
-  rateLimitKV: async (o: { endpoint: string; identifier: string }) => {
-    budgetCalls.push({ endpoint: o.endpoint, identifier: o.identifier });
+  rateLimitKV: async (o: { endpoint: string; identifier: string; limit: number; windowSeconds: number }) => {
+    budgetCalls.push({ ...o });
     return budgetRefuse && o.endpoint.startsWith(budgetRefuse) ? { allowed: false, retryAfterSeconds: 42 } : { allowed: true };
   },
 }));
@@ -49,11 +53,14 @@ const providerFetch = vi.fn();
 
 beforeEach(() => {
   gateUser = "user-a";
+  gateConsented = true;
+  gateApprovedMember = true;
   mockCreate.mockReset();
   adminFrom.mockReset();
   providerFetch.mockReset();
   budgetCalls.length = 0;
   budgetRefuse = null;
+  vi.stubEnv("AI_PATIENT_ACCESS_MODE", "");
   vi.stubEnv("AI_PATIENT_ALLOWED_USER_IDS", "user-a");
   vi.stubEnv("AI_PATIENT_SESSION_SECRET", "route-test-secret");
   vi.stubEnv("OPENAI_API_KEY", "sk-test-not-real");
@@ -380,6 +387,103 @@ describe("[AI patient] Founder-only pilot access", () => {
     gateUser = null;
     expect((await access()).status).toBe(401);
     expect(budgetCalls).toEqual([]);
+  });
+});
+
+describe("[AI patient] explicit all-consented access", () => {
+  beforeEach(() => {
+    vi.stubEnv("AI_PATIENT_ACCESS_MODE", "all_consented");
+    vi.stubEnv("AI_PATIENT_ALLOWED_USER_IDS", "");
+    gateUser = "staff-user";
+    gateApprovedMember = false;
+  });
+
+  it.each([...AI_PATIENT_SCENARIO_IDS])("a consented user without Arena membership can start %s", async (scenarioId) => {
+    expect(await (await access()).json()).toEqual({ enabled: true });
+    const res = await start(json({ acknowledged: true, scenarioId }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).scenarioId).toBe(scenarioId);
+    expect(new Set(budgetCalls.map((b) => b.identifier))).toEqual(new Set(["staff-user"]));
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([["no session", 401], ["missing current consent", 403]] as const)("%s is refused on access and every paid route", async (reason, status) => {
+    const s = await begin();
+    budgetCalls.length = 0;
+    if (reason === "no session") gateUser = null;
+    else gateConsented = false;
+    for (const res of [
+      await access(),
+      await start(json({ acknowledged: true })),
+      await turn(json({ state: s.state, text: "hello" })),
+      await speech(json({ state: s.state, index: 0 })),
+      await feedback(json({ state: s.state })),
+    ]) expect(res.status).toBe(status);
+    expect(budgetCalls).toEqual([]);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it("preserves every user's existing short and daily action limits", async () => {
+    mockCreate.mockResolvedValueOnce(reply("Okay."));
+    providerFetch.mockResolvedValueOnce(new Response(new Uint8Array([1]), { headers: { "Content-Type": "audio/mpeg" } }));
+    const s = await begin();
+    expect((await turn(json({ state: s.state, text: "Hello." }))).status).toBe(200);
+    expect((await speech(json({ state: s.state, index: 0 }))).status).toBe(200);
+    expect((await feedback(json({ state: s.state }))).status).toBe(422); // no learner turn in this state
+    expect(budgetCalls.map(({ endpoint, limit, windowSeconds }) => [endpoint, limit, windowSeconds])).toEqual([
+      ["ai-patient:start:3600", 6, 3600], ["ai-patient:start:86400", 20, 86400],
+      ["ai-patient:turn:600", 30, 600], ["ai-patient:turn:86400", 200, 86400],
+      ["ai-patient:speech:600", 45, 600], ["ai-patient:speech:86400", 250, 86400],
+      ["ai-patient:feedback:3600", 6, 3600], ["ai-patient:feedback:86400", 20, 86400],
+    ]);
+    expect(new Set(budgetCalls.map((b) => b.identifier))).toEqual(new Set(["staff-user"]));
+  });
+
+  it.each(["start", "turn", "speech", "feedback"] as const)("an exhausted %s budget still refuses before provider calls", async (action) => {
+    const s = await begin();
+    budgetCalls.length = 0;
+    budgetRefuse = `ai-patient:${action}`;
+    const invoke = {
+      start: () => start(json({ acknowledged: true })),
+      turn: () => turn(json({ state: s.state, text: "Hello." })),
+      speech: () => speech(json({ state: s.state, index: 0 })),
+      feedback: () => feedback(json({ state: s.state })),
+    };
+    const res = await invoke[action]();
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("42");
+    expect(await res.json()).toEqual({ error: "rate_limited", retryAfterSeconds: 42 });
+    expect(budgetCalls).toHaveLength(1);
+    expect(budgetCalls[0].identifier).toBe("staff-user");
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it("still refuses another user's sealed session", async () => {
+    const s = await begin();
+    gateUser = "other-staff-user";
+    const res = await turn(json({ state: s.state, text: "Hello." }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "session_invalid" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returning to allowlist mode closes even an existing non-allowlisted session", async () => {
+    const s = await begin();
+    vi.stubEnv("AI_PATIENT_ACCESS_MODE", "allowlist");
+    budgetCalls.length = 0;
+    expect(await (await access()).json()).toEqual({ enabled: false });
+    for (const res of [
+      await start(json({ acknowledged: true })),
+      await turn(json({ state: s.state, text: "hello" })),
+      await speech(json({ state: s.state, index: 0 })),
+      await feedback(json({ state: s.state })),
+    ]) expect(res.status).toBe(403);
+    expect(budgetCalls).toEqual([]);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
   });
 });
 

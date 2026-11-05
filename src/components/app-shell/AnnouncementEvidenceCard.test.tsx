@@ -42,7 +42,7 @@ describe("announcement V1 screens",()=> {
   audience[0].openedAt="now";audience[1].acknowledgedAt="now";
   render(<AnnouncementTrackingSummary counts={summariseTracking(10,audience)} audience={audience} locale={locale}/>);
   expect(screen.getAllByRole("listitem")).toHaveLength(10);
-  expect(screen.getByText("10")).toBeTruthy();
+  expect(screen.getByTestId("tracking-progress").textContent).toBe(locale === "ko" ? "10명 중 1명 확인 완료" : "1 of 10 confirmed");
   expect(screen.getAllByText(TRACKING_COPY[locale].noEvidence)).toHaveLength(8);
   expect(document.body.textContent).not.toMatch(/unread|읽지 않음/i);
  });

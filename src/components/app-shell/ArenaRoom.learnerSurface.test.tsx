@@ -102,7 +102,7 @@ function stubFetch() {
 /** Mount Practice and get into the player, exactly as the learner does. */
 async function enterPlayer() {
   stubFetch();
-  const utils = render(<ArenaRoom locale="en" lockedTag="tag" lockedBody="body" />);
+  const utils = render(<ArenaRoom locale="en" />);
   fireEvent.click(await screen.findByText("Start practice"));
   const surface = await screen.findByTestId("practice-player-surface");
   return { ...utils, surface };

@@ -85,7 +85,10 @@ describe("[R2] the Host CTA lives on the situations index only", () => {
     render(<PracticeLanding {...base} />);
     openSituations();
     await waitFor(() => expect(cta()).toBeTruthy());
-    expect(screen.getByText("body")).toBeTruthy(); // the calm empty state, unchanged
+    expect(screen.getByText("No published practice is available to you yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Explore other practice" }));
+    expect(screen.getByTestId("practice-landing")).toBeTruthy();
+    expect(screen.getByTestId("practice-clinical-entry")).toBeTruthy();
   });
 
   it("it survives a failed list — authoring does not depend on the list loading", async () => {

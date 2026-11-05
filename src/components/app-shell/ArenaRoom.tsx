@@ -45,6 +45,9 @@ const COPY = {
     startError: "We couldn't start this practice.",
     completeSaving: "Saving your completion…",
     completeError: "We couldn't save your completion.",
+    empty: "No published practice is available to you yet.",
+    emptyHint: "Practices from training you complete appear here when one has been published.",
+    explore: "Explore other practice",
   },
   ko: {
     eyebrow: "연습",
@@ -60,6 +63,9 @@ const COPY = {
     startError: "이 연습을 시작하지 못했습니다.",
     completeSaving: "완료 상태를 저장하는 중…",
     completeError: "완료 상태를 저장하지 못했습니다.",
+    empty: "아직 이용할 수 있는 게시된 연습이 없습니다.",
+    emptyHint: "완료한 트레이닝에 연결된 연습이 게시되면 여기에 표시됩니다.",
+    explore: "다른 연습 살펴보기",
   },
 };
 
@@ -67,14 +73,12 @@ const LIST_TIMEOUT_MS = 10_000;
 
 export function ArenaRoom({
   locale,
-  lockedTag,
-  lockedBody,
+  onExplorePractice,
   onSurfaceChange,
 }: {
   locale: string;
-  /** Calm "being prepared" copy reused for the genuinely-empty state (never blank/jarring). */
-  lockedTag: string;
-  lockedBody: string;
+  /** Return to the existing practice choices without creating or assigning training. */
+  onExplorePractice?: () => void;
   /**
    * R2 — report WHICH surface is showing. This room owns its view state internally, so a parent
    * that renders anything alongside it (the Host authoring entry) has no other way to know whether
@@ -317,8 +321,18 @@ export function ArenaRoom({
   if (practices.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center">
-        <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{lockedTag}</span>
-        <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/60">{lockedBody}</p>
+        <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
+        <p className="max-w-[20rem] text-[0.95rem] leading-6 text-white/80">{t.empty}</p>
+        <p className="mt-2 max-w-[20rem] text-sm leading-6 text-white/60">{t.emptyHint}</p>
+        {onExplorePractice ? (
+          <button
+            type="button"
+            onClick={onExplorePractice}
+            className="mt-4 min-h-[2.75rem] rounded-xl border border-white/20 px-5 py-2.5 text-sm font-semibold text-white/85 hover:text-white"
+          >
+            {t.explore}
+          </button>
+        ) : null}
       </div>
     );
   }

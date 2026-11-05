@@ -36,6 +36,8 @@ const COPY: Record<Locale, {
   title: string;
   aiPatient: string;
   aiPatientSub: string;
+  aiPatientUnavailable: string;
+  unavailable: string;
   arena: string;
   arenaSub: string;
   clinical: string;
@@ -54,6 +56,8 @@ const COPY: Record<Locale, {
     title: "Practice it before you need it.",
     aiPatient: "AI patient: Case Acceptance 01",
     aiPatientSub: "Talk with a fictional patient, then get coaching.",
+    aiPatientUnavailable: "AI patient practice isn't available for this account right now.",
+    unavailable: "Unavailable",
     arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
     clinical: "Clinical cases",
@@ -72,6 +76,8 @@ const COPY: Record<Locale, {
     title: "필요해지기 전에 미리 연습하세요.",
     aiPatient: "AI 환자: Case Acceptance 01",
     aiPatientSub: "가상의 환자와 대화하고 코칭을 받습니다 (영어).",
+    aiPatientUnavailable: "현재 이 계정에서는 AI 환자 연습을 이용할 수 없습니다.",
+    unavailable: "이용 불가",
     arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
     clinical: "임상 케이스",
@@ -107,8 +113,8 @@ function DoorRow({
   const inner = (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 flex-col">
-        <span className="truncate text-[0.95rem] font-medium text-white/90">{title}</span>
-        <span className="truncate text-[0.78rem] text-white/60">{sub}</span>
+        <span className={(disabled ? "leading-6" : "truncate") + " text-[0.95rem] font-medium text-white/90"}>{title}</span>
+        <span className={(disabled ? "leading-5" : "truncate") + " text-[0.78rem] text-white/60"}>{sub}</span>
       </div>
       {badge ? (
         <span className="shrink-0 rounded-md border border-white/[0.12] px-2 py-0.5 text-[0.66rem] text-white/55">{badge}</span>
@@ -136,16 +142,12 @@ function DoorRow({
 
 export default function PracticeLanding({
   locale,
-  lockedTag,
-  lockedBody,
   qrAuthorized = false,
   initialView = "landing",
   initialFieldActionId = null,
   onFieldActionConsumed,
 }: {
   locale: string;
-  lockedTag: string;
-  lockedBody: string;
   /** QR scan is offered only when authorized; V1 has no in-shell scanner, so it stays a placeholder. */
   qrAuthorized?: boolean;
   /** Deep-link entry: open the focused Field Actions surface directly (?tab=practice&fieldAction=). */
@@ -172,10 +174,10 @@ export default function PracticeLanding({
    */
   const [practiceSurface, setPracticeSurface] = useState<PracticeSurface>("index_loading");
   /**
-   * AI Patient pilot: hidden until the server confirms this user may use it. Loading, refusal and
-   * any error all mean hidden — the door must never appear to someone the routes would refuse.
+   * Open AI Patient only after the server confirms availability. A confirmed false explains
+   * unavailability without offering entry; an unresolved/failed check makes no access claim.
    */
-  const [aiPatientEnabled, setAiPatientEnabled] = useState(false);
+  const [aiPatientEnabled, setAiPatientEnabled] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -183,7 +185,7 @@ export default function PracticeLanding({
         const res = await fetch("/api/arena/ai-patient/access", { credentials: "include", cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json().catch(() => ({}))) as { enabled?: unknown };
-        if (alive && data.enabled === true) setAiPatientEnabled(true);
+        if (alive && typeof data.enabled === "boolean") setAiPatientEnabled(data.enabled);
       } catch {
         /* stays hidden */
       }
@@ -225,8 +227,7 @@ export default function PracticeLanding({
         ) : null}
         <ArenaRoom
           locale={locale}
-          lockedTag={lockedTag}
-          lockedBody={lockedBody}
+          onExplorePractice={() => setView("landing")}
           onSurfaceChange={onSurfaceChange}
         />
       </div>
@@ -275,8 +276,10 @@ export default function PracticeLanding({
         <h1 data-bty-main-heading="" className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
       </header>
       <div className="flex flex-col gap-2">
-        {aiPatientEnabled ? (
+        {aiPatientEnabled === true ? (
           <DoorRow testId="practice-ai-patient-entry" title={t.aiPatient} sub={t.aiPatientSub} onClick={() => setView("aiPatient")} />
+        ) : aiPatientEnabled === false ? (
+          <DoorRow testId="practice-ai-patient-unavailable" title={t.aiPatient} sub={t.aiPatientUnavailable} badge={t.unavailable} disabled />
         ) : null}
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
         <DoorRow testId="practice-clinical-entry" title={t.clinical} sub={t.clinicalSub} onClick={() => setView("clinical")} />

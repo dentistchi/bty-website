@@ -619,8 +619,10 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-white/55">
               <span data-testid="tracking-when">{whenLabel(it.createdAt, loc)}</span>
-              <span aria-hidden>·</span>
-              <span data-testid="tracking-sent-to">{it.trackingMode ? (loc === "ko" ? `대상자 ${f.announcedTo}명` : `${f.announcedTo} targeted`) : t.sentTo(f.announcedTo)}</span>
+              {!it.trackingMode ? <>
+                <span aria-hidden>·</span>
+                <span data-testid="tracking-sent-to">{t.sentTo(f.announcedTo)}</span>
+              </> : null}
               {it.status === "closed" ? (
                 <>
                   <span aria-hidden>·</span>
@@ -631,12 +633,12 @@ export default function TrackingSent({ locale, refreshKey }: { locale: string; r
 
             {it.tracking && it.audience ? <AnnouncementTrackingSummary counts={it.tracking} audience={it.audience} locale={loc} /> : null}
             {/* Legacy conversation outcomes retain their original semantics. */}
-            <div hidden={!!it.trackingMode} className="flex flex-wrap gap-1.5" data-testid="tracking-funnel">
+            {!it.trackingMode ? <div className="flex flex-wrap gap-1.5" data-testid="tracking-funnel">
               <Count n={f.gotIt} label={t.gotIt} tone="gold" />
               <Count n={f.question} label={t.question} tone="gold" />
               <Count n={f.needHelp} label={t.needHelp} tone="gold" />
               <Count n={f.noResponse} label={t.noResponse} tone="quiet" />
-            </div>
+            </div> : null}
 
             {/*
               NOT SILENCE. Someone who has never opened BTY cannot answer, and counting them under

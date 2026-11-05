@@ -108,9 +108,8 @@ type PracticeRunRow = {
 
 /**
  * Published practices available to the user, newest first, with completion flag.
- * Creator visibility OR approved-learner visibility: the user always sees the
- * practices they published; an approved member additionally sees all_members
- * practices. A non-approved creator therefore still sees their own work.
+ * Use the same three access paths as the snapshot/start routes: creator,
+ * approved Arena member, or an identified learner who completed the source training.
  */
 export async function listAvailablePractices(
   admin: SupabaseClient,
@@ -142,8 +141,34 @@ export async function listAvailablePractices(
     shared = data ?? [];
   }
 
+  // A learner may already enter through the source training's completion screen
+  // without Arena membership. Keep that same practice discoverable on later visits.
+  // This reads completed evidence only; it creates no enrollment or assignment.
+  let fromCompletedTraining: Raw[] = [];
+  if (!isApprovedMember) {
+    const { data: progress } = await admin
+      .from("foundry_event_training_progress")
+      .select("event_id, completed_at")
+      .eq("linked_user_id", userId);
+    const eventIds = [...new Set(
+      ((progress ?? []) as { event_id: string; completed_at: string | null }[])
+        .filter((p) => Boolean(p.completed_at))
+        .map((p) => p.event_id),
+    )];
+    if (eventIds.length > 0) {
+      const { data } = await admin
+        .from("foundry_published_arena_practices")
+        .select(cols)
+        .eq("status", "published")
+        .in("source_event_id", eventIds)
+        .order("published_at", { ascending: false })
+        .returns<Raw[]>();
+      fromCompletedTraining = data ?? [];
+    }
+  }
+
   const byId = new Map<string, Raw>();
-  for (const p of [...(own ?? []), ...shared]) byId.set(p.id, p);
+  for (const p of [...(own ?? []), ...shared, ...fromCompletedTraining]) byId.set(p.id, p);
   const list = [...byId.values()].sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
   if (list.length === 0) return [];
 

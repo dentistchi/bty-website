@@ -2197,8 +2197,6 @@ export default function BtyDailyAppShell({
         {tab === "practice" && (
           <PracticeLanding
             locale={locale}
-            lockedTag={t.arena.tag}
-            lockedBody={t.arena.body}
             initialView={practiceFieldActionId ? "fieldActions" : "landing"}
             initialFieldActionId={practiceFieldActionId}
             onFieldActionConsumed={() => setPracticeFieldActionId(null)}
