@@ -38,12 +38,13 @@ function scenario(over: Partial<ArenaScenarioDraft> = {}): ArenaScenarioDraft {
 }
 
 /** Table-aware fake supporting the call shapes these services use, incl. limit(). */
-function makeFakeAdmin(seed: { drafts?: Row[]; events?: Row[]; practices?: Row[]; runs?: Row[] } = {}) {
+function makeFakeAdmin(seed: { drafts?: Row[]; events?: Row[]; practices?: Row[]; runs?: Row[]; progress?: Row[] } = {}) {
   const tables: Record<string, Row[]> = {
     foundry_arena_scenario_drafts: (seed.drafts ?? []).map((r) => ({ ...r })),
     foundry_events: (seed.events ?? []).map((r) => ({ ...r })),
     foundry_published_arena_practices: (seed.practices ?? []).map((r) => ({ ...r })),
     foundry_arena_practice_runs: (seed.runs ?? []).map((r) => ({ ...r })),
+    foundry_event_training_progress: (seed.progress ?? []).map((r) => ({ ...r })),
   };
   let idSeq = 0;
 
@@ -76,6 +77,7 @@ function makeFakeAdmin(seed: { drafts?: Row[]; events?: Row[]; practices?: Row[]
     const b = {
       _op: "select" as "select" | "insert" | "update" | "delete",
       _filters: [] as Array<{ c: string; v: unknown }>,
+      _inFilters: [] as Array<{ c: string; vs: unknown[] }>,
       _patch: {} as Row,
       _insert: null as Row | null,
       _sort: null as { c: string; asc: boolean } | null,
@@ -85,10 +87,11 @@ function makeFakeAdmin(seed: { drafts?: Row[]; events?: Row[]; practices?: Row[]
       update(p: Row) { b._op = "update"; b._patch = p; return b; },
       delete() { b._op = "delete"; return b; },
       eq(c: string, v: unknown) { b._filters.push({ c, v }); return b; },
+      in(c: string, vs: unknown[]) { b._inFilters.push({ c, vs }); return b; },
       order(c: string, opts?: { ascending?: boolean }) { b._sort = { c, asc: opts?.ascending ?? true }; return b; },
       limit(n: number) { b._limit = n; return b; },
       returns() { return b; },
-      _match(r: Row) { return b._filters.every((f) => r[f.c] === f.v); },
+      _match(r: Row) { return b._filters.every((f) => r[f.c] === f.v) && b._inFilters.every((f) => f.vs.includes(r[f.c])); },
       _run(): Row[] {
         if (b._op === "insert" && b._insert) {
           const row = applyDefaults(table, b._insert);
@@ -279,6 +282,30 @@ describe("practice discovery + run lifecycle (zero-XP, isolated)", () => {
     const { admin } = seedPublished();
     const list = await listAvailablePractices(admin, LEARNER, false);
     expect(list).toEqual([]);
+  });
+
+  it("lists an already-authorized source-training graduate's practice without Arena membership", async () => {
+    const { admin, tables } = seedPublished();
+    tables.foundry_event_training_progress.push(
+      { event_id: "evt-1", linked_user_id: LEARNER, completed_at: "2026-07-18T00:00:00Z" },
+    );
+    tables.foundry_arena_practice_runs.push({ practice_id: "pub-1", user_id: LEARNER, status: "completed" });
+
+    const list = await listAvailablePractices(admin, LEARNER, false);
+    expect(list.map((p) => p.id)).toEqual(["pub-1"]);
+    expect(list[0].completed).toBe(true);
+    expect(await listAvailablePractices(admin, "unrelated-user", false)).toEqual([]);
+  });
+
+  it("source-training discovery excludes unfinished, unlinked, other-user and retired work", async () => {
+    const { admin, tables } = seedPublished();
+    tables.foundry_event_training_progress.push(
+      { event_id: "evt-1", linked_user_id: LEARNER, completed_at: null },
+      { event_id: "evt-1", linked_user_id: null, completed_at: "2026-07-18T00:00:00Z" },
+      { event_id: "evt-1", linked_user_id: OTHER, completed_at: "2026-07-18T00:00:00Z" },
+      { event_id: "evt-2", linked_user_id: LEARNER, completed_at: "2026-07-18T00:00:00Z" },
+    );
+    expect(await listAvailablePractices(admin, LEARNER, false)).toEqual([]);
   });
 
   it("canAccessPractice: creator OR approved member; others denied", () => {

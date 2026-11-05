@@ -20,6 +20,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: { auth: { getSession: H.getSession 
 
 import TrackingSent from "./TrackingSent";
 import { summariseAnnouncement, funnelIsComplete } from "@/domain/announcement/trackedAnnouncement";
+import { summariseTracking } from "@/domain/announcement/trackingEvidence";
 
 afterEach(() => {
   cleanup();
@@ -71,6 +72,16 @@ const renderSent = async (items: unknown[] | null, opts?: { ok?: boolean }) => {
 };
 
 describe("★ 1. the Host sees their own tracked announcement", () => {
+  it("uses one compact evidence summary without a second legacy status row", async () => {
+    const audience = [{ recipientId: "recipient", display: "Alex", responseText: null,
+      trackingMode: "acknowledgment" as const, openedAt: null, acknowledgedAt: null, responseSubmittedAt: null }];
+    await renderSent([{ ...REAL, trackingMode: "acknowledgment", audience, tracking: summariseTracking(1, audience) }]);
+    await screen.findByTestId("tracking-item");
+    expect(screen.queryByTestId("tracking-funnel")).toBeNull();
+    expect(screen.queryByTestId("tracking-sent-to")).toBeNull();
+    expect(screen.getByTestId("tracking-progress").textContent).toBe("0 of 1 confirmed");
+  });
+
   it("★ the real production announcement is rendered, framing first", async () => {
     await renderSent([REAL]);
     await waitFor(() => expect(screen.getByTestId("tracking-sent")).toBeTruthy());

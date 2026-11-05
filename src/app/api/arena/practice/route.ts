@@ -6,9 +6,9 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/arena/practice — the authenticated user's available published
- * practices. Creator visibility (own published) OR approved-learner visibility
- * (all_members). Newest first, each with the user's completion flag. A creator
- * sees their own work without needing a separate approved-member role.
+ * practices: own published work, shared work for approved Arena members, and
+ * practices built from training this user completed. Newest first, each with
+ * the user's completion flag. Discovery follows the existing per-practice access.
  */
 export async function GET() {
   const gate = await requireConsentedArenaAccess();

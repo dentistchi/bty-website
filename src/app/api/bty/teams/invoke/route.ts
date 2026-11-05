@@ -15,6 +15,8 @@ import {
 } from "@/domain/teams/invokeActivity";
 import { trackDialogCard, trackConfirmationCard } from "@/lib/bty/teams/trackDialogCard";
 import { trackAnnouncement } from "@/lib/bty/announcement/trackAnnouncement.server";
+import { scheduleTrackNotifications } from "@/lib/bty/announcement/trackNotifications.server";
+import { isTrackingMode } from "@/domain/announcement/trackingEvidence";
 import { isCollaborationParticipant } from "@/domain/authority/collaborationParticipant";
 import { parseTrainingCardAction, adaptiveCardResponse, buildNoticeCard } from "@/domain/teams/trainingCard";
 import { handleTrainingCardAction } from "@/lib/bty/foundry/teams/teamsTrainingBot.server";
@@ -359,11 +361,18 @@ export async function POST(req: NextRequest) {
 
     const submission = parseTeamsTrackSubmission(activity);
     if (!submission.ok) {
-      return submission.code === "missing_mode"
-        ? trackSay("확인 필요 또는 응답 필요를 선택하세요.", "Choose acknowledgment required or response required.")
+      const message = submission.code === "missing_mode"
+        ? (locale === "ko" ? "확인 필요 또는 응답 필요를 선택하세요." : "Choose acknowledgment required or response required.")
         : submission.code === "missing_framing"
-          ? trackSay("공지에 대한 안내를 작성하세요.", MSG.trackNoFraming)
-          : trackSay("추적할 다른 사람을 한 명 이상 선택하세요.", "Select at least one other person to track.");
+          ? (locale === "ko" ? "공지에 대한 안내를 작성하세요." : MSG.trackNoFraming)
+          : (locale === "ko" ? "추적할 다른 사람을 한 명 이상 선택하세요." : "Select at least one other person to track.");
+      // Display-only recovery of the setup form. No submitted identity or audience is
+      // reused, and every eventual retry goes through the canonical parser again.
+      const display = (activity as { value?: { data?: { hostFraming?: unknown; trackingMode?: unknown } } })?.value?.data;
+      return dialog(trackDialogCard(locale, {
+        hostFraming: typeof display?.hostFraming === "string" ? display.hostFraming.slice(0, 1000) : "",
+        ...(isTrackingMode(display?.trackingMode) ? { trackingMode: display.trackingMode } : {}),
+      }, message), parsed.invokeName);
     }
 
     // All non-ok routing results (absent, invalid, mismatch) fail closed before creation.
@@ -410,7 +419,15 @@ export async function POST(req: NextRequest) {
       return trackSay("공지 추적을 시작하지 못했습니다. 다시 시도하세요.", copy);
     }
 
-    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted), TEAMS_INVOKE_FETCH_TASK);
+    // Track is already committed. Keep the invoke fast and let the existing delivery
+    // claims decide whether each frozen recipient can be told after the response.
+    // An idempotent Track retry can recover a definite delivery failure, but never
+    // resets a notified_at or an ambiguous send marker.
+    const notificationStatus = scheduleTrackNotifications(admin, {
+      announcementId: tracked.announcementId,
+      ownerUserId: resolution.userId,
+    });
+    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted, notificationStatus), TEAMS_INVOKE_FETCH_TASK);
   }
 
   // 4. CAPTURE. Idempotent by `UNIQUE(user_id, source_type, external_key)`; a repeat save returns

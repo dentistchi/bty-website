@@ -138,4 +138,16 @@ describe("PracticeLanding — AI patient pilot door", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByTestId("practice-ai-patient-entry")).toBeNull();
   });
+
+  it("explains a confirmed unavailable pilot without offering entry or loading case content", async () => {
+    stubAccess({ enabled: false });
+    render(<PracticeLanding {...base} />);
+    const door = await screen.findByTestId("practice-ai-patient-unavailable");
+    expect(door.textContent).toContain("AI patient: Case Acceptance 01");
+    expect(door.textContent).toContain("This pilot isn't available for this account right now.");
+    expect(door.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(door);
+    expect(screen.getByTestId("practice-landing")).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual(["/api/arena/ai-patient/access"]);
+  });
 });

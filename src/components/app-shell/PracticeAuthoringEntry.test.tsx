@@ -144,7 +144,9 @@ describe("[R1] a Host with no Training is told the truth, not given a dead contr
     asHost([]);
     render(<PracticeAuthoringEntry locale="en" onOpen={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId("practice-authoring-entry")).toBeTruthy());
-    expect(screen.getByText("No training to practice yet.")).toBeTruthy();
+    expect(screen.getByText("Create your own practice")).toBeTruthy();
+    expect(screen.getByText("To create a practice, first create a training in Learn. Available practices are listed separately below.")).toBeTruthy();
+    expect(screen.queryByText("No training to practice yet.")).toBeNull();
     expect(screen.queryByTestId("practice-create-cta")).toBeNull();
   });
 });

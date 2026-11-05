@@ -1,5 +1,43 @@
 # Active application task contract
 
+## EMPLOYEE-PRACTICE-TRACK-UX — 2026-11-05
+
+Dr. Chi reports a missing AI Patient entry for a colleague, an unclear empty
+Practice situations screen, Track validation that feels broken, and an overly
+complicated mobile tracking card. Make availability and required inputs explicit,
+keep the primary progress summary short, and connect successfully saved Track
+requests to the existing Teams recipient notification service.
+
+Practice discovery must match the existing detail/start authority: creator,
+approved Arena member, or the identified learner's completed source Training.
+Do not fabricate training, enrollments, assignments, consent or completion.
+AI Patient remains a restricted pilot; explain confirmed unavailability without
+changing the allowlist, model budget, secrets or clinical content.
+
+Only a committed, owned Track can schedule initial Teams notifications. Fetch
+the frozen audience from storage and preserve existing delivery leases and
+ambiguous-send handling. A scheduled callback is not proof of delivery. No real
+messages may be sent for verification. Background execution is not a durable
+reminder queue: later timed reminders require a separately keyed durable claim,
+a scheduler and completion/closure checks, rather than resetting notified_at.
+Teams and operating-system notification settings still control popup visibility.
+
+Prepare an isolated branch/PR against inner-main 7a88ebeb. Do not merge, deploy,
+change production configuration or permissions, activate an employee account,
+or write learner records. Leave Clinical PR90 separate.
+
+Observed isolated verification: Node 20 TypeScript exits 0. The full Vitest run
+exits 0 with 16,139 passed and 409 skipped; all 1,407 file results are successful.
+The skipped opt-in native database/live-service checks were not executed and do
+not establish production delivery or persistence. Eighteen isolated Chromium
+checks pass, including both tracking modes at 320/390/1280px, collapsed recipient
+details, the absent legacy duplicate row and no horizontal overflow. Browser
+requests use synthetic fixtures and abort every unexpected request. Independent
+source reviews find no blocking access or notification-claim regression.
+Fresh cf:build with loopback-only public placeholders exits 0 and generates all
+353 pages. The generated OpenNext artifact guard exits 0 with zero unsafe matches
+and both middleware implementations verified safe. This build is not deployed.
+
 ## RELEASE-RELIABILITY-REMAINDER — 2026-10-31
 
 Integration checkpoint: application source frozen at `27ff4865`, final full suite
