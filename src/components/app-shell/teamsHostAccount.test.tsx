@@ -213,7 +213,8 @@ describe("THIS WEEK — the loading state always ends", () => {
     render(<MeThisWeek locale="en" weeklyRhythm={rhythm} />);
     await waitFor(() => expect(screen.getByTestId("me-week-retry")).toBeTruthy());
     fireEvent.click(screen.getByTestId("me-week-retry"));
-    await waitFor(() => expect(screen.queryByTestId("me-week-error")).toBeNull());
-    expect(screen.getByTestId("me-this-week").textContent).toContain("7");
+    // Retry clears the error before its response arrives; wait for recovered content.
+    await waitFor(() => expect(screen.getByTestId("me-this-week").textContent).toContain("7"));
+    expect(screen.queryByTestId("me-week-error")).toBeNull();
   });
 });
