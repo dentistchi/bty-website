@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/app-persistence-postgres.yml
       - scripts/qa/app-persistence-postgres.mjs
+      - scripts/qa/teams-delayed-reminders-postgres.test.mjs
       - src/lib/bty/action-capture/**
       - src/lib/bty/announcement/**
       - src/lib/bty/foundry/events/**
@@ -43,6 +44,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      reminder-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: bty_teams_reminders_test
+          POSTGRES_PASSWORD: reminders-disposable-only
+          PGPORT: '55476'
+        ports:
+          - 127.0.0.1:55476:55476
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 55476 -U postgres -d bty_teams_reminders_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     defaults:
       run:
         shell: bash
@@ -66,6 +81,11 @@ jobs:
           # The query suffix is required by these unchanged test files' child-DB routing.
           BTY_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres?application_name=bty_cleanup_qa
         run: node scripts/qa/app-persistence-postgres.mjs --output-dir "$RUNNER_TEMP/bty-app-persistence-postgres"
+
+      - name: Verify Teams reminder timing and delivery claims
+        env:
+          BTY_REMINDER_PG_TEST_URL: postgresql://postgres:reminders-disposable-only@127.0.0.1:55476/bty_teams_reminders_test
+        run: node --test scripts/qa/teams-delayed-reminders-postgres.test.mjs
 
       - name: Preserve actual SQL result, Vitest JSON, witnesses and logs
         if: always()

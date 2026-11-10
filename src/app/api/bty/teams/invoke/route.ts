@@ -21,7 +21,6 @@ import { isCollaborationParticipant } from "@/domain/authority/collaborationPart
 import { parseTrainingCardAction, adaptiveCardResponse, buildNoticeCard } from "@/domain/teams/trainingCard";
 import { handleTrainingCardAction } from "@/lib/bty/foundry/teams/teamsTrainingBot.server";
 import { rememberTenantRoute } from "@/lib/bty/teams/tenantRoute.server";
-import { scheduleActionReceipt } from "@/lib/bty/teams/actionReceipt.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -406,21 +405,16 @@ export async function POST(req: NextRequest) {
       announcementId: tracked.announcementId,
       ownerUserId: resolution.userId,
     });
-    if (!tracked.alreadyExisted) {
-      scheduleActionReceipt(admin, {
-        tenantId: parsed.tenantId, aadObjectId: parsed.aadObjectId, serviceUrl: routing.url, action: "track", locale,
-      });
-    }
     return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted, notificationStatus));
   }
 
-  // 4. CAPTURE. A repeat Save on an active item returns the same confirmation. Only the write
-  //    that adds the item to the Saved lane can schedule a new private message.
+  // 4. CAPTURE. A repeat Save on an active item returns the same inline confirmation.
   const result = await ensureActionCapture(admin, {
     userId: resolution.userId,
     input: parsed.capture,
     // Explicit: this row exists because the person asked for it to be on their list.
     intent: "save",
+    teamsReminderActorOid: parsed.aadObjectId,
   });
   if (!result.ok) {
     console.error("[teams-invoke] capture failed", { code: result.code });
@@ -429,10 +423,5 @@ export async function POST(req: NextRequest) {
     return say(sourceProblem ? MSG.cannotSave : MSG.serverBusy, parsed.invokeName);
   }
 
-  if (result.newlySaved && routing.url) {
-    scheduleActionReceipt(admin, {
-      tenantId: parsed.tenantId, aadObjectId: parsed.aadObjectId, serviceUrl: routing.url, action: "save", locale,
-    });
-  }
   return dialog(confirmationCard(locale === "ko" ? "✓ 저장했습니다" : MSG.saved, SAVE_CONFIRM_HEIGHT));
 }

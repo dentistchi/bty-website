@@ -162,7 +162,8 @@ describe("★ 3. doing both produces both, on ONE row", () => {
       a compiled test cannot contain one.
     */
     const SRC = readFileSync("src/lib/bty/action-capture/ensureActionCapture.server.ts", "utf8");
-    expect(SRC).toMatch(/intent: "save" \| "track_source" \}/);
+    expect(SRC).toMatch(/\{ intent: "save"; teamsReminderActorOid\?: string \}/);
+    expect(SRC).toMatch(/\{ intent: "track_source"; teamsReminderActorOid\?: never \}/);
     expect(SRC).not.toMatch(/intent\?:/);
     expect(SRC).not.toMatch(/params\.intent \?\?/);
   });

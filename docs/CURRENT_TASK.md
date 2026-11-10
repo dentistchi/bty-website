@@ -1,5 +1,23 @@
 # Active application task contract
 
+## TEAMS-DELAYED-REMINDERS — 2026-11-10
+
+Confirm Save and Track in the Teams dialog. Remove the immediate personal receipt
+from PR #94. Keep Track's initial request to its selected recipients so they can
+act before the reminder becomes due.
+
+For newly activated Teams saves, send one personal reminder to the saver if the
+item is still saved 24 hours later. For new Tracks, send one follow-up to each
+recipient whose required action is pending, plus one private update to the owner
+when any recipient is pending. The existing hourly Worker tick checks due items.
+Use the committed Save and Track records, keep reminder claims independent of the
+initial Track delivery ledger, and skip removed, promoted, closed and completed
+work. A reminder carries a BTY link and no original message body.
+
+Apply the additive migration before deploying the Worker built from this source.
+Verify the new scheduled path with a controlled Teams test after deployment.
+Do not backfill old saves or tracks or manually send messages for verification.
+
 ## AI-PATIENT-ALL-CONSENTED — 2026-11-05
 
 Dr. Chi explicitly approved opening AI Patient to every signed-in BTY user with

@@ -6,14 +6,14 @@ const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const trackAnnouncement = vi.fn();
 const scheduleTrackNotifications = vi.fn();
 const ensureActionCapture = vi.fn();
-const scheduleActionReceipt = vi.fn();
+const afterResponse = vi.hoisted(() => vi.fn());
 const admin = { rpc: vi.fn() };
+vi.mock("next/server", async importOriginal => ({ ...await importOriginal<typeof import("next/server")>(), after: afterResponse }));
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({ verifyBotFrameworkToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({ resolveBtyUserFromMicrosoftIdentity }));
 vi.mock("@/lib/bty/action-capture/ensureActionCapture.server", () => ({ ensureActionCapture }));
 vi.mock("@/lib/bty/announcement/trackAnnouncement.server", () => ({ trackAnnouncement }));
 vi.mock("@/lib/bty/announcement/trackNotifications.server", () => ({ scheduleTrackNotifications }));
-vi.mock("@/lib/bty/teams/actionReceipt.server", () => ({ scheduleActionReceipt }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => admin }));
 vi.mock("@/lib/bty/teams/tenantRoute.server", () => ({ rememberTenantRoute: vi.fn() }));
 
@@ -86,11 +86,8 @@ describe("initial Track delivery is scheduled after canonical persistence", () =
     const response = await post(request({ announcementId: "injected", ownerUserId: "attacker", recipientId: "injected" }));
     expect(response.status).toBe(200);
     expect(scheduleTrackNotifications).toHaveBeenCalledWith(admin, { announcementId: "persisted-announcement", ownerUserId: OWNER });
-    expect(scheduleActionReceipt).toHaveBeenCalledWith(admin, {
-      tenantId: TID, aadObjectId: OID, serviceUrl: "https://smba.trafficmanager.net/emea/", action: "track", locale: "en",
-    });
     expect(trackAnnouncement.mock.invocationCallOrder[0]).toBeLessThan(scheduleTrackNotifications.mock.invocationCallOrder[0]);
-    expect(trackAnnouncement.mock.invocationCallOrder[0]).toBeLessThan(scheduleActionReceipt.mock.invocationCallOrder[0]);
+    expect(afterResponse).not.toHaveBeenCalled();
     const body = JSON.stringify(await response.json());
     expect(body).toContain("Tracking started");
     expect(body).not.toMatch(/notification sent|message sent|PRIVATE SOURCE|attacker/i);
@@ -100,14 +97,14 @@ describe("initial Track delivery is scheduled after canonical persistence", () =
     trackAnnouncement.mockResolvedValue({ ok: true, announcementId: "original-announcement", count: 2, alreadyExisted: true });
     await post(request());
     expect(scheduleTrackNotifications).toHaveBeenCalledWith(admin, { announcementId: "original-announcement", ownerUserId: OWNER });
-    expect(scheduleActionReceipt).not.toHaveBeenCalled();
+    expect(afterResponse).not.toHaveBeenCalled();
   });
 
   it.each(["track_failed", "invalid_recipients"])("does not schedule when persistence returns %s", async reason => {
     trackAnnouncement.mockResolvedValue({ ok: false, reason });
     await post(request());
     expect(scheduleTrackNotifications).not.toHaveBeenCalled();
-    expect(scheduleActionReceipt).not.toHaveBeenCalled();
+    expect(afterResponse).not.toHaveBeenCalled();
   });
 
   it("does not schedule for an unverified caller, invalid routing, a missing framing or an open dialog", async () => {
@@ -117,7 +114,7 @@ describe("initial Track delivery is scheduled after canonical persistence", () =
     await post(request({ hostFraming: " " }));
     await post(request({}, { name: "composeExtension/fetchTask" }));
     expect(scheduleTrackNotifications).not.toHaveBeenCalled();
-    expect(scheduleActionReceipt).not.toHaveBeenCalled();
+    expect(afterResponse).not.toHaveBeenCalled();
     expect(trackAnnouncement).not.toHaveBeenCalled();
   });
 
