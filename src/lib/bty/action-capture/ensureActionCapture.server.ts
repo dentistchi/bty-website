@@ -54,7 +54,7 @@ export type ActionCapture = {
 };
 
 export type EnsureActionCaptureResult =
-  | { ok: true; capture: ActionCapture; created: boolean }
+  | { ok: true; capture: ActionCapture; created: boolean; newlySaved: boolean }
   | { ok: false; code: "unsupported_provider" | "missing_identifier" | "not_owner" | "insert_failed" | "load_failed" | "update_failed" };
 
 type Row = {
@@ -151,7 +151,7 @@ export async function ensureActionCapture(
     .select(CAPTURE_COLS)
     .single();
 
-  if (!insErr && inserted) return { ok: true, capture: project(inserted as Row), created: true };
+  if (!insErr && inserted) return { ok: true, capture: project(inserted as Row), created: true, newlySaved: intent === "save" };
 
   // 3. 23505 → a concurrent save won the unique tuple. Re-read it; do NOT overwrite it.
   if ((insErr as { code?: string } | null)?.code === "23505") {
@@ -177,9 +177,9 @@ export async function ensureActionCapture(
    * insert winner. Success is confirmed active lane membership, not merely row existence.
    * Track never restores a removed save and never stamps saved_at. */
   async function settleExisting(row: Row & { saved_at?: string | null; saved_removed_at?: string | null }): Promise<EnsureActionCaptureResult> {
-    if (intent === "track_source") return { ok: true, capture: project(row), created: false };
+    if (intent === "track_source") return { ok: true, capture: project(row), created: false, newlySaved: false };
     const active = (value: typeof row) => value.status === "captured" && !!value.saved_at && !value.saved_removed_at;
-    if (active(row)) return { ok: true, capture: project(row), created: false };
+    if (active(row)) return { ok: true, capture: project(row), created: false, newlySaved: false };
     if (row.status !== "captured") return { ok: false, code: "update_failed" };
     const patch = {
       ...(!row.saved_at ? { saved_at: new Date().toISOString() } : {}),
@@ -194,14 +194,14 @@ export async function ensureActionCapture(
       : update.is("saved_removed_at", null);
     const { data: updated, error: updateError } = await update.select(CAPTURE_COLS).maybeSingle();
     if (updateError) return { ok: false, code: "update_failed" };
-    if (updated && active(updated as typeof row)) return { ok: true, capture: project(updated as Row), created: false };
+    if (updated && active(updated as typeof row)) return { ok: true, capture: project(updated as Row), created: false, newlySaved: true };
 
     // A concurrent Save may have satisfied the guarded update. Re-read once and
     // acknowledge only its actual stored state; never return the stale input row.
     const { data: current, error: currentError } = await admin.from("bty_action_captures")
       .select(CAPTURE_COLS).eq("id", row.id).eq("user_id", userId).maybeSingle();
     if (currentError) return { ok: false, code: "load_failed" };
-    if (current && active(current as typeof row)) return { ok: true, capture: project(current as Row), created: false };
+    if (current && active(current as typeof row)) return { ok: true, capture: project(current as Row), created: false, newlySaved: false };
     return { ok: false, code: "update_failed" };
   }
 

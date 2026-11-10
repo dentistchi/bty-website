@@ -12,10 +12,13 @@ import { NextRequest } from "next/server";
 const verifyBotFrameworkToken = vi.fn();
 const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const ensureActionCapture = vi.fn();
+const scheduleActionReceipt = vi.fn();
 
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({ verifyBotFrameworkToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({ resolveBtyUserFromMicrosoftIdentity }));
 vi.mock("@/lib/bty/action-capture/ensureActionCapture.server", () => ({ ensureActionCapture }));
+vi.mock("@/lib/bty/teams/actionReceipt.server", () => ({ scheduleActionReceipt }));
+vi.mock("@/lib/bty/teams/tenantRoute.server", () => ({ rememberTenantRoute: vi.fn() }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
 
 const TID = "11111111-1111-1111-1111-111111111111";
@@ -36,6 +39,7 @@ afterEach(() => {
 });
 const OID = "22222222-2222-2222-2222-222222222222";
 const RESOLVED_USER = "81f08aa1-0000-0000-0000-000000000000";
+const SERVICE_URL = "https://smba.trafficmanager.net/emea/";
 
 function req(body: unknown) {
   return new NextRequest("https://arena.btydaily.com/api/bty/teams/invoke", {
@@ -48,6 +52,7 @@ function req(body: unknown) {
 function activity(over: Record<string, unknown> = {}) {
   return {
     name: "composeExtension/fetchTask",
+    serviceUrl: SERVICE_URL,
     channelData: { tenant: { id: TID } },
     from: { id: "29:addr", aadObjectId: OID },
     conversation: { id: "19:abc@thread.tacv2" },
@@ -78,7 +83,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   verifyBotFrameworkToken.mockResolvedValue({ ok: true, payload: {} });
   resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "RESOLVED", userId: RESOLVED_USER });
-  ensureActionCapture.mockResolvedValue({ ok: true, created: true, capture: { id: "c1" } });
+  ensureActionCapture.mockResolvedValue({ ok: true, created: true, newlySaved: true, capture: { id: "c1" } });
 });
 
 describe("POST /api/bty/teams/invoke", () => {
@@ -88,6 +93,7 @@ describe("POST /api/bty/teams/invoke", () => {
     expect(res.status).toBe(401);
     expect(resolveBtyUserFromMicrosoftIdentity).not.toHaveBeenCalled();
     expect(ensureActionCapture).not.toHaveBeenCalled();
+    expect(scheduleActionReceipt).not.toHaveBeenCalled();
   });
 
   it("writes ONLY the resolver's user id — a body-supplied user_id is ignored", async () => {
@@ -136,13 +142,41 @@ describe("POST /api/bty/teams/invoke", () => {
     expect(res.status).toBe(200);
   });
 
-  it("the reply envelope follows the invoke type", async () => {
-    const fetchRes = await POST(req(activity({ name: "composeExtension/fetchTask" })));
-    expect(cardText(await fetchRes.json())).toBe("\u2713 Saved");
-    const submitRes = await POST(req(activity({ name: "composeExtension/submitAction" })));
-    expect((await submitRes.json()).composeExtension.text).toBe("\u2713 Saved");
+  it.each(["composeExtension/fetchTask", "composeExtension/submitAction"])("shows an Adaptive Card receipt for Save on %s", async name => {
+    const body = await (await POST(req(activity({ name })))).json();
+    expect(body.task.type).toBe("continue");
+    expect(cardText(body)).toBe("✓ Saved");
+    expect(body.composeExtension).toBeUndefined();
   });
 
+  it("schedules a private receipt only for the Save that adds the message to the lane", async () => {
+    ensureActionCapture.mockResolvedValueOnce({ ok: true, created: false, newlySaved: true, capture: { id: "c1" } });
+    const body = await (await POST(req(activity({ locale: "ko-KR", aadObjectId: "injected" })))).json();
+    expect(cardText(body)).toBe("✓ 저장했습니다");
+    expect(scheduleActionReceipt).toHaveBeenCalledOnce();
+    expect(scheduleActionReceipt).toHaveBeenCalledWith(expect.anything(), {
+      tenantId: TID, aadObjectId: OID, serviceUrl: SERVICE_URL, action: "save", locale: "ko",
+    });
+    expect(ensureActionCapture.mock.invocationCallOrder[0]).toBeLessThan(scheduleActionReceipt.mock.invocationCallOrder[0]);
+
+    ensureActionCapture.mockResolvedValueOnce({ ok: true, created: false, newlySaved: false, capture: { id: "c1" } });
+    const repeated = await (await POST(req(activity()))).json();
+    expect(cardText(repeated)).toBe("✓ Saved");
+    expect(scheduleActionReceipt).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the Save confirmation when private routing is unavailable, without guessing a destination", async () => {
+    const body = await (await POST(req(activity({ serviceUrl: "http://invalid.test" })))).json();
+    expect(cardText(body)).toBe("✓ Saved");
+    expect(scheduleActionReceipt).not.toHaveBeenCalled();
+  });
+
+  it("never schedules a receipt for a failed Save", async () => {
+    ensureActionCapture.mockResolvedValueOnce({ ok: false, code: "update_failed" });
+    const body = await (await POST(req(activity({ name: "composeExtension/submitAction" })))).json();
+    expect(cardText(body)).toBe("Couldn't save. Please go again in a moment.");
+    expect(scheduleActionReceipt).not.toHaveBeenCalled();
+  });
 
   it("RENDER CONTRACT — the ONLY response family Teams iOS actually paints", async () => {
     /*
@@ -263,8 +297,7 @@ describe("★ neither invisible response family may return without a new device 
     // Asserted on CODE: the file documents both failures at length, and a guard that fired on the
     // documentation would be objecting to the evidence it exists to preserve.
     expect(src, "no task.type message").not.toMatch(/task:\s*\{\s*type:\s*["']message["']/);
-    // One composeExtension emitter survives, and it is the submitAction branch of `say()` — the
-    // documented shape for THAT invoke, not a success transport.
+    // Only activities without a recognized message-action invoke use the bare envelope.
     expect((src.match(/composeExtension:\s*\{/g) ?? []).length).toBe(1);
   });
 

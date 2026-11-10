@@ -208,15 +208,15 @@ describe("resolveServiceUrl — the pure rule", () => {
   });
 });
 
-describe("F/12 — this slice sends nothing", () => {
-  it("no outbound Bot Framework call exists on the Track path", async () => {
+describe("F/12 — Track returns without waiting for delivery", () => {
+  it("makes no outbound Bot Framework call before returning the Track response", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
     await POST(req(activity({ serviceUrl: REAL })));
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 
-  it("the write is still the ONLY announcement RPC the Track path calls", async () => {
+  it("only runs the announcement write RPC before returning the Track response", async () => {
     await POST(req(activity({ serviceUrl: REAL })));
     const names = rpc.mock.calls.map((c) => c[0]);
     expect(names).toEqual(["bty_track_announcement_v1"]);
