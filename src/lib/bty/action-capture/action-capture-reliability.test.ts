@@ -59,13 +59,23 @@ describe("Save success means the caller's item is actually in the Saved lane", (
   it("applies Save intent to a concurrent Track-only insert winner without rewriting its source", async () => {
     const { admin, rows, writes } = db({ race: true });
     const r = await ensureActionCapture(admin, { userId: "owner", input, intent: "save" });
-    expect(r).toMatchObject({ ok: true, created: false, capture: { id: "capture" } });
+    expect(r).toMatchObject({ ok: true, created: false, newlySaved: true, capture: { id: "capture" } });
     expect(rows).toHaveLength(1);
     expect(rows[0].saved_at).toBeTruthy();
     expect(await listMyActionCaptures(admin, "owner")).toHaveLength(1);
     expect(writes).toHaveLength(1);
     expect(Object.keys(writes[0])).not.toContain("preview_text");
     expect(rows[0].preview_text).toBe("Synthetic QA");
+  });
+
+  it("reports only one new Save when concurrent requests restore the same removed item", async () => {
+    const { admin, writes } = db({ existing: capture({ saved_at: "2026-10-01T00:00:00Z", saved_removed_at: "2026-10-02T00:00:00Z" }) });
+    const save = () => ensureActionCapture(admin, { userId: "owner", input, intent: "save" });
+    const results = await Promise.all([save(), save()]);
+    expect(results.every(result => result.ok)).toBe(true);
+    expect(results.filter(result => result.ok && result.newlySaved)).toHaveLength(1);
+    expect(await save()).toMatchObject({ ok: true, newlySaved: false });
+    expect(writes).toHaveLength(1);
   });
 });
 

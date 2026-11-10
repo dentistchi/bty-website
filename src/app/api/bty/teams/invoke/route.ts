@@ -21,6 +21,7 @@ import { isCollaborationParticipant } from "@/domain/authority/collaborationPart
 import { parseTrainingCardAction, adaptiveCardResponse, buildNoticeCard } from "@/domain/teams/trainingCard";
 import { handleTrainingCardAction } from "@/lib/bty/foundry/teams/teamsTrainingBot.server";
 import { rememberTenantRoute } from "@/lib/bty/teams/tenantRoute.server";
+import { scheduleActionReceipt } from "@/lib/bty/teams/actionReceipt.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,9 +29,8 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/bty/teams/invoke — the Teams "Save to BTY" message action. Slice T1.
  *
- * TEAMS IS AN INPUT CHANNEL. This route creates a `bty_action_captures` row and NOTHING ELSE. No
- * Action Contract, no deadline, no verification obligation, no XP, no AIR, no Today commitment.
- * "Capture != Commitment" is the whole product decision, and this route is where it is kept.
+ * Save adds a personal capture and confirms it to the caller. It creates no Action Contract,
+ * deadline, verification obligation, XP, AIR, or Today commitment.
  *
  * THE ORDER OF OPERATIONS IS THE SECURITY MODEL:
  *
@@ -53,33 +53,15 @@ export const dynamic = "force-dynamic";
  */
 
 /**
- * Teams renders this text to the user. Calm, specific, and never technical.
- *
- * The envelope differs by invoke: a `fetchTask` expects a `task` response, a `submitAction` expects
- * a `composeExtension` one. Replying in the wrong shape shows a generic Teams error even though the
- * save succeeded, so the shape follows the request rather than a fixed choice.
- *
- * WHY A CARD AND NOT `type: "message"`. The documented contract offers both -- "`continue` to
- * present a form, or `message` for a simple pop-up" -- and `message` is what this returned first,
- * because a one-line confirmation is exactly a simple pop-up. On the Founder's iPhone it rendered
- * NOTHING, twice, on invokes that were otherwise completely successful: JWT valid, identity
- * RESOLVED, capture written, HTTP 200. The save worked and the person could not tell.
- *
- * So this returns the other documented shape: `continue` with the smallest possible Adaptive Card.
- * I could not find documentation stating that mobile drops `type: "message"`, so this is a change
- * made on device evidence rather than on a citation -- worth knowing if it ever needs revisiting.
- *
- * The card is deliberately one line with NO input fields and NO submit action: the product
- * requirement is tap -> confirmation -> done, and anything the user must fill in or press would be
- * a form we do not need. A dialog they dismiss is the smallest thing the platform will actually
- * show them.
+ * Successful Save and Track use a `task.continue` Adaptive Card for both invoke names.
+ * A plain `message` response rendered nothing on the Founder's iPhone after a successful Save.
  */
 const ADAPTIVE_CARD = "application/vnd.microsoft.card.adaptive";
 
 /**
  * ★ `height` IS A PARAMETER SO THE EXPERIMENT CANNOT REACH A FAILURE MESSAGE.
  *
- * `say()` builds this card for successes AND refusals, and the refusals are longer sentences
+ * Successes and refusals share this card builder, and the refusals are longer sentences
  * ("Sign in to BTY with Microsoft first.", "Add a line about what they should know or do."). Pinning
  * a numeric pixel height globally would risk clipping the one message a person actually needs to
  * read. Only the terminal SUCCESS passes a number; everything else keeps `"small"`, exactly as it
@@ -114,9 +96,9 @@ function confirmationCard(text: string, height: number | "small" = "small") {
   };
 }
 
-function say(text: string, invokeName?: TeamsInvokeName, height: number | "small" = "small") {
-  return invokeName === TEAMS_INVOKE_FETCH_TASK
-    ? NextResponse.json({ task: { type: "continue", value: confirmationCard(text, height) } })
+function say(text: string, invokeName?: TeamsInvokeName) {
+  return invokeName
+    ? dialog(confirmationCard(text))
     : NextResponse.json({ composeExtension: { type: "message", text } });
 }
 
@@ -164,10 +146,8 @@ const SAVE_CONFIRM_HEIGHT = 130;
  */
 
 /** A dialog (or a confirmation) rather than a bare message — see the card note above. */
-function dialog(value: unknown, invokeName?: TeamsInvokeName) {
-  return invokeName === TEAMS_INVOKE_FETCH_TASK
-    ? NextResponse.json({ task: { type: "continue", value } })
-    : NextResponse.json({ task: { type: "continue", value } });
+function dialog(value: unknown) {
+  return NextResponse.json({ task: { type: "continue", value } });
 }
 
 /*
@@ -227,7 +207,7 @@ export async function POST(req: NextRequest) {
   */
   const locale = typeof (activity as { locale?: unknown })?.locale === "string" &&
     ((activity as { locale: string }).locale.toLowerCase().startsWith("ko")) ? "ko" : "en";
-  const trackSay = (ko: string, en: string) => dialog(confirmationCard(locale === "ko" ? ko : en), TEAMS_INVOKE_FETCH_TASK);
+  const trackSay = (ko: string, en: string) => dialog(confirmationCard(locale === "ko" ? ko : en));
   const identity = readActivityIdentity(activity);
   const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
   if (readCommandId(activity) !== TEAMS_COMMAND_TRACK && identity && routing.url) {
@@ -356,7 +336,7 @@ export async function POST(req: NextRequest) {
     */
     // The dialog itself. Nothing is written for merely opening it.
     if (parsed.invokeName === TEAMS_INVOKE_FETCH_TASK) {
-      return dialog(trackDialogCard(locale), parsed.invokeName);
+      return dialog(trackDialogCard(locale));
     }
 
     const submission = parseTeamsTrackSubmission(activity);
@@ -372,12 +352,11 @@ export async function POST(req: NextRequest) {
       return dialog(trackDialogCard(locale, {
         hostFraming: typeof display?.hostFraming === "string" ? display.hostFraming.slice(0, 1000) : "",
         ...(isTrackingMode(display?.trackingMode) ? { trackingMode: display.trackingMode } : {}),
-      }, message), parsed.invokeName);
+      }, message));
     }
 
     // All non-ok routing results (absent, invalid, mismatch) fail closed before creation.
     // Track never pre-saves a tenant route. Log only the fixed reason enum, never coordinates.
-    const routing = resolveServiceUrl(activity, verified.payload.serviceurl);
     if (routing.reason !== "ok" || !routing.url) {
       console.error("[teams-invoke] track routing refused", { reason: routing.reason });
       return trackSay(
@@ -401,7 +380,7 @@ export async function POST(req: NextRequest) {
         return dialog(trackDialogCard(locale, {
           trackingMode: submission.trackingMode,
           hostFraming: submission.hostFraming,
-        }), parsed.invokeName);
+        }));
       }
       if (tracked.reason === "invalid_actor") return trackSay(
         "BTY 계정을 확인할 수 없습니다.",
@@ -427,12 +406,16 @@ export async function POST(req: NextRequest) {
       announcementId: tracked.announcementId,
       ownerUserId: resolution.userId,
     });
-    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted, notificationStatus), TEAMS_INVOKE_FETCH_TASK);
+    if (!tracked.alreadyExisted) {
+      scheduleActionReceipt(admin, {
+        tenantId: parsed.tenantId, aadObjectId: parsed.aadObjectId, serviceUrl: routing.url, action: "track", locale,
+      });
+    }
+    return dialog(trackConfirmationCard(tracked.count, locale, tracked.alreadyExisted, notificationStatus));
   }
 
-  // 4. CAPTURE. Idempotent by `UNIQUE(user_id, source_type, external_key)`; a repeat save returns
-  //    the original row untouched. The user's intent is satisfied either way, so a duplicate reads
-  //    as success rather than as an error they cannot act on.
+  // 4. CAPTURE. A repeat Save on an active item returns the same confirmation. Only the write
+  //    that adds the item to the Saved lane can schedule a new private message.
   const result = await ensureActionCapture(admin, {
     userId: resolution.userId,
     input: parsed.capture,
@@ -446,5 +429,10 @@ export async function POST(req: NextRequest) {
     return say(sourceProblem ? MSG.cannotSave : MSG.serverBusy, parsed.invokeName);
   }
 
-  return say(MSG.saved, parsed.invokeName, SAVE_CONFIRM_HEIGHT);
+  if (result.newlySaved && routing.url) {
+    scheduleActionReceipt(admin, {
+      tenantId: parsed.tenantId, aadObjectId: parsed.aadObjectId, serviceUrl: routing.url, action: "save", locale,
+    });
+  }
+  return dialog(confirmationCard(locale === "ko" ? "✓ 저장했습니다" : MSG.saved, SAVE_CONFIRM_HEIGHT));
 }
