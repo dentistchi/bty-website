@@ -170,7 +170,21 @@ export function createClaimFake(recipients: FakeRecipient[]) {
   };
 
   return {
-    admin: { rpc: (fn: string, args: Record<string, unknown>) => rpc(fn, args) } as never,
+    admin: {
+      rpc,
+      from() {
+        let recipientId = "";
+        const query = {
+          select: () => query,
+          eq(column: string, value: string) {
+            if (column === "id") recipientId = value;
+            return query;
+          },
+          maybeSingle: async () => ({ data: find(recipientId) ? { user_id: "linked-user" } : null, error: null }),
+        };
+        return query;
+      },
+    } as never,
     convRefs,
     creationClaims,
     /** Move the clock past a lease without waiting two real minutes. */

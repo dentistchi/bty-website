@@ -46,6 +46,13 @@ export function historicalChangedFiles(commit: string, root = process.cwd()): st
 }
 
 type SourceEntry = { file: string; sha256: string };
+const POST_SNAPSHOT_MIGRATIONS: SourceEntry[] = [
+  {
+    file: "20261110191609_bty_track_first_login_invites.sql",
+    sha256: "eb43e07aba3c762f121818aca6ee6e6d0a9d8166b7ed84b71ac1eb5897370956",
+  },
+];
+
 /** Observed source registration only: this does not approve SQL semantics or apply a migration. */
 export function pinnedLaterSourceMigrations(
   root = process.cwd(),
@@ -56,8 +63,9 @@ export function pinnedLaterSourceMigrations(
   const value = JSON.parse(raw) as { snapshotCommit: string; entries: SourceEntry[] };
   assert.equal(value.snapshotCommit, "7578ec74665af60ae7fa0f9517e47e4c05b4d631");
   assert(value.entries.length > 0);
-  assert.equal(new Set(value.entries.map(entry => entry.file)).size, value.entries.length);
-  return value.entries.map(entry => {
+  const entries = [...value.entries, ...POST_SNAPSHOT_MIGRATIONS];
+  assert.equal(new Set(entries.map(entry => entry.file)).size, entries.length);
+  return entries.map(entry => {
     assert.match(entry.file, /^\d{14}_[a-z0-9_]+\.sql$/);
     assert.match(entry.sha256, /^[a-f0-9]{64}$/);
     assert.equal(sha256(readSource(join(root, "supabase/migrations", entry.file))), entry.sha256,

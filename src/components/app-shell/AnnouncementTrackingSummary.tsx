@@ -1,8 +1,9 @@
 "use client";
-import { TRACKING_COPY, trackingState, trackingComplete, type TrackingEvidence, type summariseTracking } from "@/domain/announcement/trackingEvidence";
+import { TRACKING_COPY, trackingState, trackingComplete, type summariseTracking } from "@/domain/announcement/trackingEvidence";
+import type { HostAnnouncement } from "@/lib/bty/announcement/announcementService.server";
 export default function AnnouncementTrackingSummary({ counts, audience, locale }: {
   counts: ReturnType<typeof summariseTracking>;
-  audience: (TrackingEvidence & { recipientId: string; display: string | null; responseText: string | null })[];
+  audience: NonNullable<HostAnnouncement["audience"]>;
   locale: "en" | "ko";
 }) {
   const t = TRACKING_COPY[locale];
@@ -26,8 +27,14 @@ export default function AnnouncementTrackingSummary({ counts, audience, locale }
       <p className="text-xs leading-5 text-white/55">{t.evidence}</p>
       <ul className="mt-2">{audience.map((r, i) => <li key={r.recipientId} className="py-2 text-[0.82rem] leading-6 text-white/75">
         <span>{r.display ?? `${t.someone} ${i + 1}`}</span>{" · "}
-        <span>{trackingState(r) === "targeted" ? t.noEvidence : t[trackingState(r)]}</span>{" · "}
-        <span>{trackingComplete(r) ? t.complete : t.remaining}</span>
+        {r.signInStatus && trackingState(r) === "targeted" ? (
+          <span>{r.signInStatus === "notified" ? t.notifiedAwaitingSignIn : t.awaitingSignIn}</span>
+        ) : (
+          <>
+            <span>{trackingState(r) === "targeted" ? t.noEvidence : t[trackingState(r)]}</span>{" · "}
+            <span>{trackingComplete(r) ? t.complete : t.remaining}</span>
+          </>
+        )}
         {r.responseText ? <p>{r.responseText}</p> : null}
       </li>)}</ul>
     </details>

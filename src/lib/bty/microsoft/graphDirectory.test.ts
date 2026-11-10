@@ -7,6 +7,7 @@ import {
   graphConfigFromEnv,
   probeDirectReports,
   probeProfessionalProfile,
+  probeRecipientEligibility,
   resetGraphTokenCache,
 } from "./graphDirectory.server";
 
@@ -170,6 +171,17 @@ describe("the app-only token", () => {
     expect(await getGraphAppToken(config)).toBeNull();
   });
 
+  it("only reuses a cached token for the same tenant and client", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: "first", expires_in: 3600 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: "other", expires_in: 3600 }) });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await getGraphAppToken(config)).toBe("first");
+    expect(await getGraphAppToken(config)).toBe("first");
+    expect(await getGraphAppToken({ ...config, tenantId: OID })).toBe("other");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("never logs the secret or the token", async () => {
     const errors: unknown[][] = [];
     vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => void errors.push(a));
@@ -179,6 +191,26 @@ describe("the app-only token", () => {
     expect(dump).not.toContain("SUPERSECRET");
     expect(dump).not.toContain("cid");
   });
+});
+
+describe("the recipient directory check", () => {
+  it("checks the exact selected object and uses the caller's deadline", async () => {
+    const signal = new AbortController().signal;
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+      id: OID, accountEnabled: true, userType: "Member",
+    }) });
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await probeRecipientEligibility("token", OID, signal)).toEqual({ ok: true, eligible: true, displayName: null });
+    expect(fetchMock).toHaveBeenCalledWith(`https://graph.microsoft.com/v1.0/users/${OID}?$select=id,accountEnabled,userType,displayName`,
+      expect.objectContaining({ signal }));
+  });
+
+  it.each([{ id: TENANT, accountEnabled: true, userType: "Member" }, { id: OID, userType: "Member" }])(
+    "fails closed on a mismatched or incomplete directory result", async body => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => body }));
+      expect(await probeRecipientEligibility("token", OID)).toEqual({ ok: false, reason: "http_error" });
+    },
+  );
 });
 
 describe("the direct-reports probe", () => {

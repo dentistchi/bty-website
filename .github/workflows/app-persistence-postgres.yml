@@ -67,6 +67,11 @@ jobs:
           BTY_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres?application_name=bty_cleanup_qa
         run: node scripts/qa/app-persistence-postgres.mjs --output-dir "$RUNNER_TEMP/bty-app-persistence-postgres"
 
+      - name: Verify Track authority and first sign-in binding in PostgreSQL
+        env:
+          BTY_TRACKING_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres
+        run: npm exec -- vitest run src/lib/bty/announcement/trackingModes.pg.test.ts --minWorkers=1 --maxWorkers=1
+
       - name: Preserve actual SQL result, Vitest JSON, witnesses and logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

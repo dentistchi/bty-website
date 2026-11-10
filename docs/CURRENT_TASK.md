@@ -1,5 +1,18 @@
 # Active application task contract
 
+## TEAMS-TRACK-FIRST-LOGIN-INVITES — 2026-11-10
+
+Let a verified, active internal Teams member be added to Track before their
+first BTY sign-in. Keep the existing linked-user path. The server independently
+checks an unlinked recipient with the configured tenant's Microsoft directory,
+then freezes their Microsoft tenant and object ID in the Track transaction.
+The existing Microsoft-first sign-in flow binds the pending recipient. The
+notification provides sign-in guidance when the Teams bot can reach them.
+
+Keep this change separate from the delayed reminder draft. Verify with synthetic
+Teams responses and disposable PostgreSQL. Production rollout and live Teams
+delivery verification are separate.
+
 ## AI-PATIENT-ALL-CONSENTED — 2026-11-05
 
 Dr. Chi explicitly approved opening AI Patient to every signed-in BTY user with

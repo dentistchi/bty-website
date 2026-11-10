@@ -123,6 +123,22 @@ export async function notifyRecipient(
     return { ok: false, reason };
   };
 
+  // Read the binding from the owner-scoped claimed row. A first-sign-in notice
+  // contains only the next step, so the request's details stay in BTY.
+  let needsFirstSignIn: boolean;
+  try {
+    const { data: recipient, error: recipientError } = await admin
+      .from("bty_tracked_announcement_recipients")
+      .select("user_id, bty_tracked_announcements!inner(owner_user_id)")
+      .eq("id", params.recipientId)
+      .eq("bty_tracked_announcements.owner_user_id", params.ownerUserId)
+      .maybeSingle<{ user_id: string | null }>();
+    if (recipientError || !recipient) return release("begin_failed");
+    needsFirstSignIn = !recipient.user_id;
+  } catch {
+    return release("begin_failed");
+  }
+
   // ---- 2. AUTHENTICATE. Nothing has been risked; every failure here is releasable. ----
   const appId = params.appId ?? process.env.TEAMS_BOT_APP_ID ?? "";
   const token = await getBotFrameworkToken({ appId });
@@ -235,10 +251,11 @@ export async function notifyRecipient(
   }
 
   // The Host's name, from the provider-written identity — never `user_metadata`, never an email.
-  const names = await resolveDisplayNames(admin, [params.ownerUserId]);
+  const names = needsFirstSignIn ? null : await resolveDisplayNames(admin, [params.ownerUserId]);
   const text = buildProactiveMessage({
-    hostName: names.get(params.ownerUserId) ?? null,
+    hostName: names?.get(params.ownerUserId) ?? null,
     hostFraming,
+    needsFirstSignIn,
   });
 
   /*

@@ -15,6 +15,8 @@ const resolveDisplayNames = vi.fn();
 const getBotFrameworkToken = vi.fn();
 const createOneOnOneConversation = vi.fn();
 const sendProactiveMessage = vi.fn();
+const binding = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn() };
+const from = vi.fn(() => binding);
 
 vi.mock("@/lib/bty/announcement/recipientDisplayName.server", () => ({ resolveDisplayNames }));
 vi.mock("@/lib/bty/teams/botToken.server", () => ({ getBotFrameworkToken }));
@@ -30,7 +32,7 @@ const RECIP = "aaaaaaaa-0000-0000-0000-000000000001";
 const URL_ = "https://smba.example.net/amer/10110d5c/";
 const FRAMING = "Please read this before Friday.";
 
-const admin = { rpc } as never;
+const admin = { rpc, from } as never;
 const notify = async (over: Record<string, unknown> = {}) => {
   const { notifyRecipient } = await import("@/lib/bty/announcement/notifyRecipient.server");
   return notifyRecipient(admin, { recipientId: RECIP, ownerUserId: OWNER, appId: "bot-app-id", ...over });
@@ -74,6 +76,7 @@ beforeEach(() => {
   getBotFrameworkToken.mockResolvedValue({ ok: true, token: "tok" });
   createOneOnOneConversation.mockResolvedValue({ ok: true, conversationId: "19:conv@personal" });
   sendProactiveMessage.mockResolvedValue({ ok: true });
+  binding.maybeSingle.mockResolvedValue({ data: { user_id: "linked-user" }, error: null });
 });
 
 const called = (fn: string) => rpc.mock.calls.filter((c) => c[0] === fn);
@@ -271,6 +274,30 @@ describe("F — the message itself", () => {
     // access to a source body at all, which is what makes republishing structurally impossible.
     const beginArgs = called("bty_begin_recipient_notification")[0][1];
     expect(Object.keys(beginArgs)).toEqual(["p_recipient_id", "p_owner_user_id"]);
+  });
+
+  it("sends an unlinked recipient a generic Teams sign-in notice", async () => {
+    binding.maybeSingle.mockResolvedValue({ data: { user_id: null }, error: null });
+    expect((await notify()).ok).toBe(true);
+    expect(from).toHaveBeenCalledWith("bty_tracked_announcement_recipients");
+    expect(binding.eq.mock.calls).toEqual([
+      ["id", RECIP],
+      ["bty_tracked_announcements.owner_user_id", OWNER],
+    ]);
+    const sentText = sendProactiveMessage.mock.calls[0][0].text;
+    expect(sentText).toContain("Continue with Microsoft");
+    expect(sentText).not.toContain(FRAMING);
+    expect(sentText).not.toContain("Dr. Chi");
+    expect(sentText).not.toContain("http");
+    expect(resolveDisplayNames).not.toHaveBeenCalled();
+  });
+
+  it("releases a claim when the recipient binding cannot be checked", async () => {
+    binding.maybeSingle.mockResolvedValue({ data: null, error: { code: "db_error" } });
+    expect(await notify()).toEqual({ ok: false, reason: "begin_failed" });
+    expect(called("bty_release_recipient_notification_claim")).toHaveLength(1);
+    expect(getBotFrameworkToken).not.toHaveBeenCalled();
+    expect(sendProactiveMessage).not.toHaveBeenCalled();
   });
 
   it("builds NO Got it / Question / Need help controls", async () => {
