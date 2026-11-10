@@ -2,6 +2,7 @@
 import app from "../.open-next/worker.js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { syncMicrosoftDirectoryAuthority } from "@/lib/bty/microsoft/directoryAuthority.server";
+import { dispatchTeamsReminders } from "@/lib/bty/teams/reminderDispatch.server";
 
 type ExecutionContext = { waitUntil(promise: Promise<unknown>): void };
 
@@ -19,6 +20,11 @@ export default {
           ok: result.ok, total: result.total, activeMembers: result.activeMembers,
           managers: result.managers, indeterminate: result.indeterminate,
         });
+      }),
+    );
+    ctx.waitUntil(
+      dispatchTeamsReminders(admin).then((result) => {
+        console.info("[teams-delayed-reminders] scheduled run", result);
       }),
     );
   },
