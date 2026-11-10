@@ -71,12 +71,13 @@ test("delayed Teams reminders on a fresh native PostgreSQL cluster", { skip: !ur
   t.after(() => pool.end());
   const [{ fresh, version }] = (await pool.query(`
     select current_database() = 'bty_teams_reminders_test'
-      and host(inet_server_addr()) = '127.0.0.1'
+      and current_user = 'postgres'
+      and inet_server_port() = $1
       and not exists (select 1 from pg_namespace where nspname not in ('pg_catalog','pg_toast','information_schema','public'))
       and not exists (select 1 from pg_class where relnamespace = 'public'::regnamespace)
       and not exists (select 1 from pg_roles where rolname in ('anon','authenticated','service_role'))
       as fresh, version()
-  `)).rows;
+  `, [Number(destination.port)])).rows;
   assert.equal(fresh, true, "Refusing a nonempty or mismatched test database");
   t.diagnostic(version);
 
