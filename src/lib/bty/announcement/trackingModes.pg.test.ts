@@ -64,7 +64,9 @@ const APPLIED = [
 
 const MIGRATION = "20260927051100_announcement_tracking_modes_v1.sql";
 const ALIGNMENT = "20260928000000_bty_track_collaboration_authority_alignment_v1.sql";
+const FIRST_LOGIN_INVITES = "20261110191609_bty_track_first_login_invites.sql";
 let root: Pool; let db: Pool;
+let databaseCreated = false;
 const name = `tracking_v1_${process.pid}`;
 beforeAll(async () => {
  if (!URL) return;
@@ -72,6 +74,7 @@ beforeAll(async () => {
  if (!["localhost", "127.0.0.1"].includes(url.hostname)) throw new Error("Local PostgreSQL only");
  root = new Pool({ connectionString: URL });
  await root.query(`create database ${name}`);
+ databaseCreated = true;
  url.pathname = `/${name}`;
  db = new Pool({ connectionString: url.toString(), max: 12 });
  for (const sql of [...APPLIED, read("20260915000000_bty_host_track_history_retention_v1.sql")]) await db.query(sql);
@@ -79,8 +82,17 @@ beforeAll(async () => {
  await db.query(read(MIGRATION));
  await db.query(read(ALIGNMENT));
  await db.query(read(ALIGNMENT));
+ await db.query(read(FIRST_LOGIN_INVITES));
+ await db.query(read(FIRST_LOGIN_INVITES));
 }, 60000);
-afterAll(async () => { await db?.end(); if (root) { await root.query(`drop database ${name}`); await root.end(); } });
+afterAll(async () => {
+ try {
+  await db?.end();
+  if (databaseCreated) await root.query(`drop database ${name}`);
+ } finally {
+  await root?.end();
+ }
+}, 60000);
 const oid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12,"0")}`;
 async function seed() {
  const host = (await db.query("insert into auth.users default values returning id")).rows[0].id;
@@ -240,9 +252,7 @@ describe.runIf(!!URL)("collaboration authority alignment: actor and recipient sh
   const foreign=(await db.query("insert into auth.users default values returning id")).rows[0].id;
   await db.query("insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",[foreign,JSON.stringify({custom_claims:{tid:s.host,oid:oid(900)}})]);
   const before=await counts();
-  const result=await trackAnnouncement(serviceDb(),{ownerUserId:other.host,actorAadObjectId:other.host,
-   capture:{provider:"teams",tenant_id:other.host,conversation_id:"conversation",message_id:"x-tenant"},hostFramingRaw:"Notice",pickedRaw:[oid(900)],trackingMode:"acknowledgment"});
-  expect(result).toMatchObject({ok:false,reason:"invalid_recipients"});
+  await expect(track(other, [oid(900)])).rejects.toThrow("invalid_recipients");
   const after=await counts();
   expect(after.bty_tracked_announcements).toBe(before.bty_tracked_announcements);expect(after.bty_tracked_announcement_recipients).toBe(before.bty_tracked_announcement_recipients);
  });
@@ -283,8 +293,8 @@ describe.runIf(!!URL)("collaboration authority alignment: actor and recipient sh
   if(shape==="banned") await db.query("update auth.users set banned_until=now()+interval '100 years' where id=$1",[s.users[oid(1)]]);
   if(shape==="deleted") await db.query("update auth.users set deleted_at=now() where id=$1",[s.users[oid(1)]]);
   const before=await counts();
-  const result=await call(s.host,picked);
-  expect(result).toMatchObject({ok:false,reason:"invalid_recipients"});expect(await counts()).toEqual(before);
+  await expect(track(s, picked)).rejects.toThrow("invalid_recipients");
+  expect(await counts()).toEqual(before);
  });
  it("a ban that has already EXPIRED no longer blocks either party",async()=>{
   const s=await seed();
@@ -436,8 +446,132 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
  });
 });
 
+describe.runIf(!!URL)("Track first-login invitations: native PostgreSQL", () => {
+  const invite = async (
+    source: { host: string; cap: string },
+    selected: Array<string | null>,
+    preverified: Array<string | null>,
+    mode = "acknowledgment",
+    tenant = source.host,
+  ) => {
+    const { rows } = await db.query(
+      "select * from public.bty_track_announcement_v2($1::uuid,$1::text,$2,'Notice',$3,$4,null,$5)",
+      [source.host, { provider: "teams", tenant_id: tenant, conversation_id: "conversation", message_id: source.cap }, selected, mode, preverified],
+    );
+    return rows[0];
+  };
+  const audience = async (id: string) => (await db.query(
+    "select aad_object_id, user_id, bound_at from public.bty_tracked_announcement_recipients where announcement_id=$1 order by aad_object_id",
+    [id],
+  )).rows;
+  const addIdentity = async (user: string, tenant: string, recipientOid: string) => db.query(
+    "insert into auth.identities(user_id,provider,identity_data) values($1,'azure',$2)",
+    [user, { custom_claims: { tid: tenant, oid: recipientOid } }],
+  );
+  const bind = async (user: string) => (await db.query(
+    "select bound from public.bty_bind_announcement_recipients_for_user($1)", [user],
+  )).rows[0].bound;
+
+  it("v1 still refuses an unlinked OID, while v2 freezes verified OIDs without creating BTY accounts", async () => {
+    const s = await seed();
+    const before = await counts();
+    const usersBefore = (await db.query("select count(*) from auth.users")).rows[0].count;
+    await expect(track(s, [oid(0), oid(1)])).rejects.toThrow("invalid_recipients");
+    expect(await counts()).toEqual(before);
+    await addIdentity(s.users[oid(1)], s.host, oid(11));
+    const result = await invite(s, [s.host, oid(0), oid(1), oid(2), oid(11), oid(12), oid(12)], [oid(12), oid(0)]);
+    expect(result).toMatchObject({ resolved_count: 4, already_existed: false });
+    expect(await audience(result.announcement_id)).toEqual([
+      { aad_object_id: oid(0), user_id: null, bound_at: null },
+      { aad_object_id: oid(1), user_id: s.users[oid(1)], bound_at: expect.any(Date) },
+      { aad_object_id: oid(2), user_id: s.users[oid(2)], bound_at: expect.any(Date) },
+      { aad_object_id: oid(12), user_id: null, bound_at: null },
+    ]);
+    expect((await db.query("select count(*) from auth.users")).rows[0].count).toBe(usersBefore);
+  });
+
+  it("requires every unlinked selection to have an exact normalized proof before any write", async () => {
+    const s = await seed();
+    const before = await counts();
+    await expect(invite(s, [oid(1), oid(12)], [])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [oid(1), oid(12)], [oid(12), oid(13)])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [oid(1), oid(12), oid(13)], [oid(12)])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [oid(1), oid(12)], [oid(12), "malformed"])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [oid(1), oid(12)], [oid(12), null])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [oid(1), oid(12), null], [oid(12)])).rejects.toThrow("invalid_recipients");
+    await expect(invite(s, [s.host], [])).rejects.toThrow("zero_recipients");
+    await expect(invite(s, [oid(12)], [oid(12)], "acknowledgment", oid(900))).rejects.toThrow("invalid_actor");
+    expect(await counts()).toEqual(before);
+  });
+
+  it.each(["ambiguous", "banned", "deleted"])("a %s existing account stays refused even with a proof", async (state) => {
+    const s = await seed();
+    const user = s.users[oid(1)];
+    if (state === "ambiguous") await addIdentity(s.users[oid(2)], s.host, oid(1));
+    if (state === "banned") await db.query("update auth.users set banned_until = now() + interval '1 day' where id = $1", [user]);
+    if (state === "deleted") await db.query("update auth.users set deleted_at = now() where id = $1", [user]);
+    const before = await counts();
+    await expect(invite(s, [oid(1)], [oid(1)])).rejects.toThrow("invalid_recipients");
+    expect(await counts()).toEqual(before);
+  });
+
+  it("binds only after the same Microsoft tenant and OID are linked and supports the normal response", async () => {
+    const s = await seed();
+    const { announcement_id: id } = await invite(s, [oid(12)], [oid(12)]);
+    expect(await evidence(id, s.users[oid(2)], "acknowledge")).toBe("not_a_recipient");
+    const wrongTenant = (await db.query("insert into auth.users default values returning id")).rows[0].id;
+    await addIdentity(wrongTenant, oid(900), oid(12));
+    expect(await bind(wrongTenant)).toBe(0);
+    expect(await bind(s.users[oid(2)])).toBe(0);
+    expect(await audience(id)).toEqual([{ aad_object_id: oid(12), user_id: null, bound_at: null }]);
+    const recipientUser = (await db.query("insert into auth.users default values returning id")).rows[0].id;
+    await addIdentity(recipientUser, s.host, oid(12));
+    expect(await bind(recipientUser)).toBe(1);
+    expect(await bind(recipientUser)).toBe(0);
+    expect(await audience(id)).toEqual([{ aad_object_id: oid(12), user_id: recipientUser, bound_at: expect.any(Date) }]);
+    expect(await evidence(id, recipientUser, "acknowledge")).toBe("recorded");
+  });
+
+  it("simultaneous invitations create once and later submissions cannot change the frozen audience or mode", async () => {
+    const s = await seed();
+    const attempts = await Promise.all(Array.from({ length: 6 }, () => invite(s, [oid(1), oid(12)], [oid(12)])));
+    expect(new Set(attempts.map((attempt) => attempt.announcement_id)).size).toBe(1);
+    expect(attempts.filter((attempt) => !attempt.already_existed)).toHaveLength(1);
+    const id = attempts[0].announcement_id;
+    expect(await invite(s, [oid(13)], [oid(13)], "response")).toEqual({
+      announcement_id: id, resolved_count: 2, already_existed: true,
+    });
+    expect((await audience(id)).map((r) => r.aad_object_id)).toEqual([oid(1), oid(12)]);
+    const current = (await db.query(
+      "select a.tracking_mode, c.saved_at from public.bty_tracked_announcements a join public.bty_action_captures c on c.id=a.source_capture_id where a.id=$1",
+      [id],
+    )).rows[0];
+    expect(current).toEqual({ tracking_mode: "acknowledgment", saved_at: null });
+  });
+
+  it("v1 and v2 have distinct service-only signatures", async () => {
+    const { rows } = await db.query(`
+      select p.proname as name, p.pronargs as args,
+        has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+        has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated,
+        has_function_privilege('service_role', p.oid, 'EXECUTE') as service
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname in ('bty_track_announcement_v1', 'bty_track_announcement_v2')
+      order by p.proname
+    `);
+    expect(rows).toEqual([
+      { name: "bty_track_announcement_v1", args: 7, anon: false, authenticated: false, service: true },
+      { name: "bty_track_announcement_v2", args: 8, anon: false, authenticated: false, service: true },
+    ]);
+  });
+});
+
 // Signed-transport boundary is stubbed; route parsing, canonical identity resolution,
 // Track service and all database RPCs below are real. The positive control proves writes work.
+vi.mock("@/lib/bty/microsoft/graphDirectory.server", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/bty/microsoft/graphDirectory.server")>(),
+  graphConfigFromEnv: () => null,
+}));
 const routingToken = vi.hoisted(() => ({ claim: undefined as string | undefined }));
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({
  verifyBotFrameworkToken: async () => ({ ok: true, payload: { serviceurl: routingToken.claim } }),

@@ -10,7 +10,8 @@
  * Host saved; it lives in a channel or chat whose membership BTY has NOT verified this
  * recipient belongs to. Quoting it here would republish someone else's message to an
  * audience the original conversation never had. The Host wrote the framing FOR these people,
- * so the framing is the only body that is theirs to receive.
+ * so the framing is the only body that is theirs to receive after account
+ * linking. A recipient awaiting sign-in gets the generic instructions.
  *
  * ★ NO "OPEN BTY" LINK, AND NO LINK AT ALL. One lived here and was removed on real-iPhone
  * evidence: a BTY-owned URL tapped inside Teams leaves the Teams client before BTY is evaluated,
@@ -33,6 +34,7 @@ export type ProactiveMessageInput = {
   hostName: string | null;
   /** The Host's own words from the Track dialog. */
   hostFraming: string;
+  needsFirstSignIn?: boolean;
 };
 
 /**
@@ -44,6 +46,9 @@ export type ProactiveMessageInput = {
  * used -- a notification is not the place an employee address gets disclosed.
  */
 export function buildProactiveMessage(input: ProactiveMessageInput): string {
+  if (input.needsFirstSignIn) {
+    return "You have a request in BTY. In Teams, open BTY and select **Continue with Microsoft** to see it.";
+  }
   const who = input.hostName?.trim() || "Someone on your team";
   const framing = input.hostFraming.trim();
   const text = [

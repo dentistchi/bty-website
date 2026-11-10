@@ -35,6 +35,19 @@ describe("V1 projections and Today membership",()=> {
   const [host]=await listHostAnnouncements(client,"owner");expect(host.tracking).toEqual({targeted:10,opened:4,acknowledged:2,responded:0,remaining:8});expect(host.audience).toHaveLength(10);
   expect(filters).toContainEqual(["bty_tracked_announcements","owner_user_id","owner"]);
  });
+ it("only the owner sees sign-in waiting, and sent requires a recorded notification", async () => {
+  const rows = [
+   { ...row, id: "waiting", user_id: null, bound_at: null, notified_at: null },
+   { ...row, id: "notified", user_id: null, bound_at: null, notified_at: "now" },
+   { ...row, id: "bound", user_id: "person", bound_at: "now", notified_at: "now" },
+   { ...row, id: "formerly-bound", user_id: null, bound_at: "earlier", notified_at: "earlier" },
+  ];
+  const { client } = db({ bty_tracked_announcements: [ann], bty_tracked_announcement_recipients: rows });
+  const [host] = await listHostAnnouncements(client, "owner");
+  expect(host.audience?.map(person => person.signInStatus)).toEqual(["waiting", "notified", undefined, undefined]);
+  expect(host.audience?.every(person => !("bound_at" in person) && !("notified_at" in person))).toBe(true);
+  expect((await listMyAnnouncements(client, "person")).every(person => !("signInStatus" in person))).toBe(true);
+ });
 });
 
 it.each([[null,null],["opened",null],["opened","ack"]])("legacy responded_at is never required-response evidence (%s,%s)",async(opened,ack)=> {

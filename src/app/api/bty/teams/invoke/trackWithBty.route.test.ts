@@ -16,10 +16,16 @@ const resolveBtyUserFromMicrosoftIdentity = vi.fn();
 const ensureActionCapture = vi.fn();
 const rpc = vi.fn();
 const isActiveFoundryHost = vi.fn();
+const graphConfigFromEnv = vi.fn();
+const getGraphAppToken = vi.fn();
+const probeRecipientEligibility = vi.fn();
 
 vi.mock("@/lib/bty/teams/botTokenVerifier.server", () => ({ verifyBotFrameworkToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({ resolveBtyUserFromMicrosoftIdentity }));
 vi.mock("@/lib/bty/action-capture/ensureActionCapture.server", () => ({ ensureActionCapture }));
+vi.mock("@/lib/bty/microsoft/graphDirectory.server", () => ({
+  graphConfigFromEnv, getGraphAppToken, probeRecipientEligibility,
+}));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ rpc }) }));
 vi.mock("@/lib/bty/foundry/events/foundryHostService", () => ({
   isActiveFoundryHost: (...a: unknown[]) => isActiveFoundryHost(...a),
@@ -83,6 +89,9 @@ beforeEach(() => {
   ensureActionCapture.mockResolvedValue({ ok: true, created: true, capture: { id: "cap-1" } });
   rpc.mockResolvedValue({ data: [{ announcement_id: "ann-1", resolved_count: 2, already_existed: false }], error: null });
   isActiveFoundryHost.mockResolvedValue(true);
+  graphConfigFromEnv.mockReturnValue({ tenantId: TID, clientId: "fixture", clientSecret: "fixture" });
+  getGraphAppToken.mockResolvedValue("fixture-token");
+  probeRecipientEligibility.mockResolvedValue({ ok: true, eligible: true, displayName: null });
 });
 
 describe("the dialog", () => {
@@ -193,7 +202,7 @@ describe("the track submit", () => {
     const res = await POST(req(activity({}, { data: { trackingMode: "acknowledgment", hostFraming: "x", recipients: "not-a-guid" } })));
     expect(rpc).not.toHaveBeenCalled();
     const text = JSON.stringify(await res.json());
-    expect(text).toContain("Some selected people could not be verified in BTY.");
+    expect(text).toContain("Choose their work Teams accounts and try again.");
     // Organization membership is no longer a recipient requirement; the copy must not claim it is.
     expect(text).not.toContain("same organization");
   });
@@ -406,13 +415,83 @@ describe("no routing writes before Track validation",()=> {
   rpc.mockResolvedValue({data:null,error:{message:"invalid_recipients",code:"42501"}});
   const body=await (await POST(req(activity({locale,serviceUrl:"https://smba.trafficmanager.net/amer/"},{data:{trackingMode:"response",hostFraming:"Notice",recipients:A}})))).json();
   expect(body.task.type).toBe("continue");
-  expect(JSON.stringify(body)).toContain(locale==="ko"?"선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다.":"Some selected people could not be verified in BTY.");
+  expect(JSON.stringify(body)).toContain(locale==="ko"?"선택한 사람을 확인할 수 없습니다. 회사 Teams 계정으로 다시 선택하세요.":"We couldn’t verify everyone selected. Choose their work Teams accounts and try again.");
   expect(JSON.stringify(body)).not.toMatch(/same organization|같은 조직/);
   expect(JSON.stringify(body)).not.toContain(A);
+  expect(body.task.value.card.content.body).toContainEqual(expect.objectContaining({ id: "hostFraming", value: "Notice" }));
+  expect(body.task.value.card.content.actions).toContainEqual(expect.objectContaining({ type: "Action.Submit" }));
+  expect(getGraphAppToken).not.toHaveBeenCalled();
   expect(rememberTenantRoute).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
  });
  it.each([{}, {data:{trackingMode:"invalid",hostFraming:"Notice",recipients:A}}, {data:{trackingMode:"response",hostFraming:"Notice",recipients:""}}])("parser refusal never records routing",async value=> {
   await POST(req(activity({serviceUrl:"https://smba.trafficmanager.net/amer/"},value)));
   expect(rememberTenantRoute).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();expect(ensureActionCapture).not.toHaveBeenCalled();
  });
+});
+
+describe("Track before the recipient's first BTY sign-in", () => {
+  const submit = () => POST(req(activity({}, { data: {
+    trackingMode: "response", hostFraming: "Please review", recipients: `${A},${B},${B}`,
+    p_preverified_unlinked_oids: [A],
+  } })));
+
+  beforeEach(() => {
+    resolveBtyUserFromMicrosoftIdentity.mockImplementation(async (_db, _tenant, oid) =>
+      oid === B ? { status: "NOT_LINKED" } : { status: "RESOLVED", userId: HOST });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "invalid_recipients" } });
+  });
+
+  it("only forwards positive same-tenant Graph proof for the unlinked selected colleague", async () => {
+    const body = await (await submit()).json();
+    expect(JSON.stringify(body)).toContain("Tracking started");
+    expect(probeRecipientEligibility).toHaveBeenCalledOnce();
+    expect(probeRecipientEligibility).toHaveBeenCalledWith("fixture-token", B, expect.any(AbortSignal));
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "bty_track_announcement_v1", "bty_track_announcement_v2",
+    ]);
+    expect(rpc).toHaveBeenLastCalledWith("bty_track_announcement_v2", expect.objectContaining({
+      p_recipient_oids: [A, B], p_preverified_unlinked_oids: [B],
+    }));
+  });
+
+  it.each(["disabled", "not_member"] as const)("does not persist an invite for a %s colleague", async reason => {
+    probeRecipientEligibility.mockResolvedValue({ ok: true, eligible: false, reason });
+    const body = await (await submit()).json();
+    expect(JSON.stringify(body)).toContain("Choose their work Teams accounts");
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the form editable when Graph is temporarily unavailable", async () => {
+    probeRecipientEligibility.mockResolvedValue({ ok: false, reason: "network" });
+    const body = await (await submit()).json();
+    expect(JSON.stringify(body)).toContain("Please try again shortly");
+    expect(body.task.value.card.content.body).toContainEqual(expect.objectContaining({ id: "hostFraming", value: "Please review" }));
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+
+  it("returns an editable retry when the recipient lookup misses the invoke budget", async () => {
+    const deadline = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
+    resolveBtyUserFromMicrosoftIdentity.mockImplementation(async (_db, _tenant, oid) => {
+      if (oid !== B) return { status: "RESOLVED", userId: HOST };
+      deadline.abort();
+      return new Promise(() => {});
+    });
+    try {
+      const body = await (await submit()).json();
+      expect(JSON.stringify(body)).toContain("Please try again shortly");
+      expect(getGraphAppToken).not.toHaveBeenCalled();
+      expect(rpc).toHaveBeenCalledOnce();
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
+  it("does not query Graph in a different tenant or write a Track", async () => {
+    graphConfigFromEnv.mockReturnValue({ tenantId: A, clientId: "fixture", clientSecret: "fixture" });
+    await submit();
+    expect(getGraphAppToken).not.toHaveBeenCalled();
+    expect(probeRecipientEligibility).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledOnce();
+  });
 });

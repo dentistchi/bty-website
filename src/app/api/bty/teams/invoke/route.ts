@@ -386,10 +386,17 @@ export async function POST(req: NextRequest) {
         "BTY 계정을 확인할 수 없습니다.",
         "Your BTY account could not be verified.",
       );
-      if (tracked.reason === "invalid_recipients") return trackSay(
-        "선택한 사람 중 BTY에서 확인할 수 없는 사용자가 있습니다.",
-        "Some selected people could not be verified in BTY.",
-      );
+      if (tracked.reason === "invalid_recipients" || tracked.reason === "recipient_check_unavailable") {
+        const message = tracked.reason === "invalid_recipients"
+          ? (locale === "ko" ? "선택한 사람을 확인할 수 없습니다. 회사 Teams 계정으로 다시 선택하세요."
+            : "We couldn’t verify everyone selected. Choose their work Teams accounts and try again.")
+          : (locale === "ko" ? "지금은 받는 사람의 Teams 계정을 확인할 수 없습니다. 잠시 후 다시 시도하세요."
+            : "We couldn’t check the recipients’ Teams accounts right now. Please try again shortly.");
+        return dialog(trackDialogCard(locale, {
+          hostFraming: submission.hostFraming,
+          trackingMode: submission.trackingMode,
+        }, message));
+      }
       console.error("[teams-invoke] track refused", { reason: tracked.reason });
       const copy =
         tracked.reason === "invalid_framing"

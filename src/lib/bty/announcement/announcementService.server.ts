@@ -249,7 +249,12 @@ export async function respondToAnnouncement(
 export type HostAnnouncement = {
   trackingMode?: TrackingMode | null;
   tracking?: ReturnType<typeof summariseTracking>;
-  audience?: (TrackingEvidence & { recipientId: string; display: string | null; responseText: string | null })[];
+  audience?: (TrackingEvidence & {
+    recipientId: string;
+    display: string | null;
+    responseText: string | null;
+    signInStatus?: "waiting" | "notified";
+  })[];
   id: string;
   hostFraming: string;
   createdAt: string;
@@ -351,7 +356,7 @@ export async function listHostAnnouncements(
 
   const { data: recips } = await admin
     .from("bty_tracked_announcement_recipients")
-    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at, opened_at, acknowledged_at, response_submitted_at, response_text")
+    .select("id, announcement_id, user_id, response, responded_at, question_text, handled_at, opened_at, acknowledged_at, response_submitted_at, response_text, notified_at, bound_at")
     .in("announcement_id", runs.map((r) => r.id))
     .returns<
       {
@@ -364,6 +369,8 @@ export async function listHostAnnouncements(
         acknowledged_at?: string | null;
         response_submitted_at?: string | null;
         response_text?: string | null;
+        notified_at?: string | null;
+        bound_at: string | null;
         question_text: string | null;
         handled_at: string | null;
       }[]
@@ -458,7 +465,15 @@ export async function listHostAnnouncements(
       trackingMode: isTrackingMode(run.tracking_mode) ? run.tracking_mode : null,
       ...(isTrackingMode(run.tracking_mode) ? {
         tracking: summariseTracking(run.resolved_count, rows.map(r => evidenceOf(r, run.tracking_mode))),
-        audience: rows.map(r => ({ ...evidenceOf(r, run.tracking_mode), recipientId: r.id, display: nameOf(r.user_id), responseText: r.response_text ?? null })),
+        audience: rows.map(r => ({
+          ...evidenceOf(r, run.tracking_mode),
+          recipientId: r.id,
+          display: nameOf(r.user_id),
+          responseText: r.response_text ?? null,
+          ...(r.user_id === null && r.bound_at === null
+            ? { signInStatus: r.notified_at ? "notified" as const : "waiting" as const }
+            : {}),
+        })),
       } : {}),
       id: run.id,
       hostFraming: run.host_framing,

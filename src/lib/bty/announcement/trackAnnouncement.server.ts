@@ -2,14 +2,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { type TrackingMode } from "@/domain/announcement/trackingEvidence";
 import { resolveTeamsCaptureSource, type TeamsCaptureInput } from "@/domain/action-capture/captureSource";
 import { normalizeHostFraming } from "@/domain/announcement/trackedAnnouncement";
+import { resolveBtyUserFromMicrosoftIdentity } from "@/lib/bty/identity-link/microsoftIdentityLink.server";
+import { graphConfigFromEnv, getGraphAppToken, probeRecipientEligibility } from "@/lib/bty/microsoft/graphDirectory.server";
 
 export type TrackResult =
   | { ok: true; announcementId: string; count: number; alreadyExisted: boolean }
-  | { ok: false; reason: "invalid_framing" | "invalid_tracking_mode" | "invalid_actor" | "invalid_recipients" | "zero_recipients" | "capture_failed" | "track_failed" };
+  | { ok: false; reason: "invalid_framing" | "invalid_tracking_mode" | "invalid_actor" | "invalid_recipients" | "recipient_check_unavailable" | "zero_recipients" | "capture_failed" | "track_failed" };
 
 /** Server only. Actor/tenant come from the authenticated Teams invoke.
- * The RPC reuses the canonical Microsoft resolver and active organization membership,
- * rejects the entire audience before any write, then captures and freezes it atomically.
+ * The RPC verifies the entire audience before any write. A selected coworker who has
+ * never signed in requires positive, same-tenant Microsoft directory verification.
  * Save remains on its existing independent writer; track_source never stamps saved_at.
  */
 export async function trackAnnouncement(admin: SupabaseClient, params: {
@@ -36,7 +38,7 @@ export async function trackAnnouncement(admin: SupabaseClient, params: {
     return { ok: false, reason: "invalid_recipients" };
   const oids = [...new Set(raw.map((v: string) => v.trim().toLowerCase()))];
   const { sender_display: _senderDisplay, ...metadata } = source.sourceMetadata;
-  const { data, error } = await admin.rpc("bty_track_announcement_v1", {
+  const request = {
     p_owner_user_id: params.ownerUserId,
     p_actor_oid: params.actorAadObjectId ?? null,
     p_source: { ...metadata, capture_reason: "track_source", preview_text: source.previewText, source_url: source.sourceUrl },
@@ -44,7 +46,56 @@ export async function trackAnnouncement(admin: SupabaseClient, params: {
     p_recipient_oids: oids,
     p_tracking_mode: params.trackingMode,
     p_service_url: params.serviceUrl ?? null,
-  });
+  };
+  let { data, error } = await admin.rpc("bty_track_announcement_v1", request);
+  if (/invalid_recipients/.test(error?.message ?? "")) {
+    const tenantId = params.capture.tenant_id.trim().toLowerCase();
+    const unlinked: string[] = [];
+    // Teams only waits five seconds for the complete invoke. Leave time for
+    // the original lookup, the final write, and the response.
+    const deadline = AbortSignal.timeout(2000);
+    const expired = new Promise<null>(resolve => {
+      deadline.addEventListener("abort", () => resolve(null), { once: true });
+    });
+    // The normal linked path has already failed before any write. Only a real
+    // NOT_LINKED result qualifies for the directory check.
+    for (let start = 0; start < oids.length; start += 5) {
+      const batch = oids.slice(start, start + 5);
+      const identities = await Promise.race([
+        Promise.all(batch.map(oid => resolveBtyUserFromMicrosoftIdentity(admin, tenantId, oid))),
+        expired,
+      ]);
+      if (!identities) return { ok: false, reason: "recipient_check_unavailable" };
+      for (const [index, identity] of identities.entries()) {
+        if (identity.status === "NOT_LINKED") unlinked.push(batch[index]!);
+        else if (identity.status === "LOOKUP_FAILED") return { ok: false, reason: "recipient_check_unavailable" };
+        else if (identity.status !== "RESOLVED") return { ok: false, reason: "invalid_recipients" };
+      }
+    }
+    if (unlinked.length) {
+      const config = graphConfigFromEnv();
+      if (!config || config.tenantId !== tenantId) return { ok: false, reason: "recipient_check_unavailable" };
+      const token = await getGraphAppToken(config, deadline);
+      if (!token) return { ok: false, reason: "recipient_check_unavailable" };
+      for (let start = 0; start < unlinked.length; start += 5) {
+        const batch = unlinked.slice(start, start + 5);
+        const results = await Promise.all(batch.map(oid => probeRecipientEligibility(token, oid, deadline)));
+        for (const result of results) {
+          if (!result.ok && (result.reason === "http_error" || result.reason === "network")) {
+            return { ok: false, reason: "recipient_check_unavailable" };
+          }
+          if (!result.ok || !result.eligible) return { ok: false, reason: "invalid_recipients" };
+        }
+      }
+      if (deadline.aborted) return { ok: false, reason: "recipient_check_unavailable" };
+      // The SQL writer re-resolves current BTY identity and verifies the proof
+      // IDs are among the selected recipients before creating any rows.
+      ({ data, error } = await admin.rpc("bty_track_announcement_v2", {
+        ...request,
+        p_preverified_unlinked_oids: unlinked,
+      }));
+    }
+  }
   if (error) {
     const msg = error.message ?? "";
     if (/zero_recipients/.test(msg)) return { ok: false, reason: "zero_recipients" };

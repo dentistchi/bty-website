@@ -95,7 +95,7 @@ export function graphConfigFromEnv(
   return { tenantId, clientId, clientSecret };
 }
 
-type CachedToken = { token: string; expiresAtMs: number };
+type CachedToken = { token: string; expiresAtMs: number; tenantId: string; clientId: string };
 let cached: CachedToken | null = null;
 
 /** Test seam only — a token cache that survived between tests would hide a config change. */
@@ -110,13 +110,15 @@ export function resetGraphTokenCache() {
  * sync's revocation half is disabled by that. A credential problem must never read as "nobody
  * manages anyone".
  */
-export async function getGraphAppToken(config: GraphConfig): Promise<string | null> {
-  if (cached && cached.expiresAtMs > Date.now()) return cached.token;
+export async function getGraphAppToken(config: GraphConfig, signal?: AbortSignal): Promise<string | null> {
+  if (cached && cached.tenantId === config.tenantId && cached.clientId === config.clientId
+      && cached.expiresAtMs > Date.now()) return cached.token;
 
   try {
     const res = await fetch(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
+      ...(signal ? { signal } : {}),
       body: new URLSearchParams({
         client_id: config.clientId,
         client_secret: config.clientSecret,
@@ -132,7 +134,8 @@ export async function getGraphAppToken(config: GraphConfig): Promise<string | nu
     const body = (await res.json()) as { access_token?: string; expires_in?: number };
     if (typeof body.access_token !== "string" || !body.access_token) return null;
     const ttl = typeof body.expires_in === "number" && body.expires_in > 60 ? body.expires_in : 300;
-    cached = { token: body.access_token, expiresAtMs: Date.now() + (ttl - 60) * 1000 };
+    cached = { token: body.access_token, expiresAtMs: Date.now() + (ttl - 60) * 1000,
+      tenantId: config.tenantId, clientId: config.clientId };
     return cached.token;
   } catch {
     console.error("[graph] token request threw");
@@ -237,12 +240,14 @@ export type RecipientEligibility =
 export async function probeRecipientEligibility(
   token: string,
   aadObjectId: string,
+  signal?: AbortSignal,
 ): Promise<RecipientEligibility> {
   const oid = (aadObjectId ?? "").trim().toLowerCase();
   if (!GUID.test(oid)) return { ok: false, reason: "invalid_oid" };
   try {
     const res = await fetch(`${GRAPH}/v1.0/users/${oid}?$select=id,accountEnabled,userType,displayName`, {
       headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+      ...(signal ? { signal } : {}),
     });
     if (res.status === 404) return { ok: false, reason: "not_found" };
     if (!res.ok) {
@@ -250,8 +255,12 @@ export async function probeRecipientEligibility(
       console.error("[graph] recipient eligibility probe failed", { status: res.status });
       return { ok: false, reason: "http_error" };
     }
-    const body = (await res.json()) as { accountEnabled?: unknown; userType?: unknown; displayName?: unknown };
-    if (body.accountEnabled !== true) return { ok: true, eligible: false, reason: "disabled" };
+    const body = (await res.json()) as { id?: unknown; accountEnabled?: unknown; userType?: unknown; displayName?: unknown };
+    if (typeof body.id !== "string" || body.id.toLowerCase() !== oid
+      || typeof body.accountEnabled !== "boolean" || typeof body.userType !== "string") {
+      return { ok: false, reason: "http_error" };
+    }
+    if (!body.accountEnabled) return { ok: true, eligible: false, reason: "disabled" };
     // Guests and any non-Member type are refused: an internal training is for internal members.
     if (body.userType !== "Member") return { ok: true, eligible: false, reason: "not_member" };
     const displayName = typeof body.displayName === "string" && body.displayName.trim()

@@ -46,4 +46,15 @@ describe("announcement V1 screens",()=> {
   expect(screen.getAllByText(TRACKING_COPY[locale].noEvidence)).toHaveLength(8);
   expect(document.body.textContent).not.toMatch(/unread|읽지 않음/i);
  });
+ it.each(["en", "ko"] as const)("%s: awaiting sign-in is distinct from a confirmed Teams notice", locale => {
+  const audience = [
+   { ...evidence, recipientId: "waiting", display: null, responseText: null, signInStatus: "waiting" as const },
+   { ...evidence, recipientId: "sent", display: null, responseText: null, signInStatus: "notified" as const },
+  ];
+  render(<AnnouncementTrackingSummary counts={summariseTracking(2, audience)} audience={audience} locale={locale}/>);
+  fireEvent.click(screen.getByText(locale === "ko" ? "사람별 보기" : "View people"));
+  expect(screen.getByText(TRACKING_COPY[locale].awaitingSignIn)).toBeTruthy();
+  expect(screen.getByText(TRACKING_COPY[locale].notifiedAwaitingSignIn)).toBeTruthy();
+  expect(screen.queryByText(TRACKING_COPY[locale].noEvidence)).toBeNull();
+ });
 });

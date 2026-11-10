@@ -70,13 +70,12 @@ describe("★ the Host projection never selects a directory identity", () => {
     expect(m, "the Host recipient select changed shape").toBeTruthy();
     const cols = m![1].split(",").map((c) => c.trim());
     /*
-      UNCHANGED BY TRACK CONVERSATION V1. R1 of that slice added `host_last_read_at` here; the
-      production audit removed the timestamp cursor entirely in favour of per-message read receipts,
-      which live in their own table. So this select is byte-identical to what A1-CLOSURE left, and
-      the unread count is computed from a join the Host projection never has to widen for.
+      `notified_at` records Teams acceptance of the notification. It only informs the owner's
+      coarse waiting status and does not establish that a person opened or read anything.
+      `bound_at` distinguishes someone waiting for first sign-in from a retained historical row.
     */
     expect(cols).toEqual([
-      "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at", "opened_at", "acknowledged_at", "response_submitted_at", "response_text",
+      "id", "announcement_id", "user_id", "response", "responded_at", "question_text", "handled_at", "opened_at", "acknowledged_at", "response_submitted_at", "response_text", "notified_at", "bound_at",
     ]);
     for (const forbidden of ["tenant_id", "aad_object_id", "email", "preferred_username"]) {
       expect(cols, forbidden).not.toContain(forbidden);
