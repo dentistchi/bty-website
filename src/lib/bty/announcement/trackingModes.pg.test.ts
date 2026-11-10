@@ -88,7 +88,7 @@ beforeAll(async () => {
 afterAll(async () => {
  try {
   await db?.end();
-  if (databaseCreated) await root.query(`drop database ${name} with (force)`);
+  if (databaseCreated) await root.query(`drop database ${name}`);
  } finally {
   await root?.end();
  }
