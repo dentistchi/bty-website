@@ -66,6 +66,7 @@ const MIGRATION = "20260927051100_announcement_tracking_modes_v1.sql";
 const ALIGNMENT = "20260928000000_bty_track_collaboration_authority_alignment_v1.sql";
 const FIRST_LOGIN_INVITES = "20261110191609_bty_track_first_login_invites.sql";
 let root: Pool; let db: Pool;
+let databaseCreated = false;
 const name = `tracking_v1_${process.pid}`;
 beforeAll(async () => {
  if (!URL) return;
@@ -73,6 +74,7 @@ beforeAll(async () => {
  if (!["localhost", "127.0.0.1"].includes(url.hostname)) throw new Error("Local PostgreSQL only");
  root = new Pool({ connectionString: URL });
  await root.query(`create database ${name}`);
+ databaseCreated = true;
  url.pathname = `/${name}`;
  db = new Pool({ connectionString: url.toString(), max: 12 });
  for (const sql of [...APPLIED, read("20260915000000_bty_host_track_history_retention_v1.sql")]) await db.query(sql);
@@ -83,7 +85,14 @@ beforeAll(async () => {
  await db.query(read(FIRST_LOGIN_INVITES));
  await db.query(read(FIRST_LOGIN_INVITES));
 }, 60000);
-afterAll(async () => { await db?.end(); if (root) { await root.query(`drop database ${name}`); await root.end(); } });
+afterAll(async () => {
+ try {
+  await db?.end();
+  if (databaseCreated) await root.query(`drop database ${name} with (force)`);
+ } finally {
+  await root?.end();
+ }
+}, 60000);
 const oid = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12,"0")}`;
 async function seed() {
  const host = (await db.query("insert into auth.users default values returning id")).rows[0].id;
