@@ -66,12 +66,12 @@ describe("Teams quick tour", () => {
 
     expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "배우기 탭 열기" })).toBe(document.activeElement);
-    fireEvent.click(screen.getByRole("button", { name: "배우기", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^배우기$/ }));
     expect(screen.getByTestId("learn-header")).toBeTruthy();
     const learning = screen.getByRole("dialog", { name: "배정된 교육 찾기" });
     fireEvent.click(within(learning).getByRole("button", { name: "저장한 메시지 찾기" }));
     expect(screen.getByRole("dialog", { name: "오늘 탭으로 돌아가기" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "오늘", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^오늘$/ }));
     expect(screen.getByRole("dialog", { name: "저장한 메시지 열기" })).toBeTruthy();
     fireEvent.click(screen.getByTestId("today-saved-entry"));
     expect(screen.getByTestId("saved-view")).toBeTruthy();
@@ -90,10 +90,10 @@ describe("Teams quick tour", () => {
     fireEvent.click(screen.getByRole("button", { name: /^나$/ }));
     fireEvent.click(screen.getByRole("button", { name: "BTY 둘러보기" }));
     expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "오늘", exact: true }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: /^오늘$/ }).getAttribute("aria-current")).toBe("page");
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: "배우기", exact: true })).toBe(document.activeElement);
+    expect(screen.getByRole("button", { name: /^배우기$/ })).toBe(document.activeElement);
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
@@ -106,7 +106,7 @@ describe("Teams quick tour", () => {
     await waitFor(() => expect(screen.getByTestId("room")).toBeTruthy());
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByTestId("room-exit"));
-    fireEvent.click(screen.getByRole("button", { name: "Today", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Today$/ }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(teamsTour.onDismiss).not.toHaveBeenCalled();
   });
