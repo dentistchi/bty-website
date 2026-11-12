@@ -69,6 +69,7 @@ export default function AppTabBar({
             <button
               key={key}
               type="button"
+              data-bty-tab={key}
               onClick={() => onSelect(key)}
               aria-current={isActive ? "page" : undefined}
               className={`relative flex min-h-[3.25rem] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A66B]/40 ${

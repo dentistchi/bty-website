@@ -7,7 +7,7 @@
  * These tests drive the real shell with the real request contract.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 
 const H = vi.hoisted(() => ({ roomProps: [] as Array<Record<string, unknown>> }));
 
@@ -60,25 +60,55 @@ describe("a request arriving AFTER mount opens the room", () => {
 });
 
 describe("Teams quick tour", () => {
-  it("shows a skippable three-step guide and lets staff replay it from Me", () => {
+  it("opens over the real Teams screen and advances through the actual Learn, Today, and Saved controls", () => {
     const onDismiss = vi.fn();
     render(<BtyDailyAppShell locale="ko" runtime="teams" teamsTour={{ offer: true, onDismiss }} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "30초 둘러보기" }));
-    expect(screen.getByRole("heading", { name: "오늘 할 일 확인" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByRole("heading", { name: "배정된 교육 열기" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByRole("heading", { name: "Teams 메시지 저장" })).toBeTruthy();
-    expect(screen.getByText(/BTY의 ‘저장’/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "완료" }));
+    expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "배우기 탭 열기" })).toBe(document.activeElement);
+    fireEvent.click(screen.getByRole("button", { name: "배우기", exact: true }));
+    expect(screen.getByTestId("learn-header")).toBeTruthy();
+    const learning = screen.getByRole("dialog", { name: "배정된 교육 찾기" });
+    fireEvent.click(within(learning).getByRole("button", { name: "저장한 메시지 찾기" }));
+    expect(screen.getByRole("dialog", { name: "오늘 탭으로 돌아가기" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "오늘", exact: true }));
+    expect(screen.getByRole("dialog", { name: "저장한 메시지 열기" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("today-saved-entry"));
+    expect(screen.getByTestId("saved-view")).toBeTruthy();
+    const saved = screen.getByRole("dialog", { name: "여기가 내 저장 목록입니다" });
+    expect(within(saved).getByText(/BTY의 저장/)).toBeTruthy();
+    fireEvent.click(within(saved).getByRole("button", { name: "둘러보기 완료" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("saved-view")).toBeTruthy();
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays from Me, and Escape dismisses the overlay and returns focus to its real target", () => {
+    const onDismiss = vi.fn();
+    render(<BtyDailyAppShell locale="ko" runtime="teams" teamsTour={{ offer: false, onDismiss }} />);
 
     fireEvent.click(screen.getByRole("button", { name: /^나$/ }));
     fireEvent.click(screen.getByRole("button", { name: "BTY 둘러보기" }));
-    expect(screen.getByRole("heading", { name: "오늘 할 일 확인" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "건너뛰기" }));
-    expect(screen.getByRole("button", { name: "BTY 둘러보기" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "오늘", exact: true }).getAttribute("aria-current")).toBe("page");
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "배우기", exact: true })).toBe(document.activeElement);
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it("lets a late Teams training invitation take over an active tour", async () => {
+    const teamsTour = { offer: true, onDismiss: vi.fn() };
+    const { rerender } = render(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={teamsTour} />);
+    expect(screen.getByRole("dialog", { name: "Open Learn" })).toBeTruthy();
+    rerender(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={teamsTour}
+      trainingRequest={request(TOKEN, "refresh:tour")} />);
+    await waitFor(() => expect(screen.getByTestId("room")).toBeTruthy());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByTestId("room-exit"));
+    fireEvent.click(screen.getByRole("button", { name: "Today", exact: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(teamsTour.onDismiss).not.toHaveBeenCalled();
   });
 
   it("renders a cold training invitation ahead of the first-use guide", () => {
@@ -86,7 +116,7 @@ describe("Teams quick tour", () => {
       trainingRequest={request(TOKEN, "bootstrap:0")}
       teamsTour={{ offer: true, onDismiss: vi.fn() }} />);
     expect(screen.getByTestId("room")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "30-second tour" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Open Learn" })).toBeNull();
   });
 });
 
