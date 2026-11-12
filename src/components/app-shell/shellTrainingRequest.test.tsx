@@ -74,7 +74,7 @@ describe("Teams quick tour", () => {
     fireEvent.click(screen.getByRole("button", { name: "완료" }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "나", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^나$/ }));
     fireEvent.click(screen.getByRole("button", { name: "BTY 둘러보기" }));
     expect(screen.getByRole("heading", { name: "오늘 할 일 확인" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "건너뛰기" }));
