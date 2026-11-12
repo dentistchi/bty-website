@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
-import { TeamsQuickTour } from "@/components/teams/TeamsQuickTour";
+import { TeamsQuickTour, type TeamsTourStep } from "@/components/teams/TeamsQuickTour";
 import { BTY_SHELL_DESTINATION_EVENT, shellSearchFor } from "@/domain/teams/btyDestination";
 import { isTeamsTabPath } from "@/domain/teams/tabRuntime";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
@@ -1351,6 +1351,8 @@ export function TodayGreeting({ copy, ssrDefault }: { copy: TodayCopy; ssrDefaul
   );
 }
 
+type TeamsTourProgress = { step: TeamsTourStep; replay: boolean };
+
 export default function BtyDailyAppShell({
   locale,
   onLocaleChanged,
@@ -1487,6 +1489,9 @@ export default function BtyDailyAppShell({
   // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
+  const appRoot = useRef<HTMLDivElement | null>(null);
+  const [tourProgress, setTourProgress] = useState<TeamsTourProgress | "closed" | null>(null);
+  const closeTour = useCallback(() => setTourProgress("closed"), []);
 
   // Bottom-tab reselect (B3A.2D-R1): every press resolves to the canonical Me ROOT. Selecting Me
   // (from another tab, a nested Me subview, or Me-root-while-scrolled) clears any nested meView,
@@ -1522,6 +1527,7 @@ export default function BtyDailyAppShell({
       return;
     }
     const request = trainingRequest!;
+    closeTour();
     handledTrainingKeyRef.current = request.requestKey;
     openTrainingTokenRef.current = request.target.joinToken;
     setTrainingTarget(request.target);
@@ -1533,9 +1539,9 @@ export default function BtyDailyAppShell({
     setHostEventDetailId(null);
     setLearnAssignmentFocus(null);
     setMyLearningFocus(null);
-  }, [trainingRequest]);
+  }, [closeTour, trainingRequest]);
 
-  const handleTabSelect = useCallback((key: AppTabKey) => {
+  const openAppTab = useCallback((key: AppTabKey, scrollToTop = true) => {
     if (key === "me") {
       setMeView("home");
       setWeeklyRefreshKey((k) => k + 1);
@@ -1543,7 +1549,7 @@ export default function BtyDailyAppShell({
     if (key === "today") setTodayRefreshKey((k) => k + 1);
     setTab(key);
     // Scroll after the (possibly root-reset) view paints. rAF avoids scrolling stale nested content.
-    if (typeof window !== "undefined") {
+    if (scrollToTop && typeof window !== "undefined") {
       window.requestAnimationFrame(() => mainScrollRef.current?.scrollTo?.({ top: 0 }));
     }
   }, []);
@@ -1782,6 +1788,7 @@ export default function BtyDailyAppShell({
         !validAssignment
       )
         return;
+      closeTour();
       if (validFieldAction) {
         // Field Actions Focused Surface V1: open the focused Field Actions surface under Practice,
         // scrolled to this specific action (never generic Today).
@@ -1885,7 +1892,7 @@ export default function BtyDailyAppShell({
     applyDeepLink();
     window.addEventListener(BTY_SHELL_DESTINATION_EVENT, applyDeepLink);
     return () => window.removeEventListener(BTY_SHELL_DESTINATION_EVENT, applyDeepLink);
-  }, []);
+  }, [closeTour]);
   const t = COPY[locale];
 
   // Today Simplification (Slice 3.1B-3J.1): the retired relationship/commitment surface took its
@@ -1914,6 +1921,64 @@ export default function BtyDailyAppShell({
   useEffect(() => {
     recordNativeSelfReturn();
   }, []);
+
+  const tour = runtime === "teams" && tourProgress !== "closed" && (teamsTour?.offer || tourProgress?.replay)
+    ? tourProgress ?? { step: "learn" as const, replay: false }
+    : null;
+  const atTodayHome = tab === "today" && !savedOpen && !fieldActionAssignmentId && !fieldActionContractId && !actionReviewId;
+  const atLearnHome = tab === "learn" && foundryView === "rooms" && !reviewId && !followupId;
+  const tourStep = tour && (
+    tour.step === "learning" || tour.step === "today" ? atLearnHome
+      : tour.step === "saved-list" ? tab === "today" && savedOpen
+        : atTodayHome
+  ) ? tour.step : null;
+
+  const dismissTeamsTour = useCallback(() => {
+    closeTour();
+    if (tour && !tour.replay) teamsTour?.onDismiss();
+  }, [closeTour, teamsTour, tour]);
+
+  const advanceTeamsTour = useCallback((step: TeamsTourStep) => {
+    if (tour) setTourProgress({ ...tour, step });
+  }, [tour]);
+
+  const handleTabSelect = useCallback((key: AppTabKey) => {
+    const revealSaved = key === "today" && (tourStep === "today" || tourStep === "learning");
+    if (tourStep === "learn" && key === "learn") {
+      setFoundryView("rooms");
+      setReviewId(null);
+      setFollowupId(null);
+      advanceTeamsTour("learning");
+    } else if (revealSaved) {
+      advanceTeamsTour("saved");
+    } else if (tourStep && key !== tab) {
+      dismissTeamsTour();
+    }
+    openAppTab(key, !revealSaved);
+  }, [advanceTeamsTour, dismissTeamsTour, openAppTab, tab, tourStep]);
+
+  function openSavedList() {
+    setSavedOpen(true);
+    if (tourStep) advanceTeamsTour("saved-list");
+  }
+
+  function replayTeamsTour() {
+    setSavedOpen(false);
+    setActionReviewId(null);
+    setFieldActionAssignmentId(null);
+    setFieldActionContractId(null);
+    openAppTab("today");
+    setTourProgress({ step: "learn", replay: true });
+  }
+
+  function followTourAction() {
+    switch (tourStep) {
+      case "learn": handleTabSelect("learn"); break;
+      case "learning": advanceTeamsTour("today"); break;
+      case "today": handleTabSelect("today"); break;
+      case "saved": openSavedList(); break;
+    }
+  }
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
@@ -1961,6 +2026,7 @@ export default function BtyDailyAppShell({
 
   return (
     <div
+      ref={appRoot}
       data-bty-app-root=""
       className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased"
     >
@@ -2143,7 +2209,10 @@ export default function BtyDailyAppShell({
           <>
             {savedOpen ? (
               // Saved for later — a separate Today lane, never an obligation. Back → Today.
-              <SavedForLater locale={locale} onBack={() => setSavedOpen(false)} />
+              <SavedForLater locale={locale} onBack={() => {
+                setSavedOpen(false);
+                if (tourStep === "saved-list") dismissTeamsTour();
+              }} />
             ) : fieldActionAssignmentId || fieldActionContractId ? (
               // Slice 3.1B-3N-5C.3: Today-owned Field Action producer (author / resubmit). Back → Today.
               <FieldActionForm
@@ -2171,13 +2240,10 @@ export default function BtyDailyAppShell({
                     (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
                     AI brief). No detailed list renders in the first viewport by default. */}
                 <TodayGreeting copy={t.today} ssrDefault={t.today.title} />
-                {runtime === "teams" && teamsTour?.offer && (
-                  <TeamsQuickTour locale={locale} mode="offer" onDismiss={teamsTour.onDismiss} />
-                )}
                 <TodayHome
                   locale={locale}
                   refreshKey={todayRefreshKey}
-                  onOpenSaved={() => setSavedOpen(true)}
+                  onOpenSaved={openSavedList}
                   nativeReminder={runtime === "web"}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
@@ -2442,7 +2508,13 @@ export default function BtyDailyAppShell({
                 ))}
               </nav>
               {runtime === "teams" && teamsTour && (
-                <TeamsQuickTour locale={locale} mode="replay" onDismiss={teamsTour.onDismiss} />
+                <button
+                  type="button"
+                  onClick={replayTeamsTour}
+                  className="mt-2 self-start rounded-lg px-3 py-2 text-sm text-white/75 hover:text-white"
+                >
+                  {locale === "ko" ? "BTY 둘러보기" : "Tour BTY"}
+                </button>
               )}
               {/*
                 ADMIN OPERATIONS — TEAMS ONLY, AND ONLY WHEN THERE IS SOMETHING TO DO.
@@ -2468,6 +2540,16 @@ export default function BtyDailyAppShell({
         <AppTabBar active={tab} onSelect={handleTabSelect} locale={locale} />
       </div>
 
+      {tourStep && (
+        <TeamsQuickTour
+          key={tourStep}
+          step={tourStep}
+          locale={locale}
+          shell={appRoot}
+          onAction={followTourAction}
+          onDismiss={dismissTeamsTour}
+        />
+      )}
     </div>
   );
 }
