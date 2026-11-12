@@ -18,6 +18,7 @@ const H = vi.hoisted(() => ({
   authenticate: vi.fn(async () => "ok"),
   openLink: vi.fn(async () => {}),
   setSession: vi.fn(async () => ({ data: {}, error: null })),
+  updateUser: vi.fn(async () => ({ error: null })),
   onAuthStateChange: vi.fn(),
 }));
 const { initialize, getAuthToken, getContext, authenticate, setSession, onAuthStateChange } = H;
@@ -35,12 +36,19 @@ vi.mock("@microsoft/teams-js", () => ({
 }));
 
 vi.mock("@/lib/supabase", () => ({
-  getSupabase: () => ({ auth: { setSession: H.setSession, onAuthStateChange: H.onAuthStateChange } }),
+  getSupabase: () => ({ auth: { setSession: H.setSession, updateUser: H.updateUser, onAuthStateChange: H.onAuthStateChange } }),
   supabase: { auth: { setSession: H.setSession, onAuthStateChange: H.onAuthStateChange } },
 }));
 
 vi.mock("@/components/app-shell/BtyDailyAppShell", () => ({
-  default: ({ locale }: { locale: string }) => <div data-testid="shell" data-locale={locale} />,
+  default: ({ locale, teamsTour }: {
+    locale: string;
+    teamsTour?: { offer: boolean; onDismiss: () => void };
+  }) => (
+    <div data-testid="shell" data-locale={locale}>
+      {teamsTour?.offer && <button type="button" onClick={teamsTour.onDismiss}>Skip tour</button>}
+    </div>
+  ),
 }));
 
 import TeamsTabShell from "@/components/teams/TeamsTabShell";
@@ -95,6 +103,15 @@ describe("TeamsTabShell — the silent path", () => {
       access_token: "supa-access",
       refresh_token: "supa-refresh",
     });
+  });
+
+  it("does not offer the tour to an already-linked employee without a tutorial preference", async () => {
+    setSession.mockResolvedValueOnce({ data: { user: { user_metadata: {} } }, error: null });
+    stubFetch(ok);
+    render(<TeamsTabShell />);
+    await screen.findByTestId("shell");
+    expect(screen.queryByRole("button", { name: "Skip tour" })).toBeNull();
+    expect(H.updateUser).not.toHaveBeenCalled();
   });
 
   it("sends the Teams Entra token as the bootstrap's only authority", async () => {
@@ -257,6 +274,36 @@ describe("TeamsTabShell — first-ever user", () => {
       expect.objectContaining({ url: "https://arena.btydaily.com/teams/link" }),
     );
     expect(bootstrapCalls).toBe(2);
+  });
+
+  async function finishFirstConnection(search: string, seen = false) {
+    window.location.search = search;
+    setSession.mockResolvedValueOnce({ data: { user: { user_metadata: { bty_teams_tour_v1_seen: seen } } }, error: null });
+    stubFetch(() => bootstrapCalls === 1
+      ? Response.json({ needsFirstSignIn: true })
+      : ok());
+    render(<TeamsTabShell />);
+    fireEvent.click(await screen.findByTestId("teams-first-sign-in"));
+    await screen.findByTestId("shell");
+  }
+
+  it("offers a first connection the guide and saves Skip on the account", async () => {
+    await finishFirstConnection("");
+    expect(H.updateUser).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Skip tour" }));
+    expect(screen.queryByRole("button", { name: "Skip tour" })).toBeNull();
+    expect(H.updateUser).toHaveBeenCalledTimes(1);
+    expect(H.updateUser).toHaveBeenCalledWith({ data: { bty_teams_tour_v1_seen: true } });
+  });
+
+  it.each([
+    ["an account with the saved preference", "", true],
+    ["a Track destination", "?tab=today", false],
+    ["a training destination", "?training=btyfr1.eyJ0eXBlIjoiZm91bmRyeV9yb29tIn0.c2lnbmF0dXJlLXZhbHVl", false],
+  ])("gives priority to %s without writing tutorial state", async (_label, search, seen) => {
+    await finishFirstConnection(search, seen);
+    expect(screen.queryByRole("button", { name: "Skip tour" })).toBeNull();
+    expect(H.updateUser).not.toHaveBeenCalled();
   });
 });
 

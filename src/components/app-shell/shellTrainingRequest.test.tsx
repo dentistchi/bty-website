@@ -59,6 +59,37 @@ describe("a request arriving AFTER mount opens the room", () => {
   });
 });
 
+describe("Teams quick tour", () => {
+  it("shows a skippable three-step guide and lets staff replay it from Me", () => {
+    const onDismiss = vi.fn();
+    render(<BtyDailyAppShell locale="ko" runtime="teams" teamsTour={{ offer: true, onDismiss }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "30초 둘러보기" }));
+    expect(screen.getByRole("heading", { name: "오늘 할 일 확인" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "다음" }));
+    expect(screen.getByRole("heading", { name: "배정된 교육 열기" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "다음" }));
+    expect(screen.getByRole("heading", { name: "Teams 메시지 저장" })).toBeTruthy();
+    expect(screen.getByText(/BTY의 ‘저장’/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "완료" }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "나", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "BTY 둘러보기" }));
+    expect(screen.getByRole("heading", { name: "오늘 할 일 확인" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "건너뛰기" }));
+    expect(screen.getByRole("button", { name: "BTY 둘러보기" })).toBeTruthy();
+  });
+
+  it("renders a cold training invitation ahead of the first-use guide", () => {
+    render(<BtyDailyAppShell locale="en" runtime="teams"
+      trainingRequest={request(TOKEN, "bootstrap:0")}
+      teamsTour={{ offer: true, onDismiss: vi.fn() }} />);
+    expect(screen.getByTestId("room")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "30-second tour" })).toBeNull();
+  });
+});
+
 describe("occurrence semantics inside the shell", () => {
   it("re-delivering the SAME occurrence is inert", async () => {
     const req = request(TOKEN, "refresh:1");
