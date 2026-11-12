@@ -14,6 +14,11 @@ export async function GET() {
   const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate.response;
   const { userId, admin, isApprovedMember } = gate.access;
-  const practices = await listAvailablePractices(admin, userId, isApprovedMember);
-  return NextResponse.json({ practices }, { headers: { "Cache-Control": "no-store" } });
+  const headers = { "Cache-Control": "no-store" };
+  try {
+    const practices = await listAvailablePractices(admin, userId, isApprovedMember);
+    return NextResponse.json({ practices }, { headers });
+  } catch {
+    return NextResponse.json({ error: "PRACTICE_LIST_UNAVAILABLE" }, { status: 503, headers });
+  }
 }

@@ -120,25 +120,27 @@ export async function listAvailablePractices(
   type Raw = Omit<AvailablePractice, "completed"> & { published_by: string };
 
   // Always: the user's OWN published practices (creator visibility).
-  const { data: own } = await admin
+  const { data: own, error: ownError } = await admin
     .from("foundry_published_arena_practices")
     .select(cols)
     .eq("status", "published")
     .eq("published_by", userId)
     .order("published_at", { ascending: false })
     .returns<Raw[]>();
+  if (ownError || !own) throw new Error("practice_list_unavailable");
 
   // Approved members additionally see shared (all_members) practices.
   let shared: Raw[] = [];
   if (isApprovedMember) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from("foundry_published_arena_practices")
       .select(cols)
       .eq("status", "published")
       .eq("availability", "all_members")
       .order("published_at", { ascending: false })
       .returns<Raw[]>();
-    shared = data ?? [];
+    if (error || !data) throw new Error("practice_list_unavailable");
+    shared = data;
   }
 
   // A learner may already enter through the source training's completion screen
@@ -146,39 +148,42 @@ export async function listAvailablePractices(
   // This reads completed evidence only; it creates no enrollment or assignment.
   let fromCompletedTraining: Raw[] = [];
   if (!isApprovedMember) {
-    const { data: progress } = await admin
+    const { data: progress, error: progressError } = await admin
       .from("foundry_event_training_progress")
       .select("event_id, completed_at")
       .eq("linked_user_id", userId);
+    if (progressError || !progress) throw new Error("practice_list_unavailable");
     const eventIds = [...new Set(
-      ((progress ?? []) as { event_id: string; completed_at: string | null }[])
+      (progress as { event_id: string; completed_at: string | null }[])
         .filter((p) => Boolean(p.completed_at))
         .map((p) => p.event_id),
     )];
     if (eventIds.length > 0) {
-      const { data } = await admin
+      const { data, error } = await admin
         .from("foundry_published_arena_practices")
         .select(cols)
         .eq("status", "published")
         .in("source_event_id", eventIds)
         .order("published_at", { ascending: false })
         .returns<Raw[]>();
-      fromCompletedTraining = data ?? [];
+      if (error || !data) throw new Error("practice_list_unavailable");
+      fromCompletedTraining = data;
     }
   }
 
   const byId = new Map<string, Raw>();
-  for (const p of [...(own ?? []), ...shared, ...fromCompletedTraining]) byId.set(p.id, p);
+  for (const p of [...own, ...shared, ...fromCompletedTraining]) byId.set(p.id, p);
   const list = [...byId.values()].sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
   if (list.length === 0) return [];
 
-  const { data: runs } = await admin
+  const { data: runs, error: runsError } = await admin
     .from("foundry_arena_practice_runs")
     .select("practice_id, status")
     .eq("user_id", userId)
     .eq("status", "completed")
     .returns<{ practice_id: string; status: string }[]>();
-  const completed = new Set((runs ?? []).map((r) => r.practice_id));
+  if (runsError || !runs) throw new Error("practice_list_unavailable");
+  const completed = new Set(runs.map((r) => r.practice_id));
 
   return list.map((p) => ({
     id: p.id,

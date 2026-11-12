@@ -1,5 +1,25 @@
 # Active application task contract
 
+## EMPLOYEE-RELEASE-READINESS — 2026-11-12
+
+Prepare the fixes identified in the employee rollout audit on deployed
+`eb16458455942dd3524c8958ce0edf878a819668`. Preserve verified Microsoft
+identity and the auth-only Track path. Learner consent must be authoritative
+on the server and reachable in the Teams tab. Keep historical consent audit
+records and request a current acceptance through the secured path.
+
+Keep employee assignments available independently of host authority.
+Distinguish failed reads from empty lists and keep learning in the Teams
+experience where supported. Make Teams training membership and delivery
+checks atomic. Recover committed initial Track notices and stop repeated
+sends when Teams may already have accepted them. Delayed personal reminders
+remain their own release.
+
+Verify the current Pipeline N release contract and exercise the Teams and
+learner fixes against synthetic inputs and disposable PostgreSQL. Record
+exact migration files, live rollout order and unverified real-device steps
+in the release review. Prepare code and tests on an isolated branch.
+
 ## TEAMS-TRACK-FIRST-LOGIN-INVITES — 2026-11-10
 
 Let a verified, active internal Teams member be added to Track before their

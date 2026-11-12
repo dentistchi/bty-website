@@ -22,7 +22,9 @@ export async function fetchTodayBrief<R, H>(locale: "en" | "ko"): Promise<TodayB
   const tz = deviceTz();
   if (tz) qs.set("tz", tz);
   try {
-    const res = await fetch(`/api/me/today/brief?${qs.toString()}`, { credentials: "include", cache: "no-store" });
+    const res = await fetch(`/api/me/today/brief?${qs.toString()}`, {
+      credentials: "include", cache: "no-store", signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) return null;
     const d = (await res.json()) as { ok?: boolean; reminders?: R[]; hostAttention?: H[] };
     if (!d?.ok) return null;

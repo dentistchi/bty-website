@@ -31,7 +31,7 @@ TEAMS_BOT_TENANT_ID = "10110d5c-bd30-467e-9912-e44e67777647"
 SELF_REPORT_AUTO_APPROVE = "true"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["0 * * * *", "* * * * *"]
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

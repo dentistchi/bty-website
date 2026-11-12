@@ -2,7 +2,7 @@
 
 import { AnnouncementEvidenceCard } from "./AnnouncementEvidenceCard";
 import { isTrackingMode, type TrackingEvidence } from "@/domain/announcement/trackingEvidence";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AnnouncementResponse } from "@/domain/announcement/trackedAnnouncement";
 import TrackConversation, { NewMessageBadge } from "./TrackConversation";
@@ -129,12 +129,17 @@ export default function NeedsYourResponse({ locale, refreshKey, onOpenItems }: {
   const [removing, setRemoving] = useState<string | null>(null);
 
   const [failed, setFailed] = useState<string | null>(null);
+  const loadVersion = useRef(0);
 
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
+    onOpenItems?.(null);
     /** One request, and at most ONE retry after re-reading the session for a rotated token. */
     const attempt = async (): Promise<Response | null> => {
       try {
-        return await fetch("/api/bty/announcements/mine", { credentials: "include", cache: "no-store" });
+        return await fetch("/api/bty/announcements/mine", {
+          credentials: "include", cache: "no-store", signal: AbortSignal.timeout(10_000),
+        });
       } catch {
         return null;
       }
@@ -151,14 +156,19 @@ export default function NeedsYourResponse({ locale, refreshKey, onOpenItems }: {
     }
 
     if (!res || !res.ok) {
-      onOpenItems?.(null);
-      setLoadState("error");
+      if (version === loadVersion.current) setLoadState("error");
       return;
     }
 
-    const d = (await res.json().catch(() => null)) as { items?: Item[] } | null;
-    setItems(Array.isArray(d?.items) ? d!.items! : []);
-    onOpenItems?.((d?.items ?? []).filter(it => isTrackingMode(it.trackingMode)).map(it => ({ trackingMode: it.trackingMode!, openedAt: it.openedAt ?? null, acknowledgedAt: it.acknowledgedAt ?? null, responseSubmittedAt: it.responseSubmittedAt ?? null })));
+    const d = (await res.json().catch(() => null)) as { ok?: boolean; items?: Item[] } | null;
+    if (version !== loadVersion.current) return;
+    if (!d || typeof d !== "object" || d.ok === false || ("items" in d && !Array.isArray(d.items))) {
+      setLoadState("error");
+      return;
+    }
+    const items = Array.isArray(d?.items) ? d.items : [];
+    setItems(items);
+    onOpenItems?.(items.filter(it => isTrackingMode(it.trackingMode)).map(it => ({ trackingMode: it.trackingMode!, openedAt: it.openedAt ?? null, acknowledgedAt: it.acknowledgedAt ?? null, responseSubmittedAt: it.responseSubmittedAt ?? null })));
     setLoadState("ready");
   }, [onOpenItems]);
 
@@ -169,6 +179,7 @@ export default function NeedsYourResponse({ locale, refreshKey, onOpenItems }: {
   */
   useEffect(() => {
     void load();
+    return () => { loadVersion.current++; };
   }, [load, refreshKey]);
 
   const respond = useCallback(

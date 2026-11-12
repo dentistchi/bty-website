@@ -14,7 +14,7 @@
  * text on a Host's screen.
  */
 
-export const DELIVERY_REASONS = ["not_installed", "not_eligible", "no_route", "unknown", "failed"] as const;
+export const DELIVERY_REASONS = ["not_installed", "not_eligible", "no_route", "unknown", "failed", "event_closed"] as const;
 export type DeliveryReason = (typeof DELIVERY_REASONS)[number];
 
 export function isDeliveryReason(raw: unknown): raw is DeliveryReason {
@@ -28,6 +28,7 @@ export type DeliveryReasonCopy = {
   sendReasonNoRoute: string;
   sendReasonUnknown: string;
   sendReasonFailed: string;
+  sendReasonEventClosed: string;
 };
 
 /** A TOTAL map — a new reason cannot be added without deciding what a Host is told. */
@@ -44,6 +45,8 @@ export function deliveryReasonSentence(raw: unknown, t: DeliveryReasonCopy): str
       return t.sendReasonUnknown;
     case "failed":
       return t.sendReasonFailed;
+    case "event_closed":
+      return t.sendReasonEventClosed;
     default: {
       const exhaustive: never = reason;
       void exhaustive;

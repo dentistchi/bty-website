@@ -3,20 +3,8 @@ import { NextResponse } from "next/server";
 import { consentSatisfied } from "@/domain/legal/consent-document";
 
 /**
- * ONE CONSENT PRIMITIVE FOR EVERY LEARNER SEAM (Slice 3.2R-R9B.2).
- *
- * R9B.1 closed the largest seam by teaching `requireConsentedUser` to read the profile and judge it
- * with R9A's authority. The remaining seams authenticate differently — `getLetterAuth` has no
- * `NextRequest` at all, `requireArenaAccess` resolves membership, and 71 routes call
- * `supabase.auth.getUser()` inline — so each of them would otherwise have grown its own copy of
- * "read consent_version, compare it". That is exactly how a second definition of "consented" gets
- * born, and how the two definitions drift.
- *
- * So the comparison lives here, once, and every seam calls it. `ACTIVE_CONSENT_VERSION` still
- * appears in exactly one file in the repository; this only knows how to ask the database.
- *
- * FAILS CLOSED, identically everywhere: a missing profile, an errored read and a thrown query are
- * all "consent not established", never "consented".
+ * Read the server-verified profile projection used by every learner consent gate.
+ * A missing profile, stale version or failed read requires consent.
  */
 export async function isConsentCurrent(
   supabase: SupabaseClient,
@@ -25,7 +13,7 @@ export async function isConsentCurrent(
   try {
     const { data, error } = await supabase
       .from("arena_profiles")
-      .select("consent_version")
+      .select("consent_version:consent_verified_version")
       .eq("user_id", userId)
       .maybeSingle<{ consent_version: string | null }>();
     if (error) return false;

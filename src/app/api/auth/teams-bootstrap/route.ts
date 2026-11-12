@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readBootTimeline } from "@/domain/teams/bootDiagnostics";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getCfClientIp, rateLimitKV } from "@/lib/rate-limit";
 import { verifyTeamsTabSsoToken } from "@/lib/bty/teams/tabSsoTokenVerifier.server";
 import { bridgeTeamsIdentityToSession } from "@/lib/bty/teams/teamsSessionBridge.server";
 import { bindAnnouncementRecipients } from "@/lib/bty/announcement/trackAnnouncement.server";
@@ -22,9 +23,8 @@ export const dynamic = "force-dynamic";
  *   3. resolve the canonical BTY user via the existing Microsoft-first resolver
  *   4. exchange that resolved user for a genuine Supabase session
  *
- * THE BODY IS NEVER READ. Not for a user id, not for an email, not for a tenant. There is no
- * `req.json()` call in this file, so there is no field a client could supply that this route
- * could be persuaded to trust. The only input authority is the Authorization header.
+ * The authenticated branch only uses the verified Authorization header. Tokenless
+ * diagnostics have their own bounded branch and cannot establish a session.
  *
  * THE ENTRA TOKEN'S AUTHORITY ENDS HERE. What leaves this route is a Supabase session — the same
  * credential type the cookie path produces. No other BTY route learns to verify an Entra token,
@@ -44,57 +44,62 @@ function json(body: unknown, status: number) {
   return res;
 }
 
-/**
- * A tokenless beacon for failures that happen BEFORE this route is reachable (Slice A0-RUNTIME).
- *
- * If TeamsJS fails to load, `app.initialize()` rejects, or `getAuthToken()` refuses, the tab never
- * sends a request — so a live tail sees nothing, and "nothing" is ambiguous: it reads identically
- * to a person who never tapped. This lets the client say WHICH pre-bootstrap step failed, using
- * the endpoint that already exists.
- *
- * The value is clamped to a short opaque code and nothing else is read from it. The request still
- * carries no token and still gets the same 401 — this changes no behaviour, only observability.
- */
 const CLIENT_ERROR_HEADER = "x-bty-teams-client-error";
+const CLIENT_FAILURE_STEPS = new Set([
+  "import_teams_js",
+  "app_initialize",
+  "get_auth_token",
+  "bootstrap_http_failure",
+  "set_session_failure",
+  "notify_success_failure",
+]);
+const MAX_DIAGNOSTIC_BYTES = 8192;
 
-/**
- * Record one failed boot attempt where an operator can actually read it.
- *
- * ★ WHY `mvp_debug_reports` AND NOT A NEW TABLE. It is the product's existing durable operator
- * surface for "something went wrong", it already has an admin read UI, and one row per FAILED boot
- * is exactly the shape it was built for: a reported problem plus context, with a triage lifecycle
- * (`status`, `resolved_at`, `resolution_note`) already attached. A new telemetry table would
- * duplicate that and arrive with no reader.
- *
- * ★ WHY ONLY FAILURES, AND ONLY ONE ROW. A stream of twenty rows per tab open would flood a human
- * triage surface and leave every one of them `status: 'open'`. The successful stages are not lost:
- * a failure row's timeline shows exactly how far the attempt got, which is the question — "did it
- * reach ready" — and a boot that fully succeeds needs no row at all.
- *
- * ★ FAIL-OPEN, ALWAYS. Boot must never depend on diagnostics. Every failure here is swallowed, and
- * the caller's response is unchanged whether this wrote a row or not.
- *
- * ★ NO CREDENTIAL REACHES IT. `readBootTimeline` admits only known stage names, finite elapsed
- * numbers, a uuid-shaped correlation id, a 40-hex build sha and a short platform class. There is no
- * field for a token, an email or user text, and the body is read only when it is valid JSON.
- */
-async function persistBootFailure(req: NextRequest, clientError: string): Promise<void> {
+async function readDiagnosticBody(req: NextRequest): Promise<unknown> {
+  const reader = req.body?.getReader();
+  if (!reader) return null;
+
+  const bytes = new Uint8Array(MAX_DIAGNOSTIC_BYTES);
+  let length = 0;
   try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (length + value.byteLength > bytes.byteLength) {
+        void reader.cancel().catch(() => {});
+        return null;
+      }
+      bytes.set(value, length);
+      length += value.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(bytes.subarray(0, length)));
+  } catch {
+    return null;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/** Record bounded, credential-free telemetry once per attempt. Boot never depends on this write. */
+async function persistBootFailure(req: NextRequest, step: string): Promise<void> {
+  try {
+    const limit = await rateLimitKV({
+      endpoint: "teams-boot-diagnostic",
+      identifier: getCfClientIp(req),
+      limit: 20,
+      windowSeconds: 60,
+    }).catch(() => null);
+    if (!limit?.allowed) return;
+
+    const timeline = readBootTimeline(await readDiagnosticBody(req));
+    if (!timeline || !/_(failure|timeout)$/.test(timeline.terminalStage)) return;
+
     const admin = getSupabaseAdmin();
     if (!admin) return;
-
-    const body = await req.json().catch(() => null);
-    const timeline = readBootTimeline(body);
-    // Without a valid timeline there is nothing worth a triage row; the log line above still stands.
-    if (!timeline) return;
-
-    const last = timeline.events[timeline.events.length - 1];
-    await admin.from("mvp_debug_reports").insert({
+    const { error } = await admin.from("mvp_debug_reports").upsert({
+      id: timeline.bootAttemptId,
       title: `teams_boot_failed: ${timeline.terminalStage}`,
-      description:
-        `Teams tab boot stopped at ${timeline.terminalStage}` +
-        (last?.errorClass ? ` (${last.errorClass})` : "") +
-        `. Reported step: ${clientError.replace(/[^a-zA-Z0-9._:-]/g, "")}.`,
+      description: `Teams tab boot stopped at ${timeline.terminalStage}. Reported step: ${step}.`,
       route: "/teams",
       context: {
         kind: "teams_boot_failure",
@@ -102,33 +107,28 @@ async function persistBootFailure(req: NextRequest, clientError: string): Promis
         terminalStage: timeline.terminalStage,
         buildSha: timeline.buildSha,
         platform: timeline.platform,
-        // Stage + elapsed only. This is the whole diagnostic value and the whole payload.
         events: timeline.events,
       },
-      // Pre-session by definition: the attempt failed before an identity existed.
       created_by: null,
-    });
+    }, { onConflict: "id", ignoreDuplicates: true });
+    if (error) {
+      console.error("[teams-bootstrap] diagnostic persistence failed", { code: error.code ?? "unknown" });
+    }
   } catch {
-    /* diagnostics must never become a second failure */
+    // A failed diagnostic write must not affect sign-in.
+    console.warn("[teams-bootstrap] diagnostic unavailable");
   }
 }
 
 export async function POST(req: NextRequest) {
-  const clientError = (req.headers.get(CLIENT_ERROR_HEADER) ?? "").trim().slice(0, 64);
-  if (clientError) {
-    console.error("[teams-bootstrap] client reported a pre-bootstrap failure", {
-      step: clientError.replace(/[^a-zA-Z0-9._:-]/g, ""),
-    });
-    /*
-      AND NOW IT SURVIVES THE REQUEST. The line above goes to a Worker log with no retention
-      configured, which is why the last host failure could not be attributed to a stage afterwards.
-      This persists ONE durable row per failed boot attempt, and then returns exactly as before.
-    */
-    await persistBootFailure(req, clientError);
+  const authorization = req.headers.get("authorization");
+  const clientError = req.headers.get(CLIENT_ERROR_HEADER);
+  if (!authorization && clientError !== null) {
+    if (CLIENT_FAILURE_STEPS.has(clientError)) await persistBootFailure(req, clientError);
+    return json({ error: "Unauthorized" }, 401);
   }
 
-  // 1. AUTHENTICATE FIRST.
-  const verified = await verifyTeamsTabSsoToken(req.headers.get("authorization"));
+  const verified = await verifyTeamsTabSsoToken(authorization);
   if (!verified.ok) {
     // 401 with no detail. The sanitized reason is already logged by the verifier.
     return json({ error: "Unauthorized" }, 401);

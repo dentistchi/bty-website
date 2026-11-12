@@ -31,6 +31,14 @@ function mockAdmin(cfg: { assignments?: unknown[]; contracts?: unknown[]; outcom
 const now = new Date("2026-07-22T12:00:00Z");
 
 describe("buildTodayReminders", () => {
+  it("does not report empty Today when the required learning read fails", async () => {
+    const admin = {
+      rpc: async () => ({ data: null, error: { message: "unavailable" } }),
+      from: () => query([]),
+    } as never;
+    await expect(buildTodayReminders(admin, "u1", now, "UTC", "en")).rejects.toThrow("assignments_unavailable");
+  });
+
   it("projects REQUIRED (assigned only), ACTION, PRACTICE — completed excluded, no fake due dates", async () => {
     const admin = mockAdmin({
       assignments: [

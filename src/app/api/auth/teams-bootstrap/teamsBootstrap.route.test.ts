@@ -16,13 +16,26 @@ const getUserById = vi.fn();
 const generateLink = vi.fn();
 const verifyOtp = vi.fn();
 const rpc = vi.fn();
+const diagnosticUpsert = vi.fn();
+const rateLimitKV = vi.fn();
 
 vi.mock("@/lib/bty/teams/tabSsoTokenVerifier.server", () => ({ verifyTeamsTabSsoToken }));
 vi.mock("@/lib/bty/identity-link/microsoftIdentityLink.server", () => ({
   resolveBtyUserFromMicrosoftIdentity,
 }));
 vi.mock("@/lib/supabase-admin", () => ({
-  getSupabaseAdmin: () => ({ auth: { admin: { getUserById, generateLink } }, rpc }),
+  getSupabaseAdmin: () => ({
+    auth: { admin: { getUserById, generateLink } },
+    rpc,
+    from: (table: string) => {
+      if (table !== "mvp_debug_reports") throw new Error("Unexpected diagnostic table");
+      return { upsert: diagnosticUpsert };
+    },
+  }),
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  getCfClientIp: () => "192.0.2.9",
+  rateLimitKV,
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: { verifyOtp } }),
@@ -58,6 +71,9 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  diagnosticUpsert.mockResolvedValue({ error: null });
+  rateLimitKV.mockResolvedValue({ allowed: true });
   verifyTeamsTabSsoToken.mockResolvedValue({ ok: true, identity: { tenantId: TID, aadObjectId: OID } });
   resolveBtyUserFromMicrosoftIdentity.mockResolvedValue({ status: "RESOLVED", userId: USER });
   getUserById.mockResolvedValue({ data: { user: { id: USER, email: "founder@bty.example" } }, error: null });
@@ -67,6 +83,48 @@ beforeEach(() => {
   });
   verifyOtp.mockResolvedValue({ data: { user: { id: USER }, session: SESSION }, error: null });
   rpc.mockResolvedValue({ data: [{ bound: 0 }], error: null });
+});
+
+describe("teams-bootstrap — bounded boot diagnostics", () => {
+  const attempt = "11111111-2222-3333-4444-555555555555";
+  const timeline = {
+    bootAttemptId: attempt,
+    terminalStage: "app_initialize_timeout",
+    events: [{ stage: "app_initialize_timeout", elapsedMs: 5000 }],
+  };
+  const diagnosticRequest = (body = JSON.stringify(timeline)) =>
+    new NextRequest("https://arena.btydaily.com/api/auth/teams-bootstrap", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bty-teams-client-error": "app_initialize" },
+      body,
+    });
+
+  it("records the bounded attempt once under its ID without authenticating it", async () => {
+    const res = await POST(diagnosticRequest());
+    expect(res.status).toBe(401);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(verifyTeamsTabSsoToken).not.toHaveBeenCalled();
+    expect(rateLimitKV).toHaveBeenCalledWith({
+      endpoint: "teams-boot-diagnostic", identifier: "192.0.2.9", limit: 20, windowSeconds: 60,
+    });
+    expect(diagnosticUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      id: attempt, route: "/teams", created_by: null,
+    }), { onConflict: "id", ignoreDuplicates: true });
+  });
+
+  it("refuses storage for limited or oversized diagnostics", async () => {
+    rateLimitKV.mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 30 });
+    expect((await POST(diagnosticRequest())).status).toBe(401);
+    expect((await POST(diagnosticRequest(JSON.stringify({ ...timeline, padding: "x".repeat(8192) })))).status)
+      .toBe(401);
+    expect(diagnosticUpsert).not.toHaveBeenCalled();
+  });
+
+  it("logs a sanitized database error without changing the authentication response", async () => {
+    diagnosticUpsert.mockResolvedValueOnce({ error: { code: "23514", message: "sensitive details" } });
+    expect((await POST(diagnosticRequest())).status).toBe(401);
+    expect(console.error).toHaveBeenCalledWith("[teams-bootstrap] diagnostic persistence failed", { code: "23514" });
+  });
 });
 
 describe("teams-bootstrap — RESOLVED", () => {

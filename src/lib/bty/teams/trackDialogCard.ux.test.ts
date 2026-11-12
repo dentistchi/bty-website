@@ -34,7 +34,7 @@ describe("Track setup explains required input before submission", () => {
     const scheduled = trackConfirmationCard(1, locale, false, "scheduled");
     const unavailable = trackConfirmationCard(1, locale, false, "unavailable");
     expect(scheduled.card.content.body[2].text).toContain(locale === "ko" ? "준비" : "prepared");
-    expect(unavailable.card.content.body[2].text).toContain(locale === "ko" ? "시작하지 못했습니다" : "have not started");
+    expect(unavailable.card.content.body[2].text).toContain(locale === "ko" ? "아직 시작되지 않았습니다" : "have not started yet");
     expect(scheduled.height).toBeGreaterThan(trackConfirmationCard(1, locale).height);
   });
 });

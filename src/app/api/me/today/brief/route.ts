@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
-    if (!admin) return noStore(NextResponse.json({ ok: true, consent: false, brief: null, reminders: [] }, { status: 200 }));
+    if (!admin) return noStore(NextResponse.json({ ok: false, code: "UNAVAILABLE" }, { status: 503 }));
 
     const locale = req.nextUrl.searchParams.get("locale") === "ko" ? "ko" : "en";
     const deviceTz = req.nextUrl.searchParams.get("tz");
@@ -116,6 +116,6 @@ export async function GET(req: NextRequest) {
       ),
     );
   } catch {
-    return noStore(NextResponse.json({ ok: true, consent: false, brief: null, reminders: [] }, { status: 200 }));
+    return noStore(NextResponse.json({ ok: false, code: "UNAVAILABLE" }, { status: 503 }));
   }
 }

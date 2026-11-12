@@ -28,6 +28,30 @@ function routeFetch(map: Record<string, { status: number; body: unknown }>) {
 }
 
 describe("FoundryEventRooms — required-learning surface on the Foundry tab", () => {
+  it("shows the employee assignment when the unrelated author tools are unavailable", async () => {
+    routeFetch({
+      "/api/bty/foundry/events": { status: 503, body: {} },
+      "/api/bty/foundry/assignments/mine": {
+        status: 200,
+        body: { ok: true, assignments: [{
+          assignmentId: "a-required",
+          eventId: "5e543327",
+          status: "assigned",
+          title: "Safety Basics",
+          assignedAt: "2026-06-01T00:00:00Z",
+          completedAt: null,
+          roomUrl: "https://app.example/f/btyfr1.required.signature",
+          participationMode: "assigned_overlay",
+        }] },
+      },
+    });
+
+    render(<FoundryEventRooms locale="en" />);
+    expect(await screen.findByText("Safety Basics")).toBeTruthy();
+    expect(screen.getByText("Couldn't load some learning tools.")).toBeTruthy();
+    expect(screen.queryByText("Create training")).toBeNull();
+  });
+
   it("a non-host learner sees their Completed assignment inside the Foundry tab", async () => {
     routeFetch({
       "/api/bty/foundry/events": { status: 403, body: { error: "foundry_author_required" } },

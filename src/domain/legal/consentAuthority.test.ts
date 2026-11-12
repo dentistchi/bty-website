@@ -151,12 +151,13 @@ describe("[3.2R-R9A] case 24 — historical acceptance rows stay immutable", () 
     expect(offenders).toEqual([]);
   });
 
-  it("the acceptance writer INSERTs and does not carry an update/delete of its own", () => {
+  it("the acceptance API uses the server-only append writer", () => {
     const route = readFileSync(
       join(process.cwd(), "src/app/api/legal/accept/route.ts"),
       "utf8",
     );
-    expect(route).toContain('from("arena_consent_log").insert(');
+    expect(route).toContain('admin.rpc("bty_accept_learner_consent"');
+    expect(route).not.toContain('from("arena_consent_log")');
     expect(route).not.toMatch(/arena_consent_log"\)\s*\.\s*(update|delete)\s*\(/);
   });
 });

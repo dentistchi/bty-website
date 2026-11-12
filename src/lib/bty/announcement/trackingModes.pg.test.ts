@@ -55,6 +55,9 @@ const APPLIED = [
   read("20260902000000_bty_tracked_announcements_v1.sql"),
   read("20260906000000_bty_announcement_recipient_handled_v1.sql"),
   read("20260907000000_bty_announcement_service_url_v1.sql"),
+  read("20260908000000_bty_teams_proactive_notification_v1.sql"),
+  read("20260909000000_bty_notification_delivery_claim_v1.sql"),
+  read("20260910000000_bty_teams_conversation_creation_claim_v1.sql"),
   read("20260911000000_bty_bind_recipients_on_canonical_entry_v1.sql"),
   ADOPT_PRODUCTION_SHAPE,
   read("20260912000000_bty_announcement_thread_v1.sql"),
@@ -65,7 +68,9 @@ const APPLIED = [
 const MIGRATION = "20260927051100_announcement_tracking_modes_v1.sql";
 const ALIGNMENT = "20260928000000_bty_track_collaboration_authority_alignment_v1.sql";
 const FIRST_LOGIN_INVITES = "20261110191609_bty_track_first_login_invites.sql";
+const INITIAL_NOTICE_RECOVERY = "20261112173944_bty_track_initial_notice_recovery.sql";
 let root: Pool; let db: Pool;
+let historicalRecipientId: string;
 let databaseCreated = false;
 const name = `tracking_v1_${process.pid}`;
 beforeAll(async () => {
@@ -84,6 +89,10 @@ beforeAll(async () => {
  await db.query(read(ALIGNMENT));
  await db.query(read(FIRST_LOGIN_INVITES));
  await db.query(read(FIRST_LOGIN_INVITES));
+ const historical = await track(await seed(), [oid(1)]);
+ historicalRecipientId = (await row(historical.announcement_id)).id;
+ await db.query(read(INITIAL_NOTICE_RECOVERY));
+ await db.query(read(INITIAL_NOTICE_RECOVERY));
 }, 60000);
 afterAll(async () => {
  try {
@@ -114,6 +123,19 @@ async function track(s: {host:string;cap:string}, recipients: string[], mode="ac
  return (await db.query("select * from public.bty_track_announcement_v1($1::uuid,$1::text,$2,'Notice',$3,$4,null)",
  [s.host,JSON.stringify({provider:"teams",tenant_id:s.host,conversation_id:"conversation",message_id:s.cap}),recipients.map(o=>o===oid(99)?s.host:o),mode])).rows[0];
 }
+async function invite(
+  source: { host: string; cap: string },
+  selected: Array<string | null>,
+  preverified: Array<string | null>,
+  mode = "acknowledgment",
+  tenant = source.host,
+) {
+  const { rows } = await db.query(
+    "select * from public.bty_track_announcement_v2($1::uuid,$1::text,$2,'Notice',$3,$4,null,$5)",
+    [source.host, { provider: "teams", tenant_id: tenant, conversation_id: "conversation", message_id: source.cap }, selected, mode, preverified],
+  );
+  return rows[0];
+}
 async function recipient(ann: string, index=1) {
  return (await db.query("select user_id from public.bty_tracked_announcement_recipients where announcement_id=$1 and aad_object_id=$2",[ann,oid(index)])).rows[0].user_id;
 }
@@ -121,6 +143,94 @@ async function evidence(ann: string,user:string,action:string,text:string|null=n
  return (await db.query("select * from public.bty_record_announcement_evidence($1,$2,$3,$4)",[ann,user,action,text])).rows[0].result;
 }
 async function row(ann:string) { return (await db.query("select * from public.bty_tracked_announcement_recipients where announcement_id=$1",[ann])).rows[0]; }
+
+describe.runIf(!!URL)("initial Track notice recovery", () => {
+ const due = (ids: string[]) => db.query(
+  "update public.bty_tracked_announcement_recipients set initial_notice_retry_at = '-infinity' where id = any($1::uuid[])",
+  [ids],
+ );
+ const reserve = async (limit = 24) => (await db.query(
+  "select * from public.bty_reserve_due_track_initial_notices($1)", [limit],
+ )).rows;
+ const beginNotice = async (id: string, owner: string) => (await db.query(
+  "select * from public.bty_begin_recipient_notification($1,$2)", [id, owner],
+ )).rows[0];
+ const markNotice = async (id: string, token: string) => (await db.query(
+  "select * from public.bty_mark_recipient_notification_sending($1,$2)", [id, token],
+ )).rows[0].result;
+ async function createNotice(mode = "acknowledgment", linked = true) {
+  const s = await seed();
+  const selected = [oid(linked ? 1 : 11)];
+  const { announcement_id: announcement } = await invite(s, selected, linked ? [] : selected, mode);
+  await db.query("update public.bty_tracked_announcements set service_url=$2 where id=$1",
+   [announcement, "https://smba.trafficmanager.net/amer/"]);
+  return { ...s, announcement, recipient: await row(announcement) };
+ }
+
+ it("enrolls future recipients without backfill and reserves concurrent batches for eventual recovery", async () => {
+  const linked = await createNotice();
+  const unbound = await createNotice("response", false);
+  const targets = [linked, unbound].map(({ host, recipient }) => ({ recipient_id: recipient.id, owner_user_id: host }));
+  expect(unbound.recipient.user_id).toBeNull();
+  expect(unbound.recipient.initial_notice_retry_at).toBeInstanceOf(Date);
+  expect((await db.query(
+   "select initial_notice_retry_at from public.bty_tracked_announcement_recipients where id=$1",
+   [historicalRecipientId],
+  )).rows[0].initial_notice_retry_at).toBeNull();
+  expect(await reserve()).toEqual([]);
+  await due(targets.map(target => target.recipient_id));
+  const batches = await Promise.all([reserve(1), reserve(1)]);
+  expect(batches.map(batch => batch.length)).toEqual([1, 1]);
+  expect(new Set(batches.flat())).toEqual(new Set(targets));
+  expect(await reserve()).toEqual([]);
+  await due(targets.map(target => target.recipient_id));
+  expect(await reserve()).toHaveLength(2);
+  for (const signature of [
+   "bty_reserve_due_track_initial_notices(integer)",
+   "bty_begin_recipient_notification(uuid,uuid)",
+   "bty_mark_recipient_notification_sending(uuid,uuid)",
+  ]) {
+   for (const role of ["anon", "authenticated", "service_role"]) {
+    expect((await db.query(
+     "select has_function_privilege($1,$2,'EXECUTE') allowed",
+     [role, `public.${signature}`],
+    )).rows[0].allowed).toBe(role === "service_role");
+   }
+  }
+ });
+
+ it("excludes completed, closed, confirmed and ambiguous notices and rechecks before starting an outbound send", async () => {
+  const completed = await createNotice("response");
+  const closed = await createNotice();
+  const sent = await createNotice();
+  const ambiguous = await createNotice();
+  const claim = async ({ recipient, host }: Awaited<ReturnType<typeof createNotice>>) => {
+   const result = await beginNotice(recipient.id, host);
+   expect(result.result).toBe("ok");
+   return result.claim_token;
+  };
+  const completedClaim = await claim(completed);
+  const closedClaim = await claim(closed);
+  const sentClaim = await claim(sent);
+  const ambiguousClaim = await claim(ambiguous);
+  expect(await evidence(completed.announcement, completed.recipient.user_id, "respond", "completed")).toBe("recorded");
+  await db.query("update public.bty_tracked_announcements set status='closed', closed_at=now() where id=$1",
+   [closed.announcement]);
+  expect(await markNotice(completed.recipient.id, completedClaim)).toBe("not_found");
+  expect(await markNotice(closed.recipient.id, closedClaim)).toBe("not_found");
+  expect((await beginNotice(completed.recipient.id, completed.host)).result).toBe("not_found");
+  expect((await beginNotice(closed.recipient.id, closed.host)).result).toBe("not_found");
+  expect(await markNotice(sent.recipient.id, sentClaim)).toBe("sending");
+  expect((await db.query("select * from public.bty_confirm_recipient_notification($1,$2)",
+   [sent.recipient.id, sentClaim])).rows[0].result).toBe("notified");
+  expect(await markNotice(ambiguous.recipient.id, ambiguousClaim)).toBe("sending");
+  await db.query("update public.bty_tracked_announcement_recipients set notification_claim_expires_at = '-infinity' where id = any($1::uuid[])",
+   [[completed.recipient.id, closed.recipient.id, ambiguous.recipient.id]]);
+  await due([completed, closed, sent, ambiguous].map(target => target.recipient.id));
+  expect(await reserve()).toEqual([]);
+  expect((await beginNotice(ambiguous.recipient.id, ambiguous.host)).result).toBe("delivery_unknown");
+ });
+});
 
 describe.runIf(!!URL)("announcement modes: real migrations, RPC, roles and retries",()=> {
  it("excludes self, freezes exactly ten recipients, and concurrent retries preserve a single audience and mode",async()=> {
@@ -447,19 +557,6 @@ describe.runIf(!!URL)("release blockers: actual service and PostgreSQL transacti
 });
 
 describe.runIf(!!URL)("Track first-login invitations: native PostgreSQL", () => {
-  const invite = async (
-    source: { host: string; cap: string },
-    selected: Array<string | null>,
-    preverified: Array<string | null>,
-    mode = "acknowledgment",
-    tenant = source.host,
-  ) => {
-    const { rows } = await db.query(
-      "select * from public.bty_track_announcement_v2($1::uuid,$1::text,$2,'Notice',$3,$4,null,$5)",
-      [source.host, { provider: "teams", tenant_id: tenant, conversation_id: "conversation", message_id: source.cap }, selected, mode, preverified],
-    );
-    return rows[0];
-  };
   const audience = async (id: string) => (await db.query(
     "select aad_object_id, user_id, bound_at from public.bty_tracked_announcement_recipients where announcement_id=$1 order by aad_object_id",
     [id],

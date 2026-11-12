@@ -119,7 +119,27 @@ function makeAdmin(over: { secondEvent?: boolean } = {}) {
     };
     return q;
   }
-  return { admin: { from, rpc: async () => ({ data: null, error: null }) } as unknown as SupabaseClient, tables };
+  const rpc = vi.fn(async (name: string, args: Row) => {
+    expect(name).toBe("join_foundry_teams_training");
+    const rows = tables.foundry_event_participants;
+    const existing = rows.find((row) =>
+      row.event_id === args.p_event_id && row.microsoft_tenant_id === args.p_tenant_id
+      && row.microsoft_aad_object_id === args.p_aad_object_id,
+    );
+    if (existing) {
+      return { data: existing.status === "joined" ? { state: "joined", participant: existing } : { state: "removed" }, error: null };
+    }
+    const event = tables.foundry_events.find((row) => row.id === args.p_event_id);
+    if (event?.status !== "open") return { data: { state: "event_closed" }, error: null };
+    const participant = {
+      id: `participant-${++n}`, event_id: args.p_event_id, status: "joined",
+      display_name: args.p_display_name, user_id: args.p_user_id,
+      microsoft_tenant_id: args.p_tenant_id, microsoft_aad_object_id: args.p_aad_object_id,
+    };
+    rows.push(participant);
+    return { data: { state: "joined", participant }, error: null };
+  });
+  return { admin: { from, rpc } as unknown as SupabaseClient, tables, rpc };
 }
 
 const caller = (oid: string) => ({ tenantId: TENANT, aadObjectId: oid });
@@ -167,6 +187,26 @@ describe("★ a delivery is only answerable by the person it was sent to", () =>
 });
 
 describe("the read action", () => {
+  it("refuses first-time admission if the Host closed the room after sending the card", async () => {
+    const { admin, tables, rpc } = makeAdmin();
+    tables.foundry_events[0]!.status = "closed";
+    const res = await handleTrainingCardAction(admin, read(DELIVERY_A), caller(OID_A));
+    expect(body(res.card)).toContain("This training is no longer available.");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(tables.foundry_event_participants).toHaveLength(0);
+    expect(tables.foundry_event_training_progress).toHaveLength(0);
+  });
+
+  it("keeps the existing learner's progress after closure", async () => {
+    const { admin, tables, rpc } = makeAdmin();
+    await handleTrainingCardAction(admin, read(DELIVERY_A), caller(OID_A));
+    tables.foundry_events[0]!.status = "closed";
+    const res = await handleTrainingCardAction(admin, answer(DELIVERY_A, 0, "a"), caller(OID_A));
+    expect(body(res.card)).toContain("Q2?");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(tables.foundry_event_participants).toHaveLength(1);
+  });
+
   it("creates the Microsoft-bound participant, stamps exposure, and shows question 1", async () => {
     const { admin, tables } = makeAdmin();
     const res = await handleTrainingCardAction(admin, read(DELIVERY_A), caller(OID_A));

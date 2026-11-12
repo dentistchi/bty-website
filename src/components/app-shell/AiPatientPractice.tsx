@@ -140,6 +140,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const audioUrlRef = useRef<string | null>(null);
   const recorderRef = useRef<BrowserTurnRecorder | null>(null);
   const viewRef = useRef<View | null>(null);
+  const sendingRef = useRef(false);
   const endedRef = useRef(false);
   /** Read inside async callbacks, so a value set in the same tick (Start) is already visible. */
   const voiceAvailableRef = useRef(false);
@@ -221,6 +222,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
     setFeedback(null);
     setFeedbackError(null);
     setFailed(null);
+    setDraft("");
     endedRef.current = false;
     // Unlock audio playback inside this tap (iOS and Teams mobile only allow it from a gesture).
     if (!audioRef.current) audioRef.current = new Audio();
@@ -251,7 +253,8 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   const send = useCallback(
     async (pending: Pending) => {
       const current = viewRef.current;
-      if (!current || sending) return;
+      if (!current || sendingRef.current || endedRef.current) return;
+      sendingRef.current = true;
       setSending(true);
       setSlow(false);
       setNotice(null);
@@ -276,6 +279,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
       }
       clearTimeout(slowTimer);
       clearTimeout(abortTimer);
+      sendingRef.current = false;
       setSending(false);
       setSlow(false);
       if (!result.ok) {
@@ -293,7 +297,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
       if (pending.kind === "text") setDraft("");
       if (voiceAvailable && patientVoiceOn) void speak(result.data.turns.length - 1, result.data.state);
     },
-    [applyView, patientVoiceOn, sending, speak, voiceAvailable],
+    [applyView, patientVoiceOn, speak, voiceAvailable],
   );
 
   useEffect(() => {
@@ -361,7 +365,9 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
   }, [reportCapture, send, stopAudio, voiceMode]);
 
   const finish = useCallback(async () => {
+    if (sendingRef.current) return;
     const current = viewRef.current;
+    endedRef.current = true;
     recorderRef.current?.cancel();
     recorderRef.current = null;
     setRecording(false);
@@ -423,7 +429,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
             <li>In every situation the insurance company has not confirmed coverage. An estimate is only an estimate.</li>
             <li>Clinical decisions belong to the treating dentist. This practice is about how you communicate, not about clinical care.</li>
             <li>The patient is played by AI. It can say things a real patient wouldn&apos;t.</li>
-            <li>If you speak, your voice is sent to BTY&apos;s AI provider to be turned into text. BTY does not keep the recording or the conversation.</li>
+            <li>What you type and the conversation so far are sent to BTY&apos;s AI provider for replies and coaching. If you speak, your voice is also sent for transcription. BTY does not keep the recording or the conversation.</li>
             <li>Feedback is written by AI from what you said. It isn&apos;t a score and can be wrong — talk it over with your mentor.</li>
           </ul>
           <label className="mt-1 flex items-start gap-2">
@@ -532,7 +538,7 @@ export function AiPatientPractice({ onBack }: { onBack: () => void }) {
           <span className={`tabular-nums text-[0.95rem] ${remainingMs < 60_000 ? "text-amber-200" : "text-white/80"}`} aria-label="Time left" data-testid="ai-patient-clock">
             {clock}
           </span>
-          <button type="button" onClick={() => void finish()} className="rounded-xl border border-white/20 px-3 py-1.5 text-[0.8rem] text-white/85" data-testid="ai-patient-end">
+          <button type="button" disabled={sending} onClick={() => void finish()} className="rounded-xl border border-white/20 px-3 py-1.5 text-[0.8rem] text-white/85 disabled:opacity-40" data-testid="ai-patient-end">
             End
           </button>
         </div>

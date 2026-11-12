@@ -77,6 +77,13 @@ describe("GET /api/bty/foundry/assignments/mine — contract", () => {
     expect(listMyAssignments).toHaveBeenCalledWith({ __admin: true }, "user-hanbit");
   });
 
+  it("returns 503 when the assignment read fails", async () => {
+    listMyAssignments.mockRejectedValueOnce(new Error("assignments_unavailable"));
+    const res = await GET(req());
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ ok: false, error: "unavailable" });
+  });
+
   it("composes roomUrl from the request origin + minted token and returns only justified fields", async () => {
     listMyAssignments.mockResolvedValue([
       {

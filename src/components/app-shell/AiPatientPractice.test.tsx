@@ -108,6 +108,7 @@ describe("AiPatientPractice", () => {
     const notice = screen.getByTestId("ai-patient-notice").textContent ?? "";
     expect(notice).toMatch(/Fictional patient/);
     expect(notice).toMatch(/Never use a real patient/);
+    expect(notice).toMatch(/What you type and the conversation so far are sent/);
     expect(notice).toMatch(/does not keep the recording or the conversation/);
     expect(notice).toMatch(/isn.t a score/);
     expect(calls).toHaveLength(0);
@@ -122,6 +123,35 @@ describe("AiPatientPractice", () => {
     await waitFor(() => expect(screen.getAllByTestId("turn-patient")).toHaveLength(2));
     expect(calls[1]).toEqual({ url: "/api/arena/ai-patient/turn", body: { state: "aps1.s0", text: "What feels hardest?" } });
     expect(screen.getAllByTestId("turn-tc")[0]!.textContent).toBe("What feels hardest?");
+  });
+
+  it("waits for the last submitted turn before ending into coaching", async () => {
+    await startConversation();
+    let resolveTurn!: (response: Response) => void;
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => new Promise<Response>((resolve) => { resolveTurn = resolve; }),
+    );
+    fireEvent.change(screen.getByTestId("ai-patient-input"), { target: { value: "What feels hardest?" } });
+    fireEvent.click(screen.getByTestId("ai-patient-send"));
+    const end = screen.getByTestId("ai-patient-end") as HTMLButtonElement;
+    expect(end.disabled).toBe(true);
+    fireEvent.click(end);
+    expect(calls.some(({ url }) => url.endsWith("/feedback"))).toBe(false);
+    await act(async () => resolveTurn(Response.json({
+      ...view([{ role: "patient", text: OPENING }, { role: "tc", text: "What feels hardest?" }], "aps1.last"),
+      patientText: "",
+    })));
+    expect(end.disabled).toBe(false);
+    await act(async () => fireEvent.click(end));
+    expect(calls.at(-1)).toEqual({ url: "/api/arena/ai-patient/feedback", body: { state: "aps1.last" } });
+  });
+
+  it("starts the next encounter with an empty draft", async () => {
+    await startConversation();
+    fireEvent.change(screen.getByTestId("ai-patient-input"), { target: { value: "An unsent question" } });
+    fireEvent.click(screen.getByTestId("ai-patient-end"));
+    await act(async () => fireEvent.click(screen.getByTestId("ai-patient-scenario-cost_concern")));
+    expect((screen.getByTestId("ai-patient-input") as HTMLTextAreaElement).value).toBe("");
   });
 
   it("when the microphone is refused, says how to allow it and keeps typing available", async () => {

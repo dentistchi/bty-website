@@ -1,136 +1,85 @@
 #!/usr/bin/env bash
-# Arena release gate — HTTP smoke aligned with docs/BTY_RELEASE_GATE_CHECK.md
-#
-# Requires:
-#   BASE_URL        — deploy origin, e.g. https://example.com (no trailing slash)
-#
-# Credentials (defaults match seedFixtureUser() in src/engine/integration/e2e-test-fixtures.service.ts):
-#   E2E_EMAIL       — optional; default e2e-fixture+bty@local.test
-#   E2E_PASSWORD    — optional; default E2eFixture-local-smoke-32chars-min!!
-#
-# Fixture DB state (onboarding complete, arena profile, scenario pool) — run before gate when possible:
-#   If NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL is set AND SUPABASE_SERVICE_ROLE_KEY is set,
-#   runs: npx tsx scripts/seed-arena-release-gate-fixture.ts
-#   Set SKIP_SEED_FIXTURE=1 to skip (e.g. DB already seeded; no service role in shell).
-#
-# Usage (local):
-#   cd bty-app && BASE_URL=https://preview.example.com ./scripts/arena-release-gate.sh
-#
+# Verify the deployed SHA and Pipeline N. The authenticated check uses a
+# dedicated, pre-provisioned fixture; the public check uses no credentials.
 set -euo pipefail
+umask 077
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BTY_APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$BTY_APP_ROOT" || exit 1
+fail() { printf 'FAIL %s\n' "$*" >&2; exit 1; }
 
 BASE="${BASE_URL:-}"
 BASE="${BASE%/}"
-if [[ -z "$BASE" ]]; then
-  echo "FAIL: BASE_URL is required"
-  exit 1
+EXPECTED_SHA="${EXPECTED_SHA:-}"
+MODE="${ARENA_GATE_MODE:-authenticated}"
+[[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || fail "EXPECTED_SHA must be a full Git SHA"
+[[ "$MODE" == public || "$MODE" == authenticated ]] || fail "ARENA_GATE_MODE must be public or authenticated"
+node -e '
+  try {
+    const raw = process.argv[1];
+    const url = new URL(raw);
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if (raw !== url.origin || (url.protocol !== "https:" && !(loopback && url.protocol === "http:"))) process.exit(1);
+  } catch { process.exit(1); }
+' "$BASE" || fail "BASE_URL must be an HTTPS origin or a loopback HTTP origin"
+
+evidence_dir="$(mktemp -d)"
+trap 'rm -rf "$evidence_dir"' EXIT
+cookie_jar="$evidence_dir/cookies"
+: > "$cookie_jar"
+export BASE
+
+request() {
+  local expected="$1" path="$2" status
+  shift 2
+  status="$(curl -sS --connect-timeout 10 --max-time 30 --proto '=https,http' \
+    -H 'Cache-Control: no-cache' -D "$evidence_dir/headers" -o "$evidence_dir/body" \
+    -w '%{http_code}' "$@" "$BASE$path")" || fail "$path request failed"
+  [[ "$status" == "$expected" ]] || fail "$path returned HTTP $status (expected $expected)"
+  printf 'PASS %s HTTP %s\n' "$path" "$status"
+}
+
+check_json() {
+  local check="$1"
+  node -e '
+    try {
+      const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+      const [check, expected] = process.argv.slice(2);
+      const passed = check === "version" ? body.version === expected
+        : check === "deprecated" ? body.error === "arena_session_next_deprecated"
+        : body.ok === true && body.mode === "arena" && body.runtime_state === "ARENA_SCENARIO_READY" &&
+          body.gates?.next_allowed === true && typeof body.scenario?.scenarioId === "string" &&
+          body.scenario.scenarioId.length > 0;
+      if (!passed) process.exit(1);
+    } catch { process.exit(1); }
+  ' "$evidence_dir/body" "$check" "$EXPECTED_SHA" || fail "$check response did not match the contract"
+}
+
+printf 'BASE_URL=%s\nEXPECTED_SHA=%s\nMODE=%s\n' "$BASE" "$EXPECTED_SHA" "$MODE"
+request 200 /api/version
+check_json version
+request 410 '/api/arena/session/next?locale=en'
+check_json deprecated
+request 401 '/api/arena/n/session?locale=en'
+request 308 /en/bty-arena/run --head
+location="$(awk 'tolower($1)=="location:" { sub(/^[^:]*:[ \t]*/, ""); sub(/\r$/, ""); print; exit }' "$evidence_dir/headers")"
+case "$location" in
+  /en/bty-arena|"$BASE/en/bty-arena") ;;
+  *) fail "legacy run did not redirect to the same-origin canonical Arena" ;;
+esac
+
+if [[ "$MODE" == public ]]; then
+  printf 'ARENA PUBLIC SMOKE PASSED\n'
+  exit 0
 fi
 
-# Default fixture account — must match seedFixtureUser / ensureFixtureAuthUser (same Supabase project as BASE_URL).
-DEFAULT_FIXTURE_EMAIL="e2e-fixture+bty@local.test"
-DEFAULT_FIXTURE_PASSWORD="E2eFixture-local-smoke-32chars-min!!"
-# Treat empty string (e.g. unset GitHub secret) as unset so defaults apply.
-EMAIL="${E2E_EMAIL:-$DEFAULT_FIXTURE_EMAIL}"
-PASSWORD="${E2E_PASSWORD:-$DEFAULT_FIXTURE_PASSWORD}"
-[[ -z "$EMAIL" ]] && EMAIL="$DEFAULT_FIXTURE_EMAIL"
-[[ -z "$PASSWORD" ]] && PASSWORD="$DEFAULT_FIXTURE_PASSWORD"
+[[ -n "${E2E_EMAIL:-}" && -n "${E2E_PASSWORD:-}" ]] || fail "authenticated mode requires a dedicated E2E fixture"
+node -e 'process.stdout.write(JSON.stringify({email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD}))' |
+  request 200 /api/auth/login --request POST --header 'Content-Type: application/json' \
+    --data-binary @- --cookie-jar "$cookie_jar"
+rg -qi '^set-cookie:' "$evidence_dir/headers" || fail "login did not issue a session cookie"
 
-SUPABASE_URL_EFFECTIVE="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL:-}}"
-if [[ -z "${SKIP_SEED_FIXTURE:-}" ]] && [[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] && [[ -n "$SUPABASE_URL_EFFECTIVE" ]]; then
-  echo "=== 0) seedFixtureUser (fixture DB state for session/next + /bty-arena, not auth) ==="
-  export NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-$SUPABASE_URL_EFFECTIVE}"
-  export SUPABASE_URL="${SUPABASE_URL:-$SUPABASE_URL_EFFECTIVE}"
-  npx --yes tsx scripts/seed-arena-release-gate-fixture.ts
-elif [[ -z "${SKIP_SEED_FIXTURE:-}" ]] && [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
-  echo "=== 0) seedFixtureUser skipped (no SUPABASE_SERVICE_ROLE_KEY; set it or SKIP_SEED_FIXTURE=1) ==="
-fi
-
-COOKIE_JAR="$(mktemp)"
-cleanup() { rm -f "$COOKIE_JAR" /tmp/arena-gate-*.json /tmp/arena-gate-headers.txt /tmp/arena-gate-login-headers.txt 2>/dev/null || true; }
-trap cleanup EXIT
-
-if command -v jq >/dev/null 2>&1; then
-  LOGIN_BODY="$(jq -n --arg email "$EMAIL" --arg password "$PASSWORD" '{email:$email, password:$password}')"
-else
-  LOGIN_BODY="$(printf '{"email":"%s","password":"%s"}' "$EMAIL" "$PASSWORD")"
-fi
-
-echo "=== BASE: $BASE ==="
-
-echo "=== 1) POST /api/auth/login ==="
-code="$(curl -sS -D /tmp/arena-gate-login-headers.txt -o /tmp/arena-gate-login.json -w "%{http_code}" -X POST \
-  -H "Content-Type: application/json" \
-  -d "$LOGIN_BODY" \
-  -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
-  "$BASE/api/auth/login" || true)"
-if [[ "$code" != "200" ]]; then
-  echo "FAIL: login HTTP $code"
-  head -c 500 /tmp/arena-gate-login.json 2>/dev/null || true
-  exit 1
-fi
-if ! grep -qi '^set-cookie:' /tmp/arena-gate-login-headers.txt 2>/dev/null; then
-  echo "FAIL: login 200 but no Set-Cookie header (auth contract requires session cookie on success)"
-  head -20 /tmp/arena-gate-login-headers.txt 2>/dev/null || true
-  exit 1
-fi
-
-echo "=== 2) GET /api/arena/session/next?locale=en ==="
-code="$(curl -sS -o /tmp/arena-gate-next.json -w "%{http_code}" \
-  -b "$COOKIE_JAR" \
-  "$BASE/api/arena/session/next?locale=en" || true)"
-body="$(cat /tmp/arena-gate-next.json 2>/dev/null || true)"
-if [[ "$code" != "200" ]]; then
-  echo "FAIL: session/next HTTP $code body (first 500 chars): ${body:0:500}"
-  exit 1
-fi
-if echo "$body" | grep -q "no_scenario_available"; then
-  echo "FAIL: session/next returned no_scenario_available (empty pool / selection failure)"
-  exit 1
-fi
-if ! echo "$body" | grep -qE '"ok"[[:space:]]*:[[:space:]]*true'; then
-  echo "FAIL: session/next expected JSON with ok:true"
-  echo "${body:0:500}"
-  exit 1
-fi
-
-echo "=== 3) HEAD /en/bty-arena/run — first hop must be 308 → canonical (Location contains /bty-arena, not /run) ==="
-curl -sS -I --max-redirs 0 -o /tmp/arena-gate-headers.txt "$BASE/en/bty-arena/run" || true
-first_line="$(head -1 /tmp/arena-gate-headers.txt | tr -d '\r')"
-if ! echo "$first_line" | grep -qE '(HTTP/1\.[01]|HTTP/2) 308'; then
-  echo "FAIL: expected HTTP 308 on /en/bty-arena/run, first line: $first_line"
-  head -20 /tmp/arena-gate-headers.txt
-  exit 1
-fi
-LOC="$(grep -i '^location:' /tmp/arena-gate-headers.txt | tail -1 | tr -d '\r' | sed 's/^[Ll]ocation:[[:space:]]*//')"
-if [[ -z "$LOC" ]]; then
-  echo "FAIL: 308 without Location header"
-  exit 1
-fi
-if ! echo "$LOC" | grep -qi 'bty-arena'; then
-  echo "FAIL: Location must contain bty-arena, got: $LOC"
-  exit 1
-fi
-if echo "$LOC" | grep -qiE 'bty-arena/run'; then
-  echo "FAIL: Location must not keep deprecated /run path, got: $LOC"
-  exit 1
-fi
-
-echo "=== 4) GET /en/bty-arena/run with session (follow redirects) → canonical Arena, not /bty/login ==="
-# curl resolves relative Location against request URL; -L follows 308 then loads page
-effective="$(curl -sS -o /tmp/arena-gate-run.html -w "%{url_effective}" -L \
-  -b "$COOKIE_JAR" \
-  "$BASE/en/bty-arena/run" || true)"
-if echo "$effective" | grep -q '/bty/login'; then
-  echo "FAIL: deprecated /run with auth landed on login (session not applied on follow-up): $effective"
-  exit 1
-fi
-if ! echo "$effective" | grep -qE '/bty-arena(/beginner)?(\?|$|#)'; then
-  echo "FAIL: expected final URL on canonical Arena (/en/bty-arena or /beginner), got: $effective"
-  exit 1
-fi
-
-echo ""
-echo "ARENA RELEASE GATE PASSED ✅"
+request 200 '/api/arena/n/session?locale=en' --cookie "$cookie_jar"
+check_json scenario
+request 200 /en/bty-arena --cookie "$cookie_jar"
+request 200 /api/version
+check_json version
+printf 'ARENA AUTHENTICATED RELEASE GATE PASSED\n'

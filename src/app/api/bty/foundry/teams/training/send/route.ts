@@ -23,6 +23,7 @@ export const runtime = "nodejs";
 const STATUS: Record<string, number> = {
   not_owner: 403,
   event_not_found: 404,
+  event_closed: 409,
   unsupported_material: 409,
   no_quiz: 409,
   graph_unavailable: 503,

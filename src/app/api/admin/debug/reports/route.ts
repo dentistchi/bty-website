@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase-server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireAdminEmail } from "@/lib/authz";
 
 export const runtime = "nodejs";
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: "Server not configured" }, { status: 503 });
 
   const status = req.nextUrl.searchParams.get("status"); // open | resolved | (empty = all)
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdminEmail(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: "Server not configured" }, { status: 503 });
 
   let body: { title: string; description?: string; context?: Record<string, unknown>; route?: "chat" | "mentor" | "arena" | "other" };

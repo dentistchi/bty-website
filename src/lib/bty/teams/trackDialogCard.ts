@@ -140,8 +140,8 @@ export function trackConfirmationCard(count: number, locale: "en" | "ko" = "en",
           ...(notificationStatus ? [{ type: "TextBlock", wrap: true, isSubtle: true, spacing: "Small",
             text: notificationStatus === "scheduled"
               ? (locale === "ko" ? "Teams 알림 전송을 준비하고 있습니다." : "Teams notifications are being prepared.")
-              : (locale === "ko" ? "추적은 저장됐지만 Teams 알림 전송을 시작하지 못했습니다. 다시 Track하면 재시도합니다."
-                : "Tracking saved. Teams notifications have not started. Try tracking again to retry."),
+              : (locale === "ko" ? "추적을 저장했습니다. Teams 알림 전송은 아직 시작되지 않았습니다."
+                : "Tracking saved. Teams notifications have not started yet."),
           }] : []),
         ],
       },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { parseTrainingTarget, TRAINING_TARGET_PREFIX } from "@/domain/teams/trainingTarget";
 
 /**
  * Foundry REQUIRED LEARNING — the installed-app learner surface (Slice 3.1B-3E).
@@ -50,6 +51,9 @@ type Copy = {
   /** R4-R5C3A2 — shown when this account has truthfully started this training. */
   continueCta: string;
   reviewCta: string;
+  loadFailed: string;
+  retry: string;
+  roomUnavailable: string;
   completedTag: string;
   assignedOn: (d: string) => string;
   completedOn: (d: string) => string;
@@ -79,6 +83,9 @@ const COPY: Record<Locale, Copy> = {
     */
     continueCta: "Continue learning",
     reviewCta: "Review learning",
+    loadFailed: "Couldn't load required learning.",
+    retry: "Retry",
+    roomUnavailable: "This training can't be opened right now.",
     completedTag: "Completed",
     assignedOn: (d) => `Assigned ${d}`,
     completedOn: (d) => `Completed ${d}`,
@@ -95,6 +102,9 @@ const COPY: Record<Locale, Copy> = {
     startCta: "학습 시작",
     continueCta: "학습 계속하기",
     reviewCta: "학습 다시 보기",
+    loadFailed: "필수 학습을 불러오지 못했습니다.",
+    retry: "다시 시도",
+    roomUnavailable: "지금은 이 학습을 열 수 없습니다.",
     completedTag: "완료",
     assignedOn: (d) => `배정일 ${d}`,
     completedOn: (d) => `완료일 ${d}`,
@@ -118,6 +128,7 @@ export default function FoundryRequiredLearning({
   onOpenReview = () => {},
   focusAssignmentId = null,
   onFocusConsumed,
+  onOpenTraining,
 }: {
   locale: string;
   /**
@@ -130,6 +141,8 @@ export default function FoundryRequiredLearning({
   focusAssignmentId?: string | null;
   /** Told once the focus has been shown, so a later Back does not re-focus a card. */
   onFocusConsumed?: () => void;
+  /** Teams opens a validated room target without leaving its signed-in tab. */
+  onOpenTraining?: (joinToken: string) => void;
   /** Open the learner's own My Learning / private reflection history (Slice 3.1B-3H). */
   /** Open the authenticated read-only review for a COMPLETED assignment (never the Room). */
   onOpenReview?: (assignmentId: string) => void;
@@ -137,29 +150,31 @@ export default function FoundryRequiredLearning({
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
 
-  // null = not yet resolved (bounded hold — never an indefinite skeleton). On a
-  // resolved response we render the sections; on error we keep the last known list
-  // (initially null -> the surface simply stays absent) rather than asserting a false
-  // "nothing required".
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const readVersion = useRef(0);
   const focusRef = useRef<HTMLDivElement | null>(null);
   // Completed history is collapsed by default (B3A.2C) so it never dominates the
   // Learn screen; returning to Learn root resets to collapsed (fresh mount).
   const [showCompleted, setShowCompleted] = useState(false);
 
   const load = useCallback(async () => {
+    const version = ++readVersion.current;
     try {
       const res = await fetch("/api/bty/foundry/assignments/mine", {
         credentials: "include",
         cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
       });
-      if (!res.ok) return; // keep prior state; never surface an error card
+      if (!res.ok) throw new Error("assignments_unavailable");
       const data = (await res.json()) as { ok?: boolean; assignments?: Assignment[] };
-      if (data?.ok && Array.isArray(data.assignments)) {
+      if (!data?.ok || !Array.isArray(data.assignments)) throw new Error("assignments_unavailable");
+      if (version === readVersion.current) {
         setAssignments(data.assignments);
+        setLoadFailed(false);
       }
     } catch {
-      /* transient — keep prior state */
+      if (version === readVersion.current) setLoadFailed(true);
     }
   }, []);
 
@@ -172,6 +187,7 @@ export default function FoundryRequiredLearning({
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", load);
     return () => {
+      readVersion.current++;
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", load);
     };
@@ -190,9 +206,7 @@ export default function FoundryRequiredLearning({
     onFocusConsumed?.();
   }, [focusAssignmentId, assignments, onFocusConsumed]);
 
-  // Pre-first-response hold: render nothing (bounded — the fetch resolves fast). The
-  // host room below is unaffected.
-  if (assignments === null) return null;
+  if (assignments === null && !loadFailed) return null;
 
   /*
     `in_progress` GROUPS WITH REQUIRED, not with completed (R4-R5C3A2). It is the same
@@ -200,8 +214,8 @@ export default function FoundryRequiredLearning({
     make a started training vanish from the learner's list — the failure this slice exists to
     prevent, not cause.
   */
-  const required = assignments.filter((a) => a.status === "assigned" || a.status === "in_progress");
-  const completed = assignments.filter((a) => a.status === "completed");
+  const required = (assignments ?? []).filter((a) => a.status === "assigned" || a.status === "in_progress");
+  const completed = (assignments ?? []).filter((a) => a.status === "completed");
 
   return (
     <section className="flex flex-col gap-6" data-testid="foundry-required-learning" aria-label={t.requiredHeader}>
@@ -218,6 +232,15 @@ export default function FoundryRequiredLearning({
           <p className="text-sm leading-6 text-white/50">{t.requiredSub}</p>
         </div>
 
+        {loadFailed ? (
+          <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-white/75">
+            <p>{t.loadFailed}</p>
+            <button type="button" onClick={() => void load()} className="rounded-lg border border-white/20 px-3 py-1.5">
+              {t.retry}
+            </button>
+          </div>
+        ) : null}
+
         {required.length > 0 ? (
           <div className="flex flex-col gap-2.5">
             {required.map((a) => {
@@ -228,13 +251,14 @@ export default function FoundryRequiredLearning({
                   a={a}
                   t={t}
                   loc={loc}
+                  onOpenTraining={onOpenTraining}
                   focused={focused}
                   refCb={focused ? (el) => { focusRef.current = el; } : undefined}
                 />
               );
             })}
           </div>
-        ) : (
+        ) : assignments !== null && !loadFailed ? (
           <div
             className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-center"
             data-testid="required-empty"
@@ -242,7 +266,7 @@ export default function FoundryRequiredLearning({
             <p className="text-[0.95rem] font-medium text-white/80">{t.emptyTitle}</p>
             <p className="mt-1 text-sm leading-6 text-white/45">{t.emptyBody}</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {completed.length > 0 ? (
@@ -281,6 +305,7 @@ function RequiredCard({
   loc,
   focused = false,
   refCb,
+  onOpenTraining,
 }: {
   a: Assignment;
   t: Copy;
@@ -288,8 +313,12 @@ function RequiredCard({
   /** Outlined because Today named this exact training. Presentation only — no state, no write. */
   focused?: boolean;
   refCb?: (el: HTMLDivElement | null) => void;
+  onOpenTraining?: (joinToken: string) => void;
 }) {
   const date = fmtDate(a.assignedAt, loc);
+  const label = a.status === "in_progress" ? t.continueCta : t.startCta;
+  const ctaClass = "shrink-0 rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A]";
+  const teamsTarget = onOpenTraining ? readAssignmentTrainingTarget(a.roomUrl) : null;
   return (
     <div
       ref={refCb}
@@ -314,15 +343,31 @@ function RequiredCard({
         device's own participant session decides what can actually be restored; the label only
         tells the learner what BTY already knows.
       */}
-      <a
-        href={`${a.roomUrl}?return=${encodeURIComponent(`/${loc}/app?tab=foundry`)}`}
-        data-status={a.status}
-        className="shrink-0 rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A]"
-      >
-        {a.status === "in_progress" ? t.continueCta : t.startCta}
-      </a>
+      {onOpenTraining ? (
+        teamsTarget ? (
+          <button type="button" data-status={a.status} className={ctaClass} onClick={() => onOpenTraining(teamsTarget.joinToken)}>
+            {label}
+          </button>
+        ) : <p className="max-w-36 text-xs text-white/65">{t.roomUnavailable}</p>
+      ) : (
+        <a href={`${a.roomUrl}?return=${encodeURIComponent(`/${loc}/app?tab=foundry`)}`} data-status={a.status} className={ctaClass}>
+          {label}
+        </a>
+      )}
     </div>
   );
+}
+
+function readAssignmentTrainingTarget(roomUrl: string) {
+  try {
+    const origin = window.location.origin;
+    const url = new URL(roomUrl, origin);
+    if (url.origin !== origin || url.search || url.hash) return null;
+    const room = /^\/f\/([^/]+)$/.exec(url.pathname);
+    return room ? parseTrainingTarget(`${TRAINING_TARGET_PREFIX}:${room[1]}`) : null;
+  } catch {
+    return null;
+  }
 }
 
 function CompletedCard({

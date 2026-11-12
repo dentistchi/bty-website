@@ -16,11 +16,8 @@ import { resolveDisplayNames } from "@/lib/bty/announcement/recipientDisplayName
  * ★ WHY NOT THE PARTICIPANT SESSION COOKIE. There is no browser here at all. The public room's
  * per-device cookie has no meaning in a chat, which is exactly why this path exists.
  *
- * ★ ATOMIC BY THE DATABASE, NOT BY A CHECK-THEN-WRITE. The partial unique index
- * `(event_id, microsoft_tenant_id, microsoft_aad_object_id) WHERE both are not null` admits exactly
- * one Teams participant per (training, person). Two concurrent card taps therefore race into the
- * index and the loser re-reads the winner's row. The index is PARTIAL, so the anonymous web path —
- * where one account may legitimately hold several per-device participants — is untouched.
+ * The database admits a new Teams participant only while the event is open. The partial unique
+ * index identifies one Teams participant per (training, person) and leaves web participants alone.
  *
  * ★ THE ACCOUNT LINK IS OPTIONAL, AND ITS ABSENCE NEVER BLOCKS LEARNING. `user_id` is set when the
  * resolver says RESOLVED and left NULL otherwise. An employee who has never signed into BTY can
@@ -129,42 +126,23 @@ export async function ensureTeamsParticipant(
 
   const displayName = await resolveLabel(admin, userId, input.displayNameSnapshot ?? null);
 
-  /*
-    A participant row still needs a session-token hash (NOT NULL, UNIQUE). A Teams learner has no
-    browser session, so this one is DERIVED and unusable as a web credential: it is a namespaced
-    label, not a secret anybody holds, and the Microsoft columns — not this — are what identify the
-    row. The global UNIQUE on the hash gives the insert a second idempotency boundary for free.
-  */
-  const sessionHash = `teams:${eventId}:${tenantId}:${aadObjectId}`;
-
-  const { data } = await admin
-    .from("foundry_event_participants")
-    .insert({
-      event_id: eventId,
-      display_name: displayName,
-      participant_session_token_hash: sessionHash,
-      user_id: userId,
-      microsoft_tenant_id: tenantId,
-      microsoft_aad_object_id: aadObjectId,
-    })
-    .select(PARTICIPANT_COLS)
-    .maybeSingle<Row>();
-
-  if (data) {
-    return {
-      ok: true,
-      participant: { id: data.id, eventId: data.event_id, displayName: data.display_name, userId: data.user_id },
-    };
+  const { data, error } = await admin.rpc("join_foundry_teams_training", {
+    p_event_id: eventId,
+    p_tenant_id: tenantId,
+    p_aad_object_id: aadObjectId,
+    p_user_id: userId,
+    p_display_name: displayName,
+  });
+  if (error) {
+    console.error("[teams-training] participant admission failed", { code: error.code });
+    return { ok: false, reason: "participant_write_failed" };
   }
+  if (data?.state === "removed" || data?.state === "event_closed") return { ok: false, reason: data.state };
+  if (data?.state !== "joined" || !data.participant?.id) return { ok: false, reason: "participant_write_failed" };
 
-  // Lost the race — the winner's row IS this person's participant. Re-read rather than retry.
-  const winner = await readByMicrosoftIdentity(admin, eventId, tenantId, aadObjectId);
-  if (winner) {
-    if (winner.status !== "joined") return { ok: false, reason: "removed" };
-    return {
-      ok: true,
-      participant: { id: winner.id, eventId: winner.event_id, displayName: winner.display_name, userId: winner.user_id },
-    };
-  }
-  return { ok: false, reason: "participant_write_failed" };
+  const participant = data.participant as Pick<Row, "id" | "event_id" | "display_name" | "user_id">;
+  return {
+    ok: true,
+    participant: { id: participant.id, eventId: participant.event_id, displayName: participant.display_name, userId: participant.user_id },
+  };
 }

@@ -213,7 +213,10 @@ async function load(
     aadObjectId,
     displayNameSnapshot: delivery.display_name_snapshot,
   });
-  if (!ensured.ok) return { ok: false, card: buildNoticeCard(ensured.reason === "removed" ? COPY.gone : COPY.busy) };
+  if (!ensured.ok) {
+    const unavailable = ensured.reason === "removed" || ensured.reason === "event_closed";
+    return { ok: false, card: buildNoticeCard(unavailable ? COPY.gone : COPY.busy) };
+  }
 
   const progress = await ensureProgress(admin, event.id, ensured.participant.id);
   if (!progress) return { ok: false, card: buildNoticeCard(COPY.busy) };
