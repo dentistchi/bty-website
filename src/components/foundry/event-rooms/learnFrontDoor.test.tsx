@@ -24,7 +24,7 @@ afterEach(cleanup);
 
 describe("T1 — the learner sees current work first", () => {
   const c = code(read("FoundryEventRooms.tsx"));
-  const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
+  const learner = c.slice(c.indexOf('if (access !== "author")'), c.indexOf("const open = (events"));
 
   it("the non_author branch renders Required Learning BEFORE the doors", () => {
     expect(learner.indexOf("{requiredLearning}")).toBeGreaterThan(-1);
@@ -32,7 +32,7 @@ describe("T1 — the learner sees current work first", () => {
   });
 
   it("T8 — every Host branch keeps doors-first, unchanged", () => {
-    const host = c.slice(c.indexOf('if (access === "loading")'));
+    const host = c.slice(c.indexOf("const open = (events"));
     // Both host compositions still lead with the doors (Create training is a Host primary).
     const pairs = [...host.matchAll(/\{learnDoors\}\s*\n\s*\{requiredLearning\}/g)];
     expect(pairs.length, "both host returns keep learnDoors → requiredLearning").toBe(2);
@@ -122,7 +122,7 @@ describe("T6/T7/T10 — nothing else moved", () => {
 
   it("T6 — assigned / in_progress / completed behaviour is untouched", () => {
     expect(r).toContain('a.status === "in_progress" ? t.continueCta : t.startCta');
-    expect(r).toContain('assignments.filter((a) => a.status === "assigned" || a.status === "in_progress")');
+    expect(r).toContain('(assignments ?? []).filter((a) => a.status === "assigned" || a.status === "in_progress")');
     expect(r).toContain("completed-disclosure");
   });
 
@@ -132,7 +132,7 @@ describe("T6/T7/T10 — nothing else moved", () => {
     expect(r).toContain('data-testid="required-card"');
     const c = code(read("FoundryEventRooms.tsx"));
     expect(c).toContain("focusAssignmentId={focusAssignmentId}");
-    expect(c).toContain('<div id="learn-required">');
+    expect(c).toContain('<div id="learn-required"');
   });
 
   it("T9 — the truthful empty state is unchanged and history stays reachable", () => {
@@ -140,7 +140,7 @@ describe("T6/T7/T10 — nothing else moved", () => {
     expect(r).toContain('data-testid="required-empty"');
     // The door is outside the Required Learning section, so an empty section never hides it.
     const c = code(read("FoundryEventRooms.tsx"));
-    const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
+    const learner = c.slice(c.indexOf('if (access !== "author")'), c.indexOf("const open = (events"));
     expect(learner).toContain("{learnDoors}");
   });
 

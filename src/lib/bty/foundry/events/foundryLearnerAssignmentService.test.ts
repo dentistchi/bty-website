@@ -66,9 +66,9 @@ describe("listMyAssignments — learner read mapping (3.1B-3E)", () => {
     expect(out.map((a) => a.assignmentId)).toEqual(["a1"]);
   });
 
-  it("fail-soft: an RPC error yields an EMPTY list (never an error surface)", async () => {
+  it("distinguishes an RPC error from a learner with no assignments", async () => {
     const admin = rpcAdmin(() => ({ data: null, error: { message: "boom" } }));
-    expect(await listMyAssignments(admin, "u")).toEqual([]);
+    await expect(listMyAssignments(admin, "u")).rejects.toThrow("assignments_unavailable");
   });
 
   it("returns [] for a learner with no assignments (empty required + completed)", async () => {

@@ -77,7 +77,7 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
   });
 
   it("Practice renders PracticeLanding (Arena runtime moved beneath it, unchanged)", () => {
-    expect(src).toMatch(/tab === "practice" && \(?\s*<PracticeLanding/);
+    expect(src).toMatch(/tab === "practice" && \(learnerConsentGate \?\? \(\s*<PracticeLanding/);
   });
 
   it("Reality Event create is an IN-SHELL Learn nested view (no external route handoff) — R1", () => {

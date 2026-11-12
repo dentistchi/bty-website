@@ -87,6 +87,8 @@ const COPY: Record<Locale, {
   savedForLater: string;
   savedForLaterSub: string;
   todayEmpty: string;
+  todayLoadFailed: string;
+  retry: string;
   teamFollowUps: string;
   catEyebrow: Record<PrimaryActionCandidate["category"], string>;
   // Deterministic empty-day fallbacks (tiers 6–8).
@@ -125,6 +127,8 @@ const COPY: Record<Locale, {
     savedForLater: "Saved for later",
     savedForLaterSub: "Things you chose not to lose.",
     todayEmpty: "You're all caught up for today.",
+    todayLoadFailed: "Couldn't load your Today list.",
+    retry: "Retry",
     teamFollowUps: "Your team has follow-ups below.",
     catEyebrow: {
       ACTION_REVISION: "Needs revision",
@@ -168,6 +172,8 @@ const COPY: Record<Locale, {
     savedForLater: "나중에 보기",
     savedForLaterSub: "잃어버리고 싶지 않아 담아둔 것들.",
     todayEmpty: "오늘 할 일을 모두 마쳤습니다.",
+    todayLoadFailed: "오늘 할 일을 불러오지 못했습니다.",
+    retry: "다시 시도",
     teamFollowUps: "아래에 확인할 팀 후속 항목이 있습니다.",
     catEyebrow: {
       ACTION_REVISION: "수정 필요",
@@ -202,6 +208,7 @@ export default function TodayHome({
   onOpenLeadershipFollowUp,
   onOpenSaved,
   nativeReminder = false,
+  learnerBriefEnabled = true,
 }: {
   locale: string;
   /**
@@ -242,6 +249,8 @@ export default function TodayHome({
    * does nothing unless the BTY iPhone app's LocalNotifications bridge is present.
    */
   nativeReminder?: boolean;
+  /** Teams can show work coordination before the user accepts the learner agreement. */
+  learnerBriefEnabled?: boolean;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -260,11 +269,11 @@ export default function TodayHome({
 
     `null` is the third state the component always needed: NOT YET KNOWN. It is the same sentinel
     `FoundryRequiredLearning` already uses (`assignments === null` → render nothing), and it also
-    carries the read FAILURE honestly — `setReminders` is only called on `res.ok && d.ok`, so a
-    failed brief now stays unknown and says nothing, instead of claiming emptiness it never
-    measured. Fetch and error semantics are otherwise unchanged; no new error surface, no spinner.
+    keeps the last known rows on a read failure. The separate request status allows a retry
+    without treating either a failed brief or an unresolved announcement lane as empty.
   */
   const [reminders, setReminders] = useState<Reminder[] | null>(null);
+  const [briefStatus, setBriefStatus] = useState<"loading" | "ready" | "error">("loading");
   const [announcementItems, setAnnouncementItems] = useState<TrackingEvidence[] | null>(null);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
@@ -296,12 +305,16 @@ export default function TodayHome({
 
   useEffect(() => {
     let cancelled = false;
+    setBriefStatus("loading");
     void (async () => {
-      // fail-soft: null (not known) leaves `reminders` null, never an asserted empty Today
-      const brief = await fetchTodayBrief<Reminder, HostAttention>(loc);
-      if (!cancelled && brief) {
-        setReminders(brief.reminders);
-        setHostAttention(brief.hostAttention);
+      if (learnerBriefEnabled) {
+        const brief = await fetchTodayBrief<Reminder, HostAttention>(loc);
+        if (cancelled) return;
+        if (brief) {
+          setReminders(brief.reminders);
+          setHostAttention(brief.hostAttention);
+        }
+        setBriefStatus(brief ? "ready" : "error");
       }
       try {
         const tz = deviceTz();
@@ -361,7 +374,7 @@ export default function TodayHome({
     return () => {
       cancelled = true;
     };
-  }, [loc, refreshKey, reloadKey]);
+  }, [loc, refreshKey, reloadKey, learnerBriefEnabled]);
 
   const primary: PrimaryActionResult = useMemo(
     () =>
@@ -400,7 +413,7 @@ export default function TodayHome({
 
   // TODAY REMAINING REMINDER — reconcile only after a brief read SUCCEEDED (`reminders !== null`):
   // an unknown Today neither schedules nor cancels. Re-runs whenever the brief answer changes.
-  const briefResolved = reminders !== null;
+  const briefResolved = briefStatus === "ready";
   const openCount = openWork.openCount;
   useEffect(() => {
     if (!nativeReminder || announcementItems === null) return;
@@ -422,7 +435,7 @@ export default function TodayHome({
     sentinel already; this only stops treating that null as a measurement. When BOTH reads fail the
     block stays absent — silence, which is what we actually know.
   */
-  const remindersResolved = reminders !== null;
+  const remindersResolved = learnerBriefEnabled && reminders !== null;
   const yesterdayKnown = yesterdayCounts !== null || yesterdayReturned !== null;
 
   // Yesterday = canonical counts sentence; falls back to the measured self-return line
@@ -466,10 +479,18 @@ export default function TodayHome({
           Held whole until the brief resolves (R4-R5A): the empty card is a CLAIM ("you're all
           caught up") and the header is its frame, so neither may precede the read. No spinner and
           no placeholder — the greeting already owns the first paint, and this fills in beneath it. */}
+      {learnerBriefEnabled && briefStatus === "error" ? (
+        <div role="alert" data-testid="today-brief-error" className="flex flex-wrap items-center gap-2 text-sm text-white/75">
+          <p>{t.todayLoadFailed}</p>
+          <button type="button" onClick={() => setReloadKey(key => key + 1)} className="rounded-lg border border-white/20 px-3 py-1.5">
+            {t.retry}
+          </button>
+        </div>
+      ) : null}
       {remindersResolved ? (
       <div className="flex flex-col gap-2" data-testid="today-list">
         <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/55">{t.todayHeader}</span>
-        {todayItems.length === 0 && (announcementItems?.length ?? 0) === 0 ? (
+        {todayItems.length === 0 && announcementItems?.length === 0 && briefResolved ? (
           <button
             type="button"
             data-testid="today-empty"

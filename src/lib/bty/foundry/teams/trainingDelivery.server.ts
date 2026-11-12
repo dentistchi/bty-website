@@ -24,8 +24,7 @@ import { recordDeliveryAttempt } from "./deliveryAttempt.server";
  * ★ V1 IS TEXT + QUIZ. A video or PDF training gets a calm "not yet" rather than a half-working
  * delivery — the learner loop this slice proves is the written-guidance one.
  *
- * ★ ALREADY SENT IS REPORTED, NOT RE-SENT. The unique (event, tenant, recipient) makes a second
- * press idempotent, and the Host is told so rather than the employee being messaged twice.
+ * The database claims one send per event and recipient. Only proof of non-delivery opens a retry.
  */
 
 export type RecipientOutcome =
@@ -36,12 +35,12 @@ export type RecipientOutcome =
       status: "undeliverable";
       displayName: string | null;
       /** A product reason, never a Microsoft error string. */
-      reason: "not_eligible" | "not_installed" | "no_route" | "unknown" | "failed";
+      reason: "not_eligible" | "not_installed" | "no_route" | "unknown" | "failed" | "event_closed";
     };
 
 export type SendTrainingResult =
   | { ok: true; outcomes: RecipientOutcome[] }
-  | { ok: false; reason: "not_owner" | "event_not_found" | "unsupported_material" | "no_quiz" | "graph_unavailable" | "tenant_not_configured" | "bot_unavailable" };
+  | { ok: false; reason: "not_owner" | "event_not_found" | "event_closed" | "unsupported_material" | "no_quiz" | "graph_unavailable" | "tenant_not_configured" | "bot_unavailable" };
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -72,6 +71,7 @@ export async function sendTrainingToTeams(
     .eq("owner_user_id", input.ownerUserId)
     .maybeSingle<{ id: string; owner_user_id: string; title: string; status: string; content_type: string | null }>();
   if (!event) return { ok: false, reason: "not_owner" };
+  if (event.status !== "open") return { ok: false, reason: "event_closed" };
   if (event.content_type !== "written_guidance") return { ok: false, reason: "unsupported_material" };
 
   const content = await readGuidanceContent(admin, event.id);
@@ -146,13 +146,17 @@ export async function sendTrainingToTeams(
     // ---- Already delivered? Report it; never message the same person twice for one training. ----
     const { data: existing } = await admin
       .from("foundry_teams_training_deliveries")
-      .select("id, delivery_status")
+      .select("delivery_status")
       .eq("event_id", event.id)
       .eq("tenant_id", tenantId)
       .eq("aad_object_id", aadObjectId)
-      .maybeSingle<{ id: string; delivery_status: string }>();
+      .maybeSingle<{ delivery_status: string }>();
     if (existing?.delivery_status === "DELIVERED") {
       outcomes.push({ aadObjectId, status: "already_sent", displayName });
+      continue;
+    }
+    if (existing?.delivery_status === "PENDING") {
+      outcomes.push({ aadObjectId, status: "undeliverable", displayName, reason: "unknown" });
       continue;
     }
 
@@ -181,39 +185,31 @@ export async function sendTrainingToTeams(
       continue;
     }
 
-    /*
-      THE DELIVERY ROW IS WRITTEN BEFORE THE SEND, as PENDING. Its random id is what the card
-      carries, so it has to exist before a card can name it — and a row that says PENDING is
-      truthful about a send that has not been confirmed. Only an accepted HTTP response promotes it.
-    */
-    const now = new Date().toISOString();
-    const { data: delivery } = await admin
-      .from("foundry_teams_training_deliveries")
-      .upsert(
-        {
-          ...(existing ? { id: existing.id } : {}),
-          event_id: event.id,
-          owner_user_id_snapshot: input.ownerUserId,
-          tenant_id: tenantId,
-          aad_object_id: aadObjectId,
-          display_name_snapshot: displayName,
-          service_url: conversation.serviceUrl,
-          conversation_id: conversation.conversationId,
-          delivery_status: "PENDING",
-          delivered_at: null,
-          updated_at: now,
-        },
-        { onConflict: "event_id,tenant_id,aad_object_id" },
-      )
-      .select("id")
-      .maybeSingle<{ id: string }>();
-    if (!delivery) {
-      outcomes.push({ aadObjectId, status: "undeliverable", displayName, reason: "failed" });
+    // The row claim rechecks closure and ownership after Graph/conversation work. A concurrent
+    // request can only send if it acquired this claim or a previous attempt proved non-delivery.
+    const { data: claim, error: claimError } = await admin.rpc("claim_foundry_teams_training_delivery", {
+      p_event_id: event.id,
+      p_owner_user_id: input.ownerUserId,
+      p_tenant_id: tenantId,
+      p_aad_object_id: aadObjectId,
+      p_display_name: displayName,
+      p_service_url: conversation.serviceUrl,
+      p_conversation_id: conversation.conversationId,
+    });
+    if (claimError) console.error("[teams-training] delivery claim failed", { code: claimError.code });
+    if (!claimError && claim?.state === "already_sent") {
+      outcomes.push({ aadObjectId, status: "already_sent", displayName });
       continue;
     }
+    if (claimError || claim?.state !== "claimed" || typeof claim.deliveryId !== "string") {
+      const reason = claim?.state === "event_closed" ? "event_closed" : claim?.state === "pending" ? "unknown" : "failed";
+      outcomes.push({ aadObjectId, status: "undeliverable", displayName, reason });
+      continue;
+    }
+    const deliveryId = claim.deliveryId;
 
     const card = buildReadCard({
-      deliveryId: delivery.id,
+      deliveryId,
       title: event.title,
       materialText: content.materialText,
     });
@@ -229,10 +225,14 @@ export async function sendTrainingToTeams(
         and only the response was lost. The row stays PENDING — it is neither claimed as delivered
         nor retried automatically — and the Host is told this person could not be confirmed.
       */
-      await admin
-        .from("foundry_teams_training_deliveries")
-        .update({ delivery_status: sent.ambiguous ? "PENDING" : "UNDELIVERABLE", updated_at: new Date().toISOString() })
-        .eq("id", delivery.id);
+      if (!sent.ambiguous) {
+        const { error } = await admin
+          .from("foundry_teams_training_deliveries")
+          .update({ delivery_status: "UNDELIVERABLE", updated_at: new Date().toISOString() })
+          .eq("id", deliveryId)
+          .eq("delivery_status", "PENDING");
+        if (error) console.error("[teams-training] failed delivery could not be recorded", { code: error.code });
+      }
       const productReason =
         sent.failure === "not_installed" ? ("not_installed" as const) : sent.ambiguous ? ("unknown" as const) : ("failed" as const);
       await audit(
@@ -245,10 +245,12 @@ export async function sendTrainingToTeams(
       continue;
     }
 
-    await admin
+    const { error } = await admin
       .from("foundry_teams_training_deliveries")
       .update({ delivery_status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", delivery.id);
+      .eq("id", deliveryId)
+      .eq("delivery_status", "PENDING");
+    if (error) console.error("[teams-training] accepted delivery could not be recorded", { code: error.code });
     await audit("card_send", "delivered", displayName);
     outcomes.push({ aadObjectId, status: "sent", displayName });
   }

@@ -127,6 +127,15 @@ describe("H — at most once, and a failure stays retryable", () => {
     expect(sendProactiveMessage).toHaveBeenCalledTimes(1);
   });
 
+  it("releases a definite send-boundary refusal for a closed or completed request", async () => {
+    rpc.mockImplementation((fn: string) => fn === "bty_mark_recipient_notification_sending"
+      ? Promise.resolve({ data: [{ result: "not_found" }], error: null })
+      : claimRpc(fn));
+    expect(await notify()).toEqual({ ok: false, reason: "not_found" });
+    expect(called("bty_release_recipient_notification_claim")).toHaveLength(1);
+    expect(sendProactiveMessage).not.toHaveBeenCalled();
+  });
+
   it("an already-notified recipient sends NOTHING on a second attempt", async () => {
     rpc.mockImplementation((fn: string) =>
       fn === "bty_begin_recipient_notification"

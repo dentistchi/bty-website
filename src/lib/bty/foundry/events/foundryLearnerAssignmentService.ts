@@ -59,9 +59,7 @@ type AssignmentRow = {
 
 /**
  * List the authenticated caller's OWN required-learning assignments via the atomic
- * RPC. Fail-soft: any RPC error yields an empty list (a read failure must never leak
- * an error surface into the calm learner view — the app renders the intentional empty
- * state instead). A row is emitted only for the honest states assigned | completed.
+ * RPC. A failed read is distinct from an empty assignment list.
  */
 export async function listMyAssignments(
   admin: SupabaseClient,
@@ -70,9 +68,9 @@ export async function listMyAssignments(
   const { data, error } = await admin.rpc("bty_foundry_list_my_assignments", {
     p_auth_user_id: authUserId,
   });
-  if (error || !data) return [];
+  if (error || !Array.isArray(data)) throw new Error("assignments_unavailable");
 
-  const rows = (Array.isArray(data) ? data : []) as AssignmentRow[];
+  const rows = data as AssignmentRow[];
   return rows
     /*
       ADMITTING THE THIRD VALUE IS NOT OPTIONAL (R4-R5C3A2). This filter is an ALLOW-LIST, so

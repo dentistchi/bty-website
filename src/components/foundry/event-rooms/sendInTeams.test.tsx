@@ -44,6 +44,7 @@ function event(): ManagerEvent {
     title: "Morning Office Opening",
     status: "open",
     content_type: "written_guidance",
+    guidance: { material_text: "Escalate within 24 hours.", completion_prompt: null },
     join_url: `https://arena.btydaily.com/f/${TOKEN}`,
     created_at: "2026-09-21T00:00:00Z",
     closed_at: null,
@@ -160,6 +161,22 @@ describe("★ the chat-compose and deep-link invitation are gone", () => {
     expect(document.body.innerHTML).not.toContain("teams.microsoft.com/share");
     expect(document.body.innerHTML).not.toContain("/f/btyfr1");
     expect(document.body.innerHTML).not.toContain("l/entity/");
+  });
+});
+
+describe("sharing unsupported card types in Teams", () => {
+  it.each([
+    { content_type: "youtube", guidance: null },
+    { content_type: "document", guidance: null },
+    { content_type: "live_discussion", guidance: null },
+    { content_type: "written_guidance", guidance: { material_text: "Read this.", completion_prompt: "What will you do?" } },
+  ] satisfies Pick<ManagerEvent, "content_type" | "guidance">[])("offers Copy link for $content_type", async (material) => {
+    setPath("/teams");
+    render(<FoundryShareControls event={{ ...event(), ...material }} locale="en" t={en} />);
+    fireEvent.click(await screen.findByRole("button", { name: en.copyInvitation }));
+    await waitFor(() => expect(clipboard).toEqual([event().join_url]));
+    expect(screen.queryByTestId("send-in-teams")).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

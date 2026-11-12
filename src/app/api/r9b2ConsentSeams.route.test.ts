@@ -107,6 +107,14 @@ describe("[3.2R-R9B.2] requireArenaAccess family — practice play", () => {
     expect(listAvailablePractices).toHaveBeenCalledTimes(1);
   });
 
+  it("a failed practice read returns an error instead of an empty list", async () => {
+    consented();
+    listAvailablePractices.mockRejectedValueOnce(new Error("practice_list_unavailable"));
+    const res = await get();
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "PRACTICE_LIST_UNAVAILABLE" });
+  });
+
   for (const [label, v] of REFUSING) {
     it(`${label} consent → 403 before any practice is read`, async () => {
       version(v);

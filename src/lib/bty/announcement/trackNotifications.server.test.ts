@@ -4,7 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const { afterCallback, notifyRecipient } = vi.hoisted(() => ({ afterCallback: vi.fn(), notifyRecipient: vi.fn() }));
 vi.mock("next/server", () => ({ after: afterCallback }));
 vi.mock("./notifyRecipient.server", () => ({ notifyRecipient }));
-import { dispatchTrackNotifications, scheduleTrackNotifications } from "./trackNotifications.server";
+import { scheduleTrackNotifications } from "./trackNotifications.server";
+import { dispatchDueTrackNotifications, dispatchTrackNotifications } from "./trackNotificationDelivery.server";
 
 const input = { announcementId: "stored-announcement", ownerUserId: "verified-owner" };
 const row = (id: string, over: Record<string, unknown> = {}) => ({
@@ -55,6 +56,31 @@ describe("response-bound background scheduling", () => {
     await vi.waitFor(() => expect(notifyRecipient).toHaveBeenCalledTimes(1));
     finish({ ok: true, conversationId: "fixture", reused: true });
     await background;
+  });
+});
+
+describe("scheduled initial notice recovery", () => {
+  it("uses only database-reserved recipients and sends through the normal claim path", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ recipient_id: "stored-recipient", owner_user_id: "stored-owner" }],
+      error: null,
+    });
+    const admin = { rpc } as unknown as SupabaseClient;
+    expect(await dispatchDueTrackNotifications(admin)).toMatchObject({ sent: 1, attempted: 1 });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("bty_reserve_due_track_initial_notices", { p_limit: 24 });
+    expect(notifyRecipient).toHaveBeenCalledTimes(1);
+    expect(notifyRecipient).toHaveBeenCalledWith(admin, {
+      recipientId: "stored-recipient", ownerUserId: "stored-owner",
+    });
+    expect(afterCallback).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the durable reservation fails", async () => {
+    const rpc = vi.fn().mockRejectedValue(new Error("database unavailable"));
+    const admin = { rpc } as unknown as SupabaseClient;
+    expect(await dispatchDueTrackNotifications(admin)).toMatchObject({ sent: 0, lookupFailed: true });
+    expect(notifyRecipient).not.toHaveBeenCalled();
   });
 });
 

@@ -32,18 +32,7 @@ vi.mock("@/domain/legal/consent-document", async (importOriginal) => {
 });
 
 const mockRequireUser = vi.fn();
-const mockRateLimitKV = vi.fn();
-const mockUpsert = vi.fn();
-const mockInsert = vi.fn();
-const mockSupabaseFrom = vi.fn((table: string) => {
-  if (table === "arena_profiles") {
-    return {
-      upsert: (vals: unknown, _opts: unknown) => ({ select: (_c?: string) => mockUpsert(vals) }),
-    };
-  }
-  if (table === "arena_consent_log") return { insert: (vals: unknown) => mockInsert(vals) };
-  throw new Error(`unexpected table ${table}`);
-});
+const mockRpc = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...a: unknown[]) => mockRequireUser(...a),
@@ -51,24 +40,17 @@ vi.mock("@/lib/supabase/route-client", () => ({
   unauthenticated: vi.fn(() => NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 })),
   copyCookiesAndDebug: vi.fn(),
 }));
-vi.mock("@/lib/rate-limit", () => ({
-  getCfClientIp: () => "1.2.3.4",
-  rateLimitKV: (...a: unknown[]) => mockRateLimitKV(...a),
+vi.mock("@/lib/supabase-admin", () => ({
+  getSupabaseAdmin: () => ({ rpc: mockRpc }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRateLimitKV.mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
   mockRequireUser.mockResolvedValue({
     user: { id: "user-uuid-1" },
-    supabase: { from: mockSupabaseFrom },
-    base: NextResponse.json({ ok: true }, { status: 200 }),
-    error: null,
+    base: NextResponse.json({ ok: true }),
   });
-  mockUpsert.mockImplementation((vals: { user_id?: string; consent_version?: string }) =>
-    Promise.resolve({ data: [{ user_id: vals.user_id, consent_version: vals.consent_version }], error: null }),
-  );
-  mockInsert.mockResolvedValue({ error: null });
+  mockRpc.mockResolvedValue({ data: { status: "accepted" }, error: null });
 });
 
 describe("[3.2R-R9A] case 17 — placeholder is derived from the document", () => {
@@ -89,10 +71,10 @@ describe("[3.2R-R9A] case 17 — placeholder is derived from the document", () =
     );
 
     expect(res.status).toBe(200);
-    const notes = (mockInsert.mock.calls[0]?.[0] as { notes?: { placeholder?: boolean; documentFingerprint?: string } })
-      .notes;
-    expect(notes?.placeholder).toBe(false);
-    expect(notes?.documentFingerprint).toBe(consentDocumentFingerprint(FINAL_DOC));
+    expect(mockRpc).toHaveBeenCalledWith("bty_accept_learner_consent", expect.objectContaining({
+      p_placeholder: false,
+      p_fingerprint: consentDocumentFingerprint(FINAL_DOC),
+    }));
   });
 
   it("and the placeholder-era version is refused once a final document is active", async () => {
@@ -109,6 +91,6 @@ describe("[3.2R-R9A] case 17 — placeholder is derived from the document", () =
       }),
     );
     expect(res.status).toBe(409);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });

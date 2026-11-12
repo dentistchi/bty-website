@@ -31,19 +31,22 @@ export async function GET(req: NextRequest) {
   if (!user) return jsonNoStore({ ok: false, error: "unauthenticated" }, 401);
   if (!(await isConsentCurrent(supa, user.id))) return consentRequiredResponse();
 
-  const items = await listMyAssignments(admin, user.id);
   const origin = req.headers.get("origin") ?? req.nextUrl.origin;
 
-  const assignments = items.map((a) => ({
-    assignmentId: a.assignmentId,
-    eventId: a.eventId,
-    status: a.status,
-    title: a.title,
-    assignedAt: a.assignedAt,
-    completedAt: a.completedAt,
-    roomUrl: `${origin}/f/${a.joinToken}`,
-    participationMode: a.participationMode,
-  }));
-
-  return jsonNoStore({ ok: true, assignments });
+  try {
+    const items = await listMyAssignments(admin, user.id);
+    const assignments = items.map((a) => ({
+      assignmentId: a.assignmentId,
+      eventId: a.eventId,
+      status: a.status,
+      title: a.title,
+      assignedAt: a.assignedAt,
+      completedAt: a.completedAt,
+      roomUrl: `${origin}/f/${a.joinToken}`,
+      participationMode: a.participationMode,
+    }));
+    return jsonNoStore({ ok: true, assignments });
+  } catch {
+    return jsonNoStore({ ok: false, error: "unavailable" }, 503);
+  }
 }

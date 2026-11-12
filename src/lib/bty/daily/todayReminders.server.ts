@@ -46,42 +46,39 @@ const REMINDER_CONTRACT_STATUSES = ["pending", "rejected"] as const;
 const ACTION_STATUS_CONTRACT_STATUSES = ["submitted", "escalated"] as const;
 
 async function requiredLearning(admin: SupabaseClient, userId: string, locale: string): Promise<TodayReminder[]> {
-  try {
-    const { data } = await admin.rpc("bty_foundry_list_my_assignments", { p_auth_user_id: userId });
-    return (data ?? [])
+  const { data, error } = await admin.rpc("bty_foundry_list_my_assignments", { p_auth_user_id: userId });
+  if (error || !Array.isArray(data)) throw new Error("assignments_unavailable");
+  return data
+    /*
+      TODAY READS THE SAME RPC (R4-R5C3A2). This filter names the statuses that are still
+      OUTSTANDING work. `in_progress` is outstanding — it is the same required training, now
+      known to have been started — so omitting it here would have silently removed the item
+      from Today the moment the RPC learned the third value. Today's copy, ordering, routing
+      and R4-R5C1 focus are all unchanged; only the set of rows that qualify is corrected.
+    */
+    .filter((r: { status?: string }) => r.status === "assigned" || r.status === "in_progress")
+    .map((r: { assignment_id: string; title: string | null }): TodayReminder => ({
+      stableId: `req:${r.assignment_id}`,
+      category: "REQUIRED_LEARNING",
+      title: r.title ?? "Required training",
+      state: "incomplete_required", // honest: no due-date column exists — never a fake deadline
+      sourceTimestamp: null,
+      roleContext: "learner",
       /*
-        TODAY READS THE SAME RPC (R4-R5C3A2). This filter names the statuses that are still
-        OUTSTANDING work. `in_progress` is outstanding — it is the same required training, now
-        known to have been started — so omitting it here would have silently removed the item
-        from Today the moment the RPC learned the third value. Today's copy, ordering, routing
-        and R4-R5C1 focus are all unchanged; only the set of rows that qualify is corrected.
+        TODAY NAMED A TRAINING, SO THE LINK OPENS THAT TRAINING (Slice R4-R5C1).
+
+        This was `?tab=foundry` — the Learn ROOT. Today would name "Handling an angry customer",
+        the learner tapped it, the shell rebooted, and they landed on a list where they had to
+        find the same card again and press Start learning. The most common item on the canonical
+        path delivered a container instead of the thing it had just named.
+
+        `assignment_id` comes straight off the RPC row here — it is a real identifier, read
+        server-side, never parsed out of `stableId` and never inferred from the title. The shell
+        validates its shape and Required Learning brings the matching card into view; the learner
+        still chooses Start learning from that card, and nothing auto-opens.
       */
-      .filter((r: { status?: string }) => r.status === "assigned" || r.status === "in_progress")
-      .map((r: { assignment_id: string; title: string | null }): TodayReminder => ({
-        stableId: `req:${r.assignment_id}`,
-        category: "REQUIRED_LEARNING",
-        title: r.title ?? "Required training",
-        state: "incomplete_required", // honest: no due-date column exists — never a fake deadline
-        sourceTimestamp: null,
-        roleContext: "learner",
-        /*
-          TODAY NAMED A TRAINING, SO THE LINK OPENS THAT TRAINING (Slice R4-R5C1).
-
-          This was `?tab=foundry` — the Learn ROOT. Today would name "Handling an angry customer",
-          the learner tapped it, the shell rebooted, and they landed on a list where they had to
-          find the same card again and press Start learning. The most common item on the canonical
-          path delivered a container instead of the thing it had just named.
-
-          `assignment_id` comes straight off the RPC row here — it is a real identifier, read
-          server-side, never parsed out of `stableId` and never inferred from the title. The shell
-          validates its shape and Required Learning brings the matching card into view; the learner
-          still chooses Start learning from that card, and nothing auto-opens.
-        */
-        canonicalDeepLink: `/${locale}/app?tab=foundry&assignment=${encodeURIComponent(r.assignment_id)}`,
-      }));
-  } catch {
-    return [];
-  }
+      canonicalDeepLink: `/${locale}/app?tab=foundry&assignment=${encodeURIComponent(r.assignment_id)}`,
+    }));
 }
 
 /**

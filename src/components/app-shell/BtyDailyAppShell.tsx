@@ -10,6 +10,7 @@ import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import InShellLearnerRoom from "@/components/foundry/learner/InShellLearnerRoom";
 import { shouldOpenTrainingRequest, type TrainingRequest } from "@/domain/teams/trainingRequest";
+import { useTeamsConsent } from "@/components/teams/TeamsConsentContext";
 import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import { parseTodayDeepLink, type TodayTarget } from "@/components/app-shell/todayDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
@@ -1409,6 +1410,7 @@ export default function BtyDailyAppShell({
   onLocaleChanged?: (next: "en" | "ko") => void;
 }) {
   const [tab, setTab] = useState<AppTabKey>("today");
+  const teamsConsent = useTeamsConsent();
   /*
     THE OPEN TRAINING.
 
@@ -1416,8 +1418,8 @@ export default function BtyDailyAppShell({
     training on the first render rather than flashing Learn and replacing it. Every LATER request
     arrives through the effect below, which is what makes a resumed tab work.
   */
-  const [trainingTarget, setTrainingTarget] = useState<{ joinToken: string } | null>(
-    () => trainingRequest?.target ?? null,
+  const [trainingTarget, setTrainingTarget] = useState<{ joinToken: string; fromHost: boolean } | null>(
+    () => trainingRequest ? { joinToken: trainingRequest.target.joinToken, fromHost: true } : null,
   );
   /** The occurrence already acted on, so a re-render or a re-delivery of it is inert. */
   const handledTrainingKeyRef = useRef<string | null>(trainingRequest?.requestKey ?? null);
@@ -1521,7 +1523,7 @@ export default function BtyDailyAppShell({
     const request = trainingRequest!;
     handledTrainingKeyRef.current = request.requestKey;
     openTrainingTokenRef.current = request.target.joinToken;
-    setTrainingTarget(request.target);
+    setTrainingTarget({ joinToken: request.target.joinToken, fromHost: true });
     setTab("learn");
     // Unrelated nested Learn surfaces are closed — the training is the whole screen.
     setFoundryView("rooms");
@@ -1930,28 +1932,48 @@ export default function BtyDailyAppShell({
     The document does not change. This is a state branch, not a navigation, which is what keeps
     the Teams framing and session model valid for the whole training.
   */
+  const learnerConsentGate = teamsConsent && !teamsConsent.current ? (
+    <section data-testid="teams-learner-consent-gate" className="flex flex-col items-start gap-3 rounded-2xl border border-white/15 p-5">
+      <h1 data-bty-main-heading="" className="text-xl font-semibold">
+        {locale === "ko" ? "학습 이용 동의" : "Learner agreement"}
+      </h1>
+      <p className="text-sm text-white/75">
+        {locale === "ko" ? "동의 내용을 확인하고 학습과 연습을 시작하세요." : "Review and accept the agreement to use learning and practice."}
+      </p>
+      <button type="button" onClick={teamsConsent.open} className="rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A]">
+        {locale === "ko" ? "동의 내용 보기" : "Review agreement"}
+      </button>
+    </section>
+  ) : null;
+
   if (trainingTarget) {
+    const closeTraining = () => {
+      openTrainingTokenRef.current = null;
+      setTrainingTarget(null);
+      setTab("learn");
+      if (trainingTarget.fromHost) onTrainingExit?.();
+    };
     return (
       <div
         data-bty-app-root=""
         data-testid="in-shell-training"
         className="btyFadeIn relative flex h-[100dvh] flex-col overflow-y-auto bg-[#0B1F3A] text-white antialiased"
       >
-        <InShellLearnerRoom
-          target={trainingTarget}
-          locale={locale === "ko" ? "ko" : "en"}
-          onExit={() => {
-            /*
-              The room closes locally FIRST and unconditionally — the learner is out either way.
-              Clearing the ref is what lets the SAME invitation reopen this training later.
-              `onTrainingExit` then asks the Teams host to drop the subpage; it fails soft.
-            */
-            openTrainingTokenRef.current = null;
-            setTrainingTarget(null);
-            setTab("learn");
-            onTrainingExit?.();
-          }}
-        />
+        {!trainingTarget.fromHost || learnerConsentGate ? (
+          <button type="button" onClick={closeTraining} className="m-4 self-start rounded-lg border border-white/20 px-3 py-2 text-sm">
+            {locale === "ko" ? "배우기로 돌아가기" : "Back to Learn"}
+          </button>
+        ) : null}
+        {learnerConsentGate ? (
+          <div className="px-4">{learnerConsentGate}</div>
+        ) : (
+          <InShellLearnerRoom
+            key={trainingTarget.joinToken}
+            target={{ joinToken: trainingTarget.joinToken }}
+            locale={locale === "ko" ? "ko" : "en"}
+            onExit={closeTraining}
+          />
+        )}
       </div>
     );
   }
@@ -2173,6 +2195,7 @@ export default function BtyDailyAppShell({
                   refreshKey={todayRefreshKey}
                   onOpenSaved={() => setSavedOpen(true)}
                   nativeReminder={runtime === "web"}
+                  learnerBriefEnabled={!learnerConsentGate}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
                   onOpenLeadershipFollowUp={(target) => {
@@ -2194,19 +2217,19 @@ export default function BtyDailyAppShell({
             opens the UNCHANGED in-shell Arena runtime in place, "Field Actions" opens the focused
             in-shell Field Actions surface (never generic Today), Live Experiences / Scan QR are
             gated placeholders. `?tab=practice&fieldAction=<id>` deep-links straight to that action. */}
-        {tab === "practice" && (
+        {tab === "practice" && (learnerConsentGate ?? (
           <PracticeLanding
             locale={locale}
             initialView={practiceFieldActionId ? "fieldActions" : "landing"}
             initialFieldActionId={practiceFieldActionId}
             onFieldActionConsumed={() => setPracticeFieldActionId(null)}
           />
-        )}
+        ))}
         {/* Learn (= Foundry). A learner-facing identity header sits above the UNCHANGED Foundry
             surface: Event Rooms, Required Learning, program discovery/progress, and — for authorized
             hosts — the creation tools. All existing Foundry sub-views / deep links are preserved. */}
         {tab === "learn" &&
-          (followupId ? (
+          (learnerConsentGate ?? (followupId ? (
             <FoundryFollowUpResponse
               followupId={followupId}
               locale={locale}
@@ -2275,6 +2298,10 @@ export default function BtyDailyAppShell({
                 initialDraftView={hostDraftView}
                 focusAssignmentId={learnAssignmentFocus}
                 onAssignmentFocusConsumed={() => setLearnAssignmentFocus(null)}
+                onOpenTraining={runtime === "teams" ? (joinToken) => {
+                  openTrainingTokenRef.current = joinToken;
+                  setTrainingTarget({ joinToken, fromHost: false });
+                } : undefined}
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}
                 initialReturnTab={hostReturnTab}
@@ -2291,7 +2318,7 @@ export default function BtyDailyAppShell({
                 }}
               />
             </>
-          ))}
+          )))}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe
             derived value (leadershipState stage). The prepared-room copy (t.me)

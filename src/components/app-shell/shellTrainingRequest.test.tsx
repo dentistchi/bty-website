@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { TeamsConsentContext } from "@/components/teams/TeamsConsentContext";
 
 const H = vi.hoisted(() => ({ roomProps: [] as Array<Record<string, unknown>> }));
 
@@ -131,6 +132,71 @@ describe("Back to Learn", () => {
     render(<BtyDailyAppShell locale="en" trainingRequest={request(TOKEN, "bootstrap:0")} />);
     fireEvent.click(screen.getByTestId("room-exit"));
     await waitFor(() => expect(screen.queryByTestId("room")).toBeNull());
+  });
+});
+
+describe("Teams learner entry", () => {
+  it("leaves Today Tracks available and gates Practice until consent is current", async () => {
+    const fetch = vi.fn(async () => Response.json({ items: [] }));
+    vi.stubGlobal("fetch", fetch);
+    const open = vi.fn();
+    const shell = (current: boolean) => (
+      <TeamsConsentContext.Provider value={{ current, open }}>
+        <BtyDailyAppShell locale="en" runtime="teams" />
+      </TeamsConsentContext.Provider>
+    );
+    const { rerender } = render(shell(false));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/bty/announcements/mine", expect.any(Object)));
+    expect(fetch.mock.calls.flat().some(url => String(url).startsWith("/api/me/today/brief"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Practice" }));
+    expect(screen.getByTestId("teams-learner-consent-gate")).toBeTruthy();
+    expect(screen.queryByTestId("practice-landing")).toBeNull();
+    rerender(shell(true));
+    expect(screen.getByTestId("practice-landing")).toBeTruthy();
+  });
+
+  it("opens a required assignment in the signed-in tab and returns to Learn", async () => {
+    const onTrainingExit = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "/api/bty/foundry/events") return Response.json({ error: "foundry_author_required" }, { status: 403 });
+      if (url === "/api/bty/foundry/assignments/mine") return Response.json({
+        ok: true,
+        assignments: [{
+          assignmentId: "required",
+          eventId: "event",
+          status: "assigned",
+          title: "Required work",
+          assignedAt: "2026-11-12T00:00:00Z",
+          completedAt: null,
+          roomUrl: `${window.location.origin}/f/${TOKEN}`,
+          participationMode: "assigned_overlay",
+        }],
+      });
+      return Response.json({});
+    }));
+    render(<BtyDailyAppShell locale="en" runtime="teams" onTrainingExit={onTrainingExit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Learn" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start learning" }));
+    expect(screen.getByTestId("room").getAttribute("data-token")).toBe(TOKEN);
+    fireEvent.click(screen.getByRole("button", { name: "Back to Learn" }));
+    expect(await screen.findByText("Required work")).toBeTruthy();
+    expect(onTrainingExit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the requested training while the learner agreement is pending", async () => {
+    const open = vi.fn();
+    const trainingRequest = request(TOKEN, "bootstrap:0");
+    const shell = (current: boolean) => (
+      <TeamsConsentContext.Provider value={{ current, open }}>
+        <BtyDailyAppShell locale="en" runtime="teams" trainingRequest={trainingRequest} />
+      </TeamsConsentContext.Provider>
+    );
+    const { rerender } = render(shell(false));
+    expect(screen.queryByTestId("room")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Review agreement" }));
+    expect(open).toHaveBeenCalledTimes(1);
+    rerender(shell(true));
+    expect(screen.getByTestId("room").getAttribute("data-token")).toBe(TOKEN);
   });
 });
 

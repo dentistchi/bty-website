@@ -191,6 +191,7 @@ export type EventRoomsCopy = {
   sendReasonNoRoute: string;
   sendReasonUnknown: string;
   sendReasonFailed: string;
+  sendReasonEventClosed: string;
   /*
     A SCORE IS NOT THE DESTINATION. These name the surface behind one learner's score — what they
     missed, and the one tap that turns a number into a conversation with the person.
@@ -218,6 +219,7 @@ export type EventRoomsCopy = {
   manageArenaPractice: string;
   createNewVersion: string;
   createNewVersionBusy: string;
+  createNewVersionError: string;
   createNewVersionNote: string;
   joinedHeader: (n: number) => string;
   closeEvent: string;
@@ -425,6 +427,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendReasonNoRoute: "BTY can't reach Teams for this organization yet.",
     sendReasonUnknown: "Teams couldn't confirm delivery.",
     sendReasonFailed: "BTY couldn't send the training.",
+    sendReasonEventClosed: "This training is closed. No more invitations can be sent.",
     quizHeader: "Quiz",
     quizProgress: (done, total) => `${done} of ${total} completed the quiz`,
     quizAverage: (percent) => ` · average ${percent}%`,
@@ -448,6 +451,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     manageArenaPractice: "Manage practice",
     createNewVersion: "Create new version",
     createNewVersionBusy: "Opening…",
+    createNewVersionError: "Could not open a new version. Try again.",
     createNewVersionNote: "Your current published training will remain unchanged.",
     joinedHeader: (n) => (n === 1 ? "1 person joined" : `${n} people joined`),
     closeEvent: "Close event",
@@ -641,6 +645,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     sendReasonNoRoute: "아직 이 조직의 Teams에 연결할 수 없습니다.",
     sendReasonUnknown: "Teams가 전달을 확인하지 못했습니다.",
     sendReasonFailed: "훈련을 보내지 못했습니다.",
+    sendReasonEventClosed: "종료된 훈련입니다. 더 이상 초대를 보낼 수 없습니다.",
     quizHeader: "퀴즈",
     quizProgress: (done, total) => `퀴즈 완료 ${done} / ${total}`,
     quizAverage: (percent) => ` · 평균 점수 ${percent}%`,
@@ -663,6 +668,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     manageArenaPractice: "연습 관리",
     createNewVersion: "새 버전 만들기",
     createNewVersionBusy: "여는 중…",
+    createNewVersionError: "새 버전을 열지 못했습니다. 다시 시도해 주세요.",
     createNewVersionNote: "현재 게시된 트레이닝은 그대로 유지됩니다.",
     rotateConfirm: "현재 QR을 교체할까요? 기존 QR은 더 이상 작동하지 않습니다.",
     joinedHeader: (n) => `${n}명 입장`,

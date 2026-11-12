@@ -5,7 +5,8 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 import { AcceptClient } from "./AcceptClient";
 import { ConsentDocumentView } from "./ConsentDocumentView";
 import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
-import { activeConsentDocument, consentSatisfied } from "@/domain/legal/consent-document";
+import { activeConsentDocument } from "@/domain/legal/consent-document";
+import { isConsentCurrent } from "@/lib/legal/activeConsent";
 import { consentDocumentFingerprint } from "@/domain/legal/consent-fingerprint";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +30,6 @@ export default async function LegalAcceptPage({
     redirect(`/${locale}/bty/login`);
   }
 
-  const { data: prof } = await supabase
-    .from("arena_profiles")
-    .select("consent_version")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   /*
     OPEN REDIRECT (Slice 3.2R-R8E). This was `returnUrl.startsWith("/")`, which accepts
     `//evil.com` — a protocol-relative URL that starts with "/" and navigates straight off
@@ -48,14 +43,7 @@ export default async function LegalAcceptPage({
   */
   const safeReturn = sanitizeNextForRedirect(returnUrl, { locale: locale === "ko" ? "ko" : "en" });
 
-  /*
-    EXACT EQUALITY, NOT PRESENCE (Slice 3.2R-R9A). This read `prof?.consent_version` — any truthy
-    value short-circuited the screen — so a learner holding an older version would have been sent
-    straight back to their destination without ever seeing the current document. The gate and this
-    page must answer the same question, or the middleware would bounce them here and this line
-    would bounce them away again, forever.
-  */
-  if (consentSatisfied(prof?.consent_version)) {
+  if (await isConsentCurrent(supabase, user.id)) {
     redirect(safeReturn);
   }
 

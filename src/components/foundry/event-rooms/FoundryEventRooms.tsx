@@ -84,6 +84,7 @@ export default function FoundryEventRooms({
   onOpenReview = () => {},
   focusAssignmentId = null,
   onAssignmentFocusConsumed,
+  onOpenTraining,
   onOpenMyLearning = () => {},
   onOpenEvent,
   onOpenMyEvents,
@@ -104,6 +105,7 @@ export default function FoundryEventRooms({
   /** R4-R5C1 — the assignment a Today card named; handed straight to Required Learning. */
   focusAssignmentId?: string | null;
   onAssignmentFocusConsumed?: () => void;
+  onOpenTraining?: (joinToken: string) => void;
   /** Open the learner's own My Learning / private reflection history (in-shell, Slice 3.1B-3H). */
   onOpenMyLearning?: () => void;
   /** Open the in-shell Reality Event create view (Slice 3.2D-EVENT-R1). */
@@ -168,16 +170,15 @@ export default function FoundryEventRooms({
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
-  // Author capability, resolved from the events list response. A non-author
-  // sees a quiet learner state; an auth/network error is NOT shown as denial
-  // (it stays a neutral loading hold so we never misrepresent it).
-  const [access, setAccess] = useState<"loading" | "author" | "non_author">("loading");
+  // Learner assignments load independently of this author capability check.
+  const [access, setAccess] = useState<"loading" | "author" | "non_author" | "error">("loading");
 
   const loadList = useCallback(async () => {
     try {
       const res = await fetch("/api/bty/foundry/events", {
         credentials: "include",
         cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) {
         const data = (await res.json()) as { events?: ManagerEventSummary[] };
@@ -192,10 +193,9 @@ export default function FoundryEventRooms({
           return;
         }
       }
-      // Auth expiry / network / server error → stay in a neutral hold (not non-host).
-      setAccess("loading");
+      setAccess("error");
     } catch {
-      setAccess("loading");
+      setAccess("error");
     }
   }, []);
 
@@ -297,25 +297,29 @@ export default function FoundryEventRooms({
   // Create a new version of a published Guided training (Slice 3.2C-B1). The server
   // resolves the source draft + creates OR resumes exactly one revision draft in the
   // SAME Program; we then open the existing Builder on it (prior answers prefilled).
-  // Guarded so a double-tap opens exactly one. The action is server-gated (revisable),
-  // so a non-ok response is a rare race — we simply stay in the control room.
+  // Guarded so a double-tap opens exactly one. The control room owns its error and retry state.
   const versioningRef = useRef(false);
   const createNewVersion = useCallback(async (eventId: string) => {
-    if (versioningRef.current) return;
+    if (versioningRef.current) return false;
     versioningRef.current = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
       const res = await fetch(`/api/bty/foundry/events/${encodeURIComponent(eventId)}/revisions`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
+        signal: controller.signal,
       });
-      if (res.ok) {
-        const data = (await res.json()) as { draftId?: string };
-        if (data.draftId) setView({ kind: "builder", draftId: data.draftId });
-      }
+      if (!res.ok) return false;
+      const data = (await res.json()) as { draftId?: string };
+      if (!data.draftId) return false;
+      setView({ kind: "builder", draftId: data.draftId });
+      return true;
     } catch {
-      /* stay on the control room; the action re-enables */
+      return false;
     } finally {
+      clearTimeout(timeout);
       versioningRef.current = false;
     }
   }, []);
@@ -372,10 +376,10 @@ export default function FoundryEventRooms({
   */
   const openLearning = onOpenMyLearning;
   const learnDoors = (
-    <LearnDoors locale={loc} canCreate={access === "author"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
+    <LearnDoors key="learn-doors" locale={loc} canCreate={access === "author"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
   );
   const requiredLearning = (
-    <div id="learn-required">
+    <div id="learn-required" key="learn-required">
       {/* No `onOpenMyLearning` here: B3A.2C removed this child's My-Learning pill and the prop
           has been unused since. Passing it advertised a second plausible owner of the entry,
           which is how the door above kept a stale handler through that refactor. */}
@@ -384,6 +388,7 @@ export default function FoundryEventRooms({
         onOpenReview={onOpenReview}
         focusAssignmentId={focusAssignmentId}
         onFocusConsumed={onAssignmentFocusConsumed}
+        onOpenTraining={onOpenTraining}
       />
     </div>
   );
@@ -441,12 +446,7 @@ export default function FoundryEventRooms({
     );
   }
 
-  // home — non-author quiet state (no Create CTA, no permission-request CTA, no
-  // "coming soon"; employees join via the public QR route). An unresolved auth/
-  // network error stays a neutral hold, never mislabeled as non-author.
-  if (access === "non_author") {
-    // A non-author learner's Foundry home: their required-learning surface leads, with
-    // the quiet author-pointer copy retained beneath it (calmer, no longer full-height).
+  if (access !== "author") {
     return (
       // B3A.2C: a non-host learner's Learn surface is just the two-door entry + their
       // required learning. The "FOUNDRY / Training rooms are opened by authorized
@@ -465,11 +465,16 @@ export default function FoundryEventRooms({
       <div className="btyFadeIn flex flex-col gap-8">
         {requiredLearning}
         {learnDoors}
+        {access === "error" ? (
+          <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-white/70">
+            <p>{loc === "ko" ? "일부 학습 기능을 불러오지 못했습니다." : "Couldn't load some learning tools."}</p>
+            <button type="button" onClick={() => void loadList()} className="rounded-lg border border-white/20 px-3 py-1.5">
+              {loc === "ko" ? "다시 시도" : "Retry"}
+            </button>
+          </div>
+        ) : null}
       </div>
     );
-  }
-  if (access === "loading") {
-    return <div aria-hidden className="min-h-[40vh]" />;
   }
 
   const open = (events ?? []).filter((e) => e.status === "open");

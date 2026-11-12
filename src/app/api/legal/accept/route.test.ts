@@ -2,44 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRequireUser = vi.fn();
-const mockRateLimitKV = vi.fn();
-const mockUpsert = vi.fn();
-const mockInsert = vi.fn();
-const mockSupabaseFrom = vi.fn((table: string) => {
-  if (table === "arena_profiles") {
-    // route.ts performs: .upsert(payload, { onConflict }).select(cols)
-    return {
-      upsert: (vals: unknown, _opts: unknown) => ({
-        select: (_cols?: string) => mockUpsert(vals),
-      }),
-    };
-  }
-  if (table === "arena_consent_log") {
-    return {
-      insert: (vals: unknown) => mockInsert(vals),
-    };
-  }
-  throw new Error(`unexpected table ${table}`);
-});
+const mockRpc = vi.fn();
+const mockAdmin = vi.fn();
+const mockSelect = vi.fn();
+const mockConsentProjection = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
-  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
-  unauthenticated: vi.fn(() =>
-    NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 }),
-  ),
+  unauthenticated: vi.fn(() => NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 })),
   copyCookiesAndDebug: vi.fn(),
 }));
-
-vi.mock("@/lib/rate-limit", () => ({
-  getCfClientIp: () => "1.2.3.4",
-  rateLimitKV: (...args: unknown[]) => mockRateLimitKV(...args),
-}));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => mockAdmin() }));
 
 function reqWithBody(body: unknown): NextRequest {
   return new NextRequest("http://localhost/api/legal/accept", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "user-agent": "vitest" },
+    headers: { "Content-Type": "application/json", "user-agent": "vitest", "cf-connecting-ip": "192.0.2.4" },
     body: JSON.stringify(body),
   });
 }
@@ -70,31 +48,24 @@ async function loadPost() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRateLimitKV.mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
   mockRequireUser.mockResolvedValue({
     user: { id: "user-uuid-1" },
-    supabase: { from: mockSupabaseFrom },
-    base: NextResponse.json({ ok: true }, { status: 200 }),
-    error: null,
+    supabase: { from: () => ({ select: mockSelect }) },
+    base: NextResponse.json({ ok: true }),
   });
-  // Success path: upsert returns the persisted row so route.ts can confirm
-  // consent_version landed before answering ok:true. Derive from payload so
-  // the returned consent_version always matches what each test sent.
-  mockUpsert.mockImplementation((vals: { user_id?: string; consent_version?: string }) =>
-    Promise.resolve({
-      data: [{ user_id: vals.user_id, consent_version: vals.consent_version }],
-      error: null,
-    }),
-  );
-  mockInsert.mockResolvedValue({ error: null });
+  mockAdmin.mockReturnValue({ rpc: mockRpc });
+  mockRpc.mockResolvedValue({ data: { status: "accepted" }, error: null });
+  mockSelect.mockReturnValue({ eq: () => ({ maybeSingle: mockConsentProjection }) });
+  mockConsentProjection.mockResolvedValue({ data: null, error: null });
 });
 
 describe("/api/legal/accept POST", () => {
   it("returns 429 when rate-limit not allowed", async () => {
-    mockRateLimitKV.mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 600 });
+    mockRpc.mockResolvedValueOnce({ data: { status: "rate_limited", retryAfterSeconds: 600 }, error: null });
     const POST = await loadPost();
-    const res = await POST(reqWithBody({}));
+    const res = await POST(reqWithBody(activeBody()));
     expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("600");
     const body = (await res.json()) as { retryAfterSeconds?: number };
     expect(body.retryAfterSeconds).toBe(600);
   });
@@ -139,51 +110,48 @@ describe("/api/legal/accept POST", () => {
     expect(body.error).toBe("invalid_consent_locale");
   });
 
-  it("returns 500 when UPSERT fails", async () => {
-    mockUpsert.mockResolvedValueOnce({ data: null, error: { message: "db down" } });
+  it("confirms one atomic write for the authenticated user and exact document", async () => {
     const POST = await loadPost();
-    const res = await POST(reqWithBody(activeBody()));
-    expect(res.status).toBe(500);
-  });
-
-  it("returns 200 + writes audit log with derived placeholder + fingerprint on happy path", async () => {
-    const POST = await loadPost();
-    const res = await POST(reqWithBody(activeBody()));
+    const res = await POST(reqWithBody(activeBody({ user_id: "ignored-user" })));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok?: boolean; consent_version?: string };
-    expect(body.ok).toBe(true);
-    expect(body.consent_version).toBe(ACTIVE_CONSENT_VERSION);
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockInsert).toHaveBeenCalledTimes(1);
-    const insertArg = mockInsert.mock.calls[0]?.[0] as {
-      consent_type?: string;
-      action?: string;
-      notes?: { placeholder?: boolean; sprint?: string; documentFingerprint?: string };
-      ip_address?: string;
-    };
-    expect(insertArg.consent_type).toBe("tos");
-    expect(insertArg.action).toBe("accepted");
-    // Case 16 — the CURRENT document is placeholder-class, so this must still be true…
-    expect(insertArg.notes?.placeholder).toBe(true);
-    // …and it is now DERIVED, with the exact prose identity recorded beside it (case 19).
-    expect(insertArg.notes?.documentFingerprint).toBe(EN_FP);
-    // Existing provenance is preserved, not dropped.
-    expect(insertArg.notes?.sprint).toBe("AL-LAUNCH-D3");
-    expect(insertArg.ip_address).toBe("1.2.3.4");
+    expect(await res.json()).toEqual({
+      ok: true,
+      consent_version: ACTIVE_CONSENT_VERSION,
+      redirect_to: null,
+    });
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+    expect(mockRpc).toHaveBeenCalledWith("bty_accept_learner_consent", {
+      p_user_id: "user-uuid-1",
+      p_version: ACTIVE_CONSENT_VERSION,
+      p_locale: "en-US",
+      p_fingerprint: EN_FP,
+      p_placeholder: true,
+      p_ip_address: "192.0.2.4",
+      p_user_agent: "vitest",
+    });
   });
 
-  /*
-    THIS TEST USED TO ASSERT THE DEFECT (Slice 3.2R-R9A). It was named "returns 200 even when
-    audit INSERT fails (UPSERT is primary)" and locked in a 200 with no durable evidence of
-    consent. Evidence is now primary and the expectation is inverted.
-  */
-  it("case 12 — audit INSERT failure refuses, and the profile is NEVER marked accepted", async () => {
-    mockInsert.mockResolvedValueOnce({ error: { message: "audit failed" } });
+  it("refuses when the atomic write fails and allows an ordinary retry", async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { code: "XX000" } });
     const POST = await loadPost();
-    const res = await POST(reqWithBody(activeBody()));
-    expect(res.status).toBe(500);
-    expect((await res.json()).error).toBe("consent_not_recorded");
-    expect(mockUpsert).not.toHaveBeenCalled();
+    const failed = await POST(reqWithBody(activeBody()));
+    expect(failed.status).toBe(500);
+    expect((await failed.json()).error).toBe("consent_not_recorded");
+    expect((await POST(reqWithBody(activeBody()))).status).toBe(200);
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses when the write does not return a confirmed acceptance", async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null });
+    const POST = await loadPost();
+    expect((await POST(reqWithBody(activeBody()))).status).toBe(500);
+  });
+
+  it("returns an unavailable response when the privileged client is unavailable", async () => {
+    mockAdmin.mockReturnValueOnce(null);
+    const POST = await loadPost();
+    expect((await POST(reqWithBody(activeBody()))).status).toBe(503);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("rejects consent_version > 50 chars", async () => {
@@ -208,16 +176,14 @@ describe("[3.2R-R9A] active-document authority", () => {
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe("consent_document_stale");
     // Nothing was written — not the ledger, not the profile.
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("case 7 — a future, pattern-VALID, invented version is refused", async () => {
     const POST = await loadPost();
     const res = await POST(reqWithBody(activeBody({ consent_version: "2099-12-anything" })));
     expect(res.status).toBe(409);
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("case 8 — the right version with the WRONG fingerprint is refused", async () => {
@@ -226,14 +192,14 @@ describe("[3.2R-R9A] active-document authority", () => {
       reqWithBody(activeBody({ document_fingerprint: "bty_consent_document_v1:deadbeef" })),
     );
     expect(res.status).toBe(409);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("case 8b — a MISSING fingerprint cannot be waved through", async () => {
     const POST = await loadPost();
     const { document_fingerprint: _omit, ...noFp } = activeBody();
     expect((await POST(reqWithBody(noFp))).status).toBe(409);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("case 9 — a Korean document cannot be recorded as an English acceptance", async () => {
@@ -241,7 +207,7 @@ describe("[3.2R-R9A] active-document authority", () => {
     // The KO fingerprint is real and current — but not for the submitted locale.
     const res = await POST(reqWithBody(activeBody({ document_fingerprint: KO_FP })));
     expect(res.status).toBe(409);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
     // …and the same document accepted under its OWN locale is fine.
     const ok = await POST(
       reqWithBody({ consent_version: ACTIVE_CONSENT_VERSION, consent_locale: "ko-KR", document_fingerprint: KO_FP }),
@@ -254,7 +220,7 @@ describe("[3.2R-R9A] active-document authority", () => {
     const POST = await loadPost();
     const res = await POST(reqWithBody(activeBody({ consent_locale: "fr-FR" })));
     expect(res.status).toBe(400);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("case 11 — STALE TAB: rendered under A, active is B at POST time → B is never recorded", async () => {
@@ -277,43 +243,34 @@ describe("[3.2R-R9A] active-document authority", () => {
     expect(body.error).toBe("consent_document_stale");
     // The client is told WHICH document to re-render — identity only, never prose.
     expect(body.active_consent_version).toBe(ACTIVE_CONSENT_VERSION);
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it("case 13/14 — audit ok + profile upsert fails → gated, audit preserved, retry succeeds", async () => {
-    const POST = await loadPost();
-    mockUpsert.mockResolvedValueOnce({ data: null, error: { message: "upsert boom" } });
-    const first = await POST(reqWithBody(activeBody()));
-    expect(first.status).toBe(500);
-    // The acceptance event survives — it is TRUE, this user did accept this exact document.
-    expect(mockInsert).toHaveBeenCalledTimes(1);
-    // Case 14 — the retry is not blocked by anything and eventually succeeds.
-    const second = await POST(reqWithBody(activeBody()));
-    expect(second.status).toBe(200);
-    // Case 15 — the residue is a duplicate audit event, which this domain already tolerates.
-    expect(mockInsert).toHaveBeenCalledTimes(2);
-  });
+});
 
-  it("case 15 — duplicate legitimate acceptances are appended, never rejected or deduplicated", async () => {
-    const POST = await loadPost();
-    expect((await POST(reqWithBody(activeBody()))).status).toBe(200);
-    expect((await POST(reqWithBody(activeBody()))).status).toBe(200);
-    expect(mockInsert).toHaveBeenCalledTimes(2);
-  });
+describe("/api/legal/accept GET", () => {
+  const req = (locale: string) =>
+    new NextRequest(`http://localhost/api/legal/accept?locale=${locale}`);
 
-  it("EVIDENCE BEFORE ACCESS — the audit row is written before the profile is marked", async () => {
-    const order: string[] = [];
-    mockInsert.mockImplementationOnce(() => {
-      order.push("audit");
-      return Promise.resolve({ error: null });
+  it("returns the locale document, fingerprint and server-verified consent status without caching", async () => {
+    mockConsentProjection.mockResolvedValueOnce({
+      data: { consent_version: ACTIVE_CONSENT_VERSION },
+      error: null,
     });
-    mockUpsert.mockImplementationOnce((vals: { user_id?: string; consent_version?: string }) => {
-      order.push("profile");
-      return Promise.resolve({ data: [{ user_id: vals.user_id, consent_version: vals.consent_version }], error: null });
-    });
-    const POST = await loadPost();
-    await POST(reqWithBody(activeBody()));
-    expect(order).toEqual(["audit", "profile"]);
+    const { GET } = await import("./route");
+    const res = await GET(req("ko-KR"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(await res.json()).toEqual({ current: true, document: KO_DOC, documentFingerprint: KO_FP });
+    expect(mockSelect).toHaveBeenCalledWith("consent_version:consent_verified_version");
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("refuses an unsupported locale or unauthenticated caller", async () => {
+    const { GET } = await import("./route");
+    expect((await GET(req("fr-FR"))).status).toBe(400);
+    mockRequireUser.mockResolvedValueOnce({ user: null, base: NextResponse.json({}) });
+    expect((await GET(req("en-US"))).status).toBe(401);
+    expect(mockConsentProjection).not.toHaveBeenCalled();
   });
 });

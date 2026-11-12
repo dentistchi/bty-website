@@ -84,6 +84,18 @@ describe("FoundryRequiredLearning — learner surface", () => {
     expect(screen.queryByTestId("required-empty")).toBeNull();
   });
 
+  it("offers Retry after a failed read without claiming no assignments", async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ ok: true, assignments: [ASSIGNED] }));
+    render(<FoundryRequiredLearning locale="en" />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Couldn't load required learning.");
+    expect(screen.queryByTestId("required-empty")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Safety Basics")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("B3A.2C hygiene: NO account email block and NO duplicate My-learning pill in the content area", async () => {
     mockFetch([COMPLETED], "ywamer2022@gmail.com");
     render(<FoundryRequiredLearning locale="en" />);

@@ -18,7 +18,7 @@
  * on mount, and again after the microtask queue has drained.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import TodayHome from "./TodayHome";
 
 afterEach(() => {
@@ -103,6 +103,21 @@ describe("G1 — Today asserts no emptiness while the brief is unresolved", () =
 });
 
 describe("G2 — a resolved, genuinely empty day still renders the honest empty state", () => {
+  it("waits for the announcement lane and recovers its empty state only after a successful retry", async () => {
+    let announcementsUnavailable = true;
+    stubFetch(async (u) => {
+      if (u.includes("/api/me/today/brief")) return json({ ok: true, reminders: [], hostAttention: [] });
+      if (u.includes("/api/bty/announcements/mine")) return announcementsUnavailable ? json({}, 503) : json({ items: [] });
+      return json({});
+    });
+    render(<TodayHome locale="en" />);
+    const announcementError = await screen.findByTestId("needs-your-response-error");
+    expect(screen.queryByTestId("today-empty")).toBeNull();
+    announcementsUnavailable = false;
+    fireEvent.click(within(announcementError).getByRole("button", { name: "Retry" }));
+    expect((await screen.findByTestId("today-empty")).textContent).toContain(EMPTINESS_CLAIM_EN);
+  });
+
   it("brief resolves ok with zero reminders → the existing empty card + CTA render unchanged", async () => {
     stubFetch(async (u) => {
       if (u.includes("/api/me/today/brief")) return json({ ok: true, reminders: [], hostAttention: [] });

@@ -12,6 +12,7 @@ import {
   type BootStage,
 } from "@/domain/teams/bootDiagnostics";
 import BtyDailyAppShell from "@/components/app-shell/BtyDailyAppShell";
+import TeamsConsentBoundary from "@/components/teams/TeamsConsentBoundary";
 import TeamsRuntimeProbe from "@/components/teams/TeamsRuntimeProbe";
 import { getSupabase } from "@/lib/supabase";
 import { isSavedLocale, readSavedLocale } from "@/lib/localePreference";
@@ -672,7 +673,7 @@ export default function TeamsTabShell() {
 
   if (phase.k === "ready") {
     return (
-      <>
+      <TeamsConsentBoundary locale={phase.locale}>
         <BtyDailyAppShell
           locale={phase.locale}
           /*
@@ -702,7 +703,7 @@ export default function TeamsTabShell() {
           onLocaleChanged={(next) => setPhase({ k: "ready", locale: next })}
         />
         {diag ? <TeamsRuntimeProbe /> : null}
-      </>
+      </TeamsConsentBoundary>
     );
   }
 

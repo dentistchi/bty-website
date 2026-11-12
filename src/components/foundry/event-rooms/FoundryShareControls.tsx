@@ -75,6 +75,7 @@ export function FoundryShareControls({
     invitation's own safe default rather than being asserted here.
   */
   const contentType = readContentType(event.content_type) ?? "youtube";
+  const supportsTeamsCard = contentType === "written_guidance" && event.guidance?.completion_prompt === null;
   const invitation = buildFoundryInvitation({
     locale,
     title: event.title,
@@ -189,7 +190,8 @@ export function FoundryShareControls({
         | { error?: string }
         | null;
       if (!res.ok || !data || !("ok" in data)) {
-        setStatus(t.sendInTeamsUnavailable);
+        const closed = data && "error" in data && data.error === "event_closed";
+        setStatus(closed ? t.sendReasonEventClosed : t.sendInTeamsUnavailable);
         setFailures([]);
         return;
       }
@@ -295,7 +297,7 @@ export function FoundryShareControls({
     <section className="flex flex-col gap-2" aria-label={t.shareRoomHeader}>
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.shareRoomHeader}</h2>
 
-      {insideTeams ? (
+      {insideTeams && supportsTeamsCard ? (
         /*
           INSIDE TEAMS. Choose people, confirm, and BTY's bot delivers the training into each
           person's own chat. There is no link to copy and no draft to send: the employee reads the
@@ -358,6 +360,15 @@ export function FoundryShareControls({
             </ul>
           ) : null}
         </div>
+      ) : insideTeams ? (
+        <button
+          type="button"
+          onClick={onCopyLink}
+          aria-label={t.copyInvitation}
+          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
+        >
+          {copyState === "copied" ? t.linkCopied : t.copyInvitation}
+        </button>
       ) : native ? (
         // Native: the primary action opens the iOS system share sheet (app-neutral
         // "Share invitation"); Copy invitation stays as a quieter secondary.

@@ -10,6 +10,8 @@ on:
       - src/lib/bty/action-capture/**
       - src/lib/bty/announcement/**
       - src/lib/bty/foundry/events/**
+      - src/lib/bty/foundry/teams/**
+      - src/app/api/legal/accept/**
       - supabase/migrations/**
       - package.json
       - package-lock.json
@@ -71,6 +73,34 @@ jobs:
         env:
           BTY_TRACKING_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres
         run: npm exec -- vitest run src/lib/bty/announcement/trackingModes.pg.test.ts --minWorkers=1 --maxWorkers=1
+
+      - name: Prepare the Supabase service role and separate training database in the test server
+        env:
+          BTY_DISPOSABLE_PG_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres
+        run: |
+          node --input-type=module - <<'JS'
+          import pg from 'pg';
+          const client = new pg.Client({ connectionString: process.env.BTY_DISPOSABLE_PG_URL });
+          await client.connect();
+          try {
+            // Earlier fixtures create a plain service role to test their definer functions.
+            // The new invoker functions require Supabase's service_role BYPASSRLS behavior.
+            await client.query('alter role service_role bypassrls');
+            await client.query('create database bty_teams_training_claim_qa');
+          } finally {
+            await client.end();
+          }
+          JS
+
+      - name: Verify learner consent authority in PostgreSQL
+        env:
+          BTY_CONSENT_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/postgres
+        run: npm exec -- vitest run src/app/api/legal/accept/consentAuthority.pg.test.ts --minWorkers=1 --maxWorkers=1
+
+      - name: Verify Teams training admission and delivery claims in PostgreSQL
+        env:
+          BTY_TEAMS_TRAINING_PG_TEST_URL: postgresql://postgres:cleanup-disposable-only@127.0.0.1:55473/bty_teams_training_claim_qa
+        run: npm exec -- vitest run src/lib/bty/foundry/teams/trainingDelivery.pg.test.ts --minWorkers=1 --maxWorkers=1
 
       - name: Preserve actual SQL result, Vitest JSON, witnesses and logs
         if: always()

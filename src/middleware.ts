@@ -15,7 +15,7 @@ import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-ser
 import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
-import { consentSatisfied } from "@/domain/legal/consent-document";
+import { isConsentCurrent } from "@/lib/legal/activeConsent";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -389,35 +389,15 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    if (!isConsentBypassed(pathname)) {
-      const { data: prof } = await supabase
-        .from("arena_profiles")
-        .select("consent_version")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      /*
-        EXACT EQUALITY, NOT PRESENCE (Slice 3.2R-R9A).
-
-        This was `!prof?.consent_version` — ANY truthy string satisfied it. Measured consequence:
-        all 31 consented users carried a value, so publishing final legal text would have gated
-        nobody and every one of them would have been treated as having accepted words they never
-        saw. A fabricated `2099-12-anything` satisfied it just as well.
-
-        `consentSatisfied` compares against the one server-owned active version, so a null, an
-        older version and an invented one are now the same answer: consent required. The redirect
-        below is untouched — the deep link is preserved exactly as R8E left it.
-      */
-      if (!consentSatisfied(prof?.consent_version)) {
-        const acceptUrl = new URL(`/${locale}/legal/accept`, req.url);
-        acceptUrl.searchParams.set("return", pathname + req.nextUrl.search);
-        const redirect = NextResponse.redirect(acceptUrl, 307);
-        reassertAuthCookiesPathRoot(req, redirect);
-        redirect.headers.set("x-mw-hit", "1");
-        redirect.headers.set("x-mw-user", "1");
-        redirect.headers.set("x-mw-consent", "required");
-        return redirect;
-      }
+    if (!isConsentBypassed(pathname) && !(await isConsentCurrent(supabase, user.id))) {
+      const acceptUrl = new URL(`/${locale}/legal/accept`, req.url);
+      acceptUrl.searchParams.set("return", pathname + req.nextUrl.search);
+      const redirect = NextResponse.redirect(acceptUrl, 307);
+      reassertAuthCookiesPathRoot(req, redirect);
+      redirect.headers.set("x-mw-hit", "1");
+      redirect.headers.set("x-mw-user", "1");
+      redirect.headers.set("x-mw-consent", "required");
+      return redirect;
     }
 
     /**

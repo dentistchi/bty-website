@@ -274,6 +274,7 @@ export async function notifyRecipient(
     return { ok: false, reason: "claim_lost" };
   }
   const mark = one<{ result?: string }>(mData)?.result;
+  if (mark === "not_found") return release("not_found");
   if (mark !== "sending") {
     return { ok: false, reason: mark === "already_notified" ? "already_notified" : "claim_lost" };
   }

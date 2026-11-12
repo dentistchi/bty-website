@@ -42,7 +42,7 @@ afterEach(() => cleanup());
 describe("FoundryEventControlRoom — Create new version", () => {
   it("shows the action for a revisable Guided published training and fires once", async () => {
     mockFetch(true);
-    const onCreateNewVersion = vi.fn();
+    const onCreateNewVersion = vi.fn(async () => true);
     render(
       <FoundryEventControlRoom
         eventId="E1"
@@ -59,6 +59,23 @@ describe("FoundryEventControlRoom — Create new version", () => {
     expect(onCreateNewVersion).toHaveBeenCalledTimes(1); // in-flight guard
   });
 
+  it("reports a failed opening and lets the host retry in the same room", async () => {
+    mockFetch(true);
+    const onCreateNewVersion = vi.fn(async () => true).mockResolvedValueOnce(false);
+    render(
+      <FoundryEventControlRoom eventId="E1" initialSnapshot={snapshot(true)} locale="en"
+        onBack={() => {}} onCreateNewVersion={onCreateNewVersion} />,
+    );
+    const btn = await screen.findByTestId<HTMLButtonElement>("foundry-create-new-version");
+    fireEvent.click(btn);
+    expect((await screen.findByRole("alert")).textContent).toContain("Could not open a new version");
+    expect(btn.disabled).toBe(false);
+    fireEvent.click(btn);
+    await waitFor(() => expect(btn.disabled).toBe(false));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(onCreateNewVersion).toHaveBeenCalledTimes(2);
+  });
+
   it("hides the action when the event is not revisable (e.g. Quick Program)", async () => {
     mockFetch(false);
     render(
@@ -67,7 +84,7 @@ describe("FoundryEventControlRoom — Create new version", () => {
         initialSnapshot={snapshot(false)}
         locale="en"
         onBack={() => {}}
-        onCreateNewVersion={() => {}}
+        onCreateNewVersion={async () => true}
       />,
     );
     await waitFor(() => expect(screen.getByText("Gate A — First Version")).toBeTruthy());

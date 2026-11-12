@@ -43,7 +43,7 @@ export function FoundryEventControlRoom({
   /** Host action: open the guided Arena-practice builder for this training. */
   onCreateArenaPractice?: () => void;
   /** Host action (Slice 3.2C-B1): create a new version of this published Guided training. */
-  onCreateNewVersion?: () => void;
+  onCreateNewVersion?: () => Promise<boolean>;
   /** Host Leadership Attention deep link (Slice 3.1B-3L): scroll/highlight the exact row in the
    *  named section. 'followups' → focusId is a followup id; 'shared-understanding' → a progress id. */
   focusSection?: HostFocusSection;
@@ -57,10 +57,18 @@ export function FoundryEventControlRoom({
   // Create-new-version in-flight guard (Slice 3.2C-B1): the POST + Builder handoff
   // happens in the parent; this only prevents a double-tap from firing twice.
   const [creatingVersion, setCreatingVersion] = useState(false);
-  const onCreateNewVersionClick = useCallback(() => {
+  const [versionFailed, setVersionFailed] = useState(false);
+  const onCreateNewVersionClick = useCallback(async () => {
     if (creatingVersion || !onCreateNewVersion) return;
     setCreatingVersion(true);
-    onCreateNewVersion();
+    setVersionFailed(false);
+    try {
+      setVersionFailed(!(await onCreateNewVersion()));
+    } catch {
+      setVersionFailed(true);
+    } finally {
+      setCreatingVersion(false);
+    }
   }, [creatingVersion, onCreateNewVersion]);
 
   // Draft-entry label clarity (3.0B.2): Create → Continue (unpublished draft exists)
@@ -205,6 +213,7 @@ export function FoundryEventControlRoom({
               >
                 {creatingVersion ? t.createNewVersionBusy : t.createNewVersion}
               </button>
+              {versionFailed && <p role="alert" className="text-xs text-amber-200">{t.createNewVersionError}</p>}
               <span className="text-xs leading-5 text-white/45">{t.createNewVersionNote}</span>
             </div>
           ) : null}

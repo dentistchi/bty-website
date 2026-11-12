@@ -44,38 +44,42 @@ function makeAdmin(over: { contentType?: string; owner?: string; quiz?: boolean;
   };
   function from(table: string) {
     const rows = (tables[table] ??= []);
-    const st = { op: "select" as string, f: [] as { c: string; v: unknown }[], patch: {} as Row, ins: null as Row | null, conflict: "" };
+    const st = { f: [] as { c: string; v: unknown }[], patch: null as Row | null };
     const match = () => rows.filter((r) => st.f.every((x) => r[x.c] === x.v));
     const q: Record<string, unknown> = {
       select: () => q,
       eq: (c: string, v: unknown) => { st.f.push({ c, v }); return q; },
-      update: (p: Row) => { st.op = "update"; st.patch = p; return q; },
-      upsert: (r: Row, o?: { onConflict?: string }) => { st.op = "upsert"; st.ins = r; st.conflict = o?.onConflict ?? ""; return q; },
-      maybeSingle: () => {
-        if (st.op === "upsert" && st.ins) {
-          const keys = st.conflict.split(",");
-          const hit = rows.find((r) => keys.every((k) => r[k] === st.ins![k]));
-          if (hit) { Object.assign(hit, st.ins); return Promise.resolve({ data: { ...hit }, error: null }); }
-          const row = { id: `del-${++n}`, ...st.ins };
-          rows.push(row);
-          return Promise.resolve({ data: { ...row }, error: null });
-        }
-        if (st.op === "update") {
-          const hits = match();
-          hits.forEach((r) => Object.assign(r, st.patch));
-          return Promise.resolve({ data: hits[0] ?? null, error: null });
-        }
-        return Promise.resolve({ data: match()[0] ?? null, error: null });
-      },
+      update: (p: Row) => { st.patch = p; return q; },
+      insert: async (r: Row) => { rows.push(r); return { error: null }; },
+      maybeSingle: async () => ({ data: match()[0] ?? null, error: null }),
       then: (onF: (v: { data: unknown; error: unknown }) => unknown) => {
         const hits = match();
-        if (st.op === "update") hits.forEach((r) => Object.assign(r, st.patch));
+        if (st.patch) hits.forEach((r) => Object.assign(r, st.patch));
         return Promise.resolve({ data: hits, error: null }).then(onF);
       },
     };
     return q;
   }
-  return { admin: { from } as unknown as SupabaseClient, tables };
+  const rpc = vi.fn(async (name: string, args: Row) => {
+    expect(name).toBe("claim_foundry_teams_training_delivery");
+    const event = tables.foundry_events.find((row) => row.id === args.p_event_id && row.owner_user_id === args.p_owner_user_id);
+    if (!event) return { data: { state: "not_owner" }, error: null };
+    if (event.status !== "open") return { data: { state: "event_closed" }, error: null };
+    const rows = tables.foundry_teams_training_deliveries;
+    const existing = rows.find((row) =>
+      row.event_id === args.p_event_id && row.tenant_id === args.p_tenant_id && row.aad_object_id === args.p_aad_object_id,
+    );
+    if (existing?.delivery_status === "DELIVERED") return { data: { state: "already_sent" }, error: null };
+    if (existing?.delivery_status === "PENDING") return { data: { state: "pending" }, error: null };
+    const delivery = existing ?? { id: `del-${++n}` };
+    Object.assign(delivery, {
+      event_id: args.p_event_id, tenant_id: args.p_tenant_id, aad_object_id: args.p_aad_object_id,
+      display_name_snapshot: args.p_display_name, delivery_status: "PENDING",
+    });
+    if (!existing) rows.push(delivery);
+    return { data: { state: "claimed", deliveryId: delivery.id }, error: null };
+  });
+  return { admin: { from, rpc } as unknown as SupabaseClient, tables, rpc };
 }
 
 beforeEach(() => {
@@ -98,6 +102,28 @@ describe("★ the Host must own the training", () => {
   it("a non-owner is refused, and nothing is sent", async () => {
     const { admin, tables } = makeAdmin();
     expect(await send(admin, [OID_A], "someone-else")).toEqual({ ok: false, reason: "not_owner" });
+    expect(H.sendCard).not.toHaveBeenCalled();
+    expect(tables.foundry_teams_training_deliveries).toHaveLength(0);
+  });
+
+  it("rejects a stale Host request for a closed event before contacting Teams", async () => {
+    const { admin, tables, rpc } = makeAdmin();
+    tables.foundry_events[0]!.status = "closed";
+    expect(await send(admin, [OID_A])).toEqual({ ok: false, reason: "event_closed" });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(H.eligibility).not.toHaveBeenCalled();
+    expect(H.sendCard).not.toHaveBeenCalled();
+  });
+
+  it("does not send if the event closes during conversation resolution", async () => {
+    const { admin, tables, rpc } = makeAdmin();
+    H.resolveConversation.mockImplementationOnce(async () => {
+      tables.foundry_events[0]!.status = "closed";
+      return { ok: true, serviceUrl: "https://smba.trafficmanager.net/amer/", conversationId: "conv-1" };
+    });
+    const result = await send(admin, [OID_A]);
+    expect(result.ok && result.outcomes[0]).toMatchObject({ status: "undeliverable", reason: "event_closed" });
+    expect(rpc).toHaveBeenCalledTimes(1);
     expect(H.sendCard).not.toHaveBeenCalled();
     expect(tables.foundry_teams_training_deliveries).toHaveLength(0);
   });
@@ -194,6 +220,19 @@ describe("★ idempotency — a second press reports, it does not re-message", (
     expect(tables.foundry_teams_training_deliveries).toHaveLength(1);
     expect(H.sendCard).toHaveBeenCalledTimes(1);
   });
+
+  it("sends once when two concurrent requests race for the same delivery", async () => {
+    const { admin, tables, rpc } = makeAdmin();
+    const results = await Promise.all([send(admin, [OID_A]), send(admin, [OID_A])]);
+    const outcomes = results.flatMap((result) => result.ok ? result.outcomes : []);
+    expect(outcomes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: "sent" }),
+      expect.objectContaining({ status: "undeliverable", reason: "unknown" }),
+    ]));
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(H.sendCard).toHaveBeenCalledTimes(1);
+    expect(tables.foundry_teams_training_deliveries).toHaveLength(1);
+  });
 });
 
 describe("delivery honesty", () => {
@@ -212,6 +251,10 @@ describe("delivery honesty", () => {
     expect(res.ok && res.outcomes[0]).toMatchObject({ status: "undeliverable", reason: "unknown" });
     expect(tables.foundry_teams_training_deliveries[0]!.delivery_status).toBe("PENDING");
     expect(tables.foundry_teams_training_deliveries[0]!.delivered_at ?? null).toBeNull();
+    H.sendCard.mockResolvedValue({ ok: true });
+    const retry = await send(admin, [OID_A]);
+    expect(retry.ok && retry.outcomes[0]).toMatchObject({ status: "undeliverable", reason: "unknown" });
+    expect(H.sendCard).toHaveBeenCalledTimes(1);
   });
 
   it("a proven send failure marks the row undeliverable", async () => {
@@ -219,6 +262,12 @@ describe("delivery honesty", () => {
     const { admin, tables } = makeAdmin();
     await send(admin, [OID_A]);
     expect(tables.foundry_teams_training_deliveries[0]!.delivery_status).toBe("UNDELIVERABLE");
+    H.sendCard.mockResolvedValue({ ok: true });
+    const retry = await send(admin, [OID_A]);
+    expect(retry.ok && retry.outcomes[0]).toMatchObject({ status: "sent" });
+    expect(tables.foundry_teams_training_deliveries).toHaveLength(1);
+    expect(tables.foundry_teams_training_deliveries[0]!.delivery_status).toBe("DELIVERED");
+    expect(H.sendCard).toHaveBeenCalledTimes(2);
   });
 
   it("a mixed selection reports each person truthfully", async () => {

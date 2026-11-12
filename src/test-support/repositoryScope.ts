@@ -51,6 +51,18 @@ const POST_SNAPSHOT_MIGRATIONS: SourceEntry[] = [
     file: "20261110191609_bty_track_first_login_invites.sql",
     sha256: "eb43e07aba3c762f121818aca6ee6e6d0a9d8166b7ed84b71ac1eb5897370956",
   },
+  {
+    file: "20261112173900_foundry_teams_training_delivery_claim.sql",
+    sha256: "24cdcca47c4dac5bf578133bf51c4fe9cc94b4c0a51d96fc70860694f6ce8fc6",
+  },
+  {
+    file: "20261112173944_bty_track_initial_notice_recovery.sql",
+    sha256: "a811be51f87a51e5e9001d9afc9675ee1da3be89887097a001e740fea2069f53",
+  },
+  {
+    file: "20261112174011_employee_release_consent_authority.sql",
+    sha256: "91872029725170c61fa03083b7ff5941cbb088dfc6e2ce7656d116befa083499",
+  },
 ];
 
 /** Observed source registration only: this does not approve SQL semantics or apply a migration. */
