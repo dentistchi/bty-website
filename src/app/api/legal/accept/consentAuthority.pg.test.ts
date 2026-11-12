@@ -179,7 +179,7 @@ describe.skipIf(!connection)("employee release consent authority in PostgreSQL",
     `)).rows[0]).toEqual({ can_read: false, can_update: false, anon_write: false });
     await withRole("service_role", async (client) => {
       await client.query("insert into public.mvp_debug_reports(title, route) values ('team boot', '/teams')");
-      expect((await client.query("select route from public.mvp_debug_reports order by route")).rows)
+      expect((await client.query('select route from public.mvp_debug_reports order by route collate "C"')).rows)
         .toEqual([{ route: "/teams" }, { route: "other" }]);
     });
   });

@@ -13,6 +13,15 @@ const joinSignature = "public.join_foundry_teams_training(uuid,uuid,uuid,uuid,te
 const claimSql = "select public.claim_foundry_teams_training_delivery($1,$2,$3,$4,$5,$6,$7) as result";
 const joinSql = "select public.join_foundry_teams_training($1,$2,$3,$4,$5) as result";
 
+function isDisposableServerAddress(host: string, actions: boolean): boolean {
+  if (host === "127.0.0.1") return true;
+  if (!actions || !/^(?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3}$/.test(host)) return false;
+  const parts = host.split(".").map(Number);
+  if (parts.some(part => part > 255)) return false;
+  return parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
+    || (parts[0] === 192 && parts[1] === 168);
+}
+
 function requireDisposableUrl(value: string | undefined): string {
   if (!value) throw new Error("BTY_TEAMS_TRAINING_PG_TEST_URL is required");
   const url = new URL(value);
@@ -30,6 +39,10 @@ it("refuses database targets other than the dedicated literal loopback database"
     undefined, target.replace("127.0.0.1", "localhost"), target.replace("127.0.0.1", "db.example.com"),
     target.replace(port, "5432"), target.replace(database, "postgres"), `${target}?host=db.example.com`, `${target}#other`,
   ]) expect(() => requireDisposableUrl(url)).toThrow();
+  expect(isDisposableServerAddress("127.0.0.1", false)).toBe(true);
+  expect(isDisposableServerAddress("172.17.0.2", false)).toBe(false);
+  expect(isDisposableServerAddress("172.17.0.2", true)).toBe(true);
+  expect(isDisposableServerAddress("198.51.100.2", true)).toBe(false);
 });
 
 describe.runIf(Boolean(databaseUrl))("Teams training claim and admission on native PostgreSQL", () => {
@@ -55,7 +68,10 @@ describe.runIf(Boolean(databaseUrl))("Teams training claim and admission on nati
     clients.push(client);
     await client.connect();
     const { rows } = await client.query("select current_database() as db, host(inet_server_addr()) as host, inet_server_port() as port");
-    expect(rows[0]).toEqual({ db: database, host: "127.0.0.1", port: Number(port) });
+    expect(rows[0]).toMatchObject({ db: database, port: Number(port) });
+    // The client URL is still literal loopback. Actions forwards that port
+    // through its private container network, which PostgreSQL sees as the host.
+    expect(isDisposableServerAddress(rows[0].host, process.env.GITHUB_ACTIONS === "true")).toBe(true);
     return client;
   }
 
