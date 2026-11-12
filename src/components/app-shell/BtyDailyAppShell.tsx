@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
+import { TeamsQuickTour } from "@/components/teams/TeamsQuickTour";
 import { BTY_SHELL_DESTINATION_EVENT, shellSearchFor } from "@/domain/teams/btyDestination";
 import { isTeamsTabPath } from "@/domain/teams/tabRuntime";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
@@ -1356,6 +1357,7 @@ export default function BtyDailyAppShell({
   trainingRequest = null,
   onTrainingExit,
   runtime = "web",
+  teamsTour,
 }: {
   locale: Locale;
   /**
@@ -1370,6 +1372,7 @@ export default function BtyDailyAppShell({
    * exists. The Teams shell knows what it is; it says so.
    */
   runtime?: "web" | "teams";
+  teamsTour?: { offer: boolean; onDismiss: () => void };
   /**
    * TEAMS-NATIVE TRAINING DELIVERY — the training a personal-tab deep link named, as a REQUEST.
    *
@@ -2168,6 +2171,9 @@ export default function BtyDailyAppShell({
                     (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
                     AI brief). No detailed list renders in the first viewport by default. */}
                 <TodayGreeting copy={t.today} ssrDefault={t.today.title} />
+                {runtime === "teams" && teamsTour?.offer && (
+                  <TeamsQuickTour locale={locale} mode="offer" onDismiss={teamsTour.onDismiss} />
+                )}
                 <TodayHome
                   locale={locale}
                   refreshKey={todayRefreshKey}
@@ -2435,6 +2441,9 @@ export default function BtyDailyAppShell({
                   </button>
                 ))}
               </nav>
+              {runtime === "teams" && teamsTour && (
+                <TeamsQuickTour locale={locale} mode="replay" onDismiss={teamsTour.onDismiss} />
+              )}
               {/*
                 ADMIN OPERATIONS — TEAMS ONLY, AND ONLY WHEN THERE IS SOMETHING TO DO.
 

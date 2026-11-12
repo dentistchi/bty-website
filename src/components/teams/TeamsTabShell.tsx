@@ -64,6 +64,8 @@ type Phase =
   | { k: "retry"; message: string }
   | { k: "failed"; message: string };
 
+const TOUR_SEEN_KEY = "bty_teams_tour_v1_seen";
+
 /** Bounded backoff for a throttled bootstrap. Never unbounded, never instant. */
 const RETRY_DELAYS_MS = [1500, 4000, 10000];
 
@@ -88,6 +90,19 @@ function localeFromTeams(raw: unknown): "en" | "ko" | null {
 
 export default function TeamsTabShell() {
   const [phase, setPhase] = useState<Phase>({ k: "starting" });
+  const [offerTour, setOfferTour] = useState(false);
+  const needsFirstConnection = useRef(false);
+  const dismissTour = useCallback(() => {
+    if (!offerTour) return;
+    setOfferTour(false);
+    void (async () => {
+      try {
+        await getSupabase().auth.updateUser({ data: { [TOUR_SEEN_KEY]: true } });
+      } catch {
+        // A cosmetic preference must never stop a Teams task from opening.
+      }
+    })();
+  }, [offerTour]);
   /** The live access token, read through a getter by the transport so refresh is picked up. */
   const accessTokenRef = useRef<string | null>(null);
   /** Bootstrap is idempotent per tab; this stops StrictMode and re-renders from spending budget. */
@@ -132,6 +147,7 @@ export default function TeamsTabShell() {
       (search) => {
         try {
           window.history.replaceState({}, "", `${window.location.pathname}${search}`);
+          if (search) setOfferTour(false);
           window.dispatchEvent(new Event(BTY_SHELL_DESTINATION_EVENT));
           return true;
         } catch {
@@ -161,6 +177,7 @@ export default function TeamsTabShell() {
     if (!search) return false;
     try {
       window.history.replaceState({}, "", `${window.location.pathname}${search}`);
+      setOfferTour(false);
       window.dispatchEvent(new Event(BTY_SHELL_DESTINATION_EVENT));
       return true;
     } catch {
@@ -321,6 +338,7 @@ export default function TeamsTabShell() {
       | { session: { access_token: string; refresh_token: string } };
 
     if ("needsFirstSignIn" in body) {
+      needsFirstConnection.current = true;
       setPhase({ k: "needs_first_sign_in" });
       return;
     }
@@ -329,7 +347,7 @@ export default function TeamsTabShell() {
     // every existing component behave exactly as they do on the web.
     const supabase = getSupabase();
     mark("set_session_start");
-    const { error } = await supabase.auth.setSession({
+    const { data, error } = await supabase.auth.setSession({
       access_token: body.session.access_token,
       refresh_token: body.session.refresh_token,
     });
@@ -346,6 +364,7 @@ export default function TeamsTabShell() {
     });
 
     let ctxLocale: "en" | "ko" | null = null;
+    let hasTrainingTarget = false;
     /*
       THE DEEP-LINKED TRAINING — the COLD read.
 
@@ -384,7 +403,9 @@ export default function TeamsTabShell() {
         training parser below. One value, two kinds, each read by what understands it.
       */
       if (!applyShellSubEntityId(sub)) {
-        setTrainingRequest(readTrainingRequest({ subPageId: sub, search: currentSearch() }, "bootstrap", 0));
+        const request = readTrainingRequest({ subPageId: sub, search: currentSearch() }, "bootstrap", 0);
+        hasTrainingTarget = request !== null;
+        setTrainingRequest(request);
       }
     } catch {
       /*
@@ -392,8 +413,17 @@ export default function TeamsTabShell() {
         transport is still a legitimate statement of which training was meant, and reading it is
         exactly the case this slice exists for.
       */
-      setTrainingRequest(readTrainingRequest({ search: currentSearch() }, "bootstrap", 0));
+      const request = readTrainingRequest({ search: currentSearch() }, "bootstrap", 0);
+      hasTrainingTarget = request !== null;
+      setTrainingRequest(request);
     }
+    // Capture the launch intent before the application shell consumes its query.
+    const search = new URLSearchParams(currentSearch() ?? "");
+    search.delete("diag");
+    setOfferTour(needsFirstConnection.current && Boolean(data?.user)
+      && data?.user?.user_metadata?.[TOUR_SEEN_KEY] !== true
+      && !hasTrainingTarget && !search.toString());
+    needsFirstConnection.current = false;
     const saved = readSavedLocale(typeof document !== "undefined" ? document.cookie : null);
     const locale = isSavedLocale(saved) ? saved : (ctxLocale ?? "en");
     /*
@@ -681,6 +711,7 @@ export default function TeamsTabShell() {
             Nothing downstream has to detect anything.
           */
           runtime="teams"
+          teamsTour={{ offer: offerTour, onDismiss: dismissTour }}
           /*
             The training the invitation named, as an OCCURRENCE the shell can act on whenever one
             arrives — at mount for a cold open, and on resume for every tap after that. Null for an
