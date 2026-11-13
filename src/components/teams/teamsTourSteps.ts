@@ -235,8 +235,8 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
   },
   {
     id: "finish", chapter: "me", scope: me, anchors: [id("me-tour-replay")],
-    en: ["You’re ready to use BTY", "You can reopen the guide here. While it is open, tap any tab to go straight to that part of the guide.", "Finish tour"],
-    ko: ["둘러보기 완료", "언제든 여기서 다시 열 수 있어요. 둘러보는 중에는 원하는 탭을 눌러 그 부분부터 볼 수 있어요.", "완료"],
+    en: ["You’re ready to use BTY", "You can reopen the guide here. To revisit one part, choose it from the guide’s chapter menu.", "Finish tour"],
+    ko: ["둘러보기 완료", "언제든 여기서 다시 열 수 있어요. 특정 부분을 다시 보려면 둘러보기 목차에서 선택하세요.", "완료"],
   },
 ];
 
