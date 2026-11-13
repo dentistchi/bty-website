@@ -145,7 +145,8 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     // B3A.2D-R1: onSelect now goes through handleTabSelect, which resets nested Me state, refreshes
     // the weekly projection, scrolls to top, and still calls setTab — the in-component tab owner.
     expect(src).toMatch(/<AppTabBar active={tab} onSelect={handleTabSelect}/);
-    expect(src).toMatch(/const handleTabSelect = useCallback/);
+    expect(src).toMatch(/const openAppTab = useCallback/);
+    expect(src).toMatch(/openAppTab\(key\)/);
     expect(src).toMatch(/setTab\(key\)/);
   });
 });

@@ -11,6 +11,11 @@ import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-li
 
 const H = vi.hoisted(() => ({ roomProps: [] as Array<Record<string, unknown>> }));
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...await importOriginal<typeof import("next/navigation")>(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
+
 vi.mock("@/components/foundry/learner/InShellLearnerRoom", () => ({
   default: (props: Record<string, unknown>) => {
     H.roomProps.push(props);
@@ -60,47 +65,147 @@ describe("a request arriving AFTER mount opens the room", () => {
 });
 
 describe("Teams quick tour", () => {
-  it("opens over the real Teams screen and advances through the actual Learn, Today, and Saved controls", () => {
-    const onDismiss = vi.fn();
-    render(<BtyDailyAppShell locale="ko" runtime="teams" teamsTour={{ offer: true, onDismiss }} />);
+  const guide = (name: string) => screen.getByRole("dialog", { name });
+  const action = (name: string, label: string) => fireEvent.click(within(guide(name)).getByRole("button", { name: label }));
+  const appTab = (name: string) =>
+    fireEvent.click(within(screen.getByRole("navigation", { name: "App navigation" })).getByRole("button", { name }));
 
-    expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "배우기 탭 열기" })).toBe(document.activeElement);
-    fireEvent.click(screen.getByRole("button", { name: /^배우기$/ }));
-    expect(screen.getByTestId("learn-header")).toBeTruthy();
-    const learning = screen.getByRole("dialog", { name: "배정된 교육 찾기" });
-    fireEvent.click(within(learning).getByRole("button", { name: "저장한 메시지 찾기" }));
-    expect(screen.getByRole("dialog", { name: "오늘 탭으로 돌아가기" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /^오늘$/ }));
-    expect(screen.getByRole("dialog", { name: "저장한 메시지 열기" })).toBeTruthy();
+  function mockLearner(aiPatient: boolean, withTodayData = false) {
+    const fetchStub = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/bty/foundry/events") {
+        return Response.json({ error: "foundry_author_required" }, { status: 403 });
+      }
+      if (url === "/api/arena/ai-patient/access") return Response.json({ enabled: aiPatient });
+      if (withTodayData && url === "/api/bty/announcements/mine") {
+        return Response.json({ items: [{
+          announcementId: "announcement", recipientId: "recipient", hostFraming: "Please review",
+          hostDisplay: "Test host", sourceUrl: null, response: null, respondedAt: null, unreadCount: 0, messageCount: 0,
+        }] });
+      }
+      if (withTodayData && url === "/api/bty/action-capture/mine") {
+        return Response.json({ ok: true, items: ["first", "second"].map((id) => ({
+          id, sourceType: "teams_message", previewText: id, sourceUrl: null,
+          sourceMetadata: { provider: "teams", tenant_id: "test", conversation_id: "19:chat@unq.gbl.spaces" },
+          status: "captured", capturedAt: "2026-08-31T10:00:00Z", triageChoice: null, triagedAt: null,
+        })) });
+      }
+      return Response.json({});
+    });
+    vi.stubGlobal("fetch", fetchStub);
+    return fetchStub;
+  }
+
+  it("walks all four tabs and opens the actual feature screens with their real controls", async () => {
+    const onDismiss = vi.fn();
+    const fetchStub = mockLearner(true);
+    render(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={{ offer: true, onDismiss }} />);
+
+    expect(screen.getByRole("heading", { name: "Start with Today" })).toBe(document.activeElement);
+    action("Start with Today", "Continue");
+    action("Respond to a Track", "Continue");
+    action("Follow up on a Track you sent", "Continue");
     fireEvent.click(screen.getByTestId("today-saved-entry"));
     expect(screen.getByTestId("saved-view")).toBeTruthy();
-    const saved = screen.getByRole("dialog", { name: "여기가 내 저장 목록입니다" });
-    expect(within(saved).getByText(/BTY의 저장/)).toBeTruthy();
-    fireEvent.click(within(saved).getByRole("button", { name: "둘러보기 완료" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByTestId("saved-view")).toBeTruthy();
+    action("Use your saved list", "Continue");
+    fireEvent.click(screen.getByTestId("saved-back"));
+    expect(guide("Open Learn")).toBeTruthy();
+
+    appTab("Learn");
+    await screen.findByTestId("door-my-learning");
+    action("Find your assigned training", "Continue");
+    fireEvent.click(screen.getByTestId("door-my-learning"));
+    expect(screen.getByTestId("foundry-my-learning")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("my-learning-back"));
+    expect(guide("Open Practice")).toBeTruthy();
+
+    appTab("Practice");
+    fireEvent.click(screen.getByTestId("practice-arena-entry"));
+    expect(screen.getByTestId("practice-arena")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("practice-arena-back"));
+    action("Open Clinical Cases", "Open Clinical Cases");
+    expect(screen.getByTestId("practice-clinical")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("practice-clinical-back"));
+    await screen.findByTestId("practice-ai-patient-entry");
+    fireEvent.click(screen.getByTestId("practice-ai-patient-entry"));
+    expect(screen.getByTestId("ai-patient-intro")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("ai-patient-back"));
+    fireEvent.click(screen.getByTestId("practice-field-actions"));
+    expect(screen.getByTestId("field-actions-focus")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("field-actions-back"));
+
+    appTab("Me");
+    action("Choose your language", "Continue");
+    action("Review your week", "Continue");
+    fireEvent.click(screen.getByTestId("me-weekly-orb"));
+    expect(screen.getByTestId("me-attendance-popup")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("me-attendance-close"));
+    fireEvent.click(screen.getByTestId("me-row-past-tracks"));
+    expect(screen.getByTestId("past-tracks")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("past-tracks-back"));
+    fireEvent.click(screen.getByTestId("me-row-center"));
+    expect(screen.getByTestId("me-center")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("me-center-back"));
+    fireEvent.click(screen.getByTestId("me-account-row"));
+    expect(screen.getByTestId("account-block")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("me-account-back"));
+    action("You’re ready to use BTY", "Finish tour");
+    expect(screen.queryByRole("navigation", { name: "Tour chapters" })).toBeNull();
     expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(fetchStub.mock.calls.map(([input]) => String(input)).some((url) =>
+      /ai-patient\/(start|message)|clinical.*attempt/.test(url))).toBe(false);
   });
 
-  it("replays from Me, and Escape dismisses the overlay and returns focus to its real target", () => {
+  it("replays by chapter in Korean, keeps Practice guidance active, and skips disabled AI Patient", async () => {
+    mockLearner(false);
     const onDismiss = vi.fn();
     render(<BtyDailyAppShell locale="ko" runtime="teams" teamsTour={{ offer: false, onDismiss }} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /^나$/ }));
+    appTab("나");
     fireEvent.click(screen.getByRole("button", { name: "BTY 둘러보기" }));
-    expect(screen.getByRole("dialog", { name: "배우기 탭 열기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^오늘$/ }).getAttribute("aria-current")).toBe("page");
+    expect(guide("오늘 할 일 확인")).toBeTruthy();
+    const chapters = screen.getByRole("navigation", { name: "둘러보기 목차" });
+    fireEvent.click(within(chapters).getByRole("button", { name: "연습" }));
+    expect(guide("아레나 연습 열기")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("practice-clinical-entry"));
+    expect(guide("케이스 목록 살펴보기")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("practice-clinical-back"));
+    await screen.findByTestId("practice-ai-patient-unavailable");
+    action("AI 환자 찾기", "계속");
+    expect(guide("행동 계획 열기")).toBeTruthy();
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: /^배우기$/ })).toBe(document.activeElement);
+    expect(screen.queryByRole("navigation", { name: "둘러보기 목차" })).toBeNull();
+    expect(screen.getByTestId("practice-field-actions")).toBe(document.activeElement);
     expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it("opens the real question form and saved conversation when data exists without sending or changing records", async () => {
+    const fetchStub = mockLearner(false, true);
+    render(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={{ offer: true, onDismiss: vi.fn() }} />);
+
+    await screen.findByTestId("announcement-question");
+    action("Start with Today", "Continue");
+    action("Respond to a Track", "Continue");
+    fireEvent.click(screen.getByTestId("announcement-question"));
+    expect(guide("Write a question here")).toBeTruthy();
+    expect(screen.getByTestId("announcement-question-form")).toBeTruthy();
+    action("Write a question here", "Continue");
+    action("Follow up on a Track you sent", "Continue");
+    fireEvent.click(screen.getByTestId("today-saved-entry"));
+    await screen.findByTestId("saved-conversation-header");
+    action("Use your saved list", "Continue");
+    expect(guide("Expand a saved conversation")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("saved-conversation-header"));
+    expect(screen.getByTestId("saved-conversation-messages")).toBeTruthy();
+    expect(guide("Return to Today")).toBeTruthy();
+    expect(fetchStub.mock.calls.some(([input, init]) =>
+      String(input) !== "/api/me/day/open" && (init?.method === "POST" || init?.method === "PATCH"))).toBe(false);
   });
 
   it("lets a late Teams training invitation take over an active tour", async () => {
     const teamsTour = { offer: true, onDismiss: vi.fn() };
     const { rerender } = render(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={teamsTour} />);
-    expect(screen.getByRole("dialog", { name: "Open Learn" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Start with Today" })).toBeTruthy();
     rerender(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={teamsTour}
       trainingRequest={request(TOKEN, "refresh:tour")} />);
     await waitFor(() => expect(screen.getByTestId("room")).toBeTruthy());
@@ -116,7 +221,7 @@ describe("Teams quick tour", () => {
       trainingRequest={request(TOKEN, "bootstrap:0")}
       teamsTour={{ offer: true, onDismiss: vi.fn() }} />);
     expect(screen.getByTestId("room")).toBeTruthy();
-    expect(screen.queryByRole("dialog", { name: "Open Learn" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Start with Today" })).toBeNull();
   });
 });
 
