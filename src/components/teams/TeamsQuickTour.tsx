@@ -3,74 +3,20 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
-export type TeamsTourStep = "learn" | "learning" | "today" | "saved" | "saved-list";
+import { tourCopy, type TeamsTourStep } from "./teamsTourSteps";
 
 const copy = {
   en: {
-    skip: "Skip tour",
-    learn: {
-      title: "Open Learn",
-      body: "Today brings together what needs your attention. Tap Learn below to see where assigned training lives.",
-      action: "Go to Learn",
-    },
-    learning: {
-      title: "Find your assigned training",
-      body: "When someone assigns you training, it appears under Required learning. Open an assignment from that list when you’re ready.",
-      action: "Find saved messages",
-    },
-    today: {
-      title: "Return to Today",
-      body: "Tap Today below to find messages you’ve saved from Teams.",
-      action: "Go to Today",
-    },
-    saved: {
-      title: "Open your saved messages",
-      body: "Tap Saved for later to open your list.",
-      action: "Open saved list",
-    },
-    "saved-list": {
-      title: "This is your saved list",
-      body: "To add a message, open its … menu in Teams and choose Save under BTY. It will appear here.",
-      action: "Finish tour",
-    },
+    chapters: { today: "Today", learn: "Learn", practice: "Practice", me: "Me" },
+    skip: "Exit tour", continue: "Continue", resumeTitle: "Continue your BTY tour",
+    resumeBody: "Return to the chapter’s main screen to continue, or choose another tab above.", resume: "Return to chapter",
   },
   ko: {
-    skip: "둘러보기 건너뛰기",
-    learn: {
-      title: "배우기 탭 열기",
-      body: "오늘 탭에서 확인하거나 답할 일을 볼 수 있어요. 아래 배우기 탭을 눌러 배정된 교육이 있는 곳을 확인해 보세요.",
-      action: "배우기로 이동",
-    },
-    learning: {
-      title: "배정된 교육 찾기",
-      body: "교육을 배정받으면 필수 학습 목록에 표시됩니다. 준비가 되면 목록에서 교육을 열 수 있어요.",
-      action: "저장한 메시지 찾기",
-    },
-    today: {
-      title: "오늘 탭으로 돌아가기",
-      body: "아래 오늘 탭을 눌러 Teams에서 저장한 메시지를 찾아보세요.",
-      action: "오늘로 이동",
-    },
-    saved: {
-      title: "저장한 메시지 열기",
-      body: "나중에 보기를 눌러 저장 목록을 열어보세요.",
-      action: "저장 목록 열기",
-    },
-    "saved-list": {
-      title: "여기가 내 저장 목록입니다",
-      body: "Teams에서 메시지의 … 메뉴를 열고 BTY의 저장을 선택하면 이 목록에 추가됩니다.",
-      action: "둘러보기 완료",
-    },
+    chapters: { today: "오늘", learn: "배우기", practice: "연습", me: "나" },
+    skip: "둘러보기 종료", continue: "계속", resumeTitle: "BTY 둘러보기 이어가기",
+    resumeBody: "이 탭의 첫 화면으로 돌아가 계속하거나, 위에서 다른 탭을 선택하세요.", resume: "첫 화면으로 돌아가기",
   },
 } as const;
-
-const targets: Record<TeamsTourStep, readonly string[]> = {
-  learn: ['[data-bty-tab="learn"]'],
-  learning: ['[data-testid="foundry-required-learning"] h2', '[data-testid="learn-header"]'],
-  today: ['[data-bty-tab="today"]'],
-  saved: ['[data-testid="today-saved-entry"]'],
-  "saved-list": ['[data-testid="saved-view"] h2'],
-};
 
 const EDGE = 12;
 const GAP = 16;
@@ -92,12 +38,14 @@ export function TeamsQuickTour({
   shell,
   onAction,
   onDismiss,
+  onChapter,
 }: {
   locale: "en" | "ko";
   step: TeamsTourStep;
   shell: RefObject<HTMLDivElement | null>;
   onAction: () => void;
   onDismiss: () => void;
+  onChapter: (chapter: TeamsTourStep["chapter"]) => void;
 }) {
   const t = copy[locale];
   const headingId = useId();
@@ -106,6 +54,8 @@ export function TeamsQuickTour({
   const panel = useRef<HTMLElement>(null);
   const activeTarget = useRef<HTMLElement | null>(null);
   const [layout, setLayout] = useState<TourLayout | null>(null);
+  const [canUseTarget, setCanUseTarget] = useState(false);
+  const [inScope, setInScope] = useState(true);
 
   useEffect(() => {
     const root = shell.current;
@@ -118,9 +68,13 @@ export function TeamsQuickTour({
     const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
 
     function measure() {
-      const next = targets[step]
+      const scope = root?.querySelector(step.scope);
+      setInScope(Boolean(scope));
+      const next = scope ? step.anchors
         .map((selector) => root?.querySelector<HTMLElement>(selector))
-        .find(Boolean) ?? null;
+        .find(Boolean) ?? null : null;
+      const control = step.click ? root?.querySelector<HTMLButtonElement>(step.click) : null;
+      setCanUseTarget(Boolean(control && !control.disabled));
       const reveal = next !== anchor || revealAfterContentChange;
       revealAfterContentChange = false;
       if (next !== anchor) {
@@ -129,24 +83,34 @@ export function TeamsQuickTour({
         activeTarget.current = anchor;
         if (anchor) resize?.observe(anchor);
       }
-      if (!anchor || !callout) {
-        setLayout(null);
-        return;
-      }
-      if (reveal) anchor.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "instant" });
+      if (!callout) return;
+      if (reveal) anchor?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "instant" });
 
-      const rect = anchor.getBoundingClientRect();
       const viewport = window.visualViewport;
       const viewportLeft = viewport?.offsetLeft ?? 0;
       const viewportTop = viewport?.offsetTop ?? 0;
       const viewportWidth = viewport?.width ?? window.innerWidth;
       const viewportHeight = viewport?.height ?? window.innerHeight;
+      const width = Math.min(PANEL_WIDTH, Math.max(1, viewportWidth - EDGE * 2));
+      const rect = anchor?.getBoundingClientRect();
+      if (!rect) {
+        setLayout({
+          anchor: null,
+          arrow: null,
+          panel: {
+            left: viewportLeft + (viewportWidth - width) / 2,
+            top: viewportTop + EDGE,
+            width,
+            maxHeight: Math.max(1, viewportHeight - EDGE * 2),
+          },
+        });
+        return;
+      }
       const right = viewportLeft + viewportWidth;
       const bottom = viewportTop + viewportHeight;
-      const width = Math.min(PANEL_WIDTH, Math.max(1, viewportWidth - EDGE * 2));
       const center = rect.left + rect.width / 2;
       const left = clamp(center - width / 2, viewportLeft + EDGE, right - width - EDGE);
-      const scrollBounds = anchor.closest("main")?.getBoundingClientRect();
+      const scrollBounds = anchor?.closest("main")?.getBoundingClientRect();
       const clipTop = clamp(scrollBounds?.top ?? viewportTop, viewportTop, bottom);
       const clipBottom = clamp(scrollBounds?.bottom ?? bottom, clipTop, bottom);
       const targetTop = clamp(rect.top, clipTop, clipBottom);
@@ -155,17 +119,24 @@ export function TeamsQuickTour({
       const above = targetTop - viewportTop - GAP - EDGE;
       const below = bottom - targetBottom - GAP - EDGE;
       const panelHeight = callout.scrollHeight;
-      const preferAbove = step === "learn" || step === "today" || step === "saved";
+      const preferAbove = Boolean(step.tab);
       const placeAbove = preferAbove
         ? above >= panelHeight || above > below
         : below < panelHeight && above > below;
+      const available = placeAbove ? above : below;
+      if (reveal && targetVisible && scrollBounds && available < Math.min(144, panelHeight) &&
+        rect.height < viewportHeight * 0.55) {
+        anchor?.scrollIntoView?.({ block: "start", inline: "nearest", behavior: "instant" });
+        schedule();
+        return;
+      }
       const edge = placeAbove ? targetTop - GAP : targetBottom + GAP;
       const vertical = placeAbove ? { bottom: window.innerHeight - edge } : { top: edge };
       setLayout({
         anchor: targetVisible
           ? { top: targetTop - 4, left: rect.left - 4, width: rect.width + 8, height: targetBottom - targetTop + 8 }
           : null,
-        panel: { left, width, maxHeight: Math.max(1, placeAbove ? above : below), ...vertical },
+        panel: { left, width, maxHeight: Math.max(1, available), ...vertical },
         arrow: targetVisible
           ? { left: clamp(center, left + 20, left + width - 20) - 5, top: edge - 5 }
           : null,
@@ -180,15 +151,14 @@ export function TeamsQuickTour({
     measure();
     resize?.observe(root);
     resize?.observe(callout);
-    const tracksAsyncContent = step === "learning" || step === "saved";
-    const mutations = tracksAsyncContent && typeof MutationObserver !== "undefined"
+    const mutations = typeof MutationObserver !== "undefined"
       ? new MutationObserver(() => {
-        // Loading Today or Learn can insert content above the target without resizing it.
+        // Async content can move the target without resizing it.
         revealAfterContentChange = true;
         schedule();
       })
       : null;
-    mutations?.observe(root.querySelector("main") ?? root, { childList: true, subtree: true });
+    mutations?.observe(root.querySelector("main") ?? root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
     const viewport = window.visualViewport;
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);
@@ -227,9 +197,9 @@ export function TeamsQuickTour({
     return () => document.removeEventListener("keydown", onEscape);
   }, [dismiss]);
 
-  const message = t[step];
+  const message = tourCopy(step, locale);
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" data-bty-tour-step={step}>
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" data-bty-tour-step={step.id}>
       {layout?.anchor && (
         <div aria-hidden className="fixed rounded-xl border-2 border-[#E3BA74] shadow-[0_0_0_9999px_rgba(3,10,21,0.58)]" style={layout.anchor} />
       )}
@@ -245,20 +215,33 @@ export function TeamsQuickTour({
         style={layout ? layout.panel : { visibility: "hidden", width: PANEL_WIDTH }}
       >
         <div className="space-y-1.5">
+          <nav aria-label={locale === "ko" ? "둘러보기 목차" : "Tour chapters"} className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            {(Object.keys(t.chapters) as TeamsTourStep["chapter"][]).map((chapter) => (
+              <button
+                key={chapter}
+                type="button"
+                aria-current={chapter === step.chapter ? "step" : undefined}
+                className={chapter === step.chapter ? "min-h-7 font-semibold text-[#E3BA74]" : "min-h-7 text-white/70 hover:text-white"}
+                onClick={() => onChapter(chapter)}
+              >
+                {t.chapters[chapter]}
+              </button>
+            ))}
+          </nav>
           <h2 ref={heading} tabIndex={-1} id={headingId} className="text-base font-semibold focus:outline-none">
-            {message.title}
+            {inScope ? message.title : t.resumeTitle}
           </h2>
-          <p id={bodyId} className="text-sm leading-5 text-white/85">{message.body}</p>
+          <p id={bodyId} className="text-sm leading-5 text-white/85">{inScope ? message.body : t.resumeBody}</p>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <button
             type="button"
-            onClick={step === "saved-list" ? dismiss : onAction}
+            onClick={!inScope ? () => onChapter(step.chapter) : step.id === "finish" ? dismiss : onAction}
             className="min-h-10 rounded-lg bg-[#E3BA74] px-3 py-2 text-sm font-semibold text-[#0B1F3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            {message.action}
+            {!inScope ? t.resume : (step.skipDestination || step.optionalClick) && !canUseTarget ? t.continue : message.action}
           </button>
-          {step !== "saved-list" && (
+          {step.id !== "finish" && (
             <button type="button" onClick={dismiss} className="min-h-10 rounded-lg px-2 py-2 text-sm text-white/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
               {t.skip}
             </button>

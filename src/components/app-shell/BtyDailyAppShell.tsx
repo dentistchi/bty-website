@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback, type MouseEvent } from "react";
 import { TeamsPracticeRecoveryOperations } from "./TeamsPracticeRecoveryOperations";
-import { TeamsQuickTour, type TeamsTourStep } from "@/components/teams/TeamsQuickTour";
+import { TeamsQuickTour } from "@/components/teams/TeamsQuickTour";
+import { teamsTourSteps, tourTabIndex } from "@/components/teams/teamsTourSteps";
 import { BTY_SHELL_DESTINATION_EVENT, shellSearchFor } from "@/domain/teams/btyDestination";
 import { isTeamsTabPath } from "@/domain/teams/tabRuntime";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
@@ -1351,7 +1352,7 @@ export function TodayGreeting({ copy, ssrDefault }: { copy: TodayCopy; ssrDefaul
   );
 }
 
-type TeamsTourProgress = { step: TeamsTourStep; replay: boolean };
+type TeamsTourProgress = { index: number; replay: boolean };
 
 export default function BtyDailyAppShell({
   locale,
@@ -1490,6 +1491,7 @@ export default function BtyDailyAppShell({
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const appRoot = useRef<HTMLDivElement | null>(null);
+  const [tourPracticeVisit, setTourPracticeVisit] = useState(0);
   const [tourProgress, setTourProgress] = useState<TeamsTourProgress | "closed" | null>(null);
   const closeTour = useCallback(() => setTourProgress("closed"), []);
 
@@ -1922,62 +1924,86 @@ export default function BtyDailyAppShell({
     recordNativeSelfReturn();
   }, []);
 
-  const tour = runtime === "teams" && tourProgress !== "closed" && (teamsTour?.offer || tourProgress?.replay)
-    ? tourProgress ?? { step: "learn" as const, replay: false }
-    : null;
-  const atTodayHome = tab === "today" && !savedOpen && !fieldActionAssignmentId && !fieldActionContractId && !actionReviewId;
-  const atLearnHome = tab === "learn" && foundryView === "rooms" && !reviewId && !followupId;
-  const tourStep = tour && (
-    tour.step === "learning" || tour.step === "today" ? atLearnHome
-      : tour.step === "saved-list" ? tab === "today" && savedOpen
-        : atTodayHome
-  ) ? tour.step : null;
+  const tourIndex = tourProgress === "closed" ? null : tourProgress?.index ?? (teamsTour?.offer ? 0 : null);
+  const tourReplay = tourProgress !== "closed" && tourProgress?.replay === true;
+  const tourStep = runtime === "teams" && tourIndex !== null && (tourReplay || teamsTour?.offer)
+    ? teamsTourSteps[tourIndex]
+    : undefined;
+  const tourDismiss = teamsTour?.onDismiss;
 
   const dismissTeamsTour = useCallback(() => {
     closeTour();
-    if (tour && !tour.replay) teamsTour?.onDismiss();
-  }, [closeTour, teamsTour, tour]);
+    if (!tourReplay) tourDismiss?.();
+  }, [closeTour, tourDismiss, tourReplay]);
 
-  const advanceTeamsTour = useCallback((step: TeamsTourStep) => {
-    if (tour) setTourProgress({ ...tour, step });
-  }, [tour]);
+  function advanceTeamsTour(offset = 1, from = tourIndex) {
+    if (from === null || !tourStep) return;
+    let next = from + offset;
+    // Account-dependent controls appear only when the current screen exposes them.
+    while (teamsTourSteps[next]?.whenVisible && teamsTourSteps[next].revealedBy !== teamsTourSteps[from]?.id &&
+      !teamsTourSteps[next].anchors.some((selector) => appRoot.current?.querySelector(selector))) {
+      next += 1;
+    }
+    if (teamsTourSteps[next]) setTourProgress({ index: next, replay: tourReplay });
+    else dismissTeamsTour();
+  }
 
-  const handleTabSelect = useCallback((key: AppTabKey) => {
-    const revealSaved = key === "today" && (tourStep === "today" || tourStep === "learning");
-    if (tourStep === "learn" && key === "learn") {
+  function openTourChapter(chapter: AppTabKey, replay = tourReplay) {
+    if (chapter === "today") {
+      setSavedOpen(false);
+      setActionReviewId(null);
+      setFieldActionAssignmentId(null);
+      setFieldActionContractId(null);
+    } else if (chapter === "learn") {
       setFoundryView("rooms");
       setReviewId(null);
       setFollowupId(null);
-      advanceTeamsTour("learning");
-    } else if (revealSaved) {
-      advanceTeamsTour("saved");
-    } else if (tourStep && key !== tab) {
-      dismissTeamsTour();
+    } else if (chapter === "practice") {
+      setPracticeFieldActionId(null);
+      setTourPracticeVisit((visit) => visit + 1);
     }
-    openAppTab(key, !revealSaved);
-  }, [advanceTeamsTour, dismissTeamsTour, openAppTab, tab, tourStep]);
-
-  function openSavedList() {
-    setSavedOpen(true);
-    if (tourStep) advanceTeamsTour("saved-list");
+    openAppTab(chapter, false);
+    setTourProgress({ index: tourTabIndex(chapter), replay });
   }
 
-  function replayTeamsTour() {
-    setSavedOpen(false);
-    setActionReviewId(null);
-    setFieldActionAssignmentId(null);
-    setFieldActionContractId(null);
-    openAppTab("today");
-    setTourProgress({ step: "learn", replay: true });
+  const handleTabSelect = (key: AppTabKey) => {
+    if (!tourStep) {
+      openAppTab(key);
+      return;
+    }
+    if (key === tourStep.tab || key !== tourStep.chapter) {
+      openTourChapter(key);
+    } else if (key !== tab) {
+      openAppTab(key, false);
+    }
+  };
+
+  function handleTourClick(event: MouseEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!tourStep || !(target instanceof Element) || !event.currentTarget.contains(target)) return;
+    const stepIndex = teamsTourSteps.findIndex((step) =>
+      step.chapter === tourStep.chapter && step.click && target.closest(step.click) &&
+      event.currentTarget.querySelector(step.scope));
+    if (stepIndex >= 0) advanceTeamsTour(1, stepIndex);
   }
 
   function followTourAction() {
-    switch (tourStep) {
-      case "learn": handleTabSelect("learn"); break;
-      case "learning": advanceTeamsTour("today"); break;
-      case "today": handleTabSelect("today"); break;
-      case "saved": openSavedList(); break;
+    if (!tourStep) return;
+    if (tourStep.tab) {
+      handleTabSelect(tourStep.tab);
+      return;
     }
+    if (tourStep.click) {
+      const button = appRoot.current?.querySelector<HTMLButtonElement>(tourStep.click);
+      if (button && !button.disabled) {
+        button.click();
+        return;
+      }
+      if (tourStep.skipDestination) advanceTeamsTour(2);
+      else if (tourStep.optionalClick) advanceTeamsTour();
+      return;
+    }
+    advanceTeamsTour();
   }
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
@@ -2027,6 +2053,7 @@ export default function BtyDailyAppShell({
   return (
     <div
       ref={appRoot}
+      onClickCapture={tourStep ? handleTourClick : undefined}
       data-bty-app-root=""
       className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased"
     >
@@ -2209,10 +2236,7 @@ export default function BtyDailyAppShell({
           <>
             {savedOpen ? (
               // Saved for later — a separate Today lane, never an obligation. Back → Today.
-              <SavedForLater locale={locale} onBack={() => {
-                setSavedOpen(false);
-                if (tourStep === "saved-list") dismissTeamsTour();
-              }} />
+              <SavedForLater locale={locale} onBack={() => setSavedOpen(false)} />
             ) : fieldActionAssignmentId || fieldActionContractId ? (
               // Slice 3.1B-3N-5C.3: Today-owned Field Action producer (author / resubmit). Back → Today.
               <FieldActionForm
@@ -2243,7 +2267,7 @@ export default function BtyDailyAppShell({
                 <TodayHome
                   locale={locale}
                   refreshKey={todayRefreshKey}
-                  onOpenSaved={openSavedList}
+                  onOpenSaved={() => setSavedOpen(true)}
                   nativeReminder={runtime === "web"}
                   onNavigate={(dest) => setTab(dest)}
                   onOpenItem={openTodayTarget}
@@ -2268,6 +2292,7 @@ export default function BtyDailyAppShell({
             gated placeholders. `?tab=practice&fieldAction=<id>` deep-links straight to that action. */}
         {tab === "practice" && (
           <PracticeLanding
+            key={tourPracticeVisit}
             locale={locale}
             initialView={practiceFieldActionId ? "fieldActions" : "landing"}
             initialFieldActionId={practiceFieldActionId}
@@ -2510,7 +2535,8 @@ export default function BtyDailyAppShell({
               {runtime === "teams" && teamsTour && (
                 <button
                   type="button"
-                  onClick={replayTeamsTour}
+                  data-testid="me-tour-replay"
+                  onClick={() => openTourChapter("today", true)}
                   className="mt-2 self-start rounded-lg px-3 py-2 text-sm text-white/75 hover:text-white"
                 >
                   {locale === "ko" ? "BTY 둘러보기" : "Tour BTY"}
@@ -2542,12 +2568,13 @@ export default function BtyDailyAppShell({
 
       {tourStep && (
         <TeamsQuickTour
-          key={tourStep}
+          key={tourStep.id}
           step={tourStep}
           locale={locale}
           shell={appRoot}
           onAction={followTourAction}
           onDismiss={dismissTeamsTour}
+          onChapter={openTourChapter}
         />
       )}
     </div>
