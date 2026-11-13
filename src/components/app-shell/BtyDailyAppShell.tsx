@@ -1936,11 +1936,11 @@ export default function BtyDailyAppShell({
     if (!tourReplay) tourDismiss?.();
   }, [closeTour, tourDismiss, tourReplay]);
 
-  function advanceTeamsTour(offset = 1, from = tourIndex) {
-    if (from === null || !tourStep) return;
-    let next = from + offset;
+  function advanceTeamsTour(offset = 1) {
+    if (tourIndex === null || !tourStep) return;
+    let next = tourIndex + offset;
     // Account-dependent controls appear only when the current screen exposes them.
-    while (teamsTourSteps[next]?.whenVisible && teamsTourSteps[next].revealedBy !== teamsTourSteps[from]?.id &&
+    while (teamsTourSteps[next]?.whenVisible && teamsTourSteps[next].revealedBy !== tourStep.id &&
       !teamsTourSteps[next].anchors.some((selector) => appRoot.current?.querySelector(selector))) {
       next += 1;
     }
@@ -1971,20 +1971,24 @@ export default function BtyDailyAppShell({
       openAppTab(key);
       return;
     }
-    if (key === tourStep.tab || key !== tourStep.chapter) {
+    if (key === tourStep.tab) {
       openTourChapter(key);
-    } else if (key !== tab) {
-      openAppTab(key, false);
     }
   };
 
-  function handleTourClick(event: MouseEvent<HTMLDivElement>) {
+  function handleTourClick(event: MouseEvent<HTMLElement>) {
     const target = event.target;
     if (!tourStep || !(target instanceof Element) || !event.currentTarget.contains(target)) return;
-    const stepIndex = teamsTourSteps.findIndex((step) =>
-      step.chapter === tourStep.chapter && step.click && target.closest(step.click) &&
-      event.currentTarget.querySelector(step.scope));
-    if (stepIndex >= 0) advanceTeamsTour(1, stepIndex);
+    const root = event.currentTarget;
+    const control = target.closest("button, a[href], [role=button]");
+    if (!control) return;
+    if (tourStep.click && control.matches(tourStep.click) && root.querySelector(tourStep.scope)) {
+      advanceTeamsTour();
+      return;
+    }
+    // Pause other actions while the guide is open. Text fields and normal scrolling still work.
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   function followTourAction() {
@@ -2053,7 +2057,6 @@ export default function BtyDailyAppShell({
   return (
     <div
       ref={appRoot}
-      onClickCapture={tourStep ? handleTourClick : undefined}
       data-bty-app-root=""
       className="btyFadeIn relative flex h-[100dvh] flex-col overflow-hidden bg-[#0B1F3A] text-white antialiased"
     >
@@ -2231,7 +2234,7 @@ export default function BtyDailyAppShell({
         className="relative z-10"
       />
 
-      <main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
+      <main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria} onClickCapture={tourStep ? handleTourClick : undefined}>
         {tab === "today" && (
           <>
             {savedOpen ? (
@@ -2563,20 +2566,18 @@ export default function BtyDailyAppShell({
 
       {/* Bottom dock lifted above the wake layer (z-10) so the ambient glow stays behind it. */}
       <div className="relative z-10 flex shrink-0 flex-col">
+        {tourStep && (
+          <TeamsQuickTour
+            step={tourStep}
+            locale={locale}
+            shell={appRoot}
+            onAction={followTourAction}
+            onDismiss={dismissTeamsTour}
+            onChapter={openTourChapter}
+          />
+        )}
         <AppTabBar active={tab} onSelect={handleTabSelect} locale={locale} />
       </div>
-
-      {tourStep && (
-        <TeamsQuickTour
-          key={tourStep.id}
-          step={tourStep}
-          locale={locale}
-          shell={appRoot}
-          onAction={followTourAction}
-          onDismiss={dismissTeamsTour}
-          onChapter={openTourChapter}
-        />
-      )}
     </div>
   );
 }
