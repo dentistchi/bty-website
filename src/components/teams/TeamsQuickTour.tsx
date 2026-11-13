@@ -43,13 +43,15 @@ export function TeamsQuickTour({
   const [highlight, setHighlight] = useState<Highlight | null>(null);
   const [canUseTarget, setCanUseTarget] = useState(false);
   const [inScope, setInScope] = useState(true);
+  const [context, setContext] = useState<{ step: TeamsTourStep; index: number } | null>(null);
 
   useLayoutEffect(() => {
     if (body.current) body.current.scrollTop = 0;
     heading.current?.focus({ preventScroll: true });
   }, [step.id]);
 
-  useLayoutEffect(() => {
+  // The parent shell's ref is attached after the tour's layout effects on first mount.
+  useEffect(() => {
     const root = shell.current;
     const main = root?.querySelector("main");
     if (!root || !main) return;
@@ -67,8 +69,11 @@ export function TeamsQuickTour({
       setInScope(Boolean(scope));
       const control = step.click ? appRoot.querySelector<HTMLButtonElement>(step.click) : null;
       setCanUseTarget(Boolean(scope && control && !control.disabled));
+      const candidates = scope ? step.contexts?.map(({ target }) => scrollArea.querySelector<HTMLElement>(target)) : undefined;
+      const index = candidates?.findIndex(Boolean) ?? -1;
+      setContext((previous) => previous?.step === step && previous.index === index ? previous : { step, index });
       const next = scope
-        ? step.anchors.map((selector) => appRoot.querySelector<HTMLElement>(selector)).find(Boolean) ?? null
+        ? candidates?.[index] ?? step.anchors.map((selector) => appRoot.querySelector<HTMLElement>(selector)).find(Boolean) ?? null
         : null;
 
       if (next !== anchor) {
@@ -131,11 +136,17 @@ export function TeamsQuickTour({
       if (revealAttempts < 2) revealPending = true;
       schedule();
     });
-    mutations?.observe(scrollArea, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+    mutations?.observe(scrollArea, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "data-status", "data-testid"],
+    });
     window.addEventListener("resize", schedule);
     scrollArea.addEventListener("scroll", schedule, { capture: true, passive: true });
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
+      activeTarget.current = null;
       resize?.disconnect();
       mutations?.disconnect();
       window.removeEventListener("resize", schedule);
@@ -160,7 +171,8 @@ export function TeamsQuickTour({
     return () => document.removeEventListener("keydown", onEscape);
   }, [dismiss]);
 
-  const message = tourCopy(step, locale);
+  const variant = context?.step === step ? step.contexts?.[context.index] : undefined;
+  const message = tourCopy(variant ?? step, locale);
   const optionalControlUnavailable = (step.skipDestination || step.optionalClick) && !canUseTarget;
   const action = !inScope ? t.resume : optionalControlUnavailable ? t.continue : message.action;
   const performAction = !inScope ? () => onChapter(step.chapter) : step.id === "finish" ? dismiss : onAction;

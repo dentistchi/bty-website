@@ -1949,8 +1949,8 @@ export default function BtyDailyAppShell({
   }
 
   function openTourChapter(chapter: AppTabKey, replay = tourReplay) {
+    setSavedOpen(false);
     if (chapter === "today") {
-      setSavedOpen(false);
       setActionReviewId(null);
       setFieldActionAssignmentId(null);
       setFieldActionContractId(null);
@@ -1982,10 +1982,15 @@ export default function BtyDailyAppShell({
     const root = event.currentTarget;
     const control = target.closest("button, a[href], [role=button]");
     if (!control) return;
+    if (tourStep.id === "saved-list" && control.matches('[data-testid="saved-back"]')) {
+      if (tourIndex !== null) setTourProgress({ index: tourIndex - 1, replay: tourReplay });
+      return;
+    }
     if (tourStep.click && control.matches(tourStep.click) && root.querySelector(tourStep.scope)) {
       advanceTeamsTour();
       return;
     }
+    if (tourStep.inspect && control.matches(tourStep.inspect) && root.querySelector(tourStep.scope)) return;
     // Pause other actions while the guide is open. Text fields and normal scrolling still work.
     event.preventDefault();
     event.stopPropagation();

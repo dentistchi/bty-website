@@ -3,6 +3,13 @@ import type { AppTabKey } from "@/components/app-shell/AppTabBar";
 type Locale = "en" | "ko";
 type Message = readonly [title: string, body: string, action: string];
 
+type ScreenCopy = {
+  en: Message;
+  ko: Message;
+};
+
+type TourContext = ScreenCopy & { target: string };
+
 export type TeamsTourStep = {
   id: string;
   chapter: AppTabKey;
@@ -12,6 +19,8 @@ export type TeamsTourStep = {
   ko: Message;
   click?: string;
   tab?: AppTabKey;
+  inspect?: string;
+  contexts?: readonly TourContext[];
   skipDestination?: true;
   whenVisible?: boolean;
   optionalClick?: boolean;
@@ -26,11 +35,17 @@ const history = id("foundry-my-learning");
 const practice = id("practice-landing");
 const me = id("me-home");
 
+const context = (target: string, en: Message, ko: Message): TourContext => ({ target, en, ko });
+
 export const teamsTourSteps: readonly TeamsTourStep[] = [
   {
-    id: "today", chapter: "today", scope: today, anchors: [id("today-item"), id("today-list"), id("today-header")],
-    en: ["Start with Today", "When there’s something to do, your next action appears here. Use Show more to see other items when available.", "Continue"],
-    ko: ["오늘 할 일 확인", "확인할 일이 있으면 여기에 다음 행동이 표시돼요. 더 보기가 있으면 다른 할 일도 펼칠 수 있어요.", "계속"],
+    id: "today", chapter: "today", scope: today, anchors: [],
+    en: ["Start with Today", "Today brings together your next action and saved messages.", "Continue"],
+    ko: ["오늘 할 일 확인", "오늘에서 다음 할 일과 저장한 메시지를 찾을 수 있어요.", "계속"],
+    contexts: [
+      context(id("today-item"), ["Your next action", "Start here when an assignment or follow-up needs attention.", "Continue"], ["다음 할 일", "배정된 학습이나 후속 확인이 필요할 때 이 카드에서 시작해요.", "계속"]),
+      context(id("today-empty"), ["You’re caught up", "There’s no next action in this list right now. New assignments and follow-ups appear here.", "Continue"], ["지금 할 일이 없어요", "이 목록에 지금 할 일은 없어요. 새 학습이나 후속 확인이 생기면 여기에 표시돼요.", "계속"]),
+    ],
   },
   {
     id: "today-more", chapter: "today", scope: today, whenVisible: true,
@@ -39,9 +54,9 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["나머지 할 일 보기", "더 보기를 누르면 추가로 확인할 일이 펼쳐져요. 나중에도 오늘에서 각 항목을 열 수 있어요.", "더 보기"],
   },
   {
-    id: "today-incoming", chapter: "today", scope: today, anchors: [`${id("needs-your-response")} h2`, id("today-header")],
-    en: ["Respond to a Track", "When someone sends you a Track, find it on Today. Open the original Teams message, mark it as understood, ask a question, or request help when those options are available.", "Continue"],
-    ko: ["받은 Track에 답하기", "누군가 Track을 보내면 오늘에 표시돼요. Teams 원본을 열어 보고, 제공되는 버튼으로 확인했다고 답하거나 질문하거나 도움을 요청할 수 있어요.", "계속"],
+    id: "today-incoming", chapter: "today", scope: today, whenVisible: true, anchors: [id("announcement-item")],
+    en: ["Respond to a Track", "This card shows what a teammate asked you to review. Any available response options are on the card.", "Continue"],
+    ko: ["받은 Track에 답하기", "팀원이 확인을 요청한 내용이에요. 답변할 수 있으면 이 카드에 선택지가 표시돼요.", "계속"],
   },
   {
     id: "today-question", chapter: "today", scope: today, whenVisible: true,
@@ -51,70 +66,68 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
   },
   {
     id: "today-question-box", chapter: "today", scope: today, whenVisible: true, revealedBy: "today-question",
-    anchors: [`${id("announcement-question-form")} textarea`, `${id("needs-your-response")} h2`],
-    en: ["Write a question here", "When you need clarification, write your question here and use Send. You can continue the tour with the box empty.", "Continue"],
-    ko: ["여기에 질문을 작성하세요", "확인이 필요한 내용을 적고 보내기를 누르면 질문이 전달돼요. 둘러보기는 입력란이 비어 있어도 계속할 수 있어요.", "계속"],
+    anchors: [`${id("announcement-question-form")} textarea`],
+    en: ["Write a question here", "This box is for asking the sender for clarification. You can leave it empty during the tour.", "Continue"],
+    ko: ["질문을 적는 곳", "보낸 사람에게 확인이 필요한 내용을 묻는 입력란이에요. 둘러보기 중에는 비워 둬도 돼요.", "계속"],
   },
   {
-    id: "today-outgoing", chapter: "today", scope: today, anchors: [`${id("tracking-sent")} h2`, id("today-header")],
-    en: ["Follow up on a Track you sent", "Start a Track from a message’s … menu in Teams. Back here, open a sent Track to see who has responded and who still needs a follow-up.", "Continue"],
-    ko: ["보낸 Track 확인", "Teams 메시지의 … 메뉴에서 Track을 시작하세요. 이곳에서 보낸 Track을 펼쳐 누가 답했고 누구에게 후속 확인이 필요한지 볼 수 있어요.", "계속"],
-  },
-  {
-    id: "today-track-details", chapter: "today", scope: today, whenVisible: true,
-    anchors: [`${id("tracking-toggle")}[aria-expanded="false"]`],
-    click: `${id("tracking-toggle")}[aria-expanded="false"]`, optionalClick: true,
-    en: ["Open a sent Track", "Expand a Track to see the status of its recipients.", "Show Track details"],
-    ko: ["보낸 Track 펼치기", "Track을 펼쳐 받은 사람들의 응답 상태를 확인해 보세요.", "Track 상세 보기"],
+    id: "today-outgoing", chapter: "today", scope: today, whenVisible: true, anchors: [id("tracking-item")],
+    inspect: id("tracking-toggle"),
+    en: ["Follow up on a Track you sent", "See who responded and who may need a follow-up. If a response list is available, you can expand it here.", "Continue"],
+    ko: ["보낸 Track 확인", "누가 답했고 누구에게 후속 확인이 필요한지 볼 수 있어요. 응답 목록이 있으면 여기서 펼쳐보세요.", "계속"],
   },
   {
     id: "saved", chapter: "today", scope: today, anchors: [id("today-saved-entry")], click: id("today-saved-entry"),
-    en: ["Open Saved for later", "In Teams, use the message’s … menu and choose Save under BTY. Tap Saved for later here to find it again.", "Open saved list"],
-    ko: ["나중에 보기 열기", "Teams 메시지의 … 메뉴에서 BTY의 저장을 선택하세요. 여기서 나중에 보기를 누르면 다시 찾을 수 있어요.", "저장 목록 열기"],
+    en: ["Find saved Teams messages", "Messages you save to BTY in Teams appear in this list.", "Open saved list"],
+    ko: ["저장한 Teams 메시지 찾기", "Teams에서 BTY에 저장한 메시지는 이 목록에 모여요.", "저장 목록 열기"],
   },
   {
-    id: "saved-list", chapter: "today", scope: saved, anchors: [id("saved-open"), `${saved} h2`],
-    en: ["Use your saved list", "Expand a conversation if it is grouped. Open in Teams takes you back to the message. Soon and Later organize the list, and Remove clears a saved item from this list.", "Continue"],
-    ko: ["저장 목록 사용", "메시지가 대화별로 묶여 있으면 펼쳐보세요. Teams에서 열기로 원본을 확인하고, 곧과 나중에로 분류하거나 치우기로 목록에서 뺄 수 있어요.", "계속"],
+    id: "saved-list", chapter: "today", scope: saved, anchors: [], tab: "learn",
+    inspect: id("saved-conversation-header"),
+    en: ["Saved for later", "In a Teams message’s … menu, choose Save under BTY to add it here.", "Next: Learn"],
+    ko: ["나중에 보기", "Teams 메시지의 … 메뉴에서 BTY의 저장을 선택하면 여기에 추가돼요.", "다음: 배우기"],
+    contexts: [
+      context(id("saved-open"), ["Reopen a saved message", "Open in Teams takes you to the original conversation.", "Next: Learn"], ["저장한 메시지 다시 열기", "Teams에서 열기로 원래 대화를 찾을 수 있어요.", "다음: 배우기"]),
+      context(id("saved-item"), ["Your saved messages", "Use the controls on a saved item to organize it or remove it from this list.", "Next: Learn"], ["저장한 메시지", "각 항목의 메뉴로 메시지를 분류하거나 이 목록에서 뺄 수 있어요.", "다음: 배우기"]),
+      context(id("saved-conversation-header"), ["Messages grouped by conversation", "Expand a conversation to see each message you saved from it.", "Next: Learn"], ["대화별로 묶인 메시지", "대화를 펼치면 그 대화에서 저장한 메시지를 하나씩 볼 수 있어요.", "다음: 배우기"]),
+      context(id("saved-empty"), ["Save your first message", "In a Teams message’s … menu, choose Save under BTY. The message will appear here.", "Next: Learn"], ["첫 메시지 저장", "Teams 메시지의 … 메뉴에서 BTY의 저장을 선택하면 여기에 나타나요.", "다음: 배우기"]),
+    ],
   },
   {
-    id: "saved-conversation", chapter: "today", scope: saved, whenVisible: true,
-    anchors: [`${id("saved-conversation-header")}[aria-expanded="false"]`],
-    click: `${id("saved-conversation-header")}[aria-expanded="false"]`, optionalClick: true,
-    en: ["Expand a saved conversation", "See the individual messages saved from that conversation.", "Show saved messages"],
-    ko: ["저장한 대화 펼치기", "그 대화에서 저장한 메시지를 하나씩 확인할 수 있어요.", "저장 메시지 보기"],
+    id: "required-learning", chapter: "learn", scope: learn, anchors: [],
+    en: ["Assigned training", "Your organization’s assignments appear under Required learning once the list loads.", "Continue"],
+    ko: ["배정된 학습", "목록이 로드되면 조직에서 배정한 학습을 필수 학습에서 확인할 수 있어요.", "계속"],
+    contexts: [
+      context(`${id("required-card")} a[data-status="in_progress"]`, ["Resume assigned training", "Continue learning reopens the training you already started.", "Continue tour"], ["배정된 학습 이어가기", "학습 계속하기로 시작했던 학습을 다시 열 수 있어요.", "둘러보기 계속"]),
+      context(`${id("required-card")} a[data-status="assigned"]`, ["Start assigned training", "Start learning opens this assignment.", "Continue tour"], ["배정된 학습 시작", "학습 시작으로 이 배정 학습을 열 수 있어요.", "둘러보기 계속"]),
+      context(id("required-empty"), ["No assignments right now", "New training assigned by your organization will appear here.", "Continue"], ["현재 배정된 학습이 없어요", "조직에서 새로 배정한 학습은 이곳에 표시돼요.", "계속"]),
+    ],
   },
   {
-    id: "saved-back", chapter: "today", scope: saved, anchors: [id("saved-back")], click: id("saved-back"),
-    en: ["Return to Today", "Use the back button to return to your Today screen.", "Back to Today"],
-    ko: ["오늘로 돌아가기", "뒤로 버튼을 눌러 오늘 화면으로 돌아가세요.", "오늘로 돌아가기"],
+    id: "learn-host", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("door-create-training")],
+    en: ["Create training for your team", "Create training turns a recurring work problem into a lesson your team can use.", "Continue"],
+    ko: ["팀 교육 만들기", "훈련 만들기로 업무에서 반복되는 문제를 팀이 연습할 학습으로 만들 수 있어요.", "계속"],
   },
   {
-    id: "open-learn", chapter: "today", scope: today, anchors: ['[data-bty-tab="learn"]'], tab: "learn",
-    en: ["Open Learn", "Tap Learn to find assigned training and your learning history.", "Go to Learn"],
-    ko: ["배우기 탭 열기", "배우기를 눌러 배정된 교육과 학습 기록을 확인하세요.", "배우기로 이동"],
+    id: "learn-event", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("door-open-event")],
+    en: ["Open a team event", "Open an event sets up a session for your team to join.", "Continue"],
+    ko: ["팀 이벤트 만들기", "이벤트 만들기에서 팀원이 참여할 세션을 열 수 있어요.", "계속"],
   },
   {
-    id: "required-learning", chapter: "learn", scope: learn, anchors: [`${id("foundry-required-learning")} h2`, learn],
-    en: ["Find your assigned training", "Assignments appear under Required learning. Start opens a new assignment, and Continue picks up one you have already started.", "Continue"],
-    ko: ["배정된 교육 찾기", "배정된 교육은 필수 학습에 나와요. 학습 시작으로 처음 열고, 학습 계속하기로 하던 교육을 이어갈 수 있어요.", "계속"],
-  },
-  {
-    id: "learning-history", chapter: "learn", scope: learn, anchors: [id("door-my-learning"), learn],
+    id: "learning-history", chapter: "learn", scope: learn, anchors: [id("door-my-learning")],
     click: id("door-my-learning"), skipDestination: true,
     en: ["Open your learning history", "Learning history is where you can reopen training you finished and review your reflections and follow-ups.", "Open history"],
     ko: ["학습 기록 열기", "학습 기록에서 마친 교육을 다시 보고, 내 회고와 후속 확인을 찾을 수 있어요.", "기록 열기"],
   },
   {
-    id: "learning-records", chapter: "learn", scope: history, anchors: [id("my-learning-archived-open"), `${history} h1`, id("my-learning-back")],
+    id: "learning-records", chapter: "learn", scope: history, anchors: [],
     click: id("my-learning-back"),
-    en: ["Review completed training", "Open a record to see what you learned and follow-up actions. Archived entries are available from this screen when you have any.", "Back to Learn"],
-    ko: ["마친 교육 다시 보기", "기록을 열어 배운 내용과 후속 행동을 확인할 수 있어요. 보관한 기록이 있으면 이 화면에서 열 수 있어요.", "배우기로 돌아가기"],
-  },
-  {
-    id: "learn-host", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("door-create-training"), id("door-open-event")],
-    en: ["Create training for your team", "With author access, use Create training to build a training from a recurring problem or Create event to set up a team event.", "Continue"],
-    ko: ["팀 교육 만들기", "작성 권한이 있으면 훈련 만들기로 반복되는 문제를 교육으로 만들거나, 이벤트 만들기로 팀 이벤트를 준비할 수 있어요.", "계속"],
+    en: ["Your learning history", "Training you complete appears here.", "Continue tour"],
+    ko: ["내 학습 기록", "마친 학습은 이곳에 표시돼요.", "둘러보기 계속"],
+    contexts: [
+      context(id("my-learning-open-detail"), ["Revisit a completed training", "The record contains what you learned and any follow-up actions.", "Continue tour"], ["마친 학습 다시 보기", "기록에서 배운 내용과 후속 행동을 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("my-learning-empty"), ["Build your learning history", "Your first completed training will appear here.", "Continue tour"], ["학습 기록 쌓기", "첫 학습을 마치면 이곳에 기록이 생겨요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "open-practice", chapter: "learn", scope: learn, anchors: ['[data-bty-tab="practice"]'], tab: "practice",
@@ -128,10 +141,15 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["아레나 연습 열기", "연습 상황을 눌러 업무 중 마주칠 상황에 어떻게 대응할지 연습해 보세요.", "아레나 열기"],
   },
   {
-    id: "practice-arena-screen", chapter: "practice", scope: id("practice-arena"), anchors: [`${id("practice-arena")} [data-bty-main-heading]`, id("practice-arena-back")],
+    id: "practice-arena-screen", chapter: "practice", scope: id("practice-arena"), anchors: [],
     click: id("practice-arena-back"),
-    en: ["Choose a practice when ready", "This is where you can open an available practice. Starting it begins a practice attempt.", "Back to Practice"],
-    ko: ["준비되면 연습 선택", "이 화면에서 이용 가능한 연습을 열 수 있어요. 시작을 누르면 실제 연습이 시작돼요.", "연습으로 돌아가기"],
+    en: ["Practice situations", "This is where published exercises from your completed training appear.", "Continue tour"],
+    ko: ["연습 상황", "완료한 학습에 연결된 연습이 공개되면 이곳에 표시돼요.", "둘러보기 계속"],
+    contexts: [
+      context(id("arena-practice-card"), ["Try a practice situation", "This card shows the exercise and the training it came from.", "Continue tour"], ["연습 상황 선택", "이 카드에서 연습 내용과 어떤 학습에 연결되어 있는지 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("arena-practices-empty"), ["No practice situations yet", "A situation from your completed training appears here when it has been published.", "Continue tour"], ["아직 공개된 연습 상황이 없어요", "완료한 학습에 연결된 연습이 공개되면 이곳에 표시돼요.", "둘러보기 계속"]),
+      context(id("arena-practices-error"), ["Practice list unavailable", "The list couldn’t load. You can continue the tour.", "Continue tour"], ["연습 목록을 불러오지 못했어요", "둘러보기는 계속할 수 있어요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "practice-clinical", chapter: "practice", scope: practice, anchors: [id("practice-clinical-entry")],
@@ -140,22 +158,26 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["임상 케이스 열기", "진단과 치료 계획을 연습할 수 있는 임상 케이스를 살펴보세요.", "임상 케이스 열기"],
   },
   {
-    id: "practice-clinical-screen", chapter: "practice", scope: id("practice-clinical"), anchors: [`${id("practice-clinical")} h1`, `${id("practice-clinical")} h2`, id("practice-clinical-back")],
+    id: "practice-clinical-screen", chapter: "practice", scope: id("practice-clinical"), anchors: [`${id("practice-clinical")} h1`],
     click: id("practice-clinical-back"),
-    en: ["Explore the case library", "Choose a case to review its setup. Begin encounter starts the clinical exercise when you’re ready.", "Back to Practice"],
-    ko: ["케이스 목록 살펴보기", "케이스를 고르면 상황을 볼 수 있어요. 준비가 되면 진료 시작 버튼으로 연습을 시작하세요.", "연습으로 돌아가기"],
+    en: ["Explore the case library", "Each fictional case lets you practice deciding what to ask, examine, and recommend.", "Continue tour"],
+    ko: ["케이스 목록 살펴보기", "가상 환자 케이스에서 어떤 질문과 검사를 할지, 어떤 치료를 권할지 연습할 수 있어요.", "둘러보기 계속"],
   },
   {
-    id: "practice-ai", chapter: "practice", scope: practice, anchors: [id("practice-ai-patient-entry"), id("practice-ai-patient-unavailable"), `${practice} h1`],
+    id: "practice-ai", chapter: "practice", scope: practice, anchors: [],
     click: id("practice-ai-patient-entry"), skipDestination: true,
-    en: ["Find AI Patient", "When available for your account, AI Patient lets you practice a conversation with a simulated patient.", "Open AI Patient"],
-    ko: ["AI 환자 찾기", "계정에서 이용 가능하면 AI 환자와 대화하며 상담을 연습할 수 있어요.", "AI 환자 열기"],
+    en: ["Practice options", "Continue to see how to apply what you learned at work.", "Continue"],
+    ko: ["연습 옵션", "다음으로 학습 내용을 업무에 적용하는 방법을 확인하세요.", "계속"],
+    contexts: [
+      context(id("practice-ai-patient-entry"), ["Practice with an AI Patient", "Rehearse a conversation with a fictional patient and get coaching afterward.", "Open AI Patient"], ["AI 환자와 연습하기", "가상 환자와 대화하며 연습하고 이후에 코칭을 받을 수 있어요.", "AI 환자 열기"]),
+      context(id("practice-ai-patient-unavailable"), ["AI Patient is unavailable", "This exercise is currently unavailable for your account.", "Continue"], ["AI 환자 연습을 이용할 수 없어요", "현재 이 계정에서는 이 연습을 이용할 수 없어요.", "계속"]),
+    ],
   },
   {
-    id: "practice-ai-screen", chapter: "practice", scope: id("ai-patient-intro"), anchors: [id("ai-patient-back")],
+    id: "practice-ai-screen", chapter: "practice", scope: id("ai-patient-intro"), anchors: [`${id("ai-patient-intro")} h1`],
     click: id("ai-patient-back"),
-    en: ["Review the AI Patient setup", "Read the scenario instructions first. Selecting a scenario when ready starts the simulated conversation.", "Back to Practice"],
-    ko: ["AI 환자 연습 준비", "먼저 화면의 안내를 읽으세요. 준비가 되면 시나리오를 선택해 모의 대화를 시작할 수 있어요.", "연습으로 돌아가기"],
+    en: ["Review the AI Patient setup", "The scenario describes the conversation you’ll practice with a fictional patient.", "Continue tour"],
+    ko: ["AI 환자 연습 준비", "시나리오에서 가상 환자와 어떤 대화를 연습할지 확인할 수 있어요.", "둘러보기 계속"],
   },
   {
     id: "practice-field", chapter: "practice", scope: practice, anchors: [id("practice-field-actions")],
@@ -164,10 +186,15 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["행동 계획 열기", "교육에서 배운 내용을 업무에서 실천할 계획을 확인하는 곳이에요.", "행동 계획 열기"],
   },
   {
-    id: "practice-field-screen", chapter: "practice", scope: id("field-actions-focus"), anchors: [`${id("field-actions-focus")} h1`, id("field-actions-back")],
+    id: "practice-field-screen", chapter: "practice", scope: id("field-actions-focus"), anchors: [],
     click: id("field-actions-back"),
-    en: ["Follow your action plan", "See plans waiting for review, needing changes, or ready to complete. Open a plan to see the next step for its current status.", "Back to Practice"],
-    ko: ["실천 계획 진행 상태 확인", "검토 중인 계획, 수정이 필요한 계획, 완료할 수 있는 계획을 볼 수 있어요. 계획을 열면 상태에 맞는 다음 행동이 나와요.", "연습으로 돌아가기"],
+    en: ["Your action plans", "Plans for using what you learned at work appear here.", "Continue tour"],
+    ko: ["내 행동 계획", "학습에서 배운 내용을 업무에 적용하는 계획이 이곳에 표시돼요.", "둘러보기 계속"],
+    contexts: [
+      context(id("fa-item"), ["Check an action plan", "The plan’s status shows whether it is waiting for review, needs changes, or is ready to complete.", "Continue tour"], ["행동 계획 상태 확인", "계획의 상태에서 검토 중인지, 수정이 필요한지, 완료할 수 있는지 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("fa-empty"), ["No action plans yet", "Your plans appear here once you create one.", "Continue tour"], ["아직 행동 계획이 없어요", "행동 계획을 만들면 여기서 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("fa-error"), ["Action plans unavailable", "The list couldn’t load. You can continue the tour.", "Continue tour"], ["행동 계획을 불러오지 못했어요", "둘러보기는 계속할 수 있어요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "open-me", chapter: "practice", scope: practice, anchors: ['[data-bty-tab="me"]'], tab: "me",
@@ -181,13 +208,13 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
   },
   {
     id: "me-rewards", chapter: "me", scope: me, whenVisible: true, anchors: [id("learning-total-xp"), `${id("learning-rewards")} h2`],
-    en: ["See your learning rewards", "When rewards are enabled, this area shows your XP, level, weekly goal and badges. Open a badge to see how it is earned.", "Continue"],
-    ko: ["학습 보상 확인", "보상이 켜져 있으면 XP, 레벨, 주간 목표와 배지를 확인할 수 있어요. 배지를 열면 받는 방법을 볼 수 있어요.", "계속"],
+    en: ["See your learning rewards", "This area shows your XP, level, weekly goal, and badges.", "Continue"],
+    ko: ["학습 보상 확인", "여기서 XP, 레벨, 주간 목표와 배지를 확인할 수 있어요.", "계속"],
   },
   {
     id: "me-week", chapter: "me", scope: me, anchors: [`${id("me-this-week")} h2`, id("me-week-summary")],
-    en: ["Review your week", "This Week summarizes your recent BTY activity. Tap the orb next to see attendance by day.", "Continue"],
-    ko: ["이번 주 돌아보기", "이번 주에는 최근 BTY 활동이 나와요. 다음으로 구슬을 눌러 날짜별 출석을 확인해 보세요.", "계속"],
+    en: ["Review your week", "This Week summarizes your recent BTY activity.", "Continue"],
+    ko: ["이번 주 돌아보기", "이번 주에는 최근 BTY 활동이 나와요.", "계속"],
   },
   {
     id: "me-attendance", chapter: "me", scope: me, anchors: [id("me-weekly-orb")], click: id("me-weekly-orb"),
@@ -195,10 +222,13 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["주간 출석 열기", "구슬을 눌러 이번 주에 BTY를 사용한 날을 확인하세요.", "출석 열기"],
   },
   {
-    id: "me-attendance-screen", chapter: "me", scope: id("me-attendance-popup"), anchors: [id("me-attendance-close")],
+    id: "me-attendance-screen", chapter: "me", scope: id("me-attendance-popup"), anchors: [],
     click: id("me-attendance-close"),
-    en: ["Read your attendance", "Each light represents a day of activity. Close the attendance popup to continue.", "Close attendance"],
-    ko: ["출석 확인", "불빛은 BTY를 사용한 날짜를 뜻해요. 출석 팝업을 닫고 계속하세요.", "출석 닫기"],
+    en: ["Your weekly attendance", "This view shows which days you used BTY.", "Continue tour"],
+    ko: ["주간 출석", "이번 주에 BTY를 사용한 날짜를 볼 수 있어요.", "둘러보기 계속"],
+    contexts: [
+      context(id("me-attendance-days"), ["Read your attendance", "A lit day marks a day you used BTY.", "Continue tour"], ["출석 읽기", "불이 들어온 날짜는 BTY를 사용한 날이에요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "me-past", chapter: "me", scope: me, anchors: [id("me-row-past-tracks")], click: id("me-row-past-tracks"),
@@ -206,10 +236,15 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["지난 Track 열기", "오늘 화면에서 정리한 이전 Track 대화를 다시 찾을 수 있어요.", "지난 Track 열기"],
   },
   {
-    id: "me-past-screen", chapter: "me", scope: id("past-tracks"), anchors: [`${id("past-tracks")} h2`, id("past-tracks-back")],
+    id: "me-past-screen", chapter: "me", scope: id("past-tracks"), anchors: [],
     click: id("past-tracks-back"),
-    en: ["Review past conversations", "Past Tracks can include requests you received and Tracks you sent. Open a conversation if you need to see it again.", "Back to Me"],
-    ko: ["지난 대화 다시 보기", "받은 요청과 내가 보낸 Track을 볼 수 있어요. 필요한 대화가 있으면 펼쳐 확인하세요.", "나로 돌아가기"],
+    en: ["Past Tracks", "Tracks you clear from Today can be found here.", "Continue tour"],
+    ko: ["지난 Track", "오늘에서 정리한 Track은 여기서 찾을 수 있어요.", "둘러보기 계속"],
+    contexts: [
+      context(id("past-track-recipient"), ["Revisit a Track you received", "Find the request and any conversation that followed.", "Continue tour"], ["받은 Track 다시 보기", "받았던 요청과 이어진 대화를 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("past-track-host"), ["Revisit a Track you sent", "Find the Track and its response history.", "Continue tour"], ["보낸 Track 다시 보기", "보냈던 Track과 응답 기록을 확인할 수 있어요.", "둘러보기 계속"]),
+      context(id("past-tracks-empty"), ["No past Tracks yet", "Tracks you clear from Today will be available here.", "Continue tour"], ["아직 지난 Track이 없어요", "오늘에서 Track을 정리하면 이곳에서 다시 볼 수 있어요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "me-center", chapter: "me", scope: me, anchors: [id("me-row-center")], click: id("me-row-center"),
@@ -217,10 +252,14 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["센터 열기", "센터에서 내 회고를 다시 볼 수 있어요.", "센터 열기"],
   },
   {
-    id: "me-center-screen", chapter: "me", scope: id("me-center"), anchors: [`${id("center-reality-feed")} h1`, `${id("center-reality-feed")} h2`, id("me-center-back")],
+    id: "me-center-screen", chapter: "me", scope: id("me-center"), anchors: [`${id("center-reality-feed")} h1`],
     click: id("me-center-back"),
-    en: ["Revisit your reflections", "Your reflection feed brings together things you wrote down and want to revisit. Sharing preferences are available here when shown.", "Back to Me"],
-    ko: ["내 회고 다시 보기", "내가 작성한 회고를 한곳에서 돌아볼 수 있어요. 공유 설정이 표시되면 여기서 확인할 수 있어요.", "나로 돌아가기"],
+    en: ["Your reflections", "Reflections you write appear in this feed.", "Continue tour"],
+    ko: ["내 회고", "작성한 회고를 이곳에서 돌아볼 수 있어요.", "둘러보기 계속"],
+    contexts: [
+      context(id("center-reflection-item"), ["Revisit a reflection", "Your entries are grouped here so you can return to what you wrote.", "Continue tour"], ["작성한 회고 다시 보기", "작성한 회고를 모아 다시 읽을 수 있어요.", "둘러보기 계속"]),
+      context(id("center-feed-empty"), ["No reflections yet", "A reflection appears here after you write one.", "Continue tour"], ["아직 회고가 없어요", "회고를 작성하면 이곳에서 볼 수 있어요.", "둘러보기 계속"]),
+    ],
   },
   {
     id: "me-account", chapter: "me", scope: me, anchors: [id("me-account-row")], click: id("me-account-row"),
@@ -228,10 +267,10 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["계정 열기", "BTY에 연결된 계정을 확인할 수 있어요.", "계정 열기"],
   },
   {
-    id: "me-account-screen", chapter: "me", scope: id("me-account"), anchors: [id("account-identity"), id("account-block"), id("me-account-back")],
+    id: "me-account-screen", chapter: "me", scope: id("me-account"), anchors: [id("account-identity"), id("account-email"), id("account-block")],
     click: id("me-account-back"),
-    en: ["Review account controls", "Account shows your connection. Switch account and sign out are available here when shown. Use Back to finish the tour.", "Back to Me"],
-    ko: ["계정 설정 확인", "연결 상태를 확인할 수 있어요. 계정 전환과 로그아웃이 표시되면 이곳에서 사용할 수 있어요. 뒤로 눌러 둘러보기를 마무리하세요.", "나로 돌아가기"],
+    en: ["Check your connected account", "Account shows which identity BTY is using.", "Continue tour"],
+    ko: ["연결된 계정 확인", "BTY에 연결된 계정을 확인할 수 있어요.", "둘러보기 계속"],
   },
   {
     id: "finish", chapter: "me", scope: me, anchors: [id("me-tour-replay")],
@@ -244,7 +283,7 @@ export function tourTabIndex(tab: AppTabKey) {
   return teamsTourSteps.findIndex((step) => step.chapter === tab);
 }
 
-export function tourCopy(step: TeamsTourStep, locale: Locale) {
+export function tourCopy(step: ScreenCopy, locale: Locale) {
   const [title, body, action] = step[locale];
   return { title, body, action };
 }
