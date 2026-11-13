@@ -305,7 +305,7 @@ export function ArenaRoom({
   }
   if (listStatus === "error") {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-2 text-center">
+      <div data-testid="arena-practices-error" className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-2 text-center">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
         <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/70">{t.error}</p>
         <button
@@ -322,7 +322,7 @@ export function ArenaRoom({
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center">
         <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
-        <p className="max-w-[20rem] text-[0.95rem] leading-6 text-white/80">{t.empty}</p>
+        <p data-testid="arena-practices-empty" className="max-w-[20rem] text-[0.95rem] leading-6 text-white/80">{t.empty}</p>
         <p className="mt-2 max-w-[20rem] text-sm leading-6 text-white/60">{t.emptyHint}</p>
         {onExplorePractice ? (
           <button
@@ -345,7 +345,7 @@ export function ArenaRoom({
     <div className="btyFadeIn flex w-full flex-col gap-3 pt-2">
       <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
       {practices.map((p) => (
-        <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        <div key={p.id} data-testid="arena-practice-card" className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <p className="min-w-0 truncate text-[0.95rem] font-semibold text-white/90">{p.practice_title}</p>
             {p.completed ? (
