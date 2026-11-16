@@ -824,12 +824,14 @@ export async function completeTraining(
 
   // Shared Understanding (Slice 3.1B-3G): required ONLY when the module has a shared_question.
   // Written to a SEPARATE column with a NOT_REVIEWED status; never conflated with response_text.
-  const { data: content } = await admin
+  const { data: content, error: contentError } = await admin
     .from("foundry_event_training_content")
     .select("shared_question, completion_prompt")
     .eq("event_id", r.event.id)
     .maybeSingle<{ shared_question: string | null; completion_prompt: string | null }>();
-  const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
+  if (contentError || !content) return { ok: false, reason: "progress_failed" };
+  if (content.completion_prompt === null) return { ok: false, reason: "quiz_required" };
+  const shared = resolveSharedResponse(content.shared_question, rawSharedResponse);
   if (!shared.ok) return { ok: false, reason: shared.reason };
 
   /*
@@ -842,8 +844,8 @@ export async function completeTraining(
   const journey = await readEventJourney(admin, r.event.id);
   const reflectionQuestion = requiredLearnerReflection(
     journeyReflection(journey),
-    content?.completion_prompt,
-    content?.shared_question,
+    content.completion_prompt,
+    content.shared_question,
   );
   const reflection = resolveReflectionResponse(reflectionQuestion, rawReflectionResponse);
   if (!reflection.ok) return { ok: false, reason: reflection.reason };

@@ -20,8 +20,8 @@ import { QRCodeSVG } from "qrcode.react";
 
 const COPY = {
   en: {
-    heading: "Open an event",
-    intro: "Open a real moment for your team to participate in.",
+    heading: "Open a live event",
+    intro: "Team members scan a QR code to record their participation.",
     title: "Event name",
     titlePh: "Morning huddle",
     type: "Kind of event",
@@ -59,7 +59,7 @@ const COPY = {
     intro says how people get in, which the title cannot, and promises no link.
   */
   ko: {
-    heading: "이벤트 만들기",
+    heading: "현장 이벤트 열기",
     intro: "팀원은 QR 코드를 스캔해 참여합니다.",
     title: "이벤트 이름",
     titlePh: "아침 모임",
@@ -67,9 +67,9 @@ const COPY = {
     typePh: "모임",
     xp: "참여 XP (10–100)",
     until: "참여 마감 시각",
-    submit: "이벤트 만들기",
-    working: "만드는 중…",
-    createdHeading: "이벤트가 만들어졌습니다",
+    submit: "이벤트 열기",
+    working: "여는 중…",
+    createdHeading: "이벤트가 열렸습니다",
     qrAria: "이벤트 참여 QR 코드",
     scanInstruction: "팀원에게 이 QR 코드를 보여주세요. 스캔하면 참여가 기록됩니다.",
     viewEvents: "내가 만든 이벤트 보기",

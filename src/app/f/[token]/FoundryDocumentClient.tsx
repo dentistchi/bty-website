@@ -14,6 +14,7 @@ import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
 import {
+  LearnerQuizLoadStatus,
   LearnerQuizPanel,
   LearnerQuizResultSummary,
   useLearnerQuiz,
@@ -654,10 +655,10 @@ export default function FoundryDocumentClient({
   const showReader = stage === "read" || stage === "response";
   /*
     R4 Quick Training Quiz — a PDF training may be completed by a quiz instead of a written
-    answer. Asked only once the learner has reached the completion step; `null` while resolving,
-    so neither surface is shown before the server has said which one applies.
+    answer. The completion prompt is absent for a quiz-backed training in the response stage.
   */
-  const quiz = useLearnerQuiz(token, stage === "response");
+  const [quizRetryCount, setQuizRetryCount] = useState(0);
+  const quiz = useLearnerQuiz(token, stage === "response", quizRetryCount);
   /* §7 — the factual score, restored read-only when a completed learner returns. */
   const quizResult = useLearnerQuizResult(
     token,
@@ -1181,6 +1182,7 @@ export default function FoundryDocumentClient({
   // read / response — reader always visible; reflection unlocks when reading is done.
   const doc = snapshot.document;
   const readingComplete = Boolean(doc?.reading_complete);
+  const quizExpected = stage === "response" && doc?.completion_prompt === null;
   /* All three conditions, or the learner is told nothing (Slice R4-R2H). */
   const readingRetryNeeded =
     readingEvidenceLost && !readingComplete && doc != null && localViewedCount >= doc.page_count;
@@ -1293,7 +1295,13 @@ export default function FoundryDocumentClient({
         </div>
       ) : null}
 
-      {readingComplete && !quiz && (
+      {readingComplete && !quiz && quizExpected ? (
+        <div className="mt-6" ref={reflectionRef}>
+          <LearnerQuizLoadStatus locale={locale} loading={quiz === null} onRetry={() => setQuizRetryCount((n) => n + 1)} />
+        </div>
+      ) : null}
+
+      {readingComplete && !quiz && !quizExpected && (
         <div className="mt-6" ref={reflectionRef}>
           {/* The completion check — what the learner will SAY. Never the REFLECT question,
               which is answered above beside the section that asks it (Slice 3.2R-R8B). */}

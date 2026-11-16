@@ -10,8 +10,6 @@ export type EventRoomsCopy = {
   nonHostSub: string;
   // empty state
   emptyLead: string;
-  createCta: string;
-  createQuickNote: string;
   // past-events list hygiene (UI only)
   pastViewAll: string;
   pastShowLess: string;
@@ -289,21 +287,19 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     nonHostLead: "Training rooms are opened by authorized hosts.",
     nonHostSub: "Scan an invitation QR to join a training event.",
     emptyLead: "Bring your team into one room.",
-    createCta: "Create quick event",
-    createQuickNote: "Skip guided setup.",
     pastViewAll: "View all past training",
     pastShowLess: "Show less",
-    createEyebrow: "CREATE TRAINING EVENT",
-    nameLabel: "Event name",
+    createEyebrow: "Quick training",
+    nameLabel: "Training title",
     namePlaceholder: "e.g. Handling Difficult Conversations",
     youtubeLabel: "YouTube link",
     youtubePlaceholder: "https://www.youtube.com/watch?v=…",
     promptLabel: "Completion question",
     promptPlaceholder: "e.g. What is one conversation you will handle differently this week?",
-    create: "Create training event",
+    create: "Create training",
     creating: "Creating…",
     cancel: "Cancel",
-    titleError: "Please enter an event name.",
+    titleError: "Please enter a training title.",
     youtubeError: "Please paste a valid YouTube link.",
     youtubeNotEmbeddable: "This video can’t be played inside Foundry. Choose another YouTube video.",
     youtubeNotFound: "This YouTube video couldn’t be found. Check the link.",
@@ -505,22 +501,19 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     nonHostLead: "훈련 방은 승인된 호스트가 엽니다.",
     nonHostSub: "초대 QR을 스캔하여 훈련 이벤트에 참여하세요.",
     emptyLead: "팀을 하나의 방으로 모으세요.",
-    // The door BELOW the Builder door: one video or one document, no design step.
-    createCta: "자료로 바로 시작하기",
-    createQuickNote: "영상이나 자료 하나로 훈련을 바로 시작하세요.",
     pastViewAll: "지난 교육 모두 보기",
     pastShowLess: "간략히 보기",
-    createEyebrow: "훈련 이벤트 만들기",
-    nameLabel: "이벤트 이름",
+    createEyebrow: "빠른 훈련 만들기",
+    nameLabel: "훈련 제목",
     namePlaceholder: "예: 어려운 대화 다루기",
     youtubeLabel: "YouTube 링크",
     youtubePlaceholder: "https://www.youtube.com/watch?v=…",
     promptLabel: "완료 질문",
     promptPlaceholder: "예: 이번 주에 다르게 다뤄볼 대화 하나는 무엇인가요?",
-    create: "훈련 이벤트 만들기",
+    create: "훈련 만들기",
     creating: "만드는 중…",
     cancel: "취소",
-    titleError: "이벤트 이름을 입력해 주세요.",
+    titleError: "훈련 제목을 입력해 주세요.",
     youtubeError: "올바른 YouTube 링크를 붙여넣어 주세요.",
     youtubeNotEmbeddable: "이 영상은 Foundry 안에서 재생할 수 없습니다. 다른 YouTube 영상을 선택하세요.",
     youtubeNotFound: "이 YouTube 영상을 찾을 수 없습니다. 링크를 확인해 주세요.",

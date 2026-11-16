@@ -74,6 +74,7 @@ function mockRoom(opts: {
   join?: Behaviour;
   initial?: Record<string, unknown>;
   snapshotAfter?: unknown;
+  readQuiz?: () => Promise<ReturnType<typeof res>>;
 }) {
   const calls: string[] = [];
   let gets = 0;
@@ -87,6 +88,7 @@ function mockRoom(opts: {
     const u = String(url);
     const method = init?.method ?? "GET";
     calls.push(`${method} ${u.replace(/^.*\/public\/[^/]+/, "")}`);
+    if (u.endsWith("/quiz") && opts.readQuiz) return opts.readQuiz();
 
     if (method === "POST" && u.includes("/join")) {
       if (opts.join === "hang") return hang(init);
@@ -131,6 +133,21 @@ async function completeIt() {
     fireEvent.click(screen.getByText("Complete training"));
   });
 }
+
+it("a quiz-backed PDF can recover its quiz without switching to a written response", async () => {
+  const readQuiz = vi.fn(() => Promise.resolve(res({ quiz: { questions: [
+    { id: "q-1", text: "Which answer?", choices: [{ id: "a", label: "First" }, { id: "b", label: "Second" }], position: 1 },
+  ] } }))).mockResolvedValueOnce(res({ error: "unavailable" }, false, 503));
+  const room = mockRoom({ initial: { stage: "response", document: { ...snap().document, completion_prompt: null } }, readQuiz });
+  render(<FoundryDocumentClient token="tok" />);
+
+  const retry = await screen.findByRole("button", { name: "Retry quiz" });
+  expect(screen.queryByRole("button", { name: "Complete training" })).toBeNull();
+  fireEvent.click(retry);
+  expect(await screen.findByRole("group", { name: /Which answer\?/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Submit quiz" })).toBeTruthy();
+  expect(room.calls).not.toContain("POST /doc/complete");
+});
 
 beforeEach(() => {
   emitBeat = null;

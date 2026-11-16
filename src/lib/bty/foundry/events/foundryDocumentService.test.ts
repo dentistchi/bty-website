@@ -456,6 +456,17 @@ describe("reading progress — server-canonical gate", () => {
 });
 
 describe("completion + XP — same canonical path as YouTube", () => {
+  it("quiz-backed PDF requires a quiz attempt to finish", async () => {
+    const { admin, token, session, tables } = await setupJoined(2);
+    tables.foundry_event_document_content[0]!.completion_prompt = null;
+    await meetReadingGate(admin, token, session, 2);
+
+    const result = await completeDocumentTraining(admin, token, session, "A written answer.", AUTH);
+    expect(result).toEqual({ ok: false, reason: "quiz_required" });
+    expect(tables.foundry_event_training_progress[0]).toMatchObject({ completed_at: null, response_text: null });
+    expect(awardSpy).not.toHaveBeenCalled();
+  });
+
   it("anonymous completion → claimable, no XP written", async () => {
     const { admin, token, session, tables } = await setupJoined(2);
     await meetReadingGate(admin, token, session, 2);

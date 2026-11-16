@@ -440,9 +440,9 @@ export function CreateFoundryEventForm({
 
   return (
     <div className="btyFadeIn flex flex-col gap-6">
-      <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
+      <h1 className="text-2xl font-semibold text-white" data-testid="quick-training-heading">
         {t.createEyebrow}
-      </span>
+      </h1>
 
       <div className="flex flex-col gap-2">
         <span className="text-sm text-white/70">{t.chooseActivity}</span>

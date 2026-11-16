@@ -2368,9 +2368,9 @@ export default function BtyDailyAppShell({
             <>
               {/* Learn identity header — a learner can continue/open training without first
                   understanding "Foundry"; Foundry appears only as a quiet secondary attribution. */}
-              <LearnHeader locale={locale} onOpenMyLearning={() => setFoundryView("my-learning")} />
               <FoundryEventRooms
                 locale={locale}
+                header={<LearnHeader locale={locale} onOpenMyLearning={() => setFoundryView("my-learning")} />}
                 onOpenReview={setReviewId}
                 onOpenMyLearning={() => setFoundryView("my-learning")}
                 onOpenEvent={() => setFoundryView("event-create")}
