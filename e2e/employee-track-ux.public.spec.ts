@@ -13,7 +13,7 @@ let html: string;
 let bundle: string;
 
 test.beforeAll(async () => {
-  const sources = ["TrackingSent", "AnnouncementTrackingSummary", "TodaySwipeAction", "SwipeAction", "TrackConversation"]
+  const sources = ["TrackingSent", "AnnouncementTrackingSummary", "TodaySwipeAction", "TrackConversation"]
     .map(name => ({ raw: readFileSync(path.join(root, "src/components/app-shell", name + ".tsx"), "utf8"), extension: "tsx" }));
   const css = await postcss([tailwindcss({ content: sources })]).process("@tailwind base; @tailwind utilities;", { from: undefined });
   html = '<meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#0b1f3a;color:white}'

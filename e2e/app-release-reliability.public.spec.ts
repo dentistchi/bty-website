@@ -31,7 +31,7 @@ const announcement = () => ({
 });
 
 test.beforeAll(async () => {
-  const sources = ["SavedForLater", "TrackingSent", "TodaySwipeAction", "SwipeAction", "TrackConversation", "AnnouncementTrackingSummary"]
+  const sources = ["SavedForLater", "TrackingSent", "TodaySwipeAction", "TrackConversation", "AnnouncementTrackingSummary"]
     .map(name => ({ raw: readFileSync(path.join(root, "src/components/app-shell", name + ".tsx"), "utf8"), extension: "tsx" }));
   const css = await postcss([tailwindcss({ content: sources })]).process("@tailwind base; @tailwind utilities;", { from: undefined });
   html = '<meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#0b1f3a;color:white}'
@@ -64,10 +64,10 @@ test.beforeAll(async () => {
 });
 
 type Reply = { body: unknown; status?: number };
-async function setup(page: Page, options: { view: "saved" | "tracking"; choice?: SavedCapture["triageChoice"]; holdRead: number }) {
+async function setup(page: Page, options: { view: "saved" | "tracking"; saved?: SavedCapture[]; holdRead?: number }) {
   const state = {
     reads: 0, mutations: [] as { path: string; body: unknown }[],
-    failMutation: true, failRead: false, saved: [capture(options.choice ?? null)], tracks: [announcement()],
+    failMutation: true, failRead: false, saved: options.saved ?? [capture(null)], tracks: [announcement()],
     unexpected: [] as string[], errors: [] as string[],
     releaseOld: null as null | ((reply: Reply) => Promise<void>),
   };
@@ -93,15 +93,11 @@ async function setup(page: Page, options: { view: "saved" | "tracking"; choice?:
       if (state.failRead) return json({ ok: false, error: "SYNTHETIC_READ_FAILURE" }, 500);
       return json({ ok: true, items: options.view === "saved" ? state.saved : state.tracks });
     }
-    const allowed = ["/api/bty/action-capture/capture-1/triage", "/api/bty/action-capture/capture-1/remove", "/api/me/today/dismiss"];
+    const allowed = ["/api/bty/action-capture/capture-1/remove", "/api/me/today/dismiss"];
     if (req.method() === "POST" && allowed.includes(pathname)) {
       const body = req.postData() ? req.postDataJSON() : null;
       state.mutations.push({ path: pathname, body });
       if (state.failMutation) return json({ ok: false, error: "SYNTHETIC_WRITE_FAILURE" }, 500);
-      if (pathname.endsWith("/triage")) {
-        state.saved = [{ ...capture(body.choice), triagedAt: "2026-10-31T12:00:00Z" }];
-        return json({ ok: true, capture: state.saved[0] });
-      }
       if (pathname.endsWith("/remove")) state.saved = [];
       else state.tracks = [];
       return json({ ok: true, changed: true });
@@ -145,43 +141,39 @@ for (const width of [320, 390, 1280]) {
   test.describe(width + "px isolated release reliability", () => {
     test.use({ viewport: { width, height: 900 } });
 
-    test("Saved triage rolls back, retries, and survives the earlier mount response", async ({ page }) => {
-      const state = await setup(page, { view: "saved", choice: null, holdRead: 1 });
-      await expect(page.getByTestId("saved-item")).toHaveAttribute("data-triage", "none");
-      expect(state.reads).toBe(2);
-      const endpoint = "/api/bty/action-capture/capture-1/triage";
-      await clickMutation(page, page.getByTestId("saved-triage-later"), endpoint);
-      await expect(page.getByTestId("saved-triage-error")).toHaveText("That didn't save.");
-      await expect(page.getByTestId("saved-item")).toHaveAttribute("data-triage", "none");
-      await expect(page.getByTestId("saved-triage-later")).toBeEnabled();
-      expect(state.saved[0]!.triageChoice).toBeNull();
-      state.failMutation = false;
-      await clickMutation(page, page.getByTestId("saved-triage-later"), endpoint);
-      await expect(page.getByTestId("saved-group-later").getByTestId("saved-item")).toHaveAttribute("data-triage", "later");
-      await releaseOld(page, state, { ok: true, items: [capture(null)] });
-      await expect(page.getByTestId("saved-item")).toHaveCount(1);
-      await expect(page.getByTestId("saved-item")).toHaveAttribute("data-triage", "later");
-      await expect(page.getByTestId("saved-group-new")).toHaveCount(0);
-      await expect(page.getByTestId("saved-triage-controls")).toHaveCount(0);
-      await expect(page.getByTestId("saved-triage-error")).toHaveCount(0);
-      expect(state.mutations).toEqual([{ path: endpoint, body: { choice: "later" } }, { path: endpoint, body: { choice: "later" } }]);
-      expect(state.saved[0]!.triageChoice).toBe("later");
+    test("Saved shows every legacy choice in one list without triage controls or requests", async ({ page }) => {
+      const saved = [
+        { ...capture("later"), id: "capture-latest", previewText: "Latest message", capturedAt: "2026-10-02T00:00:00Z" },
+        { ...capture(null), id: "capture-middle", previewText: "Middle message" },
+        { ...capture("soon"), id: "capture-oldest", previewText: "Oldest message", capturedAt: "2026-09-30T00:00:00Z" },
+      ];
+      const state = await setup(page, { view: "saved", saved });
+      const list = page.getByTestId("saved-list");
+      await expect(list).toHaveCount(1);
+      await expect(list.getByTestId("saved-item")).toHaveText(saved.map(item => new RegExp(item.previewText)));
+      await expect(list.getByTestId("saved-remove")).toHaveCount(3);
+      await expect(page.getByRole("button", { name: /^(Soon|Later)$/ })).toHaveCount(0);
+      await expect(page.getByText(/^(New|Soon|Later)$/)).toHaveCount(0);
+      await settleBrowser(page);
+      expect(state.mutations).toEqual([]);
+      expect(state.saved).toEqual(saved);
       await finish(page, state);
     });
 
     test("Saved removal preserves a failed item, retries, and cannot be undone by an old read", async ({ page }) => {
-      const state = await setup(page, { view: "saved", choice: "soon", holdRead: 1 });
-      await expect(page.getByTestId("saved-item")).toHaveAttribute("data-triage", "soon");
+      const saved = [capture("soon")];
+      const state = await setup(page, { view: "saved", saved, holdRead: 1 });
+      await expect(page.getByTestId("saved-item")).toContainText("Synthetic saved message");
       expect(state.reads).toBe(2);
       const endpoint = "/api/bty/action-capture/capture-1/remove";
       await clickMutation(page, page.getByTestId("saved-remove"), endpoint);
-      await expect(page.getByTestId("saved-triage-error")).toHaveText("Couldn't remove that.");
-      await expect(page.getByTestId("saved-item")).toHaveAttribute("data-triage", "soon");
+      await expect(page.getByTestId("saved-remove-error")).toHaveText("Couldn't remove that.");
+      await expect(page.getByTestId("saved-item")).toContainText("Synthetic saved message");
       expect(state.saved).toHaveLength(1);
       state.failMutation = false;
       await clickMutation(page, page.getByTestId("saved-remove"), endpoint);
       await expect(page.getByTestId("saved-empty")).toHaveText("Nothing saved for later.");
-      await releaseOld(page, state, { ok: true, items: [capture("soon")] });
+      await releaseOld(page, state, { ok: true, items: saved });
       await expect(page.getByTestId("saved-item")).toHaveCount(0);
       await expect(page.getByTestId("saved-empty")).toBeVisible();
       await expect(page.getByTestId("saved-error")).toHaveCount(0);

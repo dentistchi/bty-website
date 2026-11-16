@@ -43,22 +43,20 @@ describe("superseded Saved and Tracking reads", () => {
     expect(screen.queryByTestId("tracking-sent-error")).toBeNull();
   });
 
-  it.each(["triage", "remove"] as const)("an earlier Saved mount read cannot undo a confirmed %s", async operation => {
+  it("an earlier Saved mount read cannot undo a confirmed removal", async () => {
     let resolveOld!: (response: Response) => void;
     let reads = 0;
     vi.stubGlobal("fetch", vi.fn(async (_url: unknown, init?: RequestInit) => {
-      if (init?.method === "POST") return json(operation === "remove" ? { ok: true } : { ok: true, capture: { ...saved, triageChoice: "later" } });
+      if (init?.method === "POST") return json({ ok: true });
       if (++reads === 1) return new Promise<Response>(resolve => { resolveOld = resolve; });
-      return json({ ok: true, items: [{ ...saved, triageChoice: operation === "triage" ? null : "soon" }] });
+      return json({ ok: true, items: [saved] });
     }));
     render(<StrictMode><SavedForLater locale="en" /></StrictMode>);
     await screen.findByTestId("saved-item");
-    fireEvent.click(screen.getByTestId(operation === "remove" ? "saved-remove" : "saved-triage-later"));
-    if (operation === "remove") await screen.findByTestId("saved-empty");
-    else await waitFor(() => expect(screen.getByTestId("saved-item").getAttribute("data-triage")).toBe("later"));
-    await act(async () => { resolveOld(json({ ok: true, items: [{ ...saved, triageChoice: operation === "triage" ? null : "soon" }] })); });
+    fireEvent.click(screen.getByTestId("saved-remove"));
+    await screen.findByTestId("saved-empty");
+    await act(async () => { resolveOld(json({ ok: true, items: [saved] })); });
     expect(reads).toBe(2);
-    if (operation === "remove") expect(screen.queryByTestId("saved-item")).toBeNull();
-    else expect(screen.getByTestId("saved-item").getAttribute("data-triage")).toBe("later");
+    expect(screen.queryByTestId("saved-item")).toBeNull();
   });
 });

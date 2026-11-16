@@ -26,31 +26,16 @@ const item = (over: Partial<SavedCapture> = {}): SavedCapture => ({
   sourceMetadata: { provider: "teams", sender_display: "Ana" },
   status: "captured",
   capturedAt: "2026-08-28T00:00:00Z",
-  // T2: a capture starts undecided, and the fixture default says so.
   triageChoice: null,
   triagedAt: null,
   ...over,
 });
 
-function stubCaptures(items: SavedCapture[] | "error", triage?: { ok: boolean }) {
+function stubCaptures(items: SavedCapture[] | "error") {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
+    vi.fn(async (url: string) => {
       const u = String(url);
-      if (u.includes("/triage")) {
-        if (triage && !triage.ok) return new Response(JSON.stringify({ ok: false, error: "SERVER_ERROR" }), { status: 500 });
-        const choice = JSON.parse(String(init?.body ?? "{}")).choice as string;
-        const id = decodeURIComponent(u.split("/action-capture/")[1].split("/triage")[0]);
-        const base = (items === "error" ? [] : items).find((i) => i.id === id);
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            changed: true,
-            capture: { ...base, id, triageChoice: choice, triagedAt: "2026-09-01T00:00:00Z" },
-          }),
-          { status: 200 },
-        );
-      }
       if (u.includes("/api/bty/action-capture/mine")) {
         if (items === "error") return new Response("{}", { status: 500 });
         return new Response(JSON.stringify({ ok: true, items }), { status: 200 });
@@ -130,6 +115,20 @@ describe("Today → Saved for later — the measured Today focused-view grammar"
 });
 
 describe("Saved for later — the item", () => {
+  it("shows legacy messages by capture date without showing their old choices", async () => {
+    stubCaptures([
+      item({ id: "new", previewText: "Newer than Soon", capturedAt: "2026-11-01T00:00:00Z" }),
+      item({ id: "soon", previewText: "Oldest capture", capturedAt: "2026-08-01T00:00:00Z", triageChoice: "soon" }),
+      item({ id: "later", previewText: "Newest capture", capturedAt: "2026-11-02T00:00:00Z", triageChoice: "later" }),
+    ]);
+    render(<SavedForLater locale="ko" />);
+    const rows = within(await screen.findByTestId("saved-list")).getAllByTestId("saved-item");
+    expect(rows.map((row) => row.querySelector("span")?.textContent)).toEqual([
+      "Newest capture", "Newer than Soon", "Oldest capture",
+    ]);
+    expect(screen.queryByRole("button", { name: /^(Soon|Later|곧|나중에)$/i })).toBeNull();
+  });
+
   it("shows the preview and the Teams context", async () => {
     stubCaptures([item()]);
     render(<SavedForLater locale="en" />);

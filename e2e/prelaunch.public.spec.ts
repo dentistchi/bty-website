@@ -18,7 +18,7 @@ const overdue = () => ({ stableId: "FOLLOW_UP_OVERDUE:event-qa:person-qa", categ
   canRemoveTraining: true, deepLink: "/en/app?tab=learn&eventId=event-qa&section=followup&focusId=person-qa" });
 const savedItem = () => ({ id: "capture-qa", sourceType: "teams_message", previewText: "Synthetic saved message",
   sourceUrl: null, sourceMetadata: { tenant_id: "tenant-qa", conversation_id: "conversation-qa" },
-  status: "captured", capturedAt: "2026-10-01T00:00:00Z", triageChoice: "soon", triagedAt: "2026-10-02T00:00:00Z" });
+  status: "captured", capturedAt: "2026-10-01T00:00:00Z", triageChoice: null, triagedAt: null });
 const track = (kind: "settled" | "question") => {
   const person = { recipientId: "recipient-qa", display: "Synthetic colleague", questionText: kind === "question" ? "Can you clarify?" : null,
     respondedAt: "2026-10-01T00:00:00Z", handledAt: null, unreadCount: 0, messageCount: 0, needsAttention: kind === "question" };
@@ -28,7 +28,7 @@ const track = (kind: "settled" | "question") => {
     responders: { acknowledged: kind === "settled" ? [person] : [], question: kind === "question" ? [person] : [], needHelp: [], noResponse: [] } };
 };
 test.beforeAll(async () => {
-  const sourceFiles = ["TodayHome", "SavedForLater", "TrackingSent", "TrackConversation", "TodaySwipeAction", "SwipeAction", "NeedsYourResponse", "AnnouncementTrackingSummary"]
+  const sourceFiles = ["TodayHome", "SavedForLater", "TrackingSent", "TrackConversation", "TodaySwipeAction", "NeedsYourResponse", "AnnouncementTrackingSummary"]
     .map(name => ({ raw: readFileSync(path.join(root, "src/components/app-shell", name + ".tsx"), "utf8"), extension: "tsx" }));
   const css = await postcss([tailwindcss({ content: sourceFiles })]).process("@tailwind base; @tailwind utilities;", { from: undefined });
   html = '<meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#0b1f3a;color:white}' + css.css + '</style><div id="app"></div>';
@@ -169,13 +169,17 @@ for (const width of [390, 1280]) {
       await expect(page.getByTestId("saved-item")).toContainText("Synthetic saved message");
       await swipeLeft(page.getByTestId("saved-swipe-surface"));
       await page.getByTestId("saved-swipe-action").click();
-      await expect(page.getByTestId("saved-triage-error")).toContainText("Couldn't remove that.");
+      await expect(page.getByTestId("saved-remove-error")).toContainText("Couldn't remove that.");
       await expect(page.getByTestId("saved-item")).toBeVisible();
       expect(state.saved).toHaveLength(1); state.failSaved = false;
       await swipeLeft(page.getByTestId("saved-swipe-surface"));
       await page.getByTestId("saved-swipe-action").click();
       await expect(page.getByTestId("saved-item")).toHaveCount(0);
       expect(state.saved).toEqual([]);
+      expect(state.operations.filter(op => op.method === "POST").map(op => op.path)).toEqual([
+        "/api/bty/action-capture/capture-qa/remove",
+        "/api/bty/action-capture/capture-qa/remove",
+      ]);
       await mount(true);
       await expect(page.getByText("Nothing saved for later.", { exact: true })).toBeVisible();
       await expect(page.getByTestId("saved-item")).toHaveCount(0);

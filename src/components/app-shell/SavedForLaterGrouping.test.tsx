@@ -35,38 +35,34 @@ const item = (id: string, meta: Record<string, unknown>, over: Partial<SavedCapt
   ...over,
 });
 
-function stub(items: SavedCapture[], triage: { ok: boolean } = { ok: true }) {
-  const calls: { id: string; choice: string }[] = [];
+function stub(items: SavedCapture[], remove: { ok: boolean } = { ok: true }) {
+  const calls: string[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
-      if (u.includes("/triage")) {
-        const choice = JSON.parse(String(init?.body ?? "{}")).choice as string;
-        const id = decodeURIComponent(u.split("/action-capture/")[1].split("/triage")[0]);
-        calls.push({ id, choice });
-        if (!triage.ok) return new Response(JSON.stringify({ ok: false }), { status: 500 });
-        const base = items.find((i) => i.id === id)!;
+      if (u.includes("/api/bty/action-capture/mine")) return new Response(JSON.stringify({ ok: true, items }), { status: 200 });
+      if (init?.method === "POST") {
+        calls.push(u);
         return new Response(
-          JSON.stringify({ ok: true, changed: true, capture: { ...base, triageChoice: choice, triagedAt: "2026-09-01T00:00:00Z" } }),
-          { status: 200 },
+          JSON.stringify({ ok: remove.ok }),
+          { status: remove.ok ? 200 : 500 },
         );
       }
-      if (u.includes("/api/bty/action-capture/mine")) return new Response(JSON.stringify({ ok: true, items }), { status: 200 });
-      return new Response("{}", { status: 200 });
+      throw new Error(`Unexpected Saved request: ${u}`);
     }),
   );
   return calls;
 }
 
-async function renderReady(items: SavedCapture[], triage?: { ok: boolean }) {
-  const calls = stub(items, triage);
+async function renderReady(items: SavedCapture[], remove?: { ok: boolean }) {
+  const calls = stub(items, remove);
   render(<SavedForLater locale="en" />);
   await screen.findByTestId("saved-list");
   return calls;
 }
 
-const lane = (k: "new" | "soon" | "later") => screen.getByTestId(`saved-group-${k}`);
+const messages = () => within(screen.getByTestId("saved-conversation-messages"));
 
 describe("9+10+11. one message passes through; two or more collapse", () => {
   it("9. a conversation with ONE saved message renders the plain card, with no group chrome", async () => {
@@ -97,11 +93,9 @@ describe("9+10+11. one message passes through; two or more collapse", () => {
     expect(screen.getByTestId("saved-conversation-count").textContent).toBe("3 saved messages");
   });
 
-  it("13. a collapsed group offers NO triage control — there is no bulk decision", async () => {
+  it("a collapsed group has no bulk removal control", async () => {
     await renderReady([item("a", CONV_A), item("b", CONV_A)]);
-    expect(screen.queryByTestId("saved-triage-controls")).toBeNull();
-    expect(screen.queryByTestId("saved-triage-soon")).toBeNull();
-    expect(screen.queryByTestId("saved-triage-later")).toBeNull();
+    expect(screen.queryByTestId("saved-remove")).toBeNull();
   });
 });
 
@@ -110,17 +104,16 @@ describe("14+15+16. expanding reaches the individual messages", () => {
     await renderReady([item("a", CONV_A), item("b", CONV_A), item("c", CONV_A)]);
     fireEvent.click(screen.getByTestId("saved-conversation-header"));
 
-    const rows = within(screen.getByTestId("saved-conversation-messages")).getAllByTestId("saved-item");
+    const rows = messages().getAllByTestId("saved-item");
     expect(rows).toHaveLength(3);
     for (const row of rows) {
-      expect(within(row).getByTestId("saved-triage-soon")).toBeTruthy();
-      expect(within(row).getByTestId("saved-triage-later")).toBeTruthy();
+      expect(within(row).getByTestId("saved-remove")).toBeTruthy();
     }
     // 16. message-specific links, never one ambiguous group link.
     // The open control is a button now (see SavedForLater.test.tsx), so the destination is read
     // from `data-source-url` instead of `href`. The assertion is unchanged in substance: three
     // message-specific destinations, never one ambiguous group link.
-    const hrefs = within(screen.getByTestId("saved-conversation-messages"))
+    const hrefs = messages()
       .getAllByTestId("saved-open")
       .map((a) => a.getAttribute("data-source-url"));
     expect(new Set(hrefs).size).toBe(3);
@@ -147,12 +140,12 @@ describe("17+18. what must never be merged", () => {
     expect(convs).toHaveLength(1); // only the 1:1 pair grouped
     expect(convs[0].getAttribute("data-count")).toBe("2");
     // The channel post is its own plain card, still visible and still individually actionable.
-    const solo = within(lane("new")).getAllByTestId("saved-item");
+    const solo = within(screen.getByTestId("saved-list")).getAllByTestId("saved-item");
     expect(solo).toHaveLength(1);
     expect(within(solo[0]).getByTestId("saved-open").getAttribute("data-source-url")).toContain("/channel");
   });
 
-  it("17. two different conversations never merge, even in the same lane", async () => {
+  it("two different conversations stay in separate groups", async () => {
     await renderReady([item("a", CONV_A), item("b", CONV_A), item("c", CONV_B), item("d", CONV_B)]);
     const convs = screen.getAllByTestId("saved-conversation");
     expect(convs).toHaveLength(2);
@@ -160,62 +153,42 @@ describe("17+18. what must never be merged", () => {
   });
 });
 
-describe("19+20+21. lanes keep their meaning", () => {
-  it("21. a conversation spanning lanes groups only WITHIN each lane", async () => {
-    await renderReady([
-      item("n1", CONV_A),
-      item("n2", CONV_A),
-      item("s1", CONV_A, { triageChoice: "soon", triagedAt: "2026-09-01T00:00:00Z" }),
-      item("l1", CONV_A, { triageChoice: "later", triagedAt: "2026-09-01T00:00:00Z" }),
-    ]);
-    // New: the two undecided ones grouped. Soon and Later: one message each → plain cards.
-    expect(within(lane("new")).getByTestId("saved-conversation").getAttribute("data-count")).toBe("2");
-    expect(within(lane("soon")).queryByTestId("saved-conversation")).toBeNull();
-    expect(within(lane("soon")).getAllByTestId("saved-item")).toHaveLength(1);
-    expect(within(lane("later")).getAllByTestId("saved-item")).toHaveLength(1);
-    // No cross-lane super-group.
-    expect(screen.getAllByTestId("saved-conversation")).toHaveLength(1);
-  });
+describe("removing individual messages from the combined group", () => {
+  const mixed = [
+    item("a", CONV_A),
+    item("b", CONV_A, { triageChoice: "soon", triagedAt: "2026-09-01T00:00:00Z" }),
+    item("c", CONV_A, { triageChoice: "later", triagedAt: "2026-09-01T00:00:00Z" }),
+  ];
 
-  it("19+20. empty lanes stay hidden and single triaged cards render unchanged", async () => {
-    await renderReady([item("s1", CONV_A, { triageChoice: "soon", triagedAt: "2026-09-01T00:00:00Z" })]);
-    expect(screen.queryByTestId("saved-group-new")).toBeNull();
-    expect(screen.queryByTestId("saved-group-later")).toBeNull();
-    const card = within(lane("soon")).getByTestId("saved-item");
-    expect(card.getAttribute("data-triage")).toBe("soon");
-    expect(within(card).queryByTestId("saved-triage-controls")).toBeNull();
-  });
-});
-
-describe("22+23+24. triaging from inside a group", () => {
-  it("moves ONLY that message; the other two stay grouped under New", async () => {
-    const calls = await renderReady([item("a", CONV_A), item("b", CONV_A), item("c", CONV_A)]);
+  it("keeps all legacy choices in one group and removes only the chosen message", async () => {
+    const calls = await renderReady(mixed);
+    expect(screen.getByTestId("saved-conversation").getAttribute("data-count")).toBe("3");
     fireEvent.click(screen.getByTestId("saved-conversation-header"));
+    expect(messages().getAllByTestId("saved-item")).toHaveLength(3);
+    expect(screen.queryByTestId("saved-triage-controls")).toBeNull();
+    for (const key of ["new", "soon", "later"]) {
+      expect(screen.queryByTestId(`saved-group-${key}`)).toBeNull();
+    }
 
-    const rows = within(screen.getByTestId("saved-conversation-messages")).getAllByTestId("saved-item");
-    fireEvent.click(within(rows[0]).getByTestId("saved-triage-soon"));
-
-    await waitFor(() => expect(screen.getByTestId("saved-group-soon")).toBeTruthy());
-    // Exactly one write, for exactly one message — no bulk side effect.
-    expect(calls).toEqual([{ id: "a", choice: "soon" }]);
-    // 23. the remaining two are still a group of 2 in New.
-    expect(within(lane("new")).getByTestId("saved-conversation").getAttribute("data-count")).toBe("2");
-    // The moved one is a plain card in Soon, because it is alone there.
-    expect(within(lane("soon")).getAllByTestId("saved-item")).toHaveLength(1);
-    expect(within(lane("soon")).queryByTestId("saved-conversation")).toBeNull();
+    const target = messages().getAllByTestId("saved-item").find((row) => within(row).queryByText("preview b"))!;
+    fireEvent.click(within(target).getByTestId("saved-remove"));
+    await waitFor(() => expect(calls).toEqual(["/api/bty/action-capture/b/remove"]));
+    expect(screen.getByTestId("saved-conversation").getAttribute("data-count")).toBe("2");
+    expect(messages().getByText("preview a")).toBeTruthy();
+    expect(messages().queryByText("preview b")).toBeNull();
+    expect(messages().getByText("preview c")).toBeTruthy();
   });
 
-  it("24. a failed decision restores the original grouping exactly", async () => {
-    await renderReady([item("a", CONV_A), item("b", CONV_A), item("c", CONV_A)], { ok: false });
+  it("restores the group if the removal fails", async () => {
+    const calls = await renderReady(mixed, { ok: false });
     fireEvent.click(screen.getByTestId("saved-conversation-header"));
-    const rows = within(screen.getByTestId("saved-conversation-messages")).getAllByTestId("saved-item");
+    const target = messages().getAllByTestId("saved-item").find((row) => within(row).queryByText("preview a"))!;
+    fireEvent.click(within(target).getByTestId("saved-remove"));
 
-    fireEvent.click(within(rows[0]).getByTestId("saved-triage-soon"));
-
-    await screen.findByTestId("saved-triage-error");
-    expect(screen.queryByTestId("saved-group-soon")).toBeNull();
-    expect(within(lane("new")).getByTestId("saved-conversation").getAttribute("data-count")).toBe("3");
-    expect(within(screen.getByTestId("saved-conversation-messages")).getAllByTestId("saved-item")).toHaveLength(3);
+    await screen.findByTestId("saved-remove-error");
+    expect(calls).toEqual(["/api/bty/action-capture/a/remove"]);
+    expect(screen.getByTestId("saved-conversation").getAttribute("data-count")).toBe("3");
+    expect(messages().getAllByTestId("saved-item")).toHaveLength(3);
   });
 });
 
