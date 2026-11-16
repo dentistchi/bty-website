@@ -115,8 +115,8 @@ function CaptureCard({
         own contentUrl — which is the "BTY couldn't open yet." the person saw. The destination is
         unchanged and still the stored URL, verbatim; only who is asked to open it changed.
       */}
-      {it.sourceUrl ? (
-        <>
+      <div className="mt-1 flex flex-wrap items-center gap-x-4">
+        {it.sourceUrl ? (
           <button
             type="button"
             data-testid="saved-open"
@@ -130,31 +130,36 @@ function CaptureCard({
               setOpenFailed(false);
               void openSourceLink(it.sourceUrl).then((ok) => setOpenFailed(!ok));
             }}
-            className="mt-1 min-h-[44px] self-start text-left text-[0.78rem] font-medium text-white/70 hover:text-white/95"
+            className="min-h-[44px] text-left text-[0.78rem] font-medium text-white/70 hover:text-white/95"
           >
             {t.open}
           </button>
-          {/*
-            The person stays exactly where they were. No bootstrap screen, no "Open BTY" — they are
-            already inside BTY — and the saved message stays on screen behind this line.
-          */}
-          {openFailed ? (
-            <span className="text-[0.78rem] text-white/60" data-testid="saved-open-failed">
-              {t.openFailed}{" "}
-              <button
-                type="button"
-                data-testid="saved-open-retry"
-                onClick={() => {
-                  setOpenFailed(false);
-                  void openSourceLink(it.sourceUrl).then((ok) => setOpenFailed(!ok));
-                }}
-                className="min-h-[44px] font-medium text-white/80 underline hover:text-white"
-              >
-                {t.openRetry}
-              </button>
-            </span>
-          ) : null}
-        </>
+        ) : null}
+        <button
+          type="button"
+          data-testid="saved-remove"
+          disabled={pendingId === it.id}
+          onClick={() => remove(it.id)}
+          className="sr-only rounded-md text-left text-[0.78rem] font-medium text-white/70 hover:text-white/95 hover:underline focus:not-sr-only focus:min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E5B769] disabled:opacity-50 [@media(any-pointer:fine)]:not-sr-only [@media(any-pointer:fine)]:min-h-11"
+        >
+          {t.remove}
+        </button>
+      </div>
+      {it.sourceUrl && openFailed ? (
+        <span className="text-[0.78rem] text-white/60" data-testid="saved-open-failed">
+          {t.openFailed}{" "}
+          <button
+            type="button"
+            data-testid="saved-open-retry"
+            onClick={() => {
+              setOpenFailed(false);
+              void openSourceLink(it.sourceUrl).then((ok) => setOpenFailed(!ok));
+            }}
+            className="min-h-[44px] font-medium text-white/80 underline hover:text-white"
+          >
+            {t.openRetry}
+          </button>
+        </span>
       ) : null}
 
       {failedId === it.id ? (
@@ -175,15 +180,6 @@ function CaptureCard({
         testIdPrefix="saved"
       >
         {body}
-        <button
-          type="button"
-          data-testid="saved-remove"
-          disabled={pendingId === it.id}
-          onClick={() => remove(it.id)}
-          className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
-        >
-          {t.remove}
-        </button>
       </TodaySwipeAction>
     </li>
   );
