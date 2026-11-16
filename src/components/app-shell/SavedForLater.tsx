@@ -1,51 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TriageChoice, TriageState } from "@/domain/action-capture/triage";
+import type { TriageState } from "@/domain/action-capture/triage";
 import { groupByConversation } from "@/domain/action-capture/conversationGroup";
-import SwipeAction from "@/components/app-shell/SwipeAction";
 import TodaySwipeAction from "@/components/app-shell/TodaySwipeAction";
 import { openSourceLink } from "@/lib/bty/teams/openSourceLink";
 
 /**
- * Today → Saved for later (Slice R1B-C2, relocated in R1B-C2-R1, triage added in T2).
- *
- * PROJECTED INTO TODAY, NOT CONVERTED INTO AN OBLIGATION. Today is where the person returns for
- * what matters now, and what they chose not to lose belongs there — but as its OWN lane. This
- * surface is deliberately not reachable from, merged into, or counted by "Don't miss today",
- * Apply this week, actionStatus, reminders or any overdue logic. Committed != Saved.
- *
- * The things the user chose not to lose. NOT a task list: there is no due date, no overdue state,
- * no priority, no checkbox, no completion affordance, no XP, no Arena/Host/verification/learning
- * language anywhere in this file. Saved != Promised — a row here has made no claim on the person,
- * and the surface must never imply one.
- *
- * WHAT T2.1 ADDS. Several messages saved from ONE Teams conversation collapse into one compact
- * card inside their lane, because three stacked full-size cards from the same chat read as three
- * problems when they are one. Grouping is VISUAL ONLY: triage stays message-level, a group has no
- * decision of its own, and there are deliberately no bulk controls — with no undo in V1, one tap
- * must never decide for messages the person has not read. A conversation with one saved message
- * renders exactly as it did before, with no group chrome at all.
- *
- * Grouping happens AFTER the lane split, never across it, so a conversation whose messages hold
- * different decisions simply appears in each lane it has messages in. The key is computed by a
- * pure domain function from tenant + conversation id and is opaque; sender is display material
- * only, and grouping by it would merge a private-channel post into a 1:1 chat — measured on live
- * data, not imagined.
- *
- * WHAT T2 ADDS, AND WHAT IT REFUSES TO ADD. One decision per saved item: Soon or Later. Both are
- * VISIBLE BUTTONS, because a hidden gesture must never be the only way to do a required thing —
- * there is no swipe in V1. Choosing moves the card into that group and the controls go away; there
- * is no Done, no Clear, no Dismiss, no Delete, no undo and no count, because none of those is a
- * promise this object makes. `soon` is a position in this list. It is not a deadline, it never
- * reaches Today's obligations, and it never becomes an Action Contract.
- *
- * Data comes from the canonical owner-scoped read (`GET /api/bty/action-capture/mine`), which
- * returns `status='captured'` only, ALREADY ORDERED (undecided → soon → later). This component
- * renders that order; it does not compute it.
- *
- * Nothing here is synthesized from metadata. When a message has no preview, the row says so
- * plainly rather than inventing a task title out of ids.
+ * Saved Teams messages are a personal list. Grouping by conversation is visual only.
+ * Each message retains its own source link and can be removed individually.
  */
 
 type Locale = "en" | "ko";
@@ -74,13 +37,7 @@ const COPY: Record<Locale, {
   openFailed: string;
   openRetry: string;
   teams: string;
-  groupNew: string;
-  groupSoon: string;
-  groupLater: string;
   savedCount: (n: number) => string;
-  soon: string;
-  later: string;
-  notSaved: string;
   remove: string;
   removeFailed: string;
 }> = {
@@ -103,17 +60,7 @@ const COPY: Record<Locale, {
     // this lane already says "Reload" rather than the obvious word.
     openRetry: "Open again",
     teams: "Teams",
-    // Group headings name a PLACE, never a status or a workflow stage.
-    groupNew: "New",
-    groupSoon: "Soon",
-    groupLater: "Later",
-    // Says how much is here, never how much is left to do. Only ever shown on a group of 2+.
     savedCount: (n) => `${n} saved messages`,
-    soon: "Soon",
-    later: "Later",
-    // The card has already moved back to where it was; the controls are visible again, so the
-    // recovery is simply to press one. No dialog, and nothing lost.
-    notSaved: "That didn't save.",
   },
   ko: {
     title: "나중에 보기",
@@ -129,69 +76,31 @@ const COPY: Record<Locale, {
     openFailed: "이 메시지를 Teams에서 열지 못했습니다.",
     openRetry: "다시 열기",
     teams: "Teams",
-    groupNew: "새로 담은 것",
-    groupSoon: "곧",
-    groupLater: "나중에",
     savedCount: (n) => `저장한 메시지 ${n}개`,
-    soon: "곧",
-    later: "나중에",
-    notSaved: "저장되지 않았습니다.",
   },
 };
 
-/**
- * One saved message.
- *
- * MODULE-LEVEL ON PURPOSE. Declared inside `SavedForLater` this was a new component type on
- * every parent render, so React remounted every row whenever anything changed — losing an
- * in-progress swipe and any transient row state with it. The SAME card whether it stands alone or sits inside an expanded
- * conversation — a message does not become a different thing because it has neighbours.
- */
 function CaptureCard({
-it,
-t,
-pendingId,
-failedId,
-choose,
-remove,
-swipeOpenId,
-setSwipeOpenId,
+  it,
+  t,
+  pendingId,
+  failedId,
+  remove,
+  swipeOpenId,
+  setSwipeOpenId,
 }: {
-it: SavedCapture;
-t: (typeof COPY)[Locale];
-pendingId: string | null;
-failedId: string | null;
-choose: (id: string, choice: TriageChoice) => void;
-/** ★ DECIDED ROWS ONLY. Undecided rows keep their existing swipe and are never given this. */
-remove: (id: string) => void;
-swipeOpenId: string | null;
-setSwipeOpenId: (id: string | null) => void;
+  it: SavedCapture;
+  t: (typeof COPY)[Locale];
+  pendingId: string | null;
+  failedId: string | null;
+  remove: (id: string) => void;
+  swipeOpenId: string | null;
+  setSwipeOpenId: (id: string | null) => void;
 }) {
-  /** Local to this row: one card failing to open must not disturb any other. */
   const [openFailed, setOpenFailed] = useState(false);
 
-  const undecided = it.triageChoice === null;
-  const surface =
-    "flex flex-col gap-1 rounded-xl border px-4 py-3 " +
-    // Soon reads a little more present; Later stays quiet. Neither is urgent, and neither is
-    // ever red — nothing here is late, because nothing is owed.
-    (it.triageChoice === "soon"
-      ? "border-[#C9A66B]/25 bg-[#C9A66B]/[0.04]"
-      : "border-white/[0.08] bg-white/[0.02]");
-
-  /* Swipe IS the decision now — it calls the identical `choose` the visible buttons below call,
-     so there is one mutation path, one optimistic update and one rollback. What used to sit here
-     was a tray holding a second copy of those same two buttons; the gesture reached the same
-     place by a longer road, and parked the card open on the way. */
-  const swipeOutcome = (choice: TriageChoice, label: string) => ({
-    label,
-    onCommit: () => void choose(it.id, choice),
-    // Reuses the tone the card already gives this choice. No new colour is introduced.
-    className: choice === "soon" ? "bg-[#C9A66B]/20 text-[#E5B769]" : "bg-white/[0.06] text-white/75",
-  });
-
   const body = (
-    <div className={surface}>
+    <div className="flex flex-col gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
       <span className="text-[0.95rem] text-white/85">{previewOf(it, t)}</span>
       <span className="text-[0.78rem] text-white/55" data-testid="saved-context">
         {contextLine(t, it.sourceMetadata ?? {})}
@@ -227,8 +136,7 @@ setSwipeOpenId: (id: string | null) => void;
           </button>
           {/*
             The person stays exactly where they were. No bootstrap screen, no "Open BTY" — they are
-            already inside BTY — and the saved item, its group and its decision controls are all
-            still on screen behind this line.
+            already inside BTY — and the saved message stays on screen behind this line.
           */}
           {openFailed ? (
             <span className="text-[0.78rem] text-white/60" data-testid="saved-open-failed">
@@ -249,104 +157,34 @@ setSwipeOpenId: (id: string | null) => void;
         </>
       ) : null}
 
-      {/* The one decision, and only while it is still open. Two plain buttons, sized for a thumb,
-          no icon to decode and no gesture to discover. Message-level, always — never on a group. */}
-      {undecided ? (
-        <div className="mt-2 flex gap-2" data-testid="saved-triage-controls">
-          {(
-            [
-              ["soon", t.soon] as const,
-              ["later", t.later] as const,
-            ] satisfies readonly (readonly [TriageChoice, string])[]
-          ).map(([choice, label]) => (
-            <button
-              key={choice}
-              type="button"
-              data-testid={`saved-triage-${choice}`}
-              disabled={pendingId !== null}
-              onClick={() => void choose(it.id, choice)}
-              className={
-                "min-h-[2.75rem] flex-1 rounded-xl border px-4 text-[0.85rem] font-medium transition-colors disabled:opacity-50 " +
-                (choice === "soon"
-                  ? "border-[#C9A66B]/45 bg-[#C9A66B]/10 text-[#E5B769]"
-                  : "border-white/[0.12] bg-white/[0.03] text-white/70")
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {failedId === it.id ? (
-        <p className="mt-1 text-[0.75rem] text-white/60" role="status" data-testid="saved-triage-error">
-          {/*
-            ★ SAY WHICH THING FAILED. The two mutations are mutually exclusive per row — an
-            undecided row can only triage, a decided one can only be removed — so the row's own
-            state is enough to tell them apart without a second piece of state. "That didn't save"
-            after somebody pressed Remove would be a true sentence about the wrong action.
-          */}
-          {undecided ? t.notSaved : t.removeFailed}
+        <p className="mt-1 text-[0.75rem] text-white/60" role="status" data-testid="saved-remove-error">
+          {t.removeFailed}
         </p>
       ) : null}
     </div>
   );
 
-  /*
-    ★ TWO GRAMMARS IN ONE LIST, AND THE DIFFERENCE IS THE POINT.
-
-    UNDECIDED — swipe COMMITS on release, left Soon / right Later. Untouched here. Classification is
-    reversible by looking at the list, the visible buttons sit right there, and a tray was
-    deliberately removed from this row once already ("the gesture reached the same place by a longer
-    road, and parked the card open on the way").
-
-    DECIDED — swipe LEFT only, and it REVEALS. Removal leaves the queue, so it asks for a second,
-    deliberate tap rather than firing off a flick. Same physics, same thresholds, same clamp as
-    Today: `TodaySwipeAction` is reused rather than reimplemented, with only its test hooks renamed.
-
-    A decided row had NO gesture at all before this, so nothing was taken away to make room.
-  */
-  if (!undecided) {
-    return (
-      <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
-        <TodaySwipeAction
-          action={{ label: t.remove, tone: "destructive", onCommit: () => remove(it.id) }}
-          open={swipeOpenId === it.id}
-          onOpenChange={(o: boolean) => setSwipeOpenId(o ? it.id : null)}
-          busy={pendingId === it.id}
-          testIdPrefix="saved"
-        >
-          {body}
-          {/*
-            ★ REACHABLE, BUT NOT PRESENT AT REST. The same pattern this shell already uses on Today:
-            an always-visible Remove would turn tidying into standing furniture, and the tray is the
-            intended surface — but a hidden gesture must never be the ONLY way to do a thing.
-            `sr-only` keeps it in the accessibility tree and in tab order; `focus:not-sr-only` brings
-            it into view the moment it is focused, so a keyboard user can see what they will press.
-          */}
-          <button
-            type="button"
-            data-testid="saved-remove"
-            disabled={pendingId === it.id}
-            onClick={() => remove(it.id)}
-            className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
-          >
-            {t.remove}
-          </button>
-        </TodaySwipeAction>
-      </li>
-    );
-  }
-
   return (
-    <li data-testid="saved-item" data-triage={it.triageChoice ?? "none"}>
-      <SwipeAction
-        enabled={undecided}
-        left={swipeOutcome("soon", t.soon)}
-        right={swipeOutcome("later", t.later)}
+    <li data-testid="saved-item">
+      <TodaySwipeAction
+        action={{ label: t.remove, tone: "destructive", onCommit: () => remove(it.id) }}
+        open={swipeOpenId === it.id}
+        onOpenChange={(open) => setSwipeOpenId(open ? it.id : null)}
+        busy={pendingId === it.id}
+        testIdPrefix="saved"
       >
         {body}
-      </SwipeAction>
+        <button
+          type="button"
+          data-testid="saved-remove"
+          disabled={pendingId === it.id}
+          onClick={() => remove(it.id)}
+          className="sr-only focus:not-sr-only focus:absolute focus:right-3 focus:z-10 focus:inline-flex focus:min-h-[2.75rem] focus:items-center focus:rounded-lg focus:bg-[#B3261E] focus:px-3 focus:text-[0.78rem] focus:font-semibold focus:text-white disabled:opacity-50"
+        >
+          {t.remove}
+        </button>
+      </TodaySwipeAction>
     </li>
   );
 }
@@ -367,10 +205,9 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
   const t = COPY[loc];
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [items, setItems] = useState<SavedCapture[]>([]);
-  /** Which card's decision failed to save. Scoped to one row — never a screen-level error. */
   const [failedId, setFailedId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  // An earlier lifecycle read must not undo a decision made after the current read.
+  // Ignore superseded reads, including a response after the list was closed.
   const readGeneration = useRef(0);
   /** ONE ROW OPEN AT A TIME, owned here: there is only one slot to be open in. */
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
@@ -394,7 +231,10 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
       const d = (await res.json()) as { ok?: boolean; items?: SavedCapture[] };
       if (generation !== readGeneration.current) return false;
       if (d?.ok !== true || !Array.isArray(d.items)) return false;
-      setItems(d.items);
+      // The API's legacy triage order does not apply to this single list.
+      setItems([...d.items].sort((a, b) =>
+        (b.capturedAt ?? "").localeCompare(a.capturedAt ?? "") || a.id.localeCompare(b.id),
+      ));
       return true;
     } catch {
       return false;
@@ -412,64 +252,10 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     };
   }, [load]);
 
-  /**
-   * Move the card immediately, then confirm with the server.
-   *
-   * OPTIMISTIC, BUT NEVER LOSSY. On failure the previous list is restored exactly as it was — the
-   * card returns to where it sat, with its controls, and says so quietly. A saved thing must not
-   * be able to disappear because a request failed.
-   */
-  const choose = useCallback(
-    async (id: string, choice: TriageChoice) => {
-      if (pendingId) return; // one decision at a time; a second tap is not a second decision
-      const previous = items;
-      setFailedId(null);
-      setPendingId(id);
-      setItems((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, triageChoice: choice, triagedAt: new Date().toISOString() } : it)),
-      );
-      try {
-        const res = await fetch(`/api/bty/action-capture/${encodeURIComponent(id)}/triage`, {
-          method: "POST",
-          credentials: "include",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ choice }),
-        });
-        const d = (await res.json().catch(() => null)) as { ok?: boolean; capture?: SavedCapture } | null;
-        if (!res.ok || d?.ok !== true || !d.capture) {
-          setItems(previous);
-          setFailedId(id);
-          return;
-        }
-        // Adopt the server's row so the rendered state is the stored state, not our guess.
-        const saved = d.capture;
-        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...saved } : it)));
-      } catch {
-        setItems(previous);
-        setFailedId(id);
-      } finally {
-        setPendingId(null);
-      }
-    },
-    [items, pendingId],
-  );
-
-  /**
-   * ★ REMOVE THIS FROM MY QUEUE — the same optimistic-but-never-lossy shape as `choose`.
-   *
-   * On failure the previous list is restored EXACTLY, so a saved thing cannot disappear because a
-   * request failed. That matters more here than for triage: a wrong triage is visible and
-   * reversible by looking, whereas a card that silently vanished looks exactly like one somebody
-   * removed on purpose.
-   *
-   * It is NOT deletion. The server writes `saved_removed_at` plus the two triage columns and
-   * nothing else; the capture, its permalink and any Track that references it are untouched, and an
-   * explicit Save to BTY on the same source brings this same row back.
-   */
+  // Remove is optimistic; restore the same message if the request fails.
   const removeFromSaved = useCallback(
     async (id: string) => {
-      if (pendingId) return; // one mutation at a time, exactly as triage
+      if (pendingId) return;
       const previous = items;
       setFailedId(null);
       setPendingId(id);
@@ -496,14 +282,6 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
     },
     [items, pendingId],
   );
-
-  const lanes: { key: "new" | "soon" | "later"; heading: string; rows: SavedCapture[] }[] = [
-    { key: "new", heading: t.groupNew, rows: items.filter((i) => i.triageChoice === null) },
-    { key: "soon", heading: t.groupSoon, rows: items.filter((i) => i.triageChoice === "soon") },
-    { key: "later", heading: t.groupLater, rows: items.filter((i) => i.triageChoice === "later") },
-  ];
-
-
 
   return (
     <section className="flex flex-col gap-3" data-testid="saved-view">
@@ -542,84 +320,64 @@ export default function SavedForLater({ locale, onBack }: { locale: string; onBa
       ) : items.length === 0 ? (
         <p className="text-sm text-white/55" role="status" data-testid="saved-empty">{t.empty}</p>
       ) : (
-        <div className="flex flex-col gap-5" data-testid="saved-list">
-          {lanes.map((lane) =>
-            // An empty lane is not a place yet, so it is not drawn. No zero, no badge, no count.
-            lane.rows.length === 0 ? null : (
-              <div key={lane.key} className="flex flex-col gap-2" data-testid={`saved-group-${lane.key}`}>
-                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/50">
-                  {lane.heading}
-                </span>
-                <ul className="flex flex-col gap-2">
-                  {/* Grouped AFTER the lane split, never across it (T2.1). A conversation with one
-                      saved message in this lane passes straight through as the card it always was. */}
-                  {groupByConversation(lane.rows).map((conv) =>
-                    conv.count === 1 ? (
+        <ul className="flex flex-col gap-2" data-testid="saved-list">
+          {groupByConversation(items).map((conv) =>
+            conv.count === 1 ? (
+              <CaptureCard
+                key={conv.captures[0].id}
+                it={conv.captures[0]}
+                t={t}
+                pendingId={pendingId}
+                failedId={failedId}
+                remove={removeFromSaved}
+                swipeOpenId={swipeOpenId}
+                setSwipeOpenId={setSwipeOpenId}
+              />
+            ) : (
+              <li key={conv.key} data-testid="saved-conversation" data-count={conv.count}>
+                <button
+                  type="button"
+                  data-testid="saved-conversation-header"
+                  aria-expanded={expanded.has(conv.key)}
+                  onClick={() => toggle(conv.key)}
+                  className="flex w-full flex-col gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="text-[0.78rem] text-white/55">
+                      {contextLine(t, conv.latestCapture.sourceMetadata ?? {})}
+                    </span>
+                    <span className="shrink-0 text-[0.72rem] text-white/50" data-testid="saved-conversation-count">
+                      {t.savedCount(conv.count)}
+                    </span>
+                  </span>
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture, t)}</span>
+                    <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/50">
+                      {expanded.has(conv.key) ? "▾" : "▸"}
+                    </span>
+                  </span>
+                </button>
+
+                {expanded.has(conv.key) ? (
+                  <ul className="mt-2 flex flex-col gap-2 pl-3" data-testid="saved-conversation-messages">
+                    {conv.captures.map((it) => (
                       <CaptureCard
-                        key={conv.captures[0].id}
-                        it={conv.captures[0]}
+                        key={it.id}
+                        it={it}
                         t={t}
                         pendingId={pendingId}
                         failedId={failedId}
-                        choose={choose}
                         remove={removeFromSaved}
                         swipeOpenId={swipeOpenId}
                         setSwipeOpenId={setSwipeOpenId}
                       />
-                    ) : (
-                      <li key={conv.key} data-testid="saved-conversation" data-count={conv.count}>
-                        <button
-                          type="button"
-                          data-testid="saved-conversation-header"
-                          aria-expanded={expanded.has(conv.key)}
-                          onClick={() => toggle(conv.key)}
-                          className="flex w-full flex-col gap-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left"
-                        >
-                          <span className="flex items-center justify-between gap-3">
-                            <span className="text-[0.78rem] text-white/55">
-                              {contextLine(t, conv.latestCapture.sourceMetadata ?? {})}
-                            </span>
-                            {/* Quiet, and a statement of fact — how much is here, never how much
-                                is left to do. Never rendered on Today. */}
-                            <span className="shrink-0 text-[0.72rem] text-white/50" data-testid="saved-conversation-count">
-                              {t.savedCount(conv.count)}
-                            </span>
-                          </span>
-                          <span className="flex items-start justify-between gap-3">
-                            <span className="text-[0.95rem] text-white/85">{previewOf(conv.latestCapture, t)}</span>
-                            <span aria-hidden className="mt-0.5 shrink-0 text-[0.7rem] text-white/50">
-                              {expanded.has(conv.key) ? "▾" : "▸"}
-                            </span>
-                          </span>
-                        </button>
-
-                        {/* Expanded: every saved message, individually addressable — its own source
-                            link and its own decision. The GROUP never offers Soon/Later. */}
-                        {expanded.has(conv.key) ? (
-                          <ul className="mt-2 flex flex-col gap-2 pl-3" data-testid="saved-conversation-messages">
-                            {conv.captures.map((it) => (
-                              <CaptureCard
-                                key={it.id}
-                                it={it}
-                                t={t}
-                                pendingId={pendingId}
-                                failedId={failedId}
-                                choose={choose}
-                                remove={removeFromSaved}
-                                swipeOpenId={swipeOpenId}
-                                setSwipeOpenId={setSwipeOpenId}
-                              />
-                            ))}
-                          </ul>
-                        ) : null}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
             ),
           )}
-        </div>
+        </ul>
       )}
     </section>
   );

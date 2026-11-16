@@ -1,24 +1,12 @@
 /** @vitest-environment jsdom */
 /**
- * ★ SWIPE LEFT ON A DECIDED ITEM → REVEAL → TAP → REMOVE FROM MY QUEUE.
- *
- * "Remove" here means clear my Saved for later. It is not deletion: the capture, its permalink and
- * any Track that references it survive, and an explicit Save to BTY on the same source brings the
- * SAME row back. That half is proven against real PostgreSQL in `savedRemove.pg.test.ts`; this file
- * holds the surface's half.
- *
- * ★ TWO GRAMMARS IN ONE LIST, AND THE DIFFERENCE IS DELIBERATE.
- *
- *   UNDECIDED  swipe COMMITS on release — left Soon, right Later. Untouched by this slice.
- *   DECIDED    swipe LEFT REVEALS a red tray; removal takes a second, explicit tap.
- *
- * Classification is reversible by looking at the list. Removal takes the item out of it. So the
- * destructive one asks to be meant, and the non-destructive one stays a flick. The refusals are
- * asserted hardest, because a gesture that removes too eagerly is far worse than one that does
- * nothing.
+ * Saved for later offers the same Remove action on every message, including
+ * records with an older triage choice. A swipe reveals the action. Activating
+ * the button removes the message from the saved list.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import SavedForLater, { type SavedCapture } from "./SavedForLater";
 
 afterEach(() => {
@@ -27,202 +15,176 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const META = { provider: "teams", tenant_id: "T1", conversation_id: "19:chat-a@unq.gbl.spaces" };
+const META = { provider: "teams", tenant_id: "T1" };
 const item = (id: string, over: Partial<SavedCapture> = {}): SavedCapture => ({
   id,
   sourceType: "teams_message",
   previewText: `preview ${id}`,
   sourceUrl: `https://teams.microsoft.com/l/message/${id}`,
-  sourceMetadata: META,
+  sourceMetadata: { ...META, conversation_id: `19:chat-${id}@unq.gbl.spaces` },
   status: "captured",
   capturedAt: "2026-08-31T10:00:00Z",
   triageChoice: null,
   triagedAt: null,
   ...over,
 });
-const decided = (id: string, choice: "soon" | "later") =>
+const withLegacyChoice = (id: string, choice: "soon" | "later") =>
   item(id, { triageChoice: choice, triagedAt: "2026-09-01T00:00:00Z" });
 
 function stub(items: SavedCapture[], remove: { ok: boolean } = { ok: true }) {
   const removes: string[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      const u = String(url);
-      if (u.includes("/remove")) {
-        removes.push(decodeURIComponent(u.split("/action-capture/")[1].split("/remove")[0]));
-        expect(init?.method, "a mutation is a POST").toBe("POST");
-        expect(init?.credentials, "the session is the authority").toBe("include");
-        expect(init?.body, "nothing is read from a body — the id is in the path").toBeUndefined();
-        return remove.ok
-          ? new Response(JSON.stringify({ ok: true, changed: true }), { status: 200 })
-          : new Response(JSON.stringify({ ok: false }), { status: 500 });
-      }
-      if (u.includes("/api/bty/action-capture/mine")) {
-        return new Response(JSON.stringify({ ok: true, items }), { status: 200 });
-      }
-      return new Response("{}", { status: 200 });
-    }),
-  );
-  return removes;
+  const mutations: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url);
+    if (init?.method && init.method !== "GET") mutations.push(u);
+    if (u.includes("/remove")) {
+      removes.push(decodeURIComponent(u.split("/action-capture/")[1].split("/remove")[0]));
+      expect(init?.method).toBe("POST");
+      expect(init?.credentials).toBe("include");
+      expect(init?.body).toBeUndefined();
+      return remove.ok
+        ? new Response(JSON.stringify({ ok: true, changed: true }), { status: 200 })
+        : new Response(JSON.stringify({ ok: false }), { status: 500 });
+    }
+    if (u.includes("/api/bty/action-capture/mine")) {
+      return new Response(JSON.stringify({ ok: true, items }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${u}`);
+  }));
+  return { removes, mutations };
 }
 
 const rows = () => screen.getAllByTestId("saved-item");
-const rowFor = (id: string) => rows().find((r) => within(r).queryByText(`preview ${id}`))!;
-/** The gesture, as a real touch: past the 96px reveal threshold, then release. */
-const swipeLeft = (el: HTMLElement, dx = -120) => {
+const rowFor = (id: string) => rows().find((row) => within(row).queryByText(`preview ${id}`))!;
+const surface = (row: HTMLElement) => within(row).getByTestId("saved-swipe-surface");
+const drag = (el: HTMLElement, dx = -120, dy = 0) => {
   fireEvent.touchStart(el, { touches: [{ clientX: 200, clientY: 100 }] });
-  fireEvent.touchMove(el, { touches: [{ clientX: 200 + dx, clientY: 100 }] });
+  fireEvent.touchMove(el, { touches: [{ clientX: 200 + dx, clientY: 100 + dy }] });
   fireEvent.touchEnd(el, {});
 };
 
-describe("★ 1-2 — a decided item can be removed, from either group", () => {
-  for (const choice of ["soon", "later"] as const) {
-    it(`★ ${choice}: swipe left reveals, and the TAP is what removes`, async () => {
-      const removes = stub([decided("a", choice)]);
-      render(<SavedForLater locale="en" />);
-      const row = await waitFor(() => rowFor("a"));
+describe("Saved list and Remove", () => {
+  it("renders legacy choices and untriaged messages in one list with no triage controls", async () => {
+    stub([item("a"), withLegacyChoice("b", "soon"), withLegacyChoice("c", "later")]);
+    render(<SavedForLater locale="en" />);
+    const list = await screen.findByTestId("saved-list");
 
-      swipeLeft(within(row).getByTestId("saved-swipe-surface"));
-      expect(removes, "★ the release commits NOTHING").toEqual([]);
-      const action = within(row).getByTestId("saved-swipe-action");
-      expect(action.textContent).toBe("Remove");
+    expect(screen.getAllByTestId("saved-list")).toHaveLength(1);
+    expect(within(list).getAllByTestId("saved-item")).toHaveLength(3);
+    expect(within(list).getAllByTestId("saved-remove")).toHaveLength(3);
+    expect(within(list).queryByTestId(/^saved-group-(new|soon|later)$/)).toBeNull();
+    expect(within(list).queryByTestId(/^saved-triage-/)).toBeNull();
+    expect(within(list).queryByText(/^(New|Soon|Later)$/i)).toBeNull();
+  });
 
-      fireEvent.click(action);
-      await waitFor(() => expect(removes).toEqual(["a"]));
-      expect(screen.queryByText("preview a"), "★ and it leaves the list").toBeNull();
-    });
-  }
+  it.each([
+    ["untriaged", item("a")],
+    ["legacy Soon", withLegacyChoice("a", "soon")],
+    ["legacy Later", withLegacyChoice("a", "later")],
+  ])("%s: releasing a swipe reveals Remove without making a request", async (_label, capture) => {
+    const { removes, mutations } = stub([capture]);
+    render(<SavedForLater locale="en" />);
+    await screen.findByText("preview a");
+    const row = rowFor("a");
 
-  it("★ Korean copy is the same word Today uses", async () => {
-    stub([decided("a", "soon")]);
+    drag(surface(row));
+    const action = within(row).getByTestId("saved-swipe-action");
+    expect(action.textContent).toBe("Remove");
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual(["/api/bty/action-capture/mine"]);
+    expect(mutations).toEqual([]);
+    expect(row.isConnected).toBe(true);
+
+    fireEvent.click(action);
+    await waitFor(() => expect(removes).toEqual(["a"]));
+    expect(mutations).toEqual(["/api/bty/action-capture/a/remove"]);
+    expect(screen.queryByText("preview a")).toBeNull();
+  });
+
+  it("uses the same Korean Remove label as Today", async () => {
+    stub([item("a")]);
     render(<SavedForLater locale="ko" />);
     const row = await waitFor(() => rowFor("a"));
-    swipeLeft(within(row).getByTestId("saved-swipe-surface"));
+    drag(surface(row));
     expect(within(row).getByTestId("saved-swipe-action").textContent).toBe("치우기");
   });
 });
 
-describe("★ 3 — the UNDECIDED gesture is untouched", () => {
-  it("★ an undecided row still commits Soon on release, and grows no Remove tray", async () => {
-    const seen: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      const u = String(url);
-      if (u.includes("/triage")) { seen.push("triage"); return new Response(JSON.stringify({ ok: true, changed: true, capture: { ...item("a"), triageChoice: "soon" } }), { status: 200 }); }
-      if (u.includes("/remove")) { seen.push("remove"); return new Response(JSON.stringify({ ok: true }), { status: 200 }); }
-      return new Response(JSON.stringify({ ok: true, items: [item("a")] }), { status: 200 });
-    }));
+describe("Remove input and focus", () => {
+  it.each([
+    ["short left drag", -20, 0],
+    ["right swipe", 160, 0],
+    ["vertical scroll", -5, 120],
+  ])("keeps the tray closed after a %s", async (_name, dx, dy) => {
+    const { mutations } = stub([item("a")]);
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
-    expect(within(row).queryByTestId("saved-swipe-surface"), "no reveal tray on an undecided row").toBeNull();
-    // The undecided row uses the OTHER component; drive it through its own surface hook.
-    const s2 = within(row).getByTestId("swipe-surface");
-    fireEvent.touchStart(s2, { touches: [{ clientX: 200, clientY: 100 }] });
-    fireEvent.touchMove(s2, { touches: [{ clientX: 80, clientY: 100 }] });
-    fireEvent.touchEnd(s2, {});
-    await waitFor(() => expect(seen).toContain("triage"));
-    expect(seen, "★ the release decided; it did not remove").not.toContain("remove");
-  });
-
-  it("★ Remove is NOT offered on an undecided row at all", async () => {
-    stub([item("a")]);
-    render(<SavedForLater locale="en" />);
-    const row = await waitFor(() => rowFor("a"));
-    expect(within(row).queryByTestId("saved-remove")).toBeNull();
-    expect(within(row).queryByText("Remove")).toBeNull();
-  });
-});
-
-describe("★ F/I — the gesture refuses to be eager, and is not the only path", () => {
-  it("★ a short drag does not open anything", async () => {
-    const removes = stub([decided("a", "soon")]);
-    render(<SavedForLater locale="en" />);
-    const row = await waitFor(() => rowFor("a"));
-    swipeLeft(within(row).getByTestId("saved-swipe-surface"), -20);
+    drag(surface(row), dx, dy);
     expect(within(row).queryByTestId("saved-swipe-action")).toBeNull();
-    expect(removes).toEqual([]);
+    expect(mutations).toEqual([]);
   });
 
-  it("★ a RIGHT swipe on a decided row does nothing — left only", async () => {
-    const removes = stub([decided("a", "later")]);
-    render(<SavedForLater locale="en" />);
-    const row = await waitFor(() => rowFor("a"));
-    const s = within(row).getByTestId("saved-swipe-surface");
-    fireEvent.touchStart(s, { touches: [{ clientX: 100, clientY: 100 }] });
-    fireEvent.touchMove(s, { touches: [{ clientX: 260, clientY: 100 }] });
-    fireEvent.touchEnd(s, {});
-    expect(within(row).queryByTestId("saved-swipe-action")).toBeNull();
-    expect(removes).toEqual([]);
-  });
-
-  it("★ a vertical drag is the page scrolling, not a swipe", async () => {
-    stub([decided("a", "soon")]);
-    render(<SavedForLater locale="en" />);
-    const row = await waitFor(() => rowFor("a"));
-    const s = within(row).getByTestId("saved-swipe-surface");
-    fireEvent.touchStart(s, { touches: [{ clientX: 200, clientY: 100 }] });
-    fireEvent.touchMove(s, { touches: [{ clientX: 195, clientY: 220 }] });
-    fireEvent.touchEnd(s, {});
-    expect(within(row).queryByTestId("saved-swipe-action")).toBeNull();
-  });
-
-  it("★ ONE ROW OPEN AT A TIME", async () => {
-    stub([decided("a", "soon"), decided("b", "later")]);
+  it("keeps one row open at a time", async () => {
+    const { mutations } = stub([item("a"), withLegacyChoice("b", "later")]);
     render(<SavedForLater locale="en" />);
     await waitFor(() => expect(rows()).toHaveLength(2));
-    swipeLeft(within(rowFor("a")).getByTestId("saved-swipe-surface"));
+    drag(surface(rowFor("a")));
     expect(within(rowFor("a")).queryByTestId("saved-swipe-action")).toBeTruthy();
-    swipeLeft(within(rowFor("b")).getByTestId("saved-swipe-surface"));
+    drag(surface(rowFor("b")));
     expect(within(rowFor("b")).queryByTestId("saved-swipe-action")).toBeTruthy();
-    expect(within(rowFor("a")).queryByTestId("saved-swipe-action"), "the first one closed").toBeNull();
+    expect(within(rowFor("a")).queryByTestId("saved-swipe-action")).toBeNull();
+    expect(mutations).toEqual([]);
   });
 
-  it("★ NOT GESTURE-ONLY: a keyboard-reachable Remove exists, hidden until focused", async () => {
-    const removes = stub([decided("a", "soon")]);
+  it("supports tabbing to Remove and activating it with the keyboard", async () => {
+    const user = userEvent.setup();
+    const { removes, mutations } = stub([item("a")]);
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
     const btn = within(row).getByTestId("saved-remove");
     expect(btn.tagName).toBe("BUTTON");
-    expect(btn.className, "in the a11y tree and tab order, invisible at rest").toContain("sr-only");
-    expect(btn.className, "and it appears the moment it is focused").toContain("focus:not-sr-only");
-    fireEvent.click(btn);
+    expect(btn.className).toContain("sr-only");
+    expect(btn.className).toContain("focus:not-sr-only");
+    await user.tab();
+    expect(document.activeElement).toBe(within(row).getByRole("button", { name: "Open in Teams" }));
+    await user.tab();
+    expect(document.activeElement).toBe(btn);
+    expect(mutations).toEqual([]);
+    await user.keyboard("{Enter}");
     await waitFor(() => expect(removes).toEqual(["a"]));
   });
 
-  it("★ no confirmation modal, and no always-visible delete icon", async () => {
-    stub([decided("a", "soon")]);
+  it("keeps the Remove tray hidden at rest", async () => {
+    stub([item("a")]);
     render(<SavedForLater locale="en" />);
     await waitFor(() => rowFor("a"));
-    expect(document.querySelector('[role="dialog"], [role="alertdialog"]')).toBeNull();
-    // Before any gesture, the only Remove in the DOM is the sr-only one.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.getAllByText("Remove")).toHaveLength(1);
     expect(screen.getByTestId("saved-remove").className).toContain("sr-only");
   });
 });
 
-describe("★ J — after Remove", () => {
-  it("★ the section disappears when it empties, and the global empty state becomes truthful", async () => {
-    const removes = stub([decided("a", "soon")]);
+describe("Remove result", () => {
+  it("replaces the list with the empty state after removing the last message", async () => {
+    const { removes } = stub([item("a")]);
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
-    swipeLeft(within(row).getByTestId("saved-swipe-surface"));
+    drag(surface(row));
     fireEvent.click(within(row).getByTestId("saved-swipe-action"));
     await waitFor(() => expect(removes).toEqual(["a"]));
-    expect(screen.queryByText("Soon")).toBeNull();
+    expect(screen.queryByTestId("saved-list")).toBeNull();
     expect(screen.getByText("Nothing saved for later.")).toBeTruthy();
   });
 
-  it("★ OPTIMISTIC BUT NEVER LOSSY: a failed remove puts the item back and says which action failed", async () => {
-    const removes = stub([decided("a", "soon")], { ok: false });
+  it("restores the message and shows the Remove error after a failed request", async () => {
+    const { removes } = stub([item("a")], { ok: false });
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
-    swipeLeft(within(row).getByTestId("saved-swipe-surface"));
+    drag(surface(row));
     fireEvent.click(within(row).getByTestId("saved-swipe-action"));
     await waitFor(() => expect(removes).toEqual(["a"]));
-    await waitFor(() => expect(screen.getByText("preview a"), "a saved thing does not vanish on a failure").toBeTruthy());
-    expect(screen.getByTestId("saved-triage-error").textContent, "★ and it names the right action").toBe(
-      "Couldn't remove that.",
-    );
+    expect((await screen.findByTestId("saved-remove-error")).textContent).toBe("Couldn't remove that.");
+    expect(screen.getByText("preview a")).toBeTruthy();
   });
 
   it("only ONE mutation at a time — a second tap mid-flight is not a second removal", async () => {
@@ -234,7 +196,7 @@ describe("★ J — after Remove", () => {
         removes.push("x");
         return new Promise<Response>((r) => { release = () => r(new Response(JSON.stringify({ ok: true }), { status: 200 })); });
       }
-      return new Response(JSON.stringify({ ok: true, items: [decided("a", "soon"), decided("b", "later")] }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, items: [item("a"), withLegacyChoice("b", "later")] }), { status: 200 });
     }));
     render(<SavedForLater locale="en" />);
     await waitFor(() => expect(rows()).toHaveLength(2));
@@ -246,16 +208,17 @@ describe("★ J — after Remove", () => {
   });
 });
 
-describe("★ K/H — the source is not touched", () => {
-  it("★ Open in Teams is still offered on a decided row, and the permalink is unchanged", async () => {
-    stub([decided("a", "soon")]);
+describe("Remove request and source link", () => {
+  it("preserves the source permalink for Open in Teams", async () => {
+    stub([item("a")]);
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
-    expect(within(row).getByText("Open in Teams")).toBeTruthy();
+    const open = within(row).getByRole("button", { name: "Open in Teams" });
+    expect(open.getAttribute("data-source-url")).toBe(item("a").sourceUrl);
   });
 
-  it("★ the client sends NOTHING but the id — no user id, no body, no source fields", async () => {
-    const removes = stub([decided("a", "soon")]);
+  it("sends only the item ID in an authenticated POST to Remove", async () => {
+    const { removes } = stub([withLegacyChoice("a", "soon")]);
     render(<SavedForLater locale="en" />);
     const row = await waitFor(() => rowFor("a"));
     fireEvent.click(within(row).getByTestId("saved-remove"));

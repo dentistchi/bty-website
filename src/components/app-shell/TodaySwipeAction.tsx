@@ -16,17 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * opens, and tells the person what it needs first. Eligibility itself is unchanged and unwidened:
  * the caller passes an action derived from the one canonical domain rule.
  *
- * ★ WHY THIS DOES NOT REUSE `SwipeAction`'s COMMIT-ON-RELEASE.
- *
- * `SwipeAction` deliberately made the gesture itself the decision — a Founder review on 2026-09-02
- * removed its reveal tray because it was "a longer road to the same place". That is right for the
- * surface it serves: Saved-for-later's two choices are both "later", the card stays on screen in a
- * new group, and its own comment says "there is no undo here because there is nothing to undo".
- *
- * Remove is not that. It makes a card DISAPPEAR from Today. A gesture that hides something on
- * release would let a decisive scroll-adjacent flick take a card away with nothing to stop it, and
- * the person would have no idea what left. So the reveal is kept here, on purpose, and the tap is
- * the decision. Same measured constants, different contract, for a different stake.
+ * The swipe reveals the action. Removal requires a deliberate tap in both Today and Saved for later.
  *
  * ★ WHAT IT BORROWS, BECAUSE THOSE NUMBERS WERE ALREADY EARNED ON A DEVICE.
  *

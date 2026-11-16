@@ -88,7 +88,7 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ko: ["나중에 보기", "Teams 메시지의 … 메뉴에서 BTY의 저장을 선택하면 여기에 추가돼요.", "다음: 배우기"],
     contexts: [
       context(id("saved-open"), ["Reopen a saved message", "Open in Teams takes you to the original conversation.", "Next: Learn"], ["저장한 메시지 다시 열기", "Teams에서 열기로 원래 대화를 찾을 수 있어요.", "다음: 배우기"]),
-      context(id("saved-item"), ["Your saved messages", "Use the controls on a saved item to organize it or remove it from this list.", "Next: Learn"], ["저장한 메시지", "각 항목의 메뉴로 메시지를 분류하거나 이 목록에서 뺄 수 있어요.", "다음: 배우기"]),
+      context(id("saved-item"), ["Your saved messages", "Keep messages here until you’re ready to revisit them.", "Next: Learn"], ["저장한 메시지", "다시 확인할 때까지 메시지를 이곳에 두면 돼요.", "다음: 배우기"]),
       context(id("saved-conversation-header"), ["Messages grouped by conversation", "Expand a conversation to see each message you saved from it.", "Next: Learn"], ["대화별로 묶인 메시지", "대화를 펼치면 그 대화에서 저장한 메시지를 하나씩 볼 수 있어요.", "다음: 배우기"]),
       context(id("saved-empty"), ["Save your first message", "In a Teams message’s … menu, choose Save under BTY. The message will appear here.", "Next: Learn"], ["첫 메시지 저장", "Teams 메시지의 … 메뉴에서 BTY의 저장을 선택하면 여기에 나타나요.", "다음: 배우기"]),
     ],

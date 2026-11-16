@@ -165,12 +165,6 @@ describe("★ 8+9+10. nothing else moved", () => {
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
 
-  it("★ 8. Soon/Later still call the same canonical choose()", () => {
-    const saved = code("src/components/app-shell/SavedForLater.tsx");
-    expect(saved).toContain("choose(it.id, choice)");
-    expect(saved).toContain('data-testid="saved-triage-controls"');
-  });
-
   it("★ 9. participant authority is untouched", () => {
     const invoke = code("src/app/api/bty/teams/invoke/route.ts");
     expect(invoke).toContain("isCollaborationParticipant");
