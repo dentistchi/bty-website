@@ -23,7 +23,7 @@ describe("FoundryEventRooms — author access states", () => {
   it("active host → event home (empty state shows the Create CTA)", async () => {
     mockFetch({ ok: true, status: 200, body: { events: [] } });
     render(<FoundryEventRooms locale="en" />);
-    expect(await screen.findByText("Create quick event")).toBeTruthy();
+    expect(await screen.findByTestId("door-quick-training")).toBeTruthy();
     expect(screen.queryByText(/authorized hosts/i)).toBeNull();
   });
 
@@ -32,7 +32,7 @@ describe("FoundryEventRooms — author access states", () => {
     render(<FoundryEventRooms locale="en" />);
     expect(await screen.findByTestId("door-my-learning")).toBeTruthy(); // one My learning entry
     expect(screen.queryByTestId("door-create-training")).toBeNull(); // no creator door
-    expect(screen.queryByText("Create quick event")).toBeNull();
+    expect(screen.queryByTestId("door-quick-training")).toBeNull();
     // B3A.2C: the FOUNDRY / authorized-host / Scan-QR host-pointer copy is gone.
     expect(screen.queryByText(/Training rooms are opened by authorized hosts/i)).toBeNull();
     expect(screen.queryByText(/Scan an invitation QR/i)).toBeNull();
@@ -52,6 +52,6 @@ describe("FoundryEventRooms — author access states", () => {
     await waitFor(() => expect(fn).toHaveBeenCalled());
     // Neither the non-host copy nor the host Create CTA appears — a neutral hold.
     expect(screen.queryByText(/authorized hosts/i)).toBeNull();
-    expect(screen.queryByText("Create quick event")).toBeNull();
+    expect(screen.queryByTestId("door-quick-training")).toBeNull();
   });
 });

@@ -49,10 +49,10 @@ function atResponseStage(over: Record<string, unknown> = {}) {
     content_type: "written_guidance",
     event: { title: "Confirm Patient Understanding", status: "open" },
     participant: { display_name: "Hojin" },
-    training: { youtube_video_id: "vid", completion_prompt: null, shared_question: null },
+    training: { youtube_video_id: "vid", completion_prompt: "How will you confirm understanding?", shared_question: null },
     document: {
       page_count: 2, min_read_seconds: 1, intro: null, last_page: 2, distinct_pages_viewed: 2,
-      active_read_ms: 99_999, reading_complete: true, completion_prompt: null, shared_question: null,
+      active_read_ms: 99_999, reading_complete: true, completion_prompt: "How will you confirm understanding?", shared_question: null,
     },
     guidance: { material_text: "Read this", completion_prompt: null, shared_question: null },
     declared: true,

@@ -345,7 +345,6 @@ export type ModuleBuilderCopy = {
   reviewMaterials: string;
   noFilesYet: string;
   // quick-event discoverability
-  quickLead: string;
   // step 7 practice + follow-up
   s7ArenaQ: string;
   s7ArenaRecommended: string;
@@ -736,7 +735,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     deliveryDeferred: "Delivery setup will be completed before approval.",
     reviewMaterials: "LEARNING MATERIALS",
     noFilesYet: "No files attached yet",
-    quickLead: "Need to launch something quickly?",
     s7ArenaQ: "Should people practice this in Arena?",
     s7ArenaRecommended: "Recommended for this kind of change.",
     s7ArenaAccept: "Yes, recommend practice",
@@ -1170,7 +1168,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     deliveryDeferred: "승인 전에 전달 설정이 완료됩니다.",
     reviewMaterials: "학습 자료",
     noFilesYet: "아직 첨부된 파일이 없습니다",
-    quickLead: "바로 시작해야 하나요?",
     s7ArenaQ: "사람들이 Arena에서 연습해야 하나요?",
     s7ArenaRecommended: "이런 변화에 권장됩니다.",
     s7ArenaAccept: "네, 연습을 권장합니다",

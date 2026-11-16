@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import FoundryEventRooms from "./FoundryEventRooms";
 
 const jsonRes = (body: unknown, status = 200) => ({
@@ -72,27 +72,32 @@ beforeEach(() => {
 });
 
 describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
-  it("shows the host-oriented Create training entry", async () => {
+  it("groups both authoring methods under Create training", async () => {
     server([]);
     render(<FoundryEventRooms locale="en" />);
-    expect(await screen.findByText("Create training")).toBeTruthy();
-    expect(screen.getByText("Turn a real workplace issue into clear training for your team.")).toBeTruthy();
+    const training = within(await screen.findByTestId("training-creation"));
+    expect(training.getByRole("heading", { name: "Create training" })).toBeTruthy();
+    expect(training.getByRole("button", { name: /Build step by step/ })).toBeTruthy();
+    expect(training.getByRole("button", { name: /Use existing material/ })).toBeTruthy();
   });
 
-  it("keeps the legacy path but demotes it to a discoverable quick-event path", async () => {
-    server([]);
+  it("opens Quick training without creating a draft; Cancel returns to the training choices", async () => {
+    const s = server([]);
     render(<FoundryEventRooms locale="en" />);
-    // primary first, then the quick-event lead + button directly beneath it.
-    expect(await screen.findByText("Create training")).toBeTruthy();
-    expect(screen.getByText("Need to launch something quickly?")).toBeTruthy();
-    expect(screen.getByText("Create quick event")).toBeTruthy();
-    expect(screen.getByText("Skip guided setup.")).toBeTruthy();
+    fireEvent.click(await screen.findByTestId("door-quick-training"));
+    expect(screen.getByRole("heading", { name: "Quick training" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Training title" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create training" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add quiz" })).toBeTruthy();
+    expect(s.calls.filter((c) => c.method === "POST")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByTestId("training-creation")).toBeTruthy();
   });
 
   it("starting a new draft creates EXACTLY one row even on a double-tap", async () => {
     const s = server([]);
     render(<FoundryEventRooms locale="en" />);
-    const btn = await screen.findByText("Create training");
+    const btn = await screen.findByTestId("door-create-training");
     fireEvent.click(btn);
     fireEvent.click(btn);
     await waitFor(() => expect(postCount(s.calls)).toBe(1));

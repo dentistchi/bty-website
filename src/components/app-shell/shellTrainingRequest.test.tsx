@@ -65,8 +65,8 @@ describe("a request arriving AFTER mount opens the room", () => {
 });
 
 describe("Teams quick tour", () => {
-  const guide = (name: string) => screen.getByRole("dialog", { name });
-  const action = (name: string, label: string) => fireEvent.click(within(guide(name)).getByRole("button", { name: label }));
+  const guide = (name: string | RegExp) => screen.getByRole("dialog", { name });
+  const action = (name: string | RegExp, label: string) => fireEvent.click(within(guide(name)).getByRole("button", { name: label }));
   const appTab = (name: string) =>
     fireEvent.click(within(screen.getByRole("navigation", { name: "App navigation" })).getByRole("button", { name }));
 
@@ -233,7 +233,7 @@ describe("Teams quick tour", () => {
     render(<BtyDailyAppShell locale="en" runtime="teams" teamsTour={{ offer: true, onDismiss: vi.fn() }} />);
 
     await screen.findByTestId("announcement-question");
-    action("Start with Today", "Continue");
+    action(/^(Start with Today|You’re caught up)$/, "Continue");
     action("Respond to a Track", "Continue");
     fireEvent.click(screen.getByTestId("announcement-question"));
     expect(guide("Write a question here")).toBeTruthy();

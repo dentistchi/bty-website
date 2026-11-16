@@ -63,6 +63,7 @@ function mockRoom(opts: {
   reflection?: Behaviour | Behaviour[];
   initial?: Record<string, unknown>;
   snapshotAfter?: unknown;
+  readQuiz?: () => Promise<ReturnType<typeof res>>;
 }) {
   const calls: string[] = [];
   let gets = 0;
@@ -83,6 +84,7 @@ function mockRoom(opts: {
     calls.push(`${method} ${u.replace(/^.*\/public\/[^/]+/, "").replace(/\?.*$/, "")}`);
 
     if (u.includes("/api/auth/session")) return Promise.resolve(res({ user: null }));
+    if (u.endsWith("/quiz") && opts.readQuiz) return opts.readQuiz();
 
     if (method === "POST" && u.endsWith("/join")) {
       if (opts.join === "hang") return hang(init);
@@ -146,6 +148,26 @@ async function completeIt() {
     fireEvent.click(screen.getByText("Complete training"));
   });
 }
+
+it("a quiz-backed video offers only its quiz, even while the quiz request is delayed or fails", async () => {
+  let resolveFailedRequest: (reply: ReturnType<typeof res>) => void = () => {};
+  const initialRequest = new Promise<ReturnType<typeof res>>((resolve) => { resolveFailedRequest = resolve; });
+  const readQuiz = vi.fn(() => Promise.resolve(res({ quiz: { questions: [
+    { id: "q-1", text: "Which answer?", choices: [{ id: "a", label: "First" }, { id: "b", label: "Second" }], position: 1 },
+  ] } }))).mockReturnValueOnce(initialRequest);
+  const room = mockRoom({ initial: { stage: "response", training: { ...snap().training, completion_prompt: null } }, readQuiz });
+  render(<FoundryJoinClient token="tok" />);
+
+  await waitFor(() => expect(readQuiz).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole("button", { name: "Complete training" })).toBeNull();
+  await act(async () => resolveFailedRequest(res({ error: "unavailable" }, false, 503)));
+  expect(screen.queryByRole("button", { name: "Complete training" })).toBeNull();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Retry quiz" }));
+  expect(await screen.findByRole("group", { name: /Which answer\?/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Submit quiz" })).toBeTruthy();
+  expect(room.calls).not.toContain("POST /progress/complete");
+});
 
 beforeEach(() => {
   fireStarted = null;

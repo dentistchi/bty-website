@@ -8,11 +8,8 @@ import EventCreateClient from "./EventCreateClient";
 /**
  * THE EVENT-CREATE SCREEN, READ AS KOREAN.
  *
- * The Learn landing closed with "이벤트 만들기 / 내가 만든 이벤트", Founder-verified. The screen
- * that door OPENS still said "이벤트 열기" over "팀이 참여할 실제 순간을 여세요" — a
- * different verb from the door that led there, and the same translated phrase the landing pass
- * removed. It also called its own QR a "리얼리티 이벤트 QR 코드", which is the internal
- * name for this product, in the accessible label a screen reader announces.
+ * The event form uses the same live-event name as the Learn entry. Its QR records
+ * participation in a team gathering.
  *
  * MEASURED, not assumed, before a word moved:
  *   - `POST /api/bty/events` inserts one `bty_events` row and returns a signed `btyev1` token as
@@ -23,7 +20,7 @@ import EventCreateClient from "./EventCreateClient";
  *   - This is NOT the Foundry quick training room: that one takes a video or a document and
  *     creates a training, and the landing pass already stopped it borrowing the word "이벤트".
  *
- * KO ONLY. English, the API call, the QR payload, validation and navigation are untouched.
+ * Copy checks are separate from the API, QR payload, validation and navigation checks.
  */
 
 const SOURCE = readFileSync(join(process.cwd(), "src/components/bty/events/EventCreateClient.tsx"), "utf8");
@@ -55,12 +52,9 @@ describe("[KO event create T1-T3] no translated or internal language", () => {
 
 describe("[KO event create T4-T5] it agrees with the door that opened it", () => {
   it("T4 the heading and submit use the landing's verb", () => {
-    const text = ko();
-    expect(text).toContain("이벤트 만들기");
-    // The retired verb pair is gone from the KO strings.
-    const koBlock = SOURCE.slice(SOURCE.indexOf("  ko: {"), SOURCE.indexOf("type CreatedEvent"));
-    expect(koBlock).not.toContain('heading: "이벤트 열기"');
-    expect(koBlock).not.toContain('submit: "이벤트 열기"');
+    ko();
+    expect(screen.getByRole("heading", { name: "현장 이벤트 열기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "이벤트 열기" })).toBeTruthy();
   });
 
   it("T5 the intro says who joins and how, which the title does not", () => {
@@ -75,7 +69,7 @@ describe("[KO event create T4-T5] it agrees with the door that opened it", () =>
 describe("[KO event create T6-T9] success state, English, behaviour, length", () => {
   it("T6 the success copy says what happened and what to do next", () => {
     const koBlock = SOURCE.slice(SOURCE.indexOf("  ko: {"), SOURCE.indexOf("type CreatedEvent"));
-    expect(koBlock).toContain('createdHeading: "이벤트가 만들어졌습니다"');
+    expect(koBlock).toContain('createdHeading: "이벤트가 열렸습니다"');
     expect(koBlock).toContain("이 QR 코드를 보여주세요");
     // Founder micro-repair: the device read "찍어/찍으면" as clipped; the KO surface says
     // "QR 코드" and "스캔" throughout, so the two sentences match each other and the object.
@@ -86,11 +80,11 @@ describe("[KO event create T6-T9] success state, English, behaviour, length", ()
     expect(koBlock).not.toContain("준비됨");
   });
 
-  it("T7 English is byte-identical", () => {
+  it("T7 English identifies the live gathering and its QR", () => {
     render(<EventCreateClient locale="en" />);
-    const en = document.body.textContent ?? "";
-    expect(en).toContain("Open an event");
-    expect(en).toContain("Open a real moment for your team to participate in.");
+    const en = screen.getByTestId("event-create").textContent ?? "";
+    expect(screen.getByRole("heading", { name: "Open a live event" })).toBeTruthy();
+    expect(en).toContain("QR");
     expect(en).toContain("Event name");
     const enBlock = SOURCE.slice(SOURCE.indexOf("  en: {"), SOURCE.indexOf("  ko: {"));
     expect(enBlock).toContain('qrAria: "Reality Event QR code"');

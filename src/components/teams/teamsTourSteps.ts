@@ -104,14 +104,14 @@ export const teamsTourSteps: readonly TeamsTourStep[] = [
     ],
   },
   {
-    id: "learn-host", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("door-create-training")],
-    en: ["Create training for your team", "Create training turns a recurring work problem into a lesson your team can use.", "Continue"],
-    ko: ["팀 교육 만들기", "훈련 만들기로 업무에서 반복되는 문제를 팀이 연습할 학습으로 만들 수 있어요.", "계속"],
+    id: "learn-host", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("training-creation")],
+    en: ["Create training for your team", "Start with a resource you have, or design a training step by step.", "Continue"],
+    ko: ["팀 교육 만들기", "이미 있는 자료로 시작하거나 단계별로 훈련을 설계할 수 있어요.", "계속"],
   },
   {
     id: "learn-event", chapter: "learn", scope: learn, whenVisible: true, anchors: [id("door-open-event")],
-    en: ["Open a team event", "Open an event sets up a session for your team to join.", "Continue"],
-    ko: ["팀 이벤트 만들기", "이벤트 만들기에서 팀원이 참여할 세션을 열 수 있어요.", "계속"],
+    en: ["Open a live event", "At a team gathering, participants scan a QR code to record attendance.", "Continue"],
+    ko: ["현장 이벤트 열기", "팀 모임에서 참가자가 QR 코드를 스캔하면 참여가 기록돼요.", "계속"],
   },
   {
     id: "learning-history", chapter: "learn", scope: learn, anchors: [id("door-my-learning")],

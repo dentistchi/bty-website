@@ -61,6 +61,7 @@ import { terminalIdentityCopy, claimCodeCopy } from "./terminalIdentityCopy";
 import { formatClaimCodeForDisplay } from "@/domain/foundry/events/completionClaimFormat";
 import { mergeSnapshot } from "./snapshotMerge";
 import {
+  LearnerQuizLoadStatus,
   LearnerQuizPanel,
   LearnerQuizResultSummary,
   useLearnerQuiz,
@@ -444,7 +445,8 @@ export default function FoundryJoinClient({
     R4 Quick Training Quiz — does this room replace the written completion check with a quiz?
     Asked only once the learner has reached the completion step, and answered by the server.
   */
-  const quiz = useLearnerQuiz(token, snapshot?.stage === "response");
+  const [quizRetryCount, setQuizRetryCount] = useState(0);
+  const quiz = useLearnerQuiz(token, snapshot?.stage === "response", quizRetryCount);
   /*
     §7 — THE FACTUAL SCORE, RESTORED ON RETURN. A completed quiz-backed room used to render its
     terminal and never mention the quiz again, so an immutable attempt became invisible to the
@@ -1387,15 +1389,17 @@ export default function FoundryJoinClient({
   }
 
   if (stage === "response") {
-    /*
-      THE QUIZ REPLACES THE COMPLETION QUESTION — it never sits beside it. `quiz === null` means
-      we are still asking the server, so nothing completion-shaped is shown yet; `false` is the
-      established written-reflection path, unchanged for every training without a quiz.
-    */
     if (quiz) {
       return (
         <Frame>
           <LearnerQuizPanel token={token} quiz={quiz} locale={locale} onSubmitted={() => void load()} />
+        </Frame>
+      );
+    }
+    if (snapshot.training?.completion_prompt === null) {
+      return (
+        <Frame>
+          <LearnerQuizLoadStatus locale={locale} loading={quiz === null} onRetry={() => setQuizRetryCount((n) => n + 1)} />
         </Frame>
       );
     }

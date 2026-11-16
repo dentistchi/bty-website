@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
+import LearnHeader from "./LearnHeader";
 
 /**
  * SLICE 3.2R-R8D-R2 — THE BUTTON WORKED PERFECTLY AND DID NOTHING.
@@ -71,6 +72,17 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
     await waitFor(() => expect(screen.getByTestId("door-create-training")).toBeTruthy());
     fireEvent.click(screen.getByTestId("door-my-learning"));
     expect(onOpenMyLearning).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the Quick training heading in place of the Learn header until Cancel", async () => {
+    mockRooms({ events: [] });
+    render(<FoundryEventRooms locale="en" header={<LearnHeader locale="en" onOpenMyLearning={() => {}} />} />);
+    await screen.findByTestId("learn-header");
+    fireEvent.click(await screen.findByTestId("door-quick-training"));
+    expect(screen.queryByTestId("learn-header")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Quick training", level: 1 })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByTestId("learn-header")).toBeTruthy();
   });
 
   it("D — the OTHER doors keep their own destinations", async () => {

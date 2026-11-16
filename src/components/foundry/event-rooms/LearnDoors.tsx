@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { Locale } from "./copy";
 
 /**
@@ -36,8 +37,10 @@ const COPY: Record<
     learnBody: string;
     learnCta: string;
     createTitle: string;
-    createBody: string;
-    createCta: string;
+    guidedTitle: string;
+    guidedBody: string;
+    quickTitle: string;
+    quickBody: string;
     eventTitle: string;
     eventBody: string;
     myEventsTitle: string;
@@ -49,10 +52,12 @@ const COPY: Record<
     learnBody: "See what you've completed and learned.",
     learnCta: "View history",
     createTitle: "Create training",
-    createBody: "Turn a real workplace issue into clear training for your team.",
-    createCta: "Create training",
-    eventTitle: "Open an event",
-    eventBody: "Open a real moment for your team to participate in.",
+    guidedTitle: "Build step by step",
+    guidedBody: "Define what should change and how to check it.",
+    quickTitle: "Use existing material",
+    quickBody: "Start with a video, PDF, or short text.",
+    eventTitle: "Open a live event",
+    eventBody: "Record participation at a team gathering with a QR code.",
     myEventsTitle: "My events",
     myEventsBody: "See participation in the Reality Events you opened.",
   },
@@ -71,10 +76,12 @@ const COPY: Record<
     learnBody: "지금까지 마친 학습을 다시 보세요.",
     learnCta: "기록 보기",
     createTitle: "훈련 만들기",
-    createBody: "팀에서 반복되는 문제를 하나 골라 훈련으로 만드세요.",
-    createCta: "훈련 만들기",
-    eventTitle: "이벤트 만들기",
-    eventBody: "팀이 참여할 이벤트를 만드세요.",
+    guidedTitle: "단계별로 훈련 설계",
+    guidedBody: "바꾸고 싶은 행동과 확인 방법을 정하세요.",
+    quickTitle: "자료로 훈련 만들기",
+    quickBody: "영상, PDF, 짧은 글로 시작하세요.",
+    eventTitle: "현장 이벤트 열기",
+    eventBody: "팀 모임에서 QR 코드로 참여를 기록하세요.",
     myEventsTitle: "내가 만든 이벤트",
     myEventsBody: "내가 만든 이벤트에 누가 참여했는지 확인하세요.",
   },
@@ -85,6 +92,8 @@ export function LearnDoors({
   canCreate,
   onOpenLearning,
   onCreate,
+  onOpenQuickTraining,
+  starting = false,
   onOpenEvent,
   onOpenMyEvents,
 }: {
@@ -93,12 +102,15 @@ export function LearnDoors({
   canCreate: boolean;
   onOpenLearning: () => void;
   onCreate: () => void;
+  onOpenQuickTraining?: () => void;
+  starting?: boolean;
   /** Opens the in-shell Event-create view (Slice 3.2D-EVENT-R1). Omitted → the door is hidden. */
   onOpenEvent?: () => void;
   /** Opens the in-shell Host "My events" participation view (Slice 3.2E-EVENT-HOST). */
   onOpenMyEvents?: () => void;
 }) {
   const t = COPY[locale];
+  const trainingTitleId = useId();
   return (
     <section className="flex flex-col gap-3" data-testid="learn-doors">
       <button
@@ -122,15 +134,37 @@ export function LearnDoors({
       </button>
 
       {canCreate ? (
-        <button
-          type="button"
-          onClick={onCreate}
-          data-testid="door-create-training"
-          className="flex flex-col items-start gap-1 rounded-2xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-4 text-left transition-colors hover:bg-[#C9A66B]/[0.14]"
+        <section
+          aria-labelledby={trainingTitleId}
+          data-testid="training-creation"
+          className="flex flex-col gap-3 rounded-2xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-4"
         >
-          <span className="text-lg font-semibold text-[#E5B769]">{t.createTitle}</span>
-          <span className="text-sm leading-6 text-white/65">{t.createBody}</span>
-        </button>
+          <h2 id={trainingTitleId} className="text-lg font-semibold text-[#E5B769]">{t.createTitle}</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {onOpenQuickTraining ? (
+              <button
+                type="button"
+                onClick={onOpenQuickTraining}
+                disabled={starting}
+                data-testid="door-quick-training"
+                className="flex flex-col items-start gap-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-left hover:bg-white/[0.08] disabled:opacity-50"
+              >
+                <span className="text-sm font-semibold text-white/90">{t.quickTitle}</span>
+                <span className="text-sm text-white/60">{t.quickBody}</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onCreate}
+              disabled={starting}
+              data-testid="door-create-training"
+              className="flex flex-col items-start gap-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-left hover:bg-white/[0.08] disabled:opacity-50"
+            >
+              <span className="text-sm font-semibold text-white/90">{t.guidedTitle}</span>
+              <span className="text-sm text-white/60">{t.guidedBody}</span>
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {/* Reality Event Host entry (Slice 3.2D-EVENT-R1). IN-SHELL callback (not a route

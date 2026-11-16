@@ -46,6 +46,9 @@ const COPY = {
     submit: "Submit quiz",
     saving: "Saving…",
     failed: "Your quiz could not be saved. Please try again.",
+    loading: "Loading quiz…",
+    loadFailed: "The quiz could not be loaded.",
+    retry: "Retry quiz",
     continue: "Continue",
   },
   ko: {
@@ -59,6 +62,9 @@ const COPY = {
     submit: "퀴즈 제출",
     saving: "저장 중…",
     failed: "퀴즈를 저장하지 못했습니다. 다시 시도해 주세요.",
+    loading: "퀴즈를 불러오는 중입니다…",
+    loadFailed: "퀴즈를 불러오지 못했습니다.",
+    retry: "퀴즈 다시 불러오기",
     continue: "계속하기",
   },
 } as const;
@@ -84,13 +90,11 @@ function deviceTz(): string | null {
  * `active` is the caller's own "the learner has reached the completion step" predicate, so each
  * room keeps its own notion of when that is rather than this hook guessing at four stages.
  */
-export function useLearnerQuiz(token: string, active: boolean): LearnerQuiz | false | null {
+export function useLearnerQuiz(token: string, active: boolean, retryCount = 0): LearnerQuiz | false | null {
   const [quiz, setQuiz] = useState<LearnerQuiz | false | null>(null);
   useEffect(() => {
-    if (!active) {
-      setQuiz(null);
-      return;
-    }
+    setQuiz(null);
+    if (!active) return;
     let cancelled = false;
     void fetch(api(token, "/quiz"), { credentials: "include", cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
@@ -104,8 +108,22 @@ export function useLearnerQuiz(token: string, active: boolean): LearnerQuiz | fa
     return () => {
       cancelled = true;
     };
-  }, [active, token]);
+  }, [active, retryCount, token]);
   return quiz;
+}
+
+export function LearnerQuizLoadStatus({ locale, loading, onRetry }: { locale: Locale; loading: boolean; onRetry: () => void }) {
+  const t = COPY[locale];
+  return (
+    <div className="flex flex-col items-start gap-3 text-sm text-white/75">
+      <p role="status">{loading ? t.loading : t.loadFailed}</p>
+      {loading ? null : (
+        <button type="button" onClick={onRetry} className="min-h-11 rounded-lg border border-white/20 px-4 text-white">
+          {t.retry}
+        </button>
+      )}
+    </div>
+  );
 }
 
 /**

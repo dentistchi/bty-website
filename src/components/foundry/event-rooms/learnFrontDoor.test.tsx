@@ -31,12 +31,9 @@ describe("T1 — the learner sees current work first", () => {
     expect(learner.indexOf("{requiredLearning}")).toBeLessThan(learner.indexOf("{learnDoors}"));
   });
 
-  it("T8 — every Host branch keeps doors-first, unchanged", () => {
+  it("T8 — the Host list keeps authoring above Required Learning", () => {
     const host = c.slice(c.indexOf('if (access === "loading")'));
-    // Both host compositions still lead with the doors (Create training is a Host primary).
-    const pairs = [...host.matchAll(/\{learnDoors\}\s*\n\s*\{requiredLearning\}/g)];
-    expect(pairs.length, "both host returns keep learnDoors → requiredLearning").toBe(2);
-    // …and there is no host branch with the learner ordering.
+    expect(host).toMatch(/\{learnDoors\}\s*\n\s*\{requiredLearning\}/);
     expect(host).not.toMatch(/\{requiredLearning\}\s*\n\s*\{learnDoors\}/);
   });
 

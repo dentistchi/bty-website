@@ -379,6 +379,17 @@ describe("progress: watch → response → complete", () => {
       reason: "response_required",
     });
   });
+
+  it("quiz-backed video requires a quiz attempt to finish", async () => {
+    const { admin, token, session, tables } = await setupJoined();
+    tables.foundry_event_training_content[0]!.completion_prompt = null;
+    await completeVideo(admin, token, session);
+
+    const result = await completeTraining(admin, token, session, "A written answer.", AUTH);
+    expect(result).toEqual({ ok: false, reason: "quiz_required" });
+    expect(tables.foundry_event_training_progress[0]).toMatchObject({ completed_at: null, response_text: null });
+    expect(awardSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("XP: authenticated award vs anonymous claim", () => {

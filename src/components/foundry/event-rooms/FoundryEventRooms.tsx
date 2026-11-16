@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
 import { BUILDER_STEP_MAX, resumeStep } from "@/domain/foundry/module/module-builder";
@@ -81,6 +81,7 @@ export function computeInitialFoundryView(
 
 export default function FoundryEventRooms({
   locale,
+  header,
   onOpenReview = () => {},
   focusAssignmentId = null,
   onAssignmentFocusConsumed,
@@ -99,6 +100,7 @@ export default function FoundryEventRooms({
   onInitialConsumed = () => {},
 }: {
   locale: string;
+  header?: ReactNode;
   /** Open the authenticated completion review for a completed assignment (in-shell). */
   onOpenReview?: (assignmentId: string) => void;
   /** R4-R5C1 — the assignment a Today card named; handed straight to Required Learning. */
@@ -371,8 +373,18 @@ export default function FoundryEventRooms({
     and passed straight through to a child that no longer used it.
   */
   const openLearning = onOpenMyLearning;
+  const withHeader = (content: ReactNode) => <>{header}{content}</>;
   const learnDoors = (
-    <LearnDoors locale={loc} canCreate={access === "author"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
+    <LearnDoors
+      locale={loc}
+      canCreate={access === "author"}
+      onOpenLearning={openLearning}
+      onCreate={startNewDraft}
+      onOpenQuickTraining={() => setView({ kind: "create" })}
+      starting={starting}
+      onOpenEvent={onOpenEvent}
+      onOpenMyEvents={onOpenMyEvents}
+    />
   );
   const requiredLearning = (
     <div id="learn-required">
@@ -398,7 +410,7 @@ export default function FoundryEventRooms({
     // `key` forces a full remount when the Host switches drafts. Without it React reuses
     // the instance, and the previous draft's answers — and therefore its visible identity —
     // would render for the moment before the new draft finishes restoring.
-    return (
+    return withHeader(
       <ModuleBuilderShell
         key={view.draftId}
         draftId={view.draftId}
@@ -411,11 +423,11 @@ export default function FoundryEventRooms({
   }
 
   if (view.kind === "history") {
-    return <FoundryHistoryArchive locale={loc} onBack={backHome} />;
+    return withHeader(<FoundryHistoryArchive locale={loc} onBack={backHome} />);
   }
 
   if (view.kind === "arena-practice") {
-    return (
+    return withHeader(
       <ArenaPracticeFlow
         eventId={view.eventId}
         locale={loc}
@@ -425,7 +437,7 @@ export default function FoundryEventRooms({
   }
 
   if (view.kind === "control") {
-    return (
+    return withHeader(
       <FoundryEventControlRoom
         eventId={view.eventId}
         initialSnapshot={view.initial}
@@ -447,7 +459,7 @@ export default function FoundryEventRooms({
   if (access === "non_author") {
     // A non-author learner's Foundry home: their required-learning surface leads, with
     // the quiet author-pointer copy retained beneath it (calmer, no longer full-height).
-    return (
+    return withHeader(
       // B3A.2C: a non-host learner's Learn surface is just the two-door entry + their
       // required learning. The "FOUNDRY / Training rooms are opened by authorized
       // hosts / Scan an invitation QR" host-pointer block is removed (it explained
@@ -469,44 +481,17 @@ export default function FoundryEventRooms({
     );
   }
   if (access === "loading") {
-    return <div aria-hidden className="min-h-[40vh]" />;
+    return withHeader(<div aria-hidden className="min-h-[40vh]" />);
   }
 
   const open = (events ?? []).filter((e) => e.status === "open");
   const past = (events ?? []).filter((e) => e.status === "closed");
 
-  const builderEntry = (
-    <BuilderEntry
-      drafts={drafts}
-      starting={starting}
-      onStart={startNewDraft}
-      onOpen={openDraft}
-      onDelete={deleteDraft}
-      onQuickEvent={() => setView({ kind: "create" })}
-      quickLabel={t.createCta}
-      quickNote={t.createQuickNote}
-      bt={bt}
-    />
-  );
-
-  // Empty (first-ever) events state — the guided builder (with its inline quick-
-  // event path) is the whole surface. A host is also a learner, so the required-
-  // learning surface leads here too.
-  if (events !== null && events.length === 0) {
-    return (
-      <div className="btyFadeIn flex flex-col gap-9">
-        {learnDoors}
-        {requiredLearning}
-        {builderEntry}
-      </div>
-    );
-  }
-
-  return (
+  return withHeader(
     <div className="btyFadeIn flex flex-col gap-9">
       {learnDoors}
       {requiredLearning}
-      {builderEntry}
+      {drafts.length > 0 ? <DraftList drafts={drafts} onOpen={openDraft} onDelete={deleteDraft} bt={bt} /> : null}
       {/* B3A.2C: the "FOUNDRY" heading is removed from the Learn surface; the
           Host's own trainings appear under their plain Open/Past section headers. */}
 
@@ -745,27 +730,15 @@ function SwipeDraftRow({
   );
 }
 
-/** Builder entry: primary "Create team training", a discoverable secondary
- *  quick-event path directly beneath it, then resumable draft(s). */
-function BuilderEntry({
+function DraftList({
   drafts,
-  starting,
-  onStart,
   onOpen,
   onDelete,
-  onQuickEvent,
-  quickLabel,
-  quickNote,
   bt,
 }: {
   drafts: ClientDraftSummary[];
-  starting: boolean;
-  onStart: () => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
-  onQuickEvent: () => void;
-  quickLabel: string;
-  quickNote: string;
   bt: ModuleBuilderCopy;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -773,10 +746,6 @@ function BuilderEntry({
   const openBuilder = (id: string) => {
     setOpenId(null);
     onOpen(id);
-  };
-  const startNew = () => {
-    setOpenId(null);
-    onStart();
   };
   const row = (d: ClientDraftSummary, prominent: boolean) => (
     <SwipeDraftRow
@@ -791,25 +760,8 @@ function BuilderEntry({
       bt={bt}
     />
   );
-  void startNew; // create-new is owned by the top "Create training" door (B3A.1)
   return (
     <section className="flex flex-col gap-3">
-      {/* Quick-event path (create-new lives in the top door now, B3A.1). */}
-      <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-        <span className="min-w-0 text-sm text-white/50">{bt.quickLead}</span>
-        <button
-          type="button"
-          onClick={onQuickEvent}
-          className="shrink-0 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80"
-          aria-describedby="quick-event-note"
-        >
-          {quickLabel}
-        </button>
-      </div>
-      <span id="quick-event-note" className="-mt-1 self-end text-[0.68rem] text-white/35">
-        {quickNote}
-      </span>
-
       {topDraft ? (
         <div className="flex flex-col gap-2 pt-1">
           <p className="text-sm text-white/50">{bt.continueLead}</p>
