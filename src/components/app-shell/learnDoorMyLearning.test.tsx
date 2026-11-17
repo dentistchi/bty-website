@@ -67,11 +67,19 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
 
   it("a creator sees the same door, wired the same way", async () => {
     const onOpenMyLearning = vi.fn();
-    mockRooms({ events: [] });
+    mockRooms({ events: [], canManageOrganization: false });
     render(<FoundryEventRooms locale="en" onOpenMyLearning={onOpenMyLearning} />);
     await waitFor(() => expect(screen.getByTestId("door-create-training")).toBeTruthy());
     fireEvent.click(screen.getByTestId("door-my-learning"));
     expect(onOpenMyLearning).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([{ canManageOrganization: false }, {}])("offers training without the live-event door when organization access is unavailable (%j)", async (capability) => {
+    mockRooms({ events: [], ...capability });
+    render(<FoundryEventRooms locale="en" onOpenEvent={vi.fn()} />);
+    expect(await screen.findByTestId("door-create-training")).toBeTruthy();
+    expect(screen.getByTestId("door-quick-training")).toBeTruthy();
+    expect(screen.queryByTestId("door-open-event")).toBeNull();
   });
 
   it("shows the Quick training heading in place of the Learn header until Cancel", async () => {
@@ -93,7 +101,7 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
     const onOpenMyLearning = vi.fn();
     const onOpenEvent = vi.fn();
     const onOpenMyEvents = vi.fn();
-    mockRooms({ events: [] });
+    mockRooms({ events: [], canManageOrganization: true });
     render(
       <FoundryEventRooms locale="en" onOpenMyLearning={onOpenMyLearning} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />,
     );

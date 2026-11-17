@@ -41,12 +41,15 @@ describe("POST /modules/[id]/approve", () => {
     expect(approveDraft).not.toHaveBeenCalled();
   });
 
-  it("403 non-host", async () => {
+  it("scopes an ordinary author's approval request and returns 404 for a foreign draft", async () => {
     currentUser.mockReturnValue({ id: "u" });
     hostActive.mockReturnValue(false);
-    const { req, ctx } = call();
-    expect((await POST(req, ctx)).status).toBe(403);
-    expect(approveDraft).not.toHaveBeenCalled();
+    approveDraft.mockResolvedValue({ ok: false, reason: "draft_not_found" });
+    const { req, ctx } = call("someone-elses-draft");
+    const res = await POST(req, ctx);
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("draft_not_found");
+    expect(approveDraft).toHaveBeenCalledWith(expect.anything(), "u", "someone-elses-draft");
   });
 
   it("400 with the failing reason for an incomplete draft", async () => {

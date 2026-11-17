@@ -1,26 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Foundry Program identity — service layer (Slice 3.2C, corrected 3.2C-R1).
- *
- * A Program is the durable, organization-scoped learning IDENTITY that a draft/
- * version (Guided authoring) and a published run (Guided or Quick) belong to. It
- * owns identity ONLY — never assignments, participants, completion, QR, or XP
- * (those stay on the Program Run = foundry_events). See
- * docs/UNIFIED_PROGRAM_LIVE_EXPERIENCE_CONTRACT.md.
- *
- * FAIL-CLOSED authorization (3.2C-R1): creating a NEW Program REQUIRES a
- * deterministically resolved canonical organization. Org is DERIVED (inside the
- * RPC) from the actor's active-primary bty_org_membership — never the legacy
- * `memberships` table, never a client value. If the actor has no active-primary
- * org the RPC raises `organization_unresolved`; more than one raises
- * `organization_ambiguous`; a supplied foreign/absent Program raises
- * `cross_organization` / `program_missing`. Foundry Host is a GLOBAL capability
- * and does NOT by itself authorize an org-owned Program. There is NO silent
- * NULL-linkage downgrade for a NEW Program — only HISTORICAL rows keep NULL.
- *
- * This service is a thin wrapper over the service-role-only SECURITY DEFINER RPC
- * bty_foundry_resolve_or_create_program; it never widens client access.
+ * A Program is the durable learning identity for Guided drafts and published
+ * Quick or Guided runs. The service-role-only RPC derives its scope from the
+ * actor's canonical membership or verified professional tenant binding. When
+ * neither resolves an organization, the Program belongs to the actor's account.
+ * Assignments, participants and completion remain on the published run.
  */
 
 const PROGRAM_REASONS = [
@@ -39,17 +24,9 @@ export function programErrorReason(e: unknown): string {
 /**
  * Resolve or create the Program identity for a create/publish action by `actorUserId`.
  *
- * - `existingProgramId` present  → resolve that Program (must exist AND be the
- *   actor's own org; a foreign-org id raises). Used so a Guided revision / publish
- *   inherits the SAME Program identity as its draft.
- * - `existingProgramId` absent   → create a NEW Program in the actor's org, using
- *   `title` for display identity only (never dedup/merge by title).
- *
- * Returns a NON-NULL program_id on success. THROWS a stable-reason Error
- * (`organization_unresolved` / `organization_ambiguous` / `cross_organization` /
- * `program_missing` / `program_resolve_failed`) when the org cannot be resolved
- * or the supplied Program is foreign — so a caller ALWAYS fails closed and never
- * links (or silently unlinks) across an authorization boundary.
+ * With an existing ID, resolve the Program in the actor's organization or one
+ * personally owned by the actor. With no ID, create a Program in the resolved
+ * scope. The title is a display value. A successful call always returns an ID.
  */
 export async function resolveOrCreateProgramForActor(
   admin: SupabaseClient,
@@ -65,8 +42,7 @@ export async function resolveOrCreateProgramForActor(
   if (error) throw new Error(programErrorReason(error.message ?? "program_resolve_failed"));
   const row = Array.isArray(data) ? data[0] : data;
   const programId = (row as { program_id?: string | null } | null)?.program_id ?? null;
-  // The RPC fails closed (raises) on no/ambiguous org, so a null here is a
-  // contract violation — treat it as unresolved rather than link silently.
+  // Both organization and account scopes require a durable Program ID.
   if (programId == null) throw new Error("organization_unresolved");
   return programId;
 }
@@ -80,9 +56,8 @@ export type ProgramLineage = { programId: string | null };
  * - `lineage` present (Guided publish) → use the draft's recorded Program identity
  *   EXACTLY, including `null` (a HISTORICAL draft with no lineage yields an
  *   unlinked run). Never throws — publishing a legacy draft must keep working.
- * - `lineage` absent (Quick / direct create) → resolve-or-create a Program in the
- *   owner's org and FAIL CLOSED (throw) if the org cannot be resolved. The caller
- *   must reject BEFORE creating the event — never a silent NULL run.
+ * - `lineage` absent (Quick / direct create) → create a Program for the owner.
+ *   The caller rejects a resolution error before creating the event.
  */
 export async function programIdForNewRun(
   admin: SupabaseClient,

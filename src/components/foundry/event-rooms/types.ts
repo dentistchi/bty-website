@@ -92,6 +92,7 @@ export type ManagerSnapshot = {
   completed_count: number;
   /** Guided "Create new version" eligibility (Slice 3.2C-B1); server-computed, boolean only. */
   revisable?: boolean;
+  canManageOrganization?: boolean;
 };
 
 export type ManagerEventSummary = {

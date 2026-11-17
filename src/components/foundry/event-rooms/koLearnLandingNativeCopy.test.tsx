@@ -15,6 +15,7 @@ function renderDoors(locale: "ko" | "en") {
     <LearnDoors
       locale={locale}
       canCreate
+      canOpenLiveEvent
       onOpenLearning={() => {}}
       onCreate={() => {}}
       onOpenQuickTraining={() => {}}

@@ -19,7 +19,7 @@ export const runtime = "nodejs";
  * live in foundryModuleService; this handler only gates, delegates, and serializes.
  */
 export async function POST(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

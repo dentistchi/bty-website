@@ -67,7 +67,7 @@ async function attachQuizOrCompensate(
 }
 
 export async function POST(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 
@@ -142,10 +142,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training-with-capability");
   if (!gate.ok) return gate.response;
-  const { user, admin, base } = gate.ctx;
+  const { user, admin, base, canManageOrganization } = gate.ctx;
 
   const events = await listOwnerEvents(admin, user.id);
-  return managerJson(base, req, { events });
+  return managerJson(base, req, { events, canManageOrganization });
 }

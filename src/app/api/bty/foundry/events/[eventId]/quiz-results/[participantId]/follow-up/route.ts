@@ -30,7 +30,7 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ eventId: string; participantId: string }> },
 ) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { eventId, participantId } = await ctx.params;
   const { admin, user, base } = gate.ctx;

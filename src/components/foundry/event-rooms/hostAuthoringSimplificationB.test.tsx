@@ -121,6 +121,7 @@ function server(opts: { answers?: BuilderAnswers; currentStep?: number } = {}) {
         return jsonRes({ ok: true, adoption: { ok: true, receipt: "recorded" } });
       }
       return jsonRes({
+        canManageOrganization: true,
         draft: {
           id: DRAFT, status: "draft", current_step: opts.currentStep ?? BUILDER_STEP_MAX,
           answers: opts.answers ?? FRESH, module_version: 1, parent_module_id: null,

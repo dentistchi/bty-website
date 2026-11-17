@@ -19,6 +19,7 @@ const POLL_MS = 3000;
 
 export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | null) {
   const [snapshot, setSnapshot] = useState<ManagerSnapshot | null>(initial ?? null);
+  const [canManageOrganization, setCanManageOrganization] = useState(initial?.canManageOrganization === true);
   const [error, setError] = useState(false);
   // 3.2G-R4: whether the FIRST fetch has completed (any outcome). Lets a control-bound consumer show a
   // compact resolving surface ONLY while genuinely loading, then an error/empty surface once settled —
@@ -42,6 +43,7 @@ export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | nu
       const data = (await res.json()) as ManagerSnapshot;
       if (mounted.current && data?.event) {
         setSnapshot(data);
+        setCanManageOrganization(data.canManageOrganization === true);
         setError(false);
       }
     } catch {
@@ -100,5 +102,5 @@ export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | nu
     };
   }, [isOpen, refresh]);
 
-  return { snapshot, setSnapshot, refresh, error, settled };
+  return { snapshot, setSnapshot, refresh, error, settled, canManageOrganization };
 }

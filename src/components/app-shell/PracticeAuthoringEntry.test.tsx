@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { PracticeAuthoringEntry } from "./PracticeAuthoringEntry";
 
 /**
@@ -37,7 +37,7 @@ afterEach(() => {
   cleanup();
 });
 
-const asHost = (events = EVENTS) => vi.stubGlobal("fetch", mockEvents(() => jsonRes({ events })));
+const asHost = (events = EVENTS) => vi.stubGlobal("fetch", mockEvents(() => jsonRes({ events, canManageOrganization: true })));
 
 describe("[R1] only an authorized Host sees the authoring entry", () => {
   it("a Host sees Create practice", async () => {
@@ -55,9 +55,17 @@ describe("[R1] only an authorized Host sees the authoring entry", () => {
     expect(screen.queryByTestId("practice-authoring-entry")).toBeNull();
   });
 
+  it.each([{ canManageOrganization: false }, {}])("a successful training list without organization access hides the entry (%j)", async (capability) => {
+    vi.stubGlobal("fetch", mockEvents(() => jsonRes({ events: EVENTS, ...capability })));
+    await act(async () => {
+      render(<PracticeAuthoringEntry locale="en" onOpen={vi.fn()} />);
+    });
+    expect(calls).toEqual(["/api/bty/foundry/events"]);
+    expect(screen.queryByTestId("practice-authoring-entry")).toBeNull();
+  });
+
   it("an auth or network failure HOLDS — a Host is never told their control does not exist", async () => {
-    // The established FoundryEventRooms reading: only an explicit foundry_host_required means
-    // "not a Host". A 401/500 must not silently remove a Host's way in.
+    // Until the server confirms access, the entry stays hidden without an explanation.
     for (const failing of [
       () => jsonRes({}, false, 401),
       () => jsonRes({}, false, 500),

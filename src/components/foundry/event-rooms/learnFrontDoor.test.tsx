@@ -2,7 +2,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup } from "@testing-library/react";
+import FoundryEventRooms from "./FoundryEventRooms";
 import { LearnDoors } from "./LearnDoors";
 
 /**
@@ -20,24 +21,45 @@ const read = (f: string) => readFileSync(join(ROOMS, f), "utf8");
 const code = (s: string) =>
   s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+function renderRooms(eventsResponse: { ok: boolean; status: number; body: unknown }) {
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (url === "/api/bty/foundry/events") {
+      return { ok: eventsResponse.ok, status: eventsResponse.status, json: async () => eventsResponse.body };
+    }
+    return { ok: true, status: 200, json: async () => ({ ok: true, assignments: [], drafts: [] }) };
+  }));
+  render(<FoundryEventRooms locale="en" onOpenEvent={vi.fn()} />);
+}
 
 describe("T1 — the learner sees current work first", () => {
-  const c = code(read("FoundryEventRooms.tsx"));
-  const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
-
-  it("the non_author branch renders Required Learning BEFORE the doors", () => {
-    expect(learner.indexOf("{requiredLearning}")).toBeGreaterThan(-1);
-    expect(learner.indexOf("{requiredLearning}")).toBeLessThan(learner.indexOf("{learnDoors}"));
+  it("the fallback lists required learning before learning history", async () => {
+    renderRooms({ ok: false, status: 403, body: { error: "foundry_author_required" } });
+    const required = await screen.findByTestId("foundry-required-learning");
+    expect(required.compareDocumentPosition(screen.getByTestId("learn-doors")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("training-creation")).toBeNull();
   });
 
-  it("T8 — the Host list keeps authoring above Required Learning", () => {
-    const host = c.slice(c.indexOf('if (access === "loading")'));
-    expect(host).toMatch(/\{learnDoors\}\s*\n\s*\{requiredLearning\}/);
-    expect(host).not.toMatch(/\{requiredLearning\}\s*\n\s*\{learnDoors\}/);
+  it("a self-owned training author sees required learning first and can open Quick training", async () => {
+    renderRooms({ ok: true, status: 200, body: { events: [], canManageOrganization: false } });
+    const required = await screen.findByTestId("foundry-required-learning");
+    const training = screen.getByTestId("training-creation");
+    expect(required.compareDocumentPosition(training) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByTestId("door-quick-training"));
+    expect(screen.getByRole("heading", { name: "Quick training" })).toBeTruthy();
   });
 
-  it("T8b — the Host-only doors are untouched and still exist", () => {
+  it("T8 — the Host list keeps authoring above Required Learning", async () => {
+    renderRooms({ ok: true, status: 200, body: { events: [], canManageOrganization: true } });
+    const required = await screen.findByTestId("foundry-required-learning");
+    expect(required.compareDocumentPosition(screen.getByTestId("training-creation")) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
+  it("T8b — training and live events retain separate controls", () => {
     const d = code(read("LearnDoors.tsx"));
     for (const t of ["door-create-training", "door-open-event"]) expect(d).toContain(t);
     // The legacy QR "My events" door was retired from the UI in IA simplification V1.
@@ -132,13 +154,10 @@ describe("T6/T7/T10 — nothing else moved", () => {
     expect(c).toContain('<div id="learn-required">');
   });
 
-  it("T9 — the truthful empty state is unchanged and history stays reachable", () => {
-    expect(r).toContain('emptyTitle: "Nothing required right now"');
-    expect(r).toContain('data-testid="required-empty"');
-    // The door is outside the Required Learning section, so an empty section never hides it.
-    const c = code(read("FoundryEventRooms.tsx"));
-    const learner = c.slice(c.indexOf('if (access === "non_author")'), c.indexOf('if (access === "loading")'));
-    expect(learner).toContain("{learnDoors}");
+  it("T9 — learning history stays reachable when required learning is empty", async () => {
+    renderRooms({ ok: false, status: 403, body: { error: "foundry_author_required" } });
+    expect((await screen.findByTestId("required-empty")).textContent).toContain("Nothing required right now");
+    expect(screen.getByTestId("door-my-learning")).toBeTruthy();
   });
 
   it("T10 — this slice changed no route, query parameter, API or data path", () => {

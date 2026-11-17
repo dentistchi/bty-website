@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * next failed create for the same path or ignorable — it is private + unreferenced).
  */
 export async function POST(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

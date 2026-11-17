@@ -6,9 +6,9 @@ import { refreshMicrosoftAuthorityForCanonicalUser } from "@/lib/bty/foundry/eve
 /**
  * Server-only Foundry authoring capability.
  *
- * This answers only whether a canonical BTY user may create and operate their
- * own Foundry training/event content. Record ownership and organization scope
- * are enforced by the routes and services behind this gate.
+ * This gates privileged actions such as live-event creation, organization
+ * assignment and Teams bot delivery. Training authorship uses account
+ * authentication plus record ownership in the training routes.
  *
  * Platform admin and explicit Host are exceptions. All automatic authority is a
  * successfully-synced Microsoft snapshot keyed by verified tenant + object ID.
@@ -23,7 +23,7 @@ async function single(query: { maybeSingle: () => Promise<Lookup> }): Promise<Lo
 }
 
 /**
- * Resolve the sole Foundry create/operate capability. Every source failure
+ * Resolve the privileged Foundry capability. Every source failure
  * denies the request rather than treating an unavailable authority source as
  * absence. This is deliberately separate from content ownership checks.
  */

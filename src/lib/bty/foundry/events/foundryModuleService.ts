@@ -97,11 +97,8 @@ export async function createDraft(
 ): Promise<ServiceResult<ModuleDraftRow>> {
   let moduleVersion = 1;
   let parentModuleId: string | null = null;
-  // Program lineage (Slice 3.2C, fail-closed 3.2C-R1). A revision INHERITS the
-  // parent's Program identity (may be null for a HISTORICAL lineage) so every
-  // version stays in one lineage and never re-resolves. A NEW original Program
-  // REQUIRES a deterministically resolved canonical org — resolution runs BEFORE
-  // the draft insert and REJECTS (no partial draft) when the org is unresolvable.
+  // Revisions inherit their parent's Program ID, including null on historical
+  // drafts. A new training resolves its Program before inserting the draft.
   let programId: string | null = null;
   let createdProgram = false;
 

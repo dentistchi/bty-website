@@ -17,8 +17,8 @@ import { LearnDoors } from "./LearnDoors";
  * Worse, the door was gated on a THIRD authority — `hasHostCapability` — which neither gate
  * consulted, so the people who could SEE the form were exactly the people the form would refuse.
  *
- * The repair is that the room now uses the door's authority. These tests hold both directions: a
- * participant is never offered the affordance, and a Manager+ still is.
+ * Opening a live event uses the same organization authority in Learn and on the server.
+ * An authenticated participant can still create training they own.
  *
  * ★ UI HIDING IS NOT THE SECURITY BOUNDARY. The server check is asserted separately, in
  * `src/domain/authority/collaborationParticipant.test.ts`. This file is about not showing someone
@@ -30,11 +30,12 @@ const code = (p: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
-const doors = (canCreate: boolean) =>
+const doors = (canCreate: boolean, canOpenLiveEvent = false) =>
   render(
     <LearnDoors
       locale="en"
       canCreate={canCreate}
+      canOpenLiveEvent={canOpenLiveEvent}
       onOpenLearning={() => {}}
       onCreate={() => {}}
       onOpenEvent={vi.fn()}
@@ -42,9 +43,10 @@ const doors = (canCreate: boolean) =>
     />,
   );
 
-describe("★ a participant is offered no authoring affordance", () => {
-  it("★ 5. no Event creation entry point", () => {
-    doors(false);
+describe("self-owned training and live event authoring", () => {
+  it("a training author without organization access can create training", () => {
+    doors(true);
+    expect(screen.getByTestId("door-create-training")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /event/i })).toBeNull();
   });
 
@@ -63,7 +65,7 @@ describe("★ a participant is offered no authoring affordance", () => {
 
 describe("★ 6. a Manager+ still sees every authoring surface", () => {
   it("Event creation is offered", () => {
-    doors(true);
+    doors(true, true);
     expect(screen.getAllByRole("button", { name: /event/i }).length).toBeGreaterThan(0);
   });
 
@@ -74,12 +76,6 @@ describe("★ 6. a Manager+ still sees every authoring surface", () => {
 });
 
 describe("★ the door and the room now ask the SAME question", () => {
-  it("the door is gated on host capability, resolved from the manager route's own refusal", () => {
-    const rooms = code("src/components/foundry/event-rooms/FoundryEventRooms.tsx");
-    expect(rooms).toContain('canCreate={access === "author"}');
-    expect(rooms).toContain("foundry_author_required");
-  });
-
   it("★ the Event room asks host capability too — no third authority left", () => {
     const route = code("src/app/api/bty/events/route.ts");
     expect(route).toMatch(/await hasFoundryAuthorCapability\(/);

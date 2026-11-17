@@ -148,6 +148,7 @@ function server(opts: ServerOpts = {}) {
         return jsonRes({ ok: true, adoption: { ok: true, receipt: "recorded" } });
       }
       return jsonRes({
+        canManageOrganization: true,
         draft: {
           id: DRAFT,
           status: "draft",

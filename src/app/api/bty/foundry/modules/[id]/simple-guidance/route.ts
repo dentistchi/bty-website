@@ -20,7 +20,7 @@ const text = (v: unknown, max: number): string | null =>
   typeof v === "string" && v.trim().length > 0 && v.trim().length <= max ? v.trim() : null;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
   const { id } = await ctx.params;

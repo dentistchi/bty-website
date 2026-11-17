@@ -14,9 +14,9 @@ export const runtime = "nodejs";
  * is not owned by the caller. The roster NEVER includes response text (privacy).
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training-with-capability");
   if (!gate.ok) return gate.response;
-  const { user, admin, base } = gate.ctx;
+  const { user, admin, base, canManageOrganization } = gate.ctx;
 
   const { eventId } = await ctx.params;
   const snapshot = await getOwnerRoomSnapshot(admin, user.id, eventId);
@@ -26,5 +26,5 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: st
   // this owned event is a Guided published training with a resolvable source draft.
   const revisable = await isEventRevisable(admin, user.id, eventId);
 
-  return managerJson(base, req, { ...attachJoinUrl(req, snapshot), revisable });
+  return managerJson(base, req, { ...attachJoinUrl(req, snapshot), revisable, canManageOrganization });
 }

@@ -85,7 +85,7 @@ afterEach(() => {
 
 async function inTeams() {
   setPath("/teams");
-  render(<FoundryShareControls event={event()} locale="en" t={en} />);
+  render(<FoundryShareControls canSendInTeams event={event()} locale="en" t={en} />);
   await waitFor(() => expect(screen.getByTestId("send-in-teams")).toBeTruthy());
 }
 
@@ -236,6 +236,15 @@ describe("a mixed or failed send is reported honestly", () => {
       expect(screen.getByTestId("send-in-teams-status").textContent).toBe(en.sendInTeamsUnavailable),
     );
   });
+});
+
+it("lets a regular author in Teams copy the training link without the bot picker", async () => {
+  setPath("/teams");
+  render(<FoundryShareControls event={event()} locale="en" t={en} />);
+  fireEvent.click(screen.getByLabelText(en.copyInvitation));
+  await waitFor(() => expect(clipboard).toEqual([`https://arena.btydaily.com/f/${TOKEN}`]));
+  expect(screen.queryByTestId("send-in-teams")).toBeNull();
+  expect(H.selectPeople).not.toHaveBeenCalled();
 });
 
 describe("★ outside Teams nothing changed", () => {

@@ -50,7 +50,7 @@ export function FoundryEventControlRoom({
   focusId?: string;
 }) {
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
-  const { snapshot, setSnapshot, refresh, error, settled } = useEventSnapshot(eventId, initialSnapshot);
+  const { snapshot, setSnapshot, refresh, error, settled, canManageOrganization } = useEventSnapshot(eventId, initialSnapshot);
 
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -65,9 +65,10 @@ export function FoundryEventControlRoom({
 
   // Draft-entry label clarity (3.0B.2): Create → Continue (unpublished draft exists)
   // → Manage (a published practice exists). The action still opens the same editor.
+  const createArenaPractice = canManageOrganization ? onCreateArenaPractice : undefined;
   const [arenaLabel, setArenaLabel] = useState<string>(t.createArenaPractice);
   useEffect(() => {
-    if (!onCreateArenaPractice) return;
+    if (!createArenaPractice) return;
     let alive = true;
     (async () => {
       try {
@@ -88,7 +89,7 @@ export function FoundryEventControlRoom({
     return () => {
       alive = false;
     };
-  }, [eventId, onCreateArenaPractice, t.createArenaPractice, t.continueArenaPractice, t.manageArenaPractice]);
+  }, [eventId, createArenaPractice, t.createArenaPractice, t.continueArenaPractice, t.manageArenaPractice]);
 
   const event = snapshot?.event ?? null;
   const participants = snapshot?.participants ?? [];
@@ -181,10 +182,10 @@ export function FoundryEventControlRoom({
 
           {/* Create Arena practice — the one clear action to turn this training into
               a guided practice scenario draft. Host-only (this whole room is gated). */}
-          {onCreateArenaPractice ? (
+          {createArenaPractice ? (
             <button
               type="button"
-              onClick={onCreateArenaPractice}
+              onClick={createArenaPractice}
               className="self-start rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-3 text-sm font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/[0.14]"
             >
               {arenaLabel} →
@@ -214,7 +215,7 @@ export function FoundryEventControlRoom({
               {/* Show QR — the canonical join URL, already visible (not duplicated). */}
               <FoundryEventQr url={event.join_url} t={t} />
               {/* Share this room — Copy invitation + Share to Teams (same URL as QR). */}
-              <FoundryShareControls event={event} locale={locale} t={t} />
+              <FoundryShareControls event={event} locale={locale} t={t} canSendInTeams={canManageOrganization} />
               <button
                 type="button"
                 onClick={onRotate}

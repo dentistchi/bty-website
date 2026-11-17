@@ -54,14 +54,15 @@ describe("GET /api/bty/foundry/event-history/[eventId]", () => {
     expect(getHostHistoryDetail).not.toHaveBeenCalled();
   });
 
-  it("403s a non-host (service untouched)", async () => {
+  it("scopes an ordinary author's history request and returns 404 for a foreign event", async () => {
     currentUser.mockReturnValue({ id: "user-x" });
     hostActive.mockReturnValue(false);
-    const { request, ctx } = req();
+    getHostHistoryDetail.mockResolvedValue(null);
+    const { request, ctx } = req("someone-elses-event");
     const res = await GET(request, ctx);
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe("foundry_author_required");
-    expect(getHostHistoryDetail).not.toHaveBeenCalled();
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("not_found");
+    expect(getHostHistoryDetail).toHaveBeenCalledWith(expect.anything(), "user-x", "someone-elses-event");
   });
 
   it("404s (non-disclosing) when the service returns null (foreign/active/unknown id)", async () => {

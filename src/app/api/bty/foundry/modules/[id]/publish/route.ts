@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 import { requireManager, managerJson, attachJoinUrl } from "@/lib/bty/foundry/events/managerGate";
 import { publishDraft, type Locale } from "@/lib/bty/foundry/events/foundryPublishService";
 
@@ -45,7 +46,7 @@ function statusForReason(reason: string): number {
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 
@@ -70,6 +71,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           },
         }
       : { mode: "open_link" as const };
+
+  if (participation.mode === "assigned_overlay" && !(await hasFoundryAuthorCapability(admin, user.id))) {
+    return managerJson(base, req, { error: "not_a_host" }, 403);
+  }
 
   const result = await publishDraft(admin, user.id, id, locale, participation);
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));

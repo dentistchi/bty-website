@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { rateLimitKV } from "@/lib/rate-limit";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
 import { generateQuizDraft, type QuizGenerationCode } from "@/lib/bty/foundry/events/quickTrainingQuizGeneration";
 
@@ -22,9 +23,18 @@ const STATUS: Readonly<Record<QuizGenerationCode, number>> = {
 };
 
 export async function POST(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
+  const { user, base } = gate.ctx;
+  const limit = await rateLimitKV({
+    endpoint: "foundry-quiz-generate",
+    identifier: user.id,
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (!limit.allowed) return managerJson(base, req, { ok: false, code: "rate_limited" }, 429);
+
   const body = await req.json().catch(() => ({}));
   const result = await generateQuizDraft(body?.sourceText, body?.questionCount, body?.locale);
-  return managerJson(gate.ctx.base, req, result, result.ok ? 200 : (STATUS[result.code] ?? 400));
+  return managerJson(base, req, result, result.ok ? 200 : (STATUS[result.code] ?? 400));
 }

@@ -33,7 +33,7 @@ describe("LearnDoors", () => {
     const onCreate = vi.fn();
     const onOpenQuickTraining = vi.fn();
     const onOpenEvent = vi.fn();
-    render(<LearnDoors locale="en" canCreate onOpenLearning={onOpenLearning} onCreate={onCreate} onOpenQuickTraining={onOpenQuickTraining} onOpenEvent={onOpenEvent} />);
+    render(<LearnDoors locale="en" canCreate canOpenLiveEvent onOpenLearning={onOpenLearning} onCreate={onCreate} onOpenQuickTraining={onOpenQuickTraining} onOpenEvent={onOpenEvent} />);
     fireEvent.click(screen.getByTestId("door-my-learning"));
     expect(onOpenLearning).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId("door-quick-training"));

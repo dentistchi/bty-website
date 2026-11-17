@@ -170,10 +170,11 @@ export default function FoundryEventRooms({
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
-  // Author capability, resolved from the events list response. A non-author
-  // sees a quiet learner state; an auth/network error is NOT shown as denial
-  // (it stays a neutral loading hold so we never misrepresent it).
-  const [access, setAccess] = useState<"loading" | "author" | "non_author">("loading");
+  // A successful training list enables self-owned training. Live events require a
+  // separate capability from the server.
+  const [access, setAccess] = useState<
+    { kind: "loading" } | { kind: "non_author" } | { kind: "author"; canManageOrganization: boolean }
+  >({ kind: "loading" });
 
   const loadList = useCallback(async () => {
     try {
@@ -182,22 +183,22 @@ export default function FoundryEventRooms({
         cache: "no-store",
       });
       if (res.ok) {
-        const data = (await res.json()) as { events?: ManagerEventSummary[] };
+        const data = (await res.json()) as { events?: ManagerEventSummary[]; canManageOrganization?: boolean };
         setEvents(Array.isArray(data.events) ? data.events : []);
-        setAccess("author");
+        setAccess({ kind: "author", canManageOrganization: data.canManageOrganization === true });
         return;
       }
       if (res.status === 403) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         if (body?.error === "foundry_author_required") {
-          setAccess("non_author");
+          setAccess({ kind: "non_author" });
           return;
         }
       }
       // Auth expiry / network / server error → stay in a neutral hold (not non-host).
-      setAccess("loading");
+      setAccess({ kind: "loading" });
     } catch {
-      setAccess("loading");
+      setAccess({ kind: "loading" });
     }
   }, []);
 
@@ -377,7 +378,8 @@ export default function FoundryEventRooms({
   const learnDoors = (
     <LearnDoors
       locale={loc}
-      canCreate={access === "author"}
+      canCreate={access.kind === "author"}
+      canOpenLiveEvent={access.kind === "author" && access.canManageOrganization}
       onOpenLearning={openLearning}
       onCreate={startNewDraft}
       onOpenQuickTraining={() => setView({ kind: "create" })}
@@ -453,34 +455,15 @@ export default function FoundryEventRooms({
     );
   }
 
-  // home — non-author quiet state (no Create CTA, no permission-request CTA, no
-  // "coming soon"; employees join via the public QR route). An unresolved auth/
-  // network error stays a neutral hold, never mislabeled as non-author.
-  if (access === "non_author") {
-    // A non-author learner's Foundry home: their required-learning surface leads, with
-    // the quiet author-pointer copy retained beneath it (calmer, no longer full-height).
+  if (access.kind === "non_author") {
     return withHeader(
-      // B3A.2C: a non-host learner's Learn surface is just the two-door entry + their
-      // required learning. The "FOUNDRY / Training rooms are opened by authorized
-      // hosts / Scan an invitation QR" host-pointer block is removed (it explained
-      // authorization instead of offering a useful action). QR deep links are unchanged.
-      /*
-        CURRENT WORK FIRST (Slice R4-R5C6). This branch — and ONLY this branch — is the learner's
-        Learn surface, so the order change is contained to it and the Host compositions below keep
-        their own hierarchy, where Create training is deliberately near the top.
-
-        The doors used to come first, which meant the biggest, earliest control on Learn was a
-        history entry whose body advertised "Open required training or continue where you left
-        off" — the job the section beneath it actually performs. A learner with an assigned
-        training had two plausible taps and the wrong one was larger and sooner.
-      */
       <div className="btyFadeIn flex flex-col gap-8">
         {requiredLearning}
         {learnDoors}
       </div>
     );
   }
-  if (access === "loading") {
+  if (access.kind === "loading") {
     return withHeader(<div aria-hidden className="min-h-[40vh]" />);
   }
 
@@ -489,8 +472,9 @@ export default function FoundryEventRooms({
 
   return withHeader(
     <div className="btyFadeIn flex flex-col gap-9">
+      {!access.canManageOrganization && requiredLearning}
       {learnDoors}
-      {requiredLearning}
+      {access.canManageOrganization && requiredLearning}
       {drafts.length > 0 ? <DraftList drafts={drafts} onOpen={openDraft} onDelete={deleteDraft} bt={bt} /> : null}
       {/* B3A.2C: the "FOUNDRY" heading is removed from the Learn surface; the
           Host's own trainings appear under their plain Open/Past section headers. */}

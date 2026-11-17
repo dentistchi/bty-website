@@ -4,7 +4,7 @@ import { moduleDraftContext, moduleDraftContextFingerprint } from "@/domain/foun
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
- * Module-draft route — Host gate, non-disclosing ownership, editability, insufficient
+ * Module-draft route — authentication, non-disclosing ownership, editability, insufficient
  * + stale context guards, rate limit, zero draft mutation, fail-closed mapping. The
  * domain context/fingerprint runs for real (not mocked).
  */
@@ -100,10 +100,11 @@ describe("POST /modules/[id]/module-draft", () => {
     expect(generateModuleDraft).not.toHaveBeenCalled();
   });
 
-  it("403s a non-Host", async () => {
+  it("generates suggestions for an ordinary author's own editable draft", async () => {
     hostActive.mockReturnValue(false);
-    expect((await POST(req(goodBody), params)).status).toBe(403);
-    expect(generateModuleDraft).not.toHaveBeenCalled();
+    expect((await POST(req(goodBody), params)).status).toBe(200);
+    expect(getOwnerDraft).toHaveBeenCalledWith(expect.anything(), "owner-1", "d-1");
+    expect(generateModuleDraft).toHaveBeenCalledOnce();
   });
 
   it("404 non-disclosing for a foreign/missing draft", async () => {

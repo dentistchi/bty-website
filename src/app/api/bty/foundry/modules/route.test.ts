@@ -70,13 +70,14 @@ describe("POST /api/bty/foundry/modules", () => {
     expect(createDraft).not.toHaveBeenCalled();
   });
 
-  it("403s an authenticated non-host", async () => {
-    currentUser.mockReturnValue({ id: "u" });
+  it("creates a Guided draft for an ordinary authenticated account", async () => {
+    currentUser.mockReturnValue({ id: "owner-1" });
     hostActive.mockReturnValue(false);
+    createDraft.mockResolvedValue({ ok: true, value: ROW });
     const res = await POST(req("POST"));
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe("foundry_author_required");
-    expect(createDraft).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    expect((await res.json()).draft.id).toBe("d-1");
+    expect(createDraft).toHaveBeenCalledWith({}, "owner-1");
   });
 
   it("creates a draft and returns the client shape (no owner id, no asset value)", async () => {
@@ -116,12 +117,13 @@ describe("GET /api/bty/foundry/modules", () => {
     expect(listOwnerDrafts).toHaveBeenCalledWith({}, "owner-1");
   });
 
-  it("403s an authenticated non-host with no data", async () => {
+  it("lists drafts for an ordinary authenticated account", async () => {
     currentUser.mockReturnValue({ id: "u" });
     hostActive.mockReturnValue(false);
+    listOwnerDrafts.mockResolvedValue([]);
     const res = await GET(req("GET"));
-    expect(res.status).toBe(403);
-    expect((await res.json()).drafts).toBeUndefined();
-    expect(listOwnerDrafts).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ drafts: [] });
+    expect(listOwnerDrafts).toHaveBeenCalledWith({}, "u");
   });
 });

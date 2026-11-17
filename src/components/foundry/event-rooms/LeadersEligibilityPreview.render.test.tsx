@@ -19,7 +19,10 @@ const jsonRes = (body: unknown, status = 200) => ({
 });
 
 /** Draft server parked on the AUDIENCE step (step 2), plus the preview endpoint. */
-function mockServers(preview: { eligibleCount: number; members: Array<{ displayName: string | null }> } | { error: true }) {
+function mockServers(
+  preview: { eligibleCount: number; members: Array<{ displayName: string | null }> } | { error: true },
+  capability: { canManageOrganization?: boolean } = { canManageOrganization: true },
+) {
   const draft = {
     id: "d-1",
     status: "draft",
@@ -43,7 +46,7 @@ function mockServers(preview: { eligibleCount: number; members: Array<{ displayN
     }
     if (u.includes("/modules/d-1")) {
       if (init?.method === "PATCH") return Promise.resolve(jsonRes({ ok: true }));
-      return Promise.resolve(jsonRes({ draft }));
+      return Promise.resolve(jsonRes({ draft, ...capability }));
     }
     return Promise.resolve(jsonRes({ ok: true }));
   }) as unknown as typeof fetch;
@@ -58,6 +61,14 @@ afterEach(() => {
 });
 
 describe("Leaders eligibility preview is mounted in the audience step", () => {
+  it("keeps the Leaders audience choice without fetching the roster when permission is absent", async () => {
+    mockServers({ eligibleCount: 1, members: [{ displayName: "Hanbit Chi" }] }, {});
+    renderShell();
+    expect(await screen.findByRole("button", { name: "Leaders" })).toBeTruthy();
+    expect(screen.queryByTestId("leaders-eligibility-preview")).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalledWith("/api/bty/foundry/audience/leaders-preview", expect.anything());
+  });
+
   it("renders the preview when the audience is Leaders", async () => {
     mockServers({ eligibleCount: 1, members: [{ displayName: "Hanbit Chi" }] });
     renderShell();

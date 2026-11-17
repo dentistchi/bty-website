@@ -48,7 +48,11 @@ function readyDraft(audienceType: string) {
   };
 }
 
-function mockServers(opts: { audienceType?: string; publish?: (body: unknown) => { status: number; body: unknown } } = {}) {
+function mockServers(opts: {
+  audienceType?: string;
+  canManageOrganization?: boolean;
+  publish?: (body: unknown) => { status: number; body: unknown };
+} = {}) {
   const draft = readyDraft(opts.audienceType ?? "leaders");
   const calls: { publish: unknown[] } = { publish: [] };
   global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
@@ -71,7 +75,7 @@ function mockServers(opts: { audienceType?: string; publish?: (body: unknown) =>
     }
     if (u.includes("/modules/d-1")) {
       if (init?.method === "PATCH") return Promise.resolve(jsonRes({ ok: true }));
-      return Promise.resolve(jsonRes({ draft }));
+      return Promise.resolve(jsonRes({ draft, canManageOrganization: opts.canManageOrganization ?? true }));
     }
     return Promise.resolve(jsonRes({ ok: true }));
   }) as unknown as typeof fetch;
@@ -128,9 +132,12 @@ describe("Participation-mode controls in the Builder review step", () => {
     expect(note).toMatch(/does not restrict entry/i);
   });
 
-  it("an OPEN_LINK publish sends open_link and NO audience fields", async () => {
-    const calls = mockServers({ audienceType: "leaders" });
+  it("an ordinary author publishes by link without exposing assignment controls or audience fields", async () => {
+    const calls = mockServers({ audienceType: "leaders", canManageOrganization: false });
     renderShell();
+    await screen.findByTestId("publish-cta");
+    expect(screen.queryByTestId("participation-mode-assigned")).toBeNull();
+    expect(screen.queryByTestId("leaders-eligibility-preview")).toBeNull();
     await publishNow();
     await waitFor(() => expect(calls.publish).toHaveLength(1));
     const body = calls.publish[0] as Record<string, unknown>;

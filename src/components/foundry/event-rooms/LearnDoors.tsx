@@ -90,6 +90,7 @@ const COPY: Record<
 export function LearnDoors({
   locale,
   canCreate,
+  canOpenLiveEvent = false,
   onOpenLearning,
   onCreate,
   onOpenQuickTraining,
@@ -98,8 +99,10 @@ export function LearnDoors({
   onOpenMyEvents,
 }: {
   locale: Locale;
-  /** True only when the user holds the existing training-creation capability. */
+  /** True when the user can create training they own. */
   canCreate: boolean;
+  /** True when the server confirms organization management access. */
+  canOpenLiveEvent?: boolean;
   onOpenLearning: () => void;
   onCreate: () => void;
   onOpenQuickTraining?: () => void;
@@ -169,8 +172,8 @@ export function LearnDoors({
 
       {/* Reality Event Host entry (Slice 3.2D-EVENT-R1). IN-SHELL callback (not a route
           link) so it never leaves the installed app webview; visibility mirrors the creator
-          capability, and the leader-track authority is enforced by POST /api/bty/events. */}
-      {canCreate && onOpenEvent ? (
+          capability also enforced by POST /api/bty/events. */}
+      {canOpenLiveEvent && onOpenEvent ? (
         <button
           type="button"
           onClick={onOpenEvent}
