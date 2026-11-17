@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * response_text / private reflection / AI interpretation. 404 when the event is not owned.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

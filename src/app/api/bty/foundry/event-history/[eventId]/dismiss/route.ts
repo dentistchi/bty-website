@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
  * owner-scoped Host surfaces, so the only person with history to tidy here is the owner.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

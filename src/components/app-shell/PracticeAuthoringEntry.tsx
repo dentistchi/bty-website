@@ -22,15 +22,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * single tap goes straight through; with several, guessing would silently author against the wrong
  * Training, so the Host is asked.
  *
- * AUTHORIZATION comes from the canonical author list itself: `/api/bty/foundry/events` answers 403
- * `foundry_author_required` for a learner. Following the established `FoundryEventRooms` reading, an
- * auth expiry or network error is NOT read as "not an author" — it holds silently, so an author is never
- * told their own control does not exist because a request failed.
+ * The training list grants access to self-owned training. Practice authoring needs the
+ * separate `canManageOrganization` capability from `/api/bty/foundry/events`.
  */
 
 type Locale = "en" | "ko";
 type ManagerEventSummary = { id: string; title: string };
-type Access = "loading" | "author" | "non_author";
 
 const COPY: Record<Locale, {
   create: string;
@@ -69,8 +66,7 @@ export function PracticeAuthoringEntry({
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
 
-  const [access, setAccess] = useState<Access>("loading");
-  const [events, setEvents] = useState<ManagerEventSummary[]>([]);
+  const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [picking, setPicking] = useState(false);
   const openedRef = useRef(false);
   const [opening, setOpening] = useState(false);
@@ -80,26 +76,12 @@ export function PracticeAuthoringEntry({
     (async () => {
       try {
         const res = await fetch("/api/bty/foundry/events", { credentials: "include", cache: "no-store" });
-        if (cancelled) return;
-        if (res.ok) {
-          const data = (await res.json().catch(() => ({}))) as { events?: ManagerEventSummary[] };
-          if (cancelled) return;
-          setEvents(Array.isArray(data.events) ? data.events : []);
-          setAccess("author");
-          return;
-        }
-        if (res.status === 403) {
-          const body = (await res.json().catch(() => null)) as { error?: string } | null;
-          if (cancelled) return;
-          if (body?.error === "foundry_author_required") {
-            setAccess("non_author");
-            return;
-          }
-        }
-        // Auth expiry, network or server error — a neutral hold, never a false "not a Host".
-        setAccess("loading");
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as { events?: ManagerEventSummary[]; canManageOrganization?: boolean };
+        if (cancelled || data.canManageOrganization !== true) return;
+        setEvents(Array.isArray(data.events) ? data.events : []);
       } catch {
-        if (!cancelled) setAccess("loading");
+        /* Keep the authoring entry hidden while authorization is unavailable. */
       }
     })();
     return () => {
@@ -118,8 +100,7 @@ export function PracticeAuthoringEntry({
     [onOpen],
   );
 
-  // A learner sees nothing at all — not a disabled control, not an explanation.
-  if (access !== "author") return null;
+  if (events === null) return null;
 
   if (events.length === 0) {
     return (

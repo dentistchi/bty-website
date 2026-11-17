@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Direction Copilot route — proves the Host gate, non-disclosing ownership, draft
+ * Direction Copilot route — proves authentication, non-disclosing ownership, draft
  * editability, request validation, the stale-problem guard, rate limiting, that
  * generation NEVER mutates the draft, and fail-closed error mapping. The domain
  * compatibility check and PROBLEM_MAX run for real (not mocked).
@@ -89,10 +89,11 @@ describe("POST /modules/[id]/directions", () => {
     expect(generateDirections).not.toHaveBeenCalled();
   });
 
-  it("403s a non-Host", async () => {
+  it("generates directions for an ordinary author's own editable draft", async () => {
     hostActive.mockReturnValue(false);
-    expect((await POST(req(goodBody), params)).status).toBe(403);
-    expect(generateDirections).not.toHaveBeenCalled();
+    expect((await POST(req(goodBody), params)).status).toBe(200);
+    expect(getOwnerDraft).toHaveBeenCalledWith(expect.anything(), "owner-1", "d-1");
+    expect(generateDirections).toHaveBeenCalledOnce();
   });
 
   it("404 non-disclosing for a foreign/missing draft", async () => {

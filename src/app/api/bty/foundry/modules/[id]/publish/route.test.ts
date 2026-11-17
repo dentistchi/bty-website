@@ -51,11 +51,13 @@ describe("POST /modules/[id]/publish", () => {
     expect(publishDraft).not.toHaveBeenCalled();
   });
 
-  it("403 non-host", async () => {
+  it("403 for organization assignment by an ordinary account", async () => {
     currentUser.mockReturnValue({ id: "u" });
     hostActive.mockReturnValue(false);
-    const { req, ctx } = call();
-    expect((await POST(req, ctx)).status).toBe(403);
+    const { req, ctx } = call({ participationMode: "assigned_overlay", audienceType: "everyone" });
+    const res = await POST(req, ctx);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("not_a_host");
     expect(publishDraft).not.toHaveBeenCalled();
   });
 
@@ -73,8 +75,9 @@ describe("POST /modules/[id]/publish", () => {
     expect((await POST(req, ctx)).status).toBe(400);
   });
 
-  it("200 returns join_url (token stays inside the URL) + reused flag", async () => {
+  it("an ordinary account publishes its draft by link and gets the join URL", async () => {
     currentUser.mockReturnValue({ id: "owner" });
+    hostActive.mockReturnValue(false);
     publishDraft.mockResolvedValue({ ok: true, value: { snapshot: SNAPSHOT, reused: false } });
     const { req, ctx } = call();
     const res = await POST(req, ctx);

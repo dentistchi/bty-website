@@ -11,13 +11,13 @@ export const runtime = "nodejs";
  * service, so another host's events are never returned. The payload carries NO
  * reflection text, session token, or join credential (aggregate + factual only).
  *
- * Behind `requireManager`: 401 unauthenticated, 403 `foundry_host_required` for a
- * non-host. Deliberately a sibling of `events/` (NOT `events/history/…`): the
+ * Requires a signed-in BTY account. Deliberately a sibling of `events/` (NOT
+ * `events/history/…`): the
  * opennextjs-cloudflare runtime router shadows a route nested under the dynamic
  * `events/[eventId]` segment, so the archive lives at its own top-level segment.
  */
 export async function GET(req: NextRequest) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 /** Owner-only factual quiz projection. It intentionally excludes raw answers. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req); if (!gate.ok) return gate.response;
+  const gate = await requireManager(req, "training"); if (!gate.ok) return gate.response;
   const { eventId } = await ctx.params; const { admin, user, base } = gate.ctx;
   const { data: event } = await admin.from("foundry_events").select("id").eq("id", eventId).eq("owner_user_id", user.id).maybeSingle();
   if (!event) return managerJson(base, req, { error: "not_found" }, 404);

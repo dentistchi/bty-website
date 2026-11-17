@@ -149,8 +149,15 @@ describe("R4-R4B-R1 · Review scans in two columns without two columns of prose"
     expect(SRC_B.slice(Math.max(0, i - 160), i)).toContain("lg:col-span-2");
   });
 
-  it("5 — nothing was added, removed or reordered: the same components in the same order", () => {
-    const order = ["<ProgramAuthorship", "<JourneyPreview", "<MaterialReviewPanel", "<AllTrainingDetails", "<ParticipationModeChooser", "<PublishAction"];
+  it("5 — Review keeps its reading order and places the optional participation choice before Publish", () => {
+    const order = [
+      "<ProgramAuthorship",
+      "<JourneyPreview",
+      "<MaterialReviewPanel",
+      "<AllTrainingDetails",
+      "{participationChooser}",
+      "<PublishAction",
+    ];
     let cursor = SRC_B.indexOf("isReview ? (");
     expect(cursor).toBeGreaterThan(-1);
     for (const c of order) {

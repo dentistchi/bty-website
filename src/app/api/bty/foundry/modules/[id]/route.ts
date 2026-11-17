@@ -43,9 +43,9 @@ function statusForReason(reason: string): number {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training-with-capability");
   if (!gate.ok) return gate.response;
-  const { user, admin, base } = gate.ctx;
+  const { user, admin, base, canManageOrganization } = gate.ctx;
 
   const { id } = await ctx.params;
   const draft = await getOwnerDraft(admin, user.id, id);
@@ -58,11 +58,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   return managerJson(base, req, {
     draft: { ...toClientDraft(draft), assets },
     program_generation_active: active !== null,
+    canManageOrganization,
   });
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 
@@ -337,7 +338,7 @@ async function proveAdoption(
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

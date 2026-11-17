@@ -26,10 +26,12 @@ export function FoundryShareControls({
   event,
   locale,
   t,
+  canSendInTeams = false,
 }: {
   event: ManagerEvent;
   locale: Locale;
   t: EventRoomsCopy;
+  canSendInTeams?: boolean;
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
   // What the manual (clipboard-denied) fallback textarea shows — the URL for the
@@ -295,7 +297,7 @@ export function FoundryShareControls({
     <section className="flex flex-col gap-2" aria-label={t.shareRoomHeader}>
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.shareRoomHeader}</h2>
 
-      {insideTeams ? (
+      {insideTeams && canSendInTeams ? (
         /*
           INSIDE TEAMS. Choose people, confirm, and BTY's bot delivers the training into each
           person's own chat. There is no link to copy and no draft to send: the employee reads the
@@ -390,14 +392,16 @@ export function FoundryShareControls({
           >
             {copyState === "copied" ? t.linkCopied : t.copyInvitation}
           </button>
-          <button
-            type="button"
-            onClick={onShareTeams}
-            aria-label={t.shareToTeams}
-            className="flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
-          >
-            {teamsState === "opening" ? t.openingTeams : t.shareToTeams}
-          </button>
+          {!insideTeams ? (
+            <button
+              type="button"
+              onClick={onShareTeams}
+              aria-label={t.shareToTeams}
+              className="flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
+            >
+              {teamsState === "opening" ? t.openingTeams : t.shareToTeams}
+            </button>
+          ) : null}
         </div>
       )}
 

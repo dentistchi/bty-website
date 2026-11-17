@@ -157,6 +157,7 @@ export function ModuleBuilderShell({
   // Publication must not proceed underneath it. Seeded from the SERVER on restore so a
   // reload — or a generation started in another tab — is reconciled rather than assumed.
   const [generationPending, setGenerationPending] = useState(false);
+  const [canManageOrganization, setCanManageOrganization] = useState(false);
   // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
   // assigned overlay, and legacy/absent always stays open link.
   const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
@@ -264,7 +265,12 @@ export function ModuleBuilderShell({
         if (!alive) return;
         if (res.status === 404) return setRestore("gone");
         if (!res.ok) return setRestore("unavailable");
-        const data = (await res.json()) as { draft?: ClientDraft; program_generation_active?: boolean };
+        const data = (await res.json()) as {
+          draft?: ClientDraft;
+          program_generation_active?: boolean;
+          canManageOrganization?: boolean;
+        };
+        if (!alive) return;
         const draft = data.draft;
         if (!draft || draft.status !== "draft") return setRestore("gone");
         const a = draft.answers ?? {};
@@ -281,6 +287,7 @@ export function ModuleBuilderShell({
         setAssets(draft.assets ?? []);
         setIsRevision((draft.module_version ?? 1) > 1 || draft.parent_module_id != null);
         setGenerationPending(data.program_generation_active === true);
+        setCanManageOrganization(data.canManageOrganization === true);
         setRestore("loaded");
       } catch {
         if (alive) setRestore("unavailable");
@@ -472,8 +479,9 @@ export function ModuleBuilderShell({
       // Only the DECLARED audience travels with an assigned publish — never resolved member
       // ids, org, or count. The server resolves recipients and blocks a zero-eligible
       // assigned publish (never falls back to Everyone).
-      const body: Record<string, unknown> = { locale, participationMode };
-      if (participationMode === "assigned_overlay") {
+      const publishMode = canManageOrganization ? participationMode : "open_link";
+      const body: Record<string, unknown> = { locale, participationMode: publishMode };
+      if (publishMode === "assigned_overlay") {
         body.audienceType = answersRef.current.audienceType;
         body.audienceDetail = answersRef.current.audienceDetail ?? null;
       }
@@ -509,7 +517,7 @@ export function ModuleBuilderShell({
     } finally {
       setPublishing(false);
     }
-  }, [publishing, cancelDebounce, saver, draftId, locale, participationMode, onExit]);
+  }, [publishing, cancelDebounce, saver, draftId, locale, participationMode, canManageOrganization]);
 
 
 
@@ -840,6 +848,18 @@ export function ModuleBuilderShell({
       t={t}
     />
   );
+  const participationChooser = canManageOrganization ? (
+    <div className="lg:col-span-2">
+      <ParticipationModeChooser
+        mode={participationMode}
+        audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
+        intendedCount={intendedCount}
+        onIntendedCount={setIntendedCount}
+        onChange={setParticipationMode}
+        t={t}
+      />
+    </div>
+  ) : null;
 
   /*
     SIMPLE MODE IS THE DEFAULT (Slice 2). A fresh draft opens in two steps; a draft written before
@@ -869,16 +889,7 @@ export function ModuleBuilderShell({
             // The same participation choice and publish action Review renders; only onEdit leaves
             // for the detailed builder first, because a jump inside Simple Mode would land nowhere.
             <div className="grid gap-4">
-          <div className="lg:col-span-2">
-            <ParticipationModeChooser
-              mode={participationMode}
-              audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
-              intendedCount={intendedCount}
-              onIntendedCount={setIntendedCount}
-              onChange={setParticipationMode}
-              t={t}
-            />
-          </div>
+          {participationChooser}
           <div className="lg:col-span-2">
           <PublishAction
             missing={reviewMissing}
@@ -1092,16 +1103,7 @@ export function ModuleBuilderShell({
           <div className="lg:col-span-2">
             <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} onPatch={patchAnswers} open={detailsOpen} onOpenChange={setDetailsOpen} t={t} />
           </div>
-          <div className="lg:col-span-2">
-            <ParticipationModeChooser
-              mode={participationMode}
-              audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
-              intendedCount={intendedCount}
-              onIntendedCount={setIntendedCount}
-              onChange={setParticipationMode}
-              t={t}
-            />
-          </div>
+          {participationChooser}
           <div className="lg:col-span-2">
           <PublishAction
             missing={reviewMissing}
@@ -1131,7 +1133,9 @@ export function ModuleBuilderShell({
           </div>
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode)}</div>
+        <div className="min-h-[42vh]">
+          {renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, canManageOrganization)}
+        </div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -1362,6 +1366,7 @@ function renderStep(
   blocker: string | null,
   t: ModuleBuilderCopy,
   filesNode: React.ReactNode,
+  canManageOrganization: boolean,
 ) {
   switch (step) {
     case 1:
@@ -1438,7 +1443,7 @@ function renderStep(
             invite, restrict, or target anyone. Foundry participation stays anonymous and
             link-based. Identity-bound targeting is Slice 3.1B-3.
           */}
-          {a.audienceType === "leaders" ? <LeadersEligibilityPreview t={t} /> : null}
+          {canManageOrganization && a.audienceType === "leaders" ? <LeadersEligibilityPreview t={t} /> : null}
           <BlockerLine show={blocker === "audience_required"} text={t.s2Blocker} />
           <BlockerLine show={blocker === "audience_detail_required"} text={t.s2DetailBlocker} />
         </StepFrame>

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Host History list route — proves the AUTH GATE (401 unauthenticated, 403 non-
- * host) and that the service is owner-scoped + never touched for a non-host.
+ * Training History list route — requires a session and calls the service with
+ * the canonical account ID so every author gets only their own history.
  */
 const currentUser = vi.fn<() => { id: string } | null>();
 const hostActive = vi.fn<() => boolean>();
@@ -50,15 +50,14 @@ describe("GET /api/bty/foundry/event-history", () => {
     expect(listHostHistory).not.toHaveBeenCalled();
   });
 
-  it("403s a non-host with no event data (service untouched)", async () => {
+  it("returns only the ordinary author's own history", async () => {
     currentUser.mockReturnValue({ id: "user-x" });
     hostActive.mockReturnValue(false);
+    listHostHistory.mockResolvedValue([]);
     const res = await GET(req());
-    expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toBe("foundry_author_required");
-    expect(json.events).toBeUndefined();
-    expect(listHostHistory).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ events: [] });
+    expect(listHostHistory).toHaveBeenCalledWith(expect.anything(), "user-x");
   });
 
   it("returns the host's history list for an active host", async () => {

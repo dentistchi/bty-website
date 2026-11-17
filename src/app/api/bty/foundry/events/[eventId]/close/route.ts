@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * and may still claim XP; the owner keeps the roster. 404 if not owned.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

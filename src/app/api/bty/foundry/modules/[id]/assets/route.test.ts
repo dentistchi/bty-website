@@ -41,10 +41,11 @@ describe("POST /modules/[id]/assets", () => {
     expect((await POST(post(), params)).status).toBe(401);
     expect(attachAsset).not.toHaveBeenCalled();
   });
-  it("403 non-host", async () => {
+  it("scopes an ordinary author's asset upload to their draft", async () => {
     hostActive.mockReturnValue(false);
-    expect((await POST(post(), params)).status).toBe(403);
-    expect(attachAsset).not.toHaveBeenCalled();
+    attachAsset.mockResolvedValue({ ok: true, value: { asset: ASSET } });
+    expect((await POST(post(), params)).status).toBe(201);
+    expect(attachAsset).toHaveBeenCalledWith(expect.anything(), "owner-1", "d-1", expect.anything());
   });
   it("201 with a safe asset — never bucket/path/hash/owner", async () => {
     attachAsset.mockResolvedValue({ ok: true, value: { asset: ASSET } });

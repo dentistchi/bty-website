@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * reflection. 404 when the event is not owned by the caller (no disclosure of a foreign event).
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

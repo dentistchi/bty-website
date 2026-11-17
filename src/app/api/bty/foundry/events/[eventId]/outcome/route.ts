@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  * profile: a screen that answers "did anything change?" should not itself change anything.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

@@ -113,16 +113,13 @@ describe("EventCreateClient — Host create flow (3.2D-EVENT)", () => {
 });
 
 describe("LearnDoors — Host 'Open an event' in-shell entry (3.2D-EVENT-R1)", () => {
-  it("is a callback BUTTON (no href/target — never leaves the app), gated on creator + handler", () => {
+  it("is an in-shell button gated on organization access and a handler", () => {
     const onOpenEvent = vi.fn();
-    // Not a creator → hidden.
-    const { rerender } = render(<LearnDoors locale="en" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
+    const { rerender } = render(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
     expect(screen.queryByTestId("door-open-event")).toBeNull();
-    // Creator but no handler → hidden (no dead route).
-    rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} />);
+    rerender(<LearnDoors locale="en" canCreate canOpenLiveEvent onOpenLearning={() => {}} onCreate={() => {}} />);
     expect(screen.queryByTestId("door-open-event")).toBeNull();
-    // Creator + handler → an in-shell button.
-    rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
+    rerender(<LearnDoors locale="en" canCreate canOpenLiveEvent onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
     const door = screen.getByTestId("door-open-event");
     expect(door.tagName).toBe("BUTTON");
     expect(door.getAttribute("href")).toBeNull();

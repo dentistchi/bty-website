@@ -13,10 +13,10 @@ export const runtime = "nodejs";
  * payload NEVER includes reflection text, a session token, a join credential, or
  * a storage path.
  *
- * Behind `requireManager`: 401 unauthenticated, 403 `foundry_host_required`.
+ * Requires a signed-in BTY account.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: string }> }) {
-  const gate = await requireManager(req);
+  const gate = await requireManager(req, "training");
   if (!gate.ok) return gate.response;
   const { user, admin, base } = gate.ctx;
 

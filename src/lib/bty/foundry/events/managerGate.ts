@@ -5,27 +5,25 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { FOUNDRY_AUTHOR_ERROR, hasFoundryAuthorCapability } from "@/lib/bty/authority/foundryAuthor.server";
 
 /**
- * Shared manager-route gate for Foundry Training Rooms.
- *
- * Order: authenticated (401) → service-role client (503) → Foundry author
- * capability (403 foundry_author_required) → [service proves Event ownership]. Every
- * manager operation is additionally owner-scoped inside the service (queries
- * filter by owner_user_id). Authentication alone is NOT authority. The author
- * capability opens only the caller's own content.
- * The `foundry_author_required` code lets the native UI render a quiet non-author
- * state instead of a raw 403 — no separate access API needed.
+ * Foundry routes require a BTY account. Training routes opt in when their services
+ * scope each operation to the caller's own training, draft or staged upload.
+ * Other routes require the established Foundry author capability as well.
  */
 export type ManagerContext = {
   user: { id: string };
   admin: SupabaseClient;
   base: NextResponse;
+  canManageOrganization: boolean;
 };
+
+type ManagerScope = "privileged" | "training" | "training-with-capability";
 
 export async function requireManager(
   req: NextRequest,
+  scope: ManagerScope = "privileged",
 ): Promise<{ ok: true; ctx: ManagerContext } | { ok: false; response: NextResponse }> {
   const { user, base } = await requireUser(req);
-  if (!user) return { ok: false, response: unauthenticated(req, base) };
+  if (!user || user.is_anonymous) return { ok: false, response: unauthenticated(req, base) };
 
   const admin = getSupabaseAdmin();
   if (!admin) {
@@ -34,19 +32,13 @@ export async function requireManager(
     return { ok: false, response: res };
   }
 
-  /*
-    Foundry AUTHOR CAPABILITY — required for every manager operation. It admits
-    platform admins, explicit Host grants, and eligible doctor/manager identities.
-    Every operation behind this gate is still scoped to the caller's own rows.
-  */
-  const isAuthor = await hasFoundryAuthorCapability(admin, user.id);
-  if (!isAuthor) {
-    const res = NextResponse.json({ error: FOUNDRY_AUTHOR_ERROR }, { status: 403 });
-    copyCookiesAndDebug(base, res, req, true);
-    return { ok: false, response: res };
+  const canManageOrganization =
+    scope !== "training" && await hasFoundryAuthorCapability(admin, user.id);
+  if (scope === "privileged" && !canManageOrganization) {
+    return { ok: false, response: managerJson(base, req, { error: FOUNDRY_AUTHOR_ERROR }, 403) };
   }
 
-  return { ok: true, ctx: { user: { id: user.id }, admin, base } };
+  return { ok: true, ctx: { user: { id: user.id }, admin, base, canManageOrganization } };
 }
 
 /** JSON response that carries forward any refreshed auth cookies + no-store. */

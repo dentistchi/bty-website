@@ -113,41 +113,30 @@ describe("GET /api/bty/foundry/events", () => {
     listOwnerEvents.mockResolvedValue([]);
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(Array.isArray((await res.json()).events)).toBe(true);
+    expect(await res.json()).toEqual({ events: [], canManageOrganization: true });
   });
 });
 
-describe("Foundry author authorization gate", () => {
-  it("authenticated non-author create → 403 foundry_author_required (service untouched)", async () => {
+describe("Training authorship and organization privileges", () => {
+  it("creates a Quick Training for an ordinary account using the session owner", async () => {
     currentUser.mockReturnValue({ id: "user-x" });
     authorActive.mockReturnValue(false);
-    const res = await POST(req(VALID));
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe("foundry_author_required");
-    expect(createTrainingEvent).not.toHaveBeenCalled();
-  });
-
-  it("authenticated non-author list → 403 foundry_author_required (no event data)", async () => {
-    currentUser.mockReturnValue({ id: "user-x" });
-    authorActive.mockReturnValue(false);
-    const res = await GET(req());
-    expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toBe("foundry_author_required");
-    expect(json.events).toBeUndefined();
-    expect(listOwnerEvents).not.toHaveBeenCalled();
-  });
-
-  it("non-author remains denied → 403", async () => {
-    currentUser.mockReturnValue({ id: "was-host" });
-    authorActive.mockReturnValue(false);
-    expect((await POST(req(VALID))).status).toBe(403);
-  });
-
-  it("eligible author create → 201", async () => {
-    currentUser.mockReturnValue({ id: "owner-1" });
-    authorActive.mockReturnValue(true);
     createTrainingEvent.mockResolvedValue({ ok: true, value: SNAPSHOT });
-    expect((await POST(req(VALID))).status).toBe(201);
+    const res = await POST(req({ ...VALID, owner_user_id: "other-user" }));
+    expect(res.status).toBe(201);
+    expect(createTrainingEvent).toHaveBeenCalledWith({}, "user-x", {
+      ...VALID,
+      quiz_attached: false,
+    });
+  });
+
+  it("lists the ordinary author's trainings with organization actions disabled", async () => {
+    currentUser.mockReturnValue({ id: "user-x" });
+    authorActive.mockReturnValue(false);
+    listOwnerEvents.mockResolvedValue([]);
+    const res = await GET(req());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ events: [], canManageOrganization: false });
+    expect(listOwnerEvents).toHaveBeenCalledWith({}, "user-x");
   });
 });

@@ -54,7 +54,7 @@ function mockFetch(over: { events?: () => Response } = {}) {
   return vi.fn(async (url: string) => {
     const u = String(url);
     calls.push(u);
-    if (u.includes("/api/bty/foundry/events")) return over.events ? over.events() : jsonRes({ events: [{ id: "evt-1", title: "Handoff under pressure" }] });
+    if (u.includes("/api/bty/foundry/events")) return over.events ? over.events() : jsonRes({ events: [{ id: "evt-1", title: "Handoff under pressure" }], canManageOrganization: true });
     if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "shell-1" }] });
     if (u.match(/\/arena-drafts\/[^/?]+(?:\?[^#]*)?$/)) return jsonRes({ draft: SHELL });
@@ -108,7 +108,7 @@ describe("[R1] the Host has a way in from Practice situations", () => {
   });
 
   it("a learner reaching the same surface sees the list and no authoring control", async () => {
-    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ error: "foundry_author_required" }, false, 403) }));
+    vi.stubGlobal("fetch", mockFetch({ events: () => jsonRes({ events: [], canManageOrganization: false }) }));
     render(<PracticeLanding {...base} />);
     openPracticeSituations();
     await waitFor(() => expect(screen.getByText("A finished situation")).toBeTruthy());

@@ -42,7 +42,7 @@ function jsonRes(body: unknown, ok = true, status = 200) {
 function mockFetch(over: { events?: () => Response; list?: () => Response } = {}) {
   return vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url);
-    if (u.includes("/api/bty/foundry/events")) return over.events ? over.events() : jsonRes({ events: [{ id: "evt-1", title: "Handoff" }] });
+    if (u.includes("/api/bty/foundry/events")) return over.events ? over.events() : jsonRes({ events: [{ id: "evt-1", title: "Handoff" }], canManageOrganization: true });
     if (u === "/api/arena/practice") return over.list ? over.list() : jsonRes({ practices: COMPLETED });
     if (u.startsWith("/api/arena/practice/") && (init?.method ?? "GET") === "GET") {
       return jsonRes({
@@ -119,7 +119,7 @@ describe("[R2] the Host CTA lives on the situations index only", () => {
       "fetch",
       vi.fn(async (url: string) => {
         const u = String(url);
-        if (u.includes("/api/bty/foundry/events")) return jsonRes({ events: [{ id: "evt-1", title: "Handoff" }] });
+        if (u.includes("/api/bty/foundry/events")) return jsonRes({ events: [{ id: "evt-1", title: "Handoff" }], canManageOrganization: true });
         if (u === "/api/arena/practice") return jsonRes({ practices: COMPLETED });
         if (u.startsWith("/api/arena/practice/")) return jsonRes({}, false, 500);
         throw new Error(`unmocked fetch: ${u}`);

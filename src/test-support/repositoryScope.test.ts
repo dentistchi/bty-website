@@ -29,12 +29,13 @@ describe("pinned repository-scope proof integrity", () => {
   });
   it("checks the bytes of all registered later migrations without applying any SQL", () => {
     const names = pinnedLaterSourceMigrations();
-    expect(names).toHaveLength(27);
+    expect(names).toHaveLength(28);
     expect(names).toContain("20261031222747_legacy_xp_atomic_reward_receipts.sql");
     expect(names).toContain("20261101120000_reward_write_fence_v1.sql");
     expect(names).toContain("20261101130000_weekly_reflection_quest_atomic.sql");
     expect(names).toContain("20261101140000_shared_reward_write_fence.sql");
     expect(names).toContain("20261110191609_bty_track_first_login_invites.sql");
+    expect(names).toContain("20261117000617_foundry_account_scoped_programs.sql");
     expect(unpinnedMigrationSources(names)).toEqual([]);
   });
   it("leaves an unregistered future migration visible to every empty-list guard", () => {

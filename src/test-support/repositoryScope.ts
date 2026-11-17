@@ -51,6 +51,10 @@ const POST_SNAPSHOT_MIGRATIONS: SourceEntry[] = [
     file: "20261110191609_bty_track_first_login_invites.sql",
     sha256: "eb43e07aba3c762f121818aca6ee6e6d0a9d8166b7ed84b71ac1eb5897370956",
   },
+  {
+    file: "20261117000617_foundry_account_scoped_programs.sql",
+    sha256: "9f404e8106a00a5ef81e41fd38987dd68c4a65c6bc36794cc3f11fa55b1b8b97",
+  },
 ];
 
 /** Observed source registration only: this does not approve SQL semantics or apply a migration. */

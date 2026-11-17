@@ -113,7 +113,7 @@ describe("resolveOrCreateProgramForActor (fail-closed)", () => {
     expect(calls.rpc[0]?.args).toMatchObject({ p_actor_user_id: "u1", p_title: "My Title", p_program_id: null });
   });
 
-  it("THROWS organization_unresolved when there is no canonical org (no silent null)", async () => {
+  it("propagates organization_unresolved from a database still on the previous RPC", async () => {
     const { admin } = makeAdmin({ rpc: errRpc("organization_unresolved") });
     await expect(resolveOrCreateProgramForActor(admin, "u1", "t")).rejects.toThrow(/organization_unresolved/);
   });
@@ -164,11 +164,11 @@ describe("createDraft — Program lineage (fail-closed)", () => {
     expect(calls.rpc.length).toBe(1);
   });
 
-  it("REJECTS a new Guided Program when the owner has no canonical org — NO partial draft", async () => {
-    const { admin, drafts } = makeAdmin({ rpc: errRpc("organization_unresolved") });
+  it("rejects a Program lookup failure before inserting a Guided draft", async () => {
+    const { admin, drafts } = makeAdmin({ rpc: errRpc("program_resolve_failed") });
     const res = await createDraft(admin, "owner-1");
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toBe("organization_unresolved");
+    if (!res.ok) expect(res.reason).toBe("program_resolve_failed");
     expect(drafts.length).toBe(0); // no draft row created
   });
 

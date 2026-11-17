@@ -11,11 +11,12 @@ import { join } from "node:path";
  * participation / QR / XP change; no historical backfill; canonical org identity
  * only (never legacy `memberships`); title never dedups identities.
  */
-const RAW = readFileSync(
-  join(process.cwd(), "supabase", "migrations", "20260801000000_foundry_programs_root_v1.sql"),
-  "utf8",
-);
-const CODE = RAW.replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").toLowerCase();
+function readMigrationSql(fileName: string) {
+  return readFileSync(join(process.cwd(), "supabase", "migrations", fileName), "utf8")
+    .replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+const CODE = readMigrationSql("20260801000000_foundry_programs_root_v1.sql");
 
 describe("foundry-programs-root migration (schema-intent)", () => {
   it("creates the foundry_programs identity root (idempotent)", () => {
@@ -108,5 +109,30 @@ describe("foundry-programs-root migration (schema-intent)", () => {
     ]) {
       expect(CODE).not.toContain(forbidden);
     }
+  });
+});
+
+describe("account-scoped Program migration", () => {
+  const sql = readMigrationSql("20261117000617_foundry_account_scoped_programs.sql");
+
+  it("allows a null organization while returning a durable owner-linked Program ID", () => {
+    expect(sql).toContain("alter table public.foundry_programs alter column organization_id drop not null");
+    expect(sql).toContain("values (v_org, p_actor_user_id, p_actor_user_id, v_title) returning id into program_id");
+    expect(sql).not.toMatch(/(?:insert into|update|delete from) public\.bty_org_memberships/);
+  });
+
+  it("checks both owner IDs for personal Programs and the organization for organizational Programs", () => {
+    expect(sql).toContain("v_program.owner_user_id is distinct from p_actor_user_id");
+    expect(sql).toContain("v_program.owner_user_id_snapshot is distinct from p_actor_user_id then raise exception 'program_missing'");
+    expect(sql).toContain("elsif v_program.organization_id is distinct from v_org then raise exception 'cross_organization'");
+  });
+
+  it("keeps the RPC service-role-only and the table out of client access", () => {
+    expect(sql).toContain("security definer set search_path = pg_catalog");
+    expect(sql).toContain("revoke execute on function public.bty_foundry_resolve_or_create_program(uuid, text, uuid) from public, anon, authenticated");
+    expect(sql.match(/grant [^;]+/g)).toEqual([
+      "grant execute on function public.bty_foundry_resolve_or_create_program(uuid, text, uuid) to service_role",
+    ]);
+    expect(sql).not.toMatch(/disable row level security|create policy/);
   });
 });
