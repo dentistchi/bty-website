@@ -137,6 +137,55 @@ async function finish(page: Page, state: Awaited<ReturnType<typeof setup>>) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
+test.describe("Saved removal with a mouse", () => {
+  test.use({ viewport: { width: 1280, height: 900 }, hasTouch: false });
+
+  test("a desktop user can click Remove on a saved message without focusing it first", async ({ page }) => {
+    const state = await setup(page, { view: "saved" });
+    expect(await page.evaluate(() => matchMedia("(any-pointer: fine)").matches)).toBe(true);
+    const button = page.getByTestId("saved-item").getByRole("button", { name: "Remove", exact: true });
+    await expect(button).toBeVisible();
+    await expect(button).not.toBeFocused();
+    const bounds = await button.boundingBox();
+    expect(bounds?.width ?? 0).toBeGreaterThan(24);
+    expect(bounds?.height ?? 0).toBeGreaterThan(24);
+    await expect(page.getByTestId("saved-swipe-action")).toHaveCount(0);
+
+    state.failMutation = false;
+    const endpoint = "/api/bty/action-capture/capture-1/remove";
+    const [response] = await Promise.all([
+      page.waitForResponse(res => new URL(res.url()).pathname === endpoint && res.request().method() === "POST"),
+      button.click(),
+    ]);
+    expect(response.ok()).toBe(true);
+    await expect(page.getByTestId("saved-empty")).toHaveText("Nothing saved for later.");
+    expect(state.mutations).toEqual([{ path: endpoint, body: null }]);
+    await finish(page, state);
+  });
+});
+
+test.describe("Saved removal on a touch-only device", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("the remove control stays compact at rest and is revealed by keyboard focus", async ({ page }) => {
+    const state = await setup(page, { view: "saved" });
+    expect(await page.evaluate(() => matchMedia("(any-pointer: fine)").matches)).toBe(false);
+    const button = page.getByTestId("saved-remove");
+    await expect(button).toBeAttached();
+    const resting = await button.boundingBox();
+    expect(resting?.width ?? 0).toBeLessThanOrEqual(1);
+    expect(resting?.height ?? 0).toBeLessThanOrEqual(1);
+
+    await page.keyboard.press("Tab");
+    await expect(button).toBeFocused();
+    const focused = await button.boundingBox();
+    expect(focused?.width ?? 0).toBeGreaterThan(24);
+    expect(focused?.height ?? 0).toBeGreaterThan(24);
+    expect(state.mutations).toEqual([]);
+    await finish(page, state);
+  });
+});
+
 for (const width of [320, 390, 1280]) {
   test.describe(width + "px isolated release reliability", () => {
     test.use({ viewport: { width, height: 900 } });
